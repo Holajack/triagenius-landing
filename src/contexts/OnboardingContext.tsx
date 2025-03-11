@@ -1,6 +1,7 @@
 
-import { createContext, useContext, useReducer, ReactNode } from 'react';
+import { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { OnboardingState, UserGoal, WorkStyle, StudyEnvironment, SoundPreference } from '@/types/onboarding';
+import { useUser } from '@clerk/clerk-react';
 
 type OnboardingAction = 
   | { type: 'SET_STEP'; payload: number }
@@ -9,7 +10,8 @@ type OnboardingAction =
   | { type: 'SET_ENVIRONMENT'; payload: StudyEnvironment }
   | { type: 'SET_SOUND_PREFERENCE'; payload: SoundPreference }
   | { type: 'COMPLETE_ONBOARDING' }
-  | { type: 'RESET_ONBOARDING' };
+  | { type: 'RESET_ONBOARDING' }
+  | { type: 'LOAD_SAVED_STATE'; payload: Partial<OnboardingState> };
 
 const initialState: OnboardingState = {
   step: 0,
@@ -32,6 +34,8 @@ const onboardingReducer = (state: OnboardingState, action: OnboardingAction): On
       return { ...state, isComplete: true };
     case 'RESET_ONBOARDING':
       return initialState;
+    case 'LOAD_SAVED_STATE':
+      return { ...state, ...action.payload };
     default:
       return state;
   }
@@ -40,15 +44,49 @@ const onboardingReducer = (state: OnboardingState, action: OnboardingAction): On
 type OnboardingContextType = {
   state: OnboardingState;
   dispatch: React.Dispatch<OnboardingAction>;
+  savePreferences: () => void;
 };
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
 
 export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(onboardingReducer, initialState);
+  const { isSignedIn, user } = useUser();
+
+  // Load saved preferences when user logs in
+  useEffect(() => {
+    if (isSignedIn && user) {
+      const savedPreferences = localStorage.getItem(`focus_preferences_${user.id}`);
+      if (savedPreferences) {
+        try {
+          const parsedPreferences = JSON.parse(savedPreferences);
+          dispatch({ 
+            type: 'LOAD_SAVED_STATE', 
+            payload: parsedPreferences 
+          });
+        } catch (error) {
+          console.error('Failed to parse saved preferences', error);
+        }
+      }
+    }
+  }, [isSignedIn, user]);
+
+  // Function to save preferences to localStorage
+  const savePreferences = () => {
+    if (isSignedIn && user) {
+      const preferencesToSave = {
+        userGoal: state.userGoal,
+        workStyle: state.workStyle,
+        environment: state.environment,
+        soundPreference: state.soundPreference,
+        isComplete: state.isComplete
+      };
+      localStorage.setItem(`focus_preferences_${user.id}`, JSON.stringify(preferencesToSave));
+    }
+  };
 
   return (
-    <OnboardingContext.Provider value={{ state, dispatch }}>
+    <OnboardingContext.Provider value={{ state, dispatch, savePreferences }}>
       {children}
     </OnboardingContext.Provider>
   );
