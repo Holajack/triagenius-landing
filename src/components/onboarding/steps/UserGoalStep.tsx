@@ -8,7 +8,7 @@ const goals: Array<{ id: UserGoal; title: string; description: string; icon: Rea
   {
     id: 'deep-work',
     title: 'Deep Work',
-    description: 'Focus on complex tasks requiring intense concentration',
+    description: 'Achieve maximum focus on a single, complex task without interruptions',
     icon: <Timer className="w-6 h-6" />,
   },
   {
