@@ -1,5 +1,5 @@
 
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { LayoutDashboard, Bot, BarChart3, UserCircle2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 const NavigationBar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { state } = useOnboarding();
   
   // Get accent color based on environment
@@ -32,7 +33,7 @@ const NavigationBar = () => {
       label: "Community",
       icon: <Users className="h-5 w-5" />,
       onClick: () => navigate("/community"),
-      active: location.pathname === "/community",
+      active: location.pathname === "/community" || location.pathname.startsWith("/community/"),
     },
     {
       label: "AI Companion",
@@ -43,8 +44,8 @@ const NavigationBar = () => {
     {
       label: "Reports",
       icon: <BarChart3 className="h-5 w-5" />,
-      onClick: () => navigate("/dashboard"),
-      active: false,
+      onClick: () => navigate("/reports"),
+      active: location.pathname === "/reports",
     },
     {
       label: "Profile",
