@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -10,6 +11,7 @@ import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
 
 const Index = () => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     // Register service worker for offline functionality
@@ -46,10 +48,19 @@ const Index = () => {
     }
   };
 
+  const handleStartFocusing = () => {
+    setShowOnboarding(true);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-white to-purple-50/30">
       <Navbar />
-      <OnboardingDialog />
+      
+      {/* Onboarding Dialog */}
+      <OnboardingDialog 
+        open={showOnboarding} 
+        onOpenChange={setShowOnboarding} 
+      />
       
       <main className="flex-grow flex flex-col">
         {/* Hero Section */}
@@ -90,7 +101,7 @@ const Index = () => {
                 label="Start Focusing" 
                 icon="play" 
                 className="w-full md:w-auto"
-                onClick={() => console.log("Start focusing")}
+                onClick={handleStartFocusing}
               />
               
               <FocusButton 
