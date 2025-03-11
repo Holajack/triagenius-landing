@@ -11,12 +11,10 @@ import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { useUser } from "@clerk/clerk-react";
 
 const Onboarding = () => {
-  const { state, dispatch, savePreferences } = useOnboarding();
+  const { state, dispatch } = useOnboarding();
   const navigate = useNavigate();
-  const { user } = useUser();
 
   // Reset onboarding state when component mounts
   useEffect(() => {
@@ -39,12 +37,9 @@ const Onboarding = () => {
     } else {
       dispatch({ type: 'COMPLETE_ONBOARDING' });
       
-      // Save preferences
-      savePreferences();
-      
       // Show success toast when onboarding is complete
       toast.success("Onboarding complete! Your preferences have been saved.", {
-        description: `Your personalized focus experience is ready, ${user?.firstName || 'user'}.`,
+        description: "Your personalized focus experience is ready.",
         icon: <CheckCircle2 className="text-green-500" />,
       });
       
