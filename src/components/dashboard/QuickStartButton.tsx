@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,13 +5,15 @@ import { PauseCircle, PlayCircle, Settings, TimerReset } from "lucide-react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 const QuickStartButton = () => {
   const { state } = useOnboarding();
   const [isActive, setIsActive] = useState(false);
   const [timer, setTimer] = useState(25 * 60); // 25 minutes in seconds
   
-  // Get environment-specific gradient class
+  const navigate = useNavigate();
+  
   const getGradientClass = () => {
     switch (state.environment) {
       case 'office': return "from-blue-50 to-indigo-100";
@@ -24,7 +25,6 @@ const QuickStartButton = () => {
     }
   };
   
-  // Get accent color based on environment
   const getAccentColor = () => {
     switch (state.environment) {
       case 'office': return "text-blue-600 bg-blue-50";
@@ -36,7 +36,6 @@ const QuickStartButton = () => {
     }
   };
   
-  // Format seconds to MM:SS
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -48,6 +47,7 @@ const QuickStartButton = () => {
     toast.success("Focus session started!", {
       description: `Your ${state.workStyle === 'pomodoro' ? 'Pomodoro' : 'Focus'} timer has begun.`,
     });
+    navigate("/focus-session");
   };
   
   const pauseSession = () => {
