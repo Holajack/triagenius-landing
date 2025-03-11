@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,13 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				triage: {
+					blue: '#3B82F6',
+					indigo: '#4F46E5',
+					purple: '#8B5CF6',
+					lightGray: '#F3F4F6',
+					darkGray: '#1F2937',
 				}
 			},
 			borderRadius: {
@@ -84,12 +92,51 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'fade-in': {
+					'0%': { opacity: '0', transform: 'translateY(10px)' },
+					'100%': { opacity: '1', transform: 'translateY(0)' }
+				},
+				'fade-out': {
+					'0%': { opacity: '1' },
+					'100%': { opacity: '0' }
+				},
+				'scale-in': {
+					'0%': { transform: 'scale(0.95)', opacity: '0' },
+					'100%': { transform: 'scale(1)', opacity: '1' }
+				},
+				'pulse-light': {
+					'0%, 100%': { opacity: '1' },
+					'50%': { opacity: '0.8' }
+				},
+				'spin-slow': {
+					'0%': { transform: 'rotate(0deg)' },
+					'100%': { transform: 'rotate(360deg)' }
+				},
+				'float': {
+					'0%, 100%': { transform: 'translateY(0)' },
+					'50%': { transform: 'translateY(-10px)' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
-			}
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fade-in 0.6s ease-out forwards',
+				'fade-in-fast': 'fade-in 0.3s ease-out forwards',
+				'fade-out': 'fade-out 0.3s ease-out',
+				'scale-in': 'scale-in 0.3s ease-out',
+				'pulse-light': 'pulse-light 3s ease-in-out infinite',
+				'spin-slow': 'spin-slow 12s linear infinite',
+				'float': 'float 6s ease-in-out infinite'
+			},
+			fontFamily: {
+				sans: ['Inter var', 'sans-serif'],
+				heading: ['SF Pro Display', 'Inter var', 'sans-serif']
+			},
+			backdropFilter: {
+				'none': 'none',
+				'blur': 'blur(8px)',
+			},
 		}
 	},
 	plugins: [require("tailwindcss-animate")],
