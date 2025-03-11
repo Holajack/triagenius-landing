@@ -6,6 +6,7 @@ import { CommunityUserList } from "@/components/community/CommunityUserList";
 import { MessageInbox } from "@/components/community/MessageInbox";
 import { StudyRooms } from "@/components/community/StudyRooms";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import NavigationBar from "@/components/dashboard/NavigationBar";
 
 const Community = () => {
   return (
@@ -39,6 +40,8 @@ const Community = () => {
           <StudyRooms />
         </TabsContent>
       </Tabs>
+
+      <NavigationBar />
     </div>
   );
 };
