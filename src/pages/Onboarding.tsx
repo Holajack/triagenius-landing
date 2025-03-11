@@ -43,8 +43,8 @@ const Onboarding = () => {
         icon: <CheckCircle2 className="text-green-500" />,
       });
       
-      // Navigate to the dashboard or home page after completion
-      navigate('/');
+      // Navigate to the dashboard after completion
+      navigate('/dashboard');
     }
   };
 

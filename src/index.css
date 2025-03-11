@@ -35,6 +35,77 @@
 
     --radius: 1rem;
   }
+
+  .dark {
+    --background: 224 71.4% 4.1%;
+    --foreground: 210 20% 98%;
+
+    --card: 224 71.4% 4.1%;
+    --card-foreground: 210 20% 98%;
+
+    --popover: 224 71.4% 4.1%;
+    --popover-foreground: 210 20% 98%;
+
+    --primary: 210 20% 98%;
+    --primary-foreground: 220.9 39.3% 11%;
+
+    --secondary: 215 27.9% 16.9%;
+    --secondary-foreground: 210 20% 98%;
+
+    --muted: 215 27.9% 16.9%;
+    --muted-foreground: 217.9 10.6% 64.9%;
+
+    --accent: 215 27.9% 16.9%;
+    --accent-foreground: 210 20% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 20% 98%;
+
+    --border: 215 27.9% 16.9%;
+    --input: 215 27.9% 16.9%;
+    --ring: 216 12.2% 83.9%;
+  }
+
+  /* Environment-specific theme variables */
+  .theme-office {
+    --env-primary: 226 100% 60%;
+    --env-secondary: 223 100% 52%;
+    --env-accent: 221 100% 45%;
+    --env-muted: 220 10% 46%;
+    --env-border: 220 13% 91%;
+  }
+
+  .theme-park {
+    --env-primary: 152 60% 52%;
+    --env-secondary: 142 70% 45%;
+    --env-accent: 158 64% 38%;
+    --env-muted: 150 10% 46%;
+    --env-border: 150 13% 91%;
+  }
+
+  .theme-home {
+    --env-primary: 30 100% 60%;
+    --env-secondary: 32 100% 50%;
+    --env-accent: 28 100% 45%;
+    --env-muted: 30 10% 46%;
+    --env-border: 30 13% 91%;
+  }
+
+  .theme-coffee-shop {
+    --env-primary: 35 100% 50%;
+    --env-secondary: 40 100% 45%;
+    --env-accent: 30 90% 40%;
+    --env-muted: 35 10% 46%;
+    --env-border: 35 13% 91%;
+  }
+
+  .theme-library {
+    --env-primary: 220 10% 45%;
+    --env-secondary: 215 10% 40%;
+    --env-accent: 210 10% 35%;
+    --env-muted: 220 5% 46%;
+    --env-border: 220 5% 91%;
+  }
 }
 
 @layer base {
