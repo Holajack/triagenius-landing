@@ -2,7 +2,7 @@
 import { Card } from "@/components/ui/card";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { StudyEnvironment } from "@/types/onboarding";
-import { Building, Coffee, TreeDeciduous } from "lucide-react";
+import { Building, Coffee, TreeDeciduous, BookOpen, Home } from "lucide-react";
 
 const environments: Array<{ id: StudyEnvironment; title: string; description: string; icon: React.ReactNode }> = [
   {
@@ -18,10 +18,22 @@ const environments: Array<{ id: StudyEnvironment; title: string; description: st
     icon: <TreeDeciduous className="w-6 h-6" />,
   },
   {
+    id: 'home',
+    title: 'Home',
+    description: 'Comfortable home atmosphere',
+    icon: <Home className="w-6 h-6" />,
+  },
+  {
     id: 'coffee-shop',
     title: 'Coffee Shop',
     description: 'Relaxed cafe atmosphere',
     icon: <Coffee className="w-6 h-6" />,
+  },
+  {
+    id: 'library',
+    title: 'Library',
+    description: 'Quiet and focused study space',
+    icon: <BookOpen className="w-6 h-6" />,
   }
 ];
 
