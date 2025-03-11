@@ -13,6 +13,7 @@ import NotFound from "./pages/NotFound";
 import FocusSession from "./pages/FocusSession";
 import SessionReport from "./pages/SessionReport";
 import Community from "./pages/Community";
+import Chat from "./pages/Chat";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
               <Route path="/focus-session" element={<FocusSession />} />
               <Route path="/session-report" element={<SessionReport />} />
               <Route path="/community" element={<Community />} />
+              <Route path="/community/chat/:id" element={<Chat />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
