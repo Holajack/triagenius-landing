@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -166,7 +165,7 @@ export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityU
               
               <div className="flex flex-wrap gap-2 mt-2">
                 <Badge variant="secondary" className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
+                  <Clock className="h-4 w-4 text-muted-foreground" aria-label="Last active" />
                   {user.focusHours}h
                 </Badge>
                 <Badge variant="secondary" className="flex items-center gap-1">

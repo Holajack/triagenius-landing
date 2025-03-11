@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Users, Clock, BookOpen, Calendar } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface StudyRoom {
   id: number;
@@ -77,6 +78,7 @@ interface StudyRoomsProps {
 
 export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const filteredRooms = mockRooms.filter(room => {
     // Search filter
@@ -94,9 +96,13 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
   });
   
   const handleJoinRoom = (roomId: number) => {
+    navigate(`/study-room/${roomId}`);
+  };
+  
+  const handleCreateRoom = () => {
     toast({
-      title: "Joining study room",
-      description: "You have successfully joined the room."
+      title: "Creating new study room",
+      description: "Feature coming soon: you'll be able to create your own study rooms."
     });
   };
   
@@ -107,12 +113,7 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
           variant="outline" 
           size="sm"
           className="flex items-center gap-1"
-          onClick={() => {
-            toast({
-              title: "Feature coming soon",
-              description: "You'll be able to create your own study rooms soon."
-            });
-          }}
+          onClick={handleCreateRoom}
         >
           <Users className="h-4 w-4" />
           Create Study Room
