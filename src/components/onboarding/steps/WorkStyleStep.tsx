@@ -7,7 +7,7 @@ import { Timer } from "lucide-react";
 const workStyles: Array<{ id: WorkStyle; title: string; description: string; icon: React.ReactNode }> = [
   {
     id: 'pomodoro',
-    title: 'Pomodoro',
+    title: 'Sprints',
     description: 'Short focused bursts with regular breaks',
     icon: <Timer className="w-6 h-6" />,
   },
