@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -11,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 import FocusSession from "./pages/FocusSession";
 import SessionReport from "./pages/SessionReport";
+import Community from "./pages/Community";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +30,7 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/focus-session" element={<FocusSession />} />
               <Route path="/session-report" element={<SessionReport />} />
+              <Route path="/community" element={<Community />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
