@@ -111,7 +111,6 @@ export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityU
   const { toast } = useToast();
   
   const filteredUsers = mockUsers.filter(user => {
-    // Search filter
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch = 
       user.name.toLowerCase().includes(searchLower) ||
@@ -121,12 +120,10 @@ export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityU
     
     if (searchQuery && !matchesSearch) return false;
     
-    // Apply additional filters
     if (filters.length > 0) {
       if (filters.includes("Same Organization") && user.organization !== "Triage Tech") return false;
       if (filters.includes("Online Now") && !user.online) return false;
       if (filters.includes("Top Performers") && !user.isTopPerformer) return false;
-      // We could add more sophisticated filtering for "Similar Tasks" and "Same Subject"
     }
     
     return true;
@@ -156,11 +153,12 @@ export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityU
                 <div className="flex items-center gap-2">
                   <h3 className="font-medium">{user.name}</h3>
                   {user.isTopPerformer && (
-                    <Trophy className="h-4 w-4 text-yellow-500" title="Top Performer" />
+                    <Trophy className="h-4 w-4 text-yellow-500" aria-label="Top Performer" />
                   )}
                 </div>
                 <span className="text-xs text-muted-foreground">{user.lastActive}</span>
               </div>
+              
               <p className="text-sm text-muted-foreground">{user.role}</p>
               
               <div className="flex flex-wrap gap-2 mt-2">
