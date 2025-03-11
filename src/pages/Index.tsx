@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -7,12 +6,11 @@ import FocusButton from "@/components/FocusButton";
 import HowItWorks from "@/components/HowItWorks";
 import * as ServiceWorker from "@/components/ServiceWorker";
 import { ArrowRight, ArrowDown, Clock } from "lucide-react";
-import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-
+  
   useEffect(() => {
     // Register service worker for offline functionality
     ServiceWorker.register();
@@ -48,19 +46,15 @@ const Index = () => {
     }
   };
 
+  const navigate = useNavigate();
+
   const handleStartFocusing = () => {
-    setShowOnboarding(true);
+    navigate('/onboarding');
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-white to-purple-50/30">
       <Navbar />
-      
-      {/* Onboarding Dialog */}
-      <OnboardingDialog 
-        open={showOnboarding} 
-        onOpenChange={setShowOnboarding} 
-      />
       
       <main className="flex-grow flex flex-col">
         {/* Hero Section */}
