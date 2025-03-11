@@ -1,8 +1,8 @@
 
-import { HowItWorks } from "@/components/HowItWorks";
+import HowItWorks from "@/components/HowItWorks";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { AnimatedIcon } from "@/components/AnimatedIcon";
+import AnimatedIcon from "@/components/AnimatedIcon";
 import { useUser, SignInButton, UserButton } from "@clerk/clerk-react";
 
 const Index = () => {
