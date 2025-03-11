@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -7,6 +6,7 @@ import FocusButton from "@/components/FocusButton";
 import HowItWorks from "@/components/HowItWorks";
 import * as ServiceWorker from "@/components/ServiceWorker";
 import { ArrowRight, ArrowDown, Clock } from "lucide-react";
+import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
 
 const Index = () => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -49,6 +49,7 @@ const Index = () => {
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-white to-purple-50/30">
       <Navbar />
+      <OnboardingDialog />
       
       <main className="flex-grow flex flex-col">
         {/* Hero Section */}
