@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Circle, CircleOff, Sparkles } from "lucide-react";
 
@@ -43,18 +42,15 @@ const AnimatedIcon = ({ className = "" }: AnimatedIconProps) => {
         {isActive ? (
           <div className="relative">
             <Circle 
-              className="text-triage-purple w-16 h-16 md:w-20 md:h-20" 
-              weight="light" 
+              className="text-triage-purple w-16 h-16 md:w-20 md:h-20"
             />
             <Sparkles 
-              className="absolute top-0 left-0 w-16 h-16 md:w-20 md:h-20 text-triage-purple animate-pulse-light" 
-              weight="light" 
+              className="absolute top-0 left-0 w-16 h-16 md:w-20 md:h-20 text-triage-purple animate-pulse-light"
             />
           </div>
         ) : (
           <Circle 
-            className={`w-16 h-16 md:w-20 md:h-20 ${hasInteracted ? 'text-triage-purple' : 'text-gray-400'} transition-colors duration-300`} 
-            weight="light" 
+            className={`w-16 h-16 md:w-20 md:h-20 ${hasInteracted ? 'text-triage-purple' : 'text-gray-400'} transition-colors duration-300`}
           />
         )}
       </div>
