@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Send, Users, BookOpen, Clock, Timer, MessageSquare, Vote } from "lucide-react";
+import { ArrowLeft, Send, Users, BookOpen, Clock, Timer, MessageSquare } from "lucide-react";
 import { StudyRoomChat } from "@/components/studyroom/StudyRoomChat";
 import { StudyRoomResources } from "@/components/studyroom/StudyRoomResources";
 import { StudyRoomMember } from "@/components/studyroom/StudyRoomMember";
@@ -76,7 +76,7 @@ const getMockRoom = (roomId: string) => {
 const StudyRoom = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { toast: uiToast } = useToast();
   const { state } = useOnboarding();
   
   const [room, setRoom] = useState<any>(null);
@@ -125,7 +125,10 @@ const StudyRoom = () => {
     });
     
     // Notify members
-    toast.success("Focus session started! The team is now focused.");
+    toast("Focus session started! The team is now focused.", {
+      description: `${duration} minute session has begun`,
+      position: "top-center"
+    });
   };
 
   const handlePause = () => {
@@ -145,7 +148,10 @@ const StudyRoom = () => {
       activeSession: false
     });
     
-    toast.success("Focus session completed! Great job everyone.");
+    toast("Focus session completed!", {
+      description: "Great job everyone.",
+      position: "top-center"
+    });
   };
 
   if (!room) {
@@ -163,26 +169,27 @@ const StudyRoom = () => {
         <Button variant="ghost" size="icon" onClick={() => navigate('/community')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-2xl font-bold">{room.name}</h1>
+        <h1 className="text-2xl font-bold truncate">{room.name}</h1>
       </div>
 
       {/* Room info card */}
       <Card className="p-4 mb-6">
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-muted-foreground" />
-              <span className="font-medium">Topic:</span> {room.topic}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 mb-2 sm:mb-0">
+              <BookOpen className="h-5 w-5 text-muted-foreground shrink-0" />
+              <span className="font-medium">Topic:</span> 
+              <span className="truncate">{room.topic}</span>
             </div>
             {!inFocusSession && (
-              <Button onClick={() => setShowFocusDialog(true)}>
+              <Button className="mt-2 sm:mt-0" onClick={() => setShowFocusDialog(true)}>
                 <Timer className="h-4 w-4 mr-2" />
                 Start Focus Session
               </Button>
             )}
           </div>
           
-          <p className="text-muted-foreground">{room.description}</p>
+          <p className="text-muted-foreground line-clamp-2">{room.description}</p>
           
           <div className="flex flex-wrap gap-1 mt-1">
             {room.subjects.map((subject: string, index: number) => (
@@ -193,7 +200,7 @@ const StudyRoom = () => {
           </div>
           
           <div className="flex items-center gap-1 text-sm mt-1">
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <Users className="h-4 w-4 text-muted-foreground shrink-0" />
             <span>{room.participants.length} participants</span>
             <span className="flex -space-x-2 ml-2">
               {room.participants.slice(0, 3).map((participant: any, index: number) => (
@@ -240,15 +247,18 @@ const StudyRoom = () => {
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="chat" className="flex gap-2 items-center">
               <MessageSquare className="h-4 w-4" />
-              Chat
+              <span className="hidden sm:inline">Chat</span>
+              <span className="sm:hidden">Chat</span>
             </TabsTrigger>
             <TabsTrigger value="resources" className="flex gap-2 items-center">
               <BookOpen className="h-4 w-4" />
-              Resources
+              <span className="hidden sm:inline">Resources</span>
+              <span className="sm:hidden">Resources</span>
             </TabsTrigger>
             <TabsTrigger value="members" className="flex gap-2 items-center">
               <Users className="h-4 w-4" />
-              Members
+              <span className="hidden sm:inline">Members</span>
+              <span className="sm:hidden">Members</span>
             </TabsTrigger>
           </TabsList>
           

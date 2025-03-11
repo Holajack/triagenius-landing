@@ -21,11 +21,11 @@ export const StudyRoomMember = ({ participants }: StudyRoomMemberProps) => {
     <div className="space-y-4">
       <h3 className="text-lg font-medium">Room Participants ({participants.length})</h3>
       
-      <div className="space-y-3">
+      <div className="space-y-3 overflow-y-auto max-h-[60vh]">
         {participants.map((participant) => (
           <Card key={participant.id} className="p-3">
             <div className="flex items-center gap-3">
-              <div className="relative">
+              <div className="relative shrink-0">
                 <Avatar>
                   <AvatarImage src={participant.avatar} />
                   <AvatarFallback>{participant.name[0]}</AvatarFallback>
@@ -35,9 +35,9 @@ export const StudyRoomMember = ({ participants }: StudyRoomMemberProps) => {
                 )}
               </div>
               
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-medium">{participant.name}</h4>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="font-medium truncate">{participant.name}</h4>
                   {participant.role === "organizer" && (
                     <Badge variant="outline" className="flex items-center gap-1 text-xs">
                       <Crown className="h-3 w-3" />
