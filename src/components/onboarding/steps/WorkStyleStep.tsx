@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { WorkStyle } from "@/types/onboarding";
 import { Timer } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const workStyles: Array<{ id: WorkStyle; title: string; description: string; icon: React.ReactNode }> = [
   {
@@ -12,16 +13,16 @@ const workStyles: Array<{ id: WorkStyle; title: string; description: string; ico
     icon: <Timer className="w-6 h-6" />,
   },
   {
-    id: 'deep-work',
-    title: 'Deep Work',
-    description: 'Extended periods of focused concentration',
-    icon: <Timer className="w-6 h-6 rotate-180" />,
-  },
-  {
     id: 'balanced',
     title: 'Balanced',
     description: 'Flexible sessions with AI-suggested breaks',
     icon: <Timer className="w-6 h-6 rotate-90" />,
+  },
+  {
+    id: 'deep-work',
+    title: 'Deep Work',
+    description: 'Extended periods of focused concentration',
+    icon: <Timer className="w-6 h-6 rotate-180" />,
   },
 ];
 
@@ -43,7 +44,12 @@ export const WorkStyleStep = () => {
               {style.icon}
             </div>
             <div>
-              <h3 className="font-medium mb-1">{style.title}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-medium mb-1">{style.title}</h3>
+                {style.id === 'balanced' && (
+                  <Badge className="bg-green-500 text-white text-xs font-medium">Recommended</Badge>
+                )}
+              </div>
               <p className="text-sm text-gray-600">{style.description}</p>
             </div>
           </div>
