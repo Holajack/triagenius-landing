@@ -119,7 +119,7 @@ const Leaderboard = () => {
                 <Progress 
                   value={user.hours / 0.5} 
                   className="h-1.5" 
-                  indicatorClassName={user.isCurrentUser ? getProgressColor() : ""} 
+                  indicatorClassName={user.isCurrentUser ? getProgressColor() : ""}
                 />
               </div>
             </div>
