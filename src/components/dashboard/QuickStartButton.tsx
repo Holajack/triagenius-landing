@@ -1,7 +1,8 @@
+
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PauseCircle, PlayCircle, Settings, TimerReset } from "lucide-react";
+import { PauseCircle, PlayCircle, Settings, TimerReset, ChevronUp, ChevronDown } from "lucide-react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -10,7 +11,10 @@ import { useNavigate } from "react-router-dom";
 const QuickStartButton = () => {
   const { state } = useOnboarding();
   const [isActive, setIsActive] = useState(false);
-  const [timer, setTimer] = useState(25 * 60); // 25 minutes in seconds
+  const [minutes, setMinutes] = useState(25);
+  const [seconds, setSeconds] = useState(0);
+  const [timer, setTimer] = useState(minutes * 60 + seconds);
+  const [showAdjust, setShowAdjust] = useState(false);
   
   const navigate = useNavigate();
   
@@ -43,6 +47,9 @@ const QuickStartButton = () => {
   };
   
   const startSession = () => {
+    // Pass the selected time through localStorage
+    localStorage.setItem('focusTimerDuration', JSON.stringify({ minutes, seconds }));
+    
     setIsActive(true);
     toast.success("Focus session started!", {
       description: `Your ${state.workStyle === 'pomodoro' ? 'Pomodoro' : 'Focus'} timer has begun.`,
@@ -59,10 +66,34 @@ const QuickStartButton = () => {
   
   const resetSession = () => {
     setIsActive(false);
+    setMinutes(25);
+    setSeconds(0);
     setTimer(25 * 60);
     toast.info("Session reset", {
       description: "Timer has been reset to 25 minutes.",
     });
+  };
+  
+  const toggleAdjust = () => {
+    setShowAdjust(!showAdjust);
+  };
+  
+  const adjustTime = (type: 'minutes' | 'seconds', increment: boolean) => {
+    if (isActive) return; // Don't allow changes while timer is running
+
+    if (type === 'minutes') {
+      const newMinutes = increment ? minutes + 1 : minutes - 1;
+      if (newMinutes >= 0 && newMinutes <= 45) {
+        setMinutes(newMinutes);
+        setTimer(newMinutes * 60 + seconds);
+      }
+    } else {
+      const newSeconds = increment ? seconds + 15 : seconds - 15;
+      if (newSeconds >= 0 && newSeconds < 60) {
+        setSeconds(newSeconds);
+        setTimer(minutes * 60 + newSeconds);
+      }
+    }
   };
   
   return (
@@ -72,25 +103,77 @@ const QuickStartButton = () => {
         <p className="text-sm text-gray-600">Start a quick session based on your preferences</p>
         
         <div className="mt-4 flex justify-between items-center">
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center cursor-pointer" onClick={toggleAdjust}>
             <div className={cn("p-2 rounded-full", getAccentColor())}>
               <Settings className="w-5 h-5" />
             </div>
             <span className="text-xs mt-1">Settings</span>
           </div>
           
-          <div className="flex flex-col items-center">
-            <div className="text-3xl font-bold tabular-nums">
-              {formatTime(timer)}
+          {showAdjust ? (
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col items-center">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 p-0"
+                  onClick={() => adjustTime('minutes', true)}
+                  disabled={minutes >= 45}
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+                <div className="text-xl font-mono tabular-nums w-10 text-center">
+                  {minutes.toString().padStart(2, '0')}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 p-0"
+                  onClick={() => adjustTime('minutes', false)}
+                  disabled={minutes <= 0}
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </div>
+              <span className="text-xl">:</span>
+              <div className="flex flex-col items-center">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 p-0" 
+                  onClick={() => adjustTime('seconds', true)}
+                  disabled={seconds >= 45}
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+                <div className="text-xl font-mono tabular-nums w-10 text-center">
+                  {seconds.toString().padStart(2, '0')}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 p-0"
+                  onClick={() => adjustTime('seconds', false)}
+                  disabled={seconds <= 0}
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <span className="text-xs mt-1">
-              {state.workStyle === 'pomodoro' ? 'Pomodoro' : 'Focus'} Timer
-            </span>
-          </div>
+          ) : (
+            <div className="flex flex-col items-center">
+              <div className="text-3xl font-bold tabular-nums">
+                {formatTime(timer)}
+              </div>
+              <span className="text-xs mt-1">
+                {state.workStyle === 'pomodoro' ? 'Pomodoro' : 'Focus'} Timer
+              </span>
+            </div>
+          )}
           
           <div className="flex flex-col items-center">
-            <div className={cn("p-2 rounded-full", getAccentColor())}>
-              <TimerReset onClick={resetSession} className="w-5 h-5 cursor-pointer" />
+            <div className={cn("p-2 rounded-full cursor-pointer", getAccentColor())}>
+              <TimerReset onClick={resetSession} className="w-5 h-5" />
             </div>
             <span className="text-xs mt-1">Reset</span>
           </div>

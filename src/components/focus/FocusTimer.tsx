@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -22,6 +21,21 @@ export const FocusTimer = ({ onPause, onResume, onComplete, isPaused }: FocusTim
   const [progress, setProgress] = useState(100);
   const [isActive, setIsActive] = useState(false);
   const timerRef = useRef<number>();
+  
+  useEffect(() => {
+    const savedDuration = localStorage.getItem('focusTimerDuration');
+    if (savedDuration) {
+      try {
+        const { minutes: savedMinutes, seconds: savedSeconds } = JSON.parse(savedDuration);
+        setMinutes(savedMinutes);
+        setSeconds(savedSeconds);
+        setTime(savedMinutes * 60 + savedSeconds);
+        localStorage.removeItem('focusTimerDuration');
+      } catch (e) {
+        console.error('Error parsing saved duration', e);
+      }
+    }
+  }, []);
   
   const adjustTime = (type: 'minutes' | 'seconds', increment: boolean) => {
     if (isActive) return; // Don't allow changes while timer is running
