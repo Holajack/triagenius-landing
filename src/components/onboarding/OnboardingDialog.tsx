@@ -75,17 +75,17 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden bg-white">
-        <div className="relative pb-6">
-          <div className="pt-6 pb-4 px-6 border-b">
-            <h2 className="text-2xl font-semibold text-center mb-4">
+      <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden bg-white max-h-[90vh] w-[95vw] sm:w-auto">
+        <div className="relative pb-6 flex flex-col h-full">
+          <div className="pt-6 pb-4 px-4 sm:px-6 border-b">
+            <h2 className="text-xl sm:text-2xl font-semibold text-center mb-4">
               {steps[state.step].title}
             </h2>
             <div className="flex gap-1 justify-center">
               {steps.map((_, index) => (
                 <div
                   key={index}
-                  className={`h-1.5 w-16 rounded-full transition-colors ${
+                  className={`h-1.5 w-12 sm:w-16 rounded-full transition-colors ${
                     index < state.step ? 'bg-triage-purple' : 
                     index === state.step ? 'bg-triage-purple shadow-sm' : 'bg-gray-200'
                   }`}
@@ -94,7 +94,7 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
             </div>
           </div>
 
-          <div className="px-6 py-4 min-h-[300px] flex items-center justify-center">
+          <div className="px-4 sm:px-6 py-4 overflow-y-auto flex-grow">
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={state.step}
@@ -111,14 +111,14 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
                   opacity: 0 
                 }}
                 transition={{ duration: 0.3, ease: "easeInOut" }}
-                className="w-full"
+                className="w-full min-h-[250px] sm:min-h-[300px] flex items-center justify-center"
               >
                 <CurrentStep />
               </motion.div>
             </AnimatePresence>
           </div>
 
-          <div className="flex justify-between px-6 mt-4">
+          <div className="flex justify-between px-4 sm:px-6 py-4 mt-auto border-t">
             <Button
               variant="outline"
               onClick={handleBack}

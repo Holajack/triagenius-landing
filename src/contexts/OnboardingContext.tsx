@@ -6,7 +6,7 @@ type OnboardingAction =
   | { type: 'SET_STEP'; payload: number }
   | { type: 'SET_USER_GOAL'; payload: UserGoal }
   | { type: 'SET_WORK_STYLE'; payload: WorkStyle }
-  | { type: 'SET_ENVIRONMENT'; payload: StudyEnvironment }
+  | { type: 'SET_ENVIRONMENT'; payload: StudyEnvironment; meta?: { color: string } }
   | { type: 'SET_SOUND_PREFERENCE'; payload: SoundPreference }
   | { type: 'COMPLETE_ONBOARDING' }
   | { type: 'RESET_ONBOARDING' };
@@ -14,6 +14,7 @@ type OnboardingAction =
 const initialState: OnboardingState = {
   step: 0,
   isComplete: false,
+  environmentColor: '#7C3AED', // Default purple color
 };
 
 const onboardingReducer = (state: OnboardingState, action: OnboardingAction): OnboardingState => {
@@ -25,7 +26,11 @@ const onboardingReducer = (state: OnboardingState, action: OnboardingAction): On
     case 'SET_WORK_STYLE':
       return { ...state, workStyle: action.payload };
     case 'SET_ENVIRONMENT':
-      return { ...state, environment: action.payload };
+      return { 
+        ...state, 
+        environment: action.payload,
+        environmentColor: action.meta?.color || state.environmentColor
+      };
     case 'SET_SOUND_PREFERENCE':
       return { ...state, soundPreference: action.payload };
     case 'COMPLETE_ONBOARDING':
