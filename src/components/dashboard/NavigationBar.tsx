@@ -38,7 +38,7 @@ const NavigationBar = () => {
       active: location.pathname === "/community" || location.pathname.startsWith("/community/"),
     },
     {
-      label: "AI Companion",
+      label: "Nora",
       icon: <Bot className="h-5 w-5" />,
       onClick: () => navigate("/dashboard"),
       active: false,
