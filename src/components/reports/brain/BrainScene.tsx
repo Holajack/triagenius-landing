@@ -391,14 +391,17 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
                 `
               );
               
-              // Setup animation update
-              const originalOnBeforeRender = shader.onBeforeRender;
-              shader.onBeforeRender = function(renderer, scene, camera) {
-                if (originalOnBeforeRender) {
-                  originalOnBeforeRender(renderer, scene, camera);
-                }
-                shader.uniforms.uTime.value = performance.now() / 1000;
+              // Setup animation loop with proper type checking
+              const clock = new THREE.Clock();
+              
+              // Use requestAnimationFrame callback to update uniforms
+              const animate = () => {
+                shader.uniforms.uTime.value = clock.getElapsedTime();
+                requestAnimationFrame(animate);
               };
+              
+              // Start the animation
+              animate();
             }}
           />
         </mesh>
@@ -554,14 +557,16 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
                 `
               );
               
-              // Add animation update in render loop
+              // Add animation using requestAnimationFrame instead of onBeforeRender
               const clock = new THREE.Clock();
               
-              const originalOnBeforeRender = shader.onBeforeRender || function() {};
-              shader.onBeforeRender = function(renderer, scene, camera) {
-                originalOnBeforeRender(renderer, scene, camera);
+              const animate = () => {
                 shader.uniforms.uTime.value = clock.getElapsedTime();
+                requestAnimationFrame(animate);
               };
+              
+              // Start the animation
+              animate();
             }}
           />
         </mesh>
