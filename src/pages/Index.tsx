@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -7,9 +8,11 @@ import HowItWorks from "@/components/HowItWorks";
 import * as ServiceWorker from "@/components/ServiceWorker";
 import { ArrowRight, ArrowDown, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const Index = () => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const { theme } = useTheme();
   
   useEffect(() => {
     // Register service worker for offline functionality
@@ -53,7 +56,7 @@ const Index = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-b from-white to-purple-50/30">
+    <div className={`flex flex-col min-h-screen ${theme === 'light' ? 'bg-gradient-to-b from-white to-purple-50/30' : 'bg-gradient-to-b from-gray-900 to-gray-800'}`}>
       <Navbar />
       
       <main className="flex-grow flex flex-col">
@@ -67,7 +70,9 @@ const Index = () => {
           >
             <motion.div 
               variants={itemVariants}
-              className="inline-flex items-center px-3 py-1 mb-6 text-sm rounded-full bg-purple-100/80 text-triage-purple"
+              className={`inline-flex items-center px-3 py-1 mb-6 text-sm rounded-full ${
+                theme === 'light' ? 'bg-purple-100/80 text-triage-purple' : 'bg-purple-900/50 text-purple-200'
+              }`}
             >
               <Clock className="w-4 h-4 mr-1" />
               <span>Your productivity journey starts here</span>
@@ -75,14 +80,14 @@ const Index = () => {
             
             <motion.h1 
               variants={itemVariants}
-              className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 text-gray-900 tracking-tight"
+              className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 text-gray-900 tracking-tight dark:text-gray-100"
             >
               Master Your Focus <span className="text-transparent bg-clip-text bg-gradient-to-r from-triage-indigo to-triage-purple">&amp; Productivity</span>
             </motion.h1>
             
             <motion.p 
               variants={itemVariants}
-              className="text-lg md:text-xl text-gray-600 mb-8 max-w-xl mx-auto"
+              className="text-lg md:text-xl text-gray-600 mb-8 max-w-xl mx-auto dark:text-gray-300"
             >
               Boost concentration, track progress, and level up through gamified work sessions.
             </motion.p>
@@ -128,7 +133,7 @@ const Index = () => {
               animate={{ opacity: 0.7, y: 0 }}
               transition={{ delay: 1.2, duration: 0.6, ease: "easeOut" }}
             >
-              <ArrowDown className="w-5 h-5 text-gray-400" />
+              <ArrowDown className={`w-5 h-5 ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`} />
             </motion.div>
           </motion.div>
         </section>
@@ -161,14 +166,22 @@ const Index = () => {
               ].map((feature, index) => (
                 <motion.div
                   key={index}
-                  className="glass rounded-2xl p-6 subtle-shadow border border-white/80 hover:border-purple-100 transition-all duration-300"
+                  className={`${
+                    theme === 'light' 
+                      ? 'glass rounded-2xl p-6 subtle-shadow border border-white/80 hover:border-purple-100' 
+                      : 'bg-gray-800/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/80 hover:border-purple-800'
+                  } transition-all duration-300`}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-100px" }}
                   transition={{ delay: feature.delay + 0.3, duration: 0.5 }}
                 >
-                  <h3 className="text-xl font-semibold mb-2 text-gray-900">{feature.title}</h3>
-                  <p className="text-gray-600">{feature.description}</p>
+                  <h3 className={`text-xl font-semibold mb-2 ${theme === 'light' ? 'text-gray-900' : 'text-gray-100'}`}>
+                    {feature.title}
+                  </h3>
+                  <p className={`${theme === 'light' ? 'text-gray-600' : 'text-gray-300'}`}>
+                    {feature.description}
+                  </p>
                 </motion.div>
               ))}
             </motion.div>

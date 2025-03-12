@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Target, Play, Timer } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface FocusButtonProps {
   label: string;
@@ -20,6 +21,7 @@ const FocusButton = ({
   className = "" 
 }: FocusButtonProps) => {
   const [isHovered, setIsHovered] = useState(false);
+  const { theme } = useTheme();
   
   const getIcon = () => {
     switch (icon) {
@@ -39,7 +41,9 @@ const FocusButton = ({
       className={`relative group overflow-hidden transition-all duration-300 px-6 py-6 h-auto ${
         isPrimary 
           ? "button-gradient text-white" 
-          : "bg-white border border-gray-200 text-gray-800 hover:bg-gray-50"
+          : theme === 'dark' 
+            ? "bg-gray-800 border border-gray-700 text-gray-100 hover:bg-gray-700" 
+            : "bg-white border border-gray-200 text-gray-800 hover:bg-gray-50"
       } rounded-xl subtle-shadow ${className}`}
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}

@@ -115,10 +115,11 @@
   
   html {
     -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
   }
   
   body {
-    @apply bg-background text-foreground overflow-x-hidden scroll-smooth;
+    @apply bg-background text-foreground overflow-x-hidden;
   }
   
   h1, h2, h3, h4, h5, h6 {

@@ -50,6 +50,7 @@ const DashboardHeader = () => {
             variant="ghost"
             className="text-muted-foreground"
             onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           >
             {theme === 'dark' ? (
               <SunIcon className="h-5 w-5" />

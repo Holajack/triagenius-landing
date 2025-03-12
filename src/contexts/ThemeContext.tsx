@@ -19,12 +19,13 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   // Initialize theme from localStorage or system preference
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') as ThemeMode | null;
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
     if (savedTheme) {
       setTheme(savedTheme);
-    } else if (prefersDark) {
-      setTheme('dark');
+    } else {
+      // Default to light theme if no preference is saved
+      setTheme('light');
+      localStorage.setItem('theme', 'light');
     }
   }, []);
 
@@ -32,7 +33,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     localStorage.setItem('theme', theme);
     
-    // Remove all theme classes
+    // Remove all theme classes first
     document.documentElement.classList.remove('light', 'dark');
     
     // Add current theme class
