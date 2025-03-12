@@ -26,33 +26,44 @@ export const TerrainSystem = ({
       varying vec2 vUv;
       varying float vElevation;
       
-      float getElevation(vec2 position) {
-        // Create dramatic mountains and valleys
-        float amplitude = ${heightMultiplier}.0;
-        float frequency = 0.2;
+      vec2 hash2(vec2 p) {
+        return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
+      }
+
+      float noise(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
         
-        // Main mountain ranges
-        float mainRidge = sin(position.x * 0.15) * cos(position.z * 0.1) * 5.0;
+        vec2 u = f * f * (3.0 - 2.0 * f);
         
-        // Add complexity with multiple noise layers
-        float noise1 = sin(position.x * frequency) * cos(position.z * frequency) * amplitude;
-        float noise2 = sin(position.x * frequency * 2.0 + 1.3) * cos(position.z * frequency * 2.0) * amplitude * 0.4;
-        float noise3 = sin(position.x * frequency * 4.0 + 2.7) * cos(position.z * frequency * 3.0) * amplitude * 0.2;
+        float a = dot(hash2(i), f);
+        float b = dot(hash2(i + vec2(1.0, 0.0)), f - vec2(1.0, 0.0));
+        float c = dot(hash2(i + vec2(0.0, 1.0)), f - vec2(0.0, 1.0));
+        float d = dot(hash2(i + vec2(1.0, 1.0)), f - vec2(1.0, 1.0));
         
-        // Create plateau areas
-        float plateau = smoothstep(0.3, 0.32, sin(position.x * 0.1) * sin(position.z * 0.1)) * 2.0;
+        return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+      }
+      
+      float fbm(vec2 p) {
+        float value = 0.0;
+        float amplitude = 0.5;
+        float frequency = 1.0;
         
-        // Combine all elevation components
-        return mainRidge + noise1 + noise2 + noise3 + plateau;
+        for(int i = 0; i < 6; i++) {
+          value += amplitude * noise(p * frequency);
+          amplitude *= 0.5;
+          frequency *= 2.0;
+        }
+        
+        return value;
       }
       
       void main() {
         vUv = uv;
         vec3 pos = position;
         
-        // Calculate elevation
-        float elevation = getElevation(pos.xz);
-        pos.y += elevation;
+        float elevation = fbm(pos.xy * 0.5) * ${heightMultiplier}.0;
+        pos.z += elevation;
         
         vElevation = elevation;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
@@ -102,8 +113,13 @@ export const TerrainSystem = ({
   });
 
   return (
-    <mesh ref={meshRef} position={[0, -2, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[size, size, resolution, resolution]} />
+    <mesh 
+      ref={meshRef} 
+      rotation={[-Math.PI / 2, 0, 0]} 
+      position={[0, -2, 0]} 
+      receiveShadow
+    >
+      <planeGeometry args={[size, size, resolution - 1, resolution - 1]} />
       <primitive object={terrainMaterial} attach="material" />
     </mesh>
   );
