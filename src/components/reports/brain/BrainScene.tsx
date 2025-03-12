@@ -21,7 +21,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     {
       id: "memory_retention",
       name: "Memory Retention",
-      position: [-0.8, 0.7, 0.8] as [number, number, number],
+      position: [-2.2, 0.7, 0.8] as [number, number, number],
       scale: [1.2, 1.1, 1.1] as [number, number, number],
       rotation: [0.2, 0, -0.1] as [number, number, number],
       color: "#D946EF",
@@ -32,7 +32,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     {
       id: "critical_thinking",
       name: "Critical Thinking",
-      position: [0.8, 0.9, 0.3] as [number, number, number],
+      position: [1.8, 0.9, 1.3] as [number, number, number],
       scale: [1.0, 1.4, 0.9] as [number, number, number],
       rotation: [0, 0.2, 0] as [number, number, number],
       color: "#FEF7CD",
@@ -43,7 +43,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     {
       id: "problem_solving",
       name: "Problem Solving",
-      position: [-0.5, 0.5, -0.7] as [number, number, number],
+      position: [-0.8, 0.5, -1.7] as [number, number, number],
       scale: [1.0, 0.9, 1.0] as [number, number, number],
       rotation: [-0.3, 0, -0.1] as [number, number, number],
       color: "#F2FCE2",
@@ -54,7 +54,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     {
       id: "creative_thinking",
       name: "Creativity",
-      position: [0.3, 0.6, -1.1] as [number, number, number],
+      position: [1.0, 0.6, -1.8] as [number, number, number],
       scale: [0.9, 1.2, 0.9] as [number, number, number],
       rotation: [-0.4, 0, -0.1] as [number, number, number],
       color: "#D6BCFA",
@@ -65,7 +65,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     {
       id: "analytical_processing",
       name: "Analytical Processing",
-      position: [0.5, 0.7, 0.8] as [number, number, number],
+      position: [1.5, 0.7, 0.2] as [number, number, number],
       scale: [1.2, 1.1, 1.1] as [number, number, number],
       rotation: [0.2, 0, 0.1] as [number, number, number],
       color: "#D946EF",
@@ -76,7 +76,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     {
       id: "language_processing",
       name: "Language Processing",
-      position: [-0.9, 0.4, 0.3] as [number, number, number],
+      position: [-1.5, 0.4, 0.0] as [number, number, number],
       scale: [1.0, 0.8, 0.9] as [number, number, number],
       rotation: [0, -0.2, 0] as [number, number, number],
       color: "#FEF7CD",
@@ -98,7 +98,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     {
       id: "visual_processing",
       name: "Visual Processing",
-      position: [-0.3, 0.2, -1.1] as [number, number, number],
+      position: [-0.7, 0.2, -0.4] as [number, number, number],
       scale: [0.9, 0.8, 0.9] as [number, number, number],
       rotation: [-0.4, 0, 0.1] as [number, number, number],
       color: "#D6BCFA",
@@ -109,7 +109,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     {
       id: "focus_concentration",
       name: "Focus & Concentration",
-      position: [0, 1.0, -0.2] as [number, number, number],
+      position: [0, 1.0, 0.0] as [number, number, number],
       scale: [1.2, 1.5, 1.0] as [number, number, number],
       rotation: [0.3, 0, 0] as [number, number, number],
       color: "#8B5CF6",
@@ -120,42 +120,340 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
   ];
 
   const createTerrainBase = () => {
+    // Calculate mountain positions for path planning
+    const mountainPositions = cognitiveRegions.map(region => ({
+      x: region.position[0],
+      z: region.position[2],
+      id: region.id
+    }));
+    
+    // Define path connections between mountains
+    const pathConnections = [
+      { from: "focus_concentration", to: "critical_thinking" },
+      { from: "focus_concentration", to: "memory_retention" },
+      { from: "focus_concentration", to: "problem_solving" },
+      { from: "focus_concentration", to: "creative_thinking" },
+      { from: "critical_thinking", to: "analytical_processing" },
+      { from: "memory_retention", to: "language_processing" },
+      { from: "problem_solving", to: "spatial_awareness" },
+      { from: "creative_thinking", to: "visual_processing" },
+      { from: "analytical_processing", to: "visual_processing" },
+      { from: "language_processing", to: "spatial_awareness" }
+    ];
+    
     return (
       <>
-        {/* Base terrain */}
+        {/* Base terrain - now more mountainous */}
         <mesh position={[0, -0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[10, 10, 64, 64]} />
+          <planeGeometry args={[15, 15, 128, 128]} />
           <meshStandardMaterial
             color="#8E9196"
             roughness={0.8}
             metalness={0.1}
+            wireframe={false}
+            onBeforeCompile={(shader) => {
+              // Add height variation for mountainous terrain
+              shader.vertexShader = shader.vertexShader.replace(
+                '#include <common>',
+                `
+                #include <common>
+                
+                // Simplex 3D Noise function
+                vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+                vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+                
+                float snoise(vec3 v) {
+                  const vec2 C = vec2(1.0/6.0, 1.0/3.0) ;
+                  const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+                  
+                  vec3 i  = floor(v + dot(v, C.yyy) );
+                  vec3 x0 = v - i + dot(i, C.xxx) ;
+                  
+                  vec3 g = step(x0.yzx, x0.xyz);
+                  vec3 l = 1.0 - g;
+                  vec3 i1 = min( g.xyz, l.zxy );
+                  vec3 i2 = max( g.xyz, l.zxy );
+                  
+                  vec3 x1 = x0 - i1 + C.xxx;
+                  vec3 x2 = x0 - i2 + C.yyy;
+                  vec3 x3 = x0 - D.yyy;
+                  
+                  i = mod289(i);
+                  vec4 p = permute( permute( permute(
+                             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+                           + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
+                           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+                           
+                  float n_ = 0.142857142857;
+                  vec3  ns = n_ * D.wyz - D.xzx;
+                  
+                  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+                  
+                  vec4 x_ = floor(j * ns.z);
+                  vec4 y_ = floor(j - 7.0 * x_ );
+                  
+                  vec4 x = x_ *ns.x + ns.yyyy;
+                  vec4 y = y_ *ns.x + ns.yyyy;
+                  vec4 h = 1.0 - abs(x) - abs(y);
+                  
+                  vec4 b0 = vec4( x.xy, y.xy );
+                  vec4 b1 = vec4( x.zw, y.zw );
+                  
+                  vec4 s0 = floor(b0)*2.0 + 1.0;
+                  vec4 s1 = floor(b1)*2.0 + 1.0;
+                  vec4 sh = -step(h, vec4(0.0));
+                  
+                  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+                  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+                  
+                  vec3 p0 = vec3(a0.xy,h.x);
+                  vec3 p1 = vec3(a0.zw,h.y);
+                  vec3 p2 = vec3(a1.xy,h.z);
+                  vec3 p3 = vec3(a1.zw,h.w);
+                  
+                  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+                  p0 *= norm.x;
+                  p1 *= norm.y;
+                  p2 *= norm.z;
+                  p3 *= norm.w;
+                  
+                  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+                  m = m * m;
+                  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1),
+                                                dot(p2,x2), dot(p3,x3) ) );
+                }
+                
+                uniform float uTime;
+                varying vec3 vPosition;
+                varying vec2 vUv;
+                `
+              );
+              
+              shader.vertexShader = shader.vertexShader.replace(
+                '#include <begin_vertex>',
+                `
+                #include <begin_vertex>
+                vPosition = position;
+                vUv = uv;
+                
+                // Create a mountainous terrain with valleys and ridges
+                float frequency = 0.2;
+                float amplitude = 0.7;
+                
+                // Create valleys connecting the cognitive regions
+                float valleyDepth = 0.2;
+                float valleyWidth = 0.15;
+                float pathElevation = 0.0;
+                
+                // Base terrain with noise
+                float noise1 = snoise(vec3(position.x * frequency, position.z * frequency, 0.0)) * amplitude;
+                float noise2 = snoise(vec3(position.x * frequency * 2.0, position.z * frequency * 2.0, 0.0)) * amplitude * 0.5;
+                float noise = noise1 + noise2;
+                
+                // Central mountain for 'focus_concentration'
+                float centerDistance = distance(vec2(position.x, position.z), vec2(0.0, 0.0));
+                float centralPeak = 1.5 * exp(-centerDistance * 0.6);
+                
+                // Create a river/valley system with tributaries
+                float riverDepth = 0.3;
+                float riverWidth = 0.1;
+                float riverPath1 = abs(position.x * 0.7 + position.z * 0.3);
+                float riverPath2 = abs(-position.x * 0.5 + position.z * 0.5);
+                float riverPath3 = abs(position.x * 0.2 - position.z * 0.8);
+                
+                float riverChannel = min(min(
+                  smoothstep(0.0, riverWidth, riverPath1),
+                  smoothstep(0.0, riverWidth, riverPath2)),
+                  smoothstep(0.0, riverWidth, riverPath3)
+                );
+                
+                // Combine all terrain features
+                transformed.y += noise * 0.8 + centralPeak - riverDepth * (1.0 - riverChannel);
+                
+                // Add elevation variation to create rolling mountainous terrain
+                float distanceFromCenter = length(position.xz);
+                float edgeFalloff = 1.0 - smoothstep(4.0, 7.0, distanceFromCenter);
+                transformed.y *= edgeFalloff;
+                `
+              );
+            }}
           />
         </mesh>
 
-        {/* Water surface */}
-        <mesh position={[0, -0.4, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[12, 12]} />
+        {/* Water along paths and in valleys */}
+        <mesh position={[0, -0.35, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[15, 15, 32, 32]} />
           <meshStandardMaterial
             color="#33C3F0"
             roughness={0.1}
-            metalness={0.1}
+            metalness={0.3}
             transparent={true}
-            opacity={0.6}
+            opacity={0.7}
+            onBeforeCompile={(shader) => {
+              shader.uniforms.uTime = { value: 0 };
+              
+              shader.vertexShader = shader.vertexShader.replace(
+                '#include <common>',
+                `
+                #include <common>
+                uniform float uTime;
+                varying vec2 vUv;
+                
+                // Same noise function from above
+                vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+                vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+                
+                float snoise(vec3 v) {
+                  const vec2 C = vec2(1.0/6.0, 1.0/3.0) ;
+                  const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+                  
+                  vec3 i  = floor(v + dot(v, C.yyy) );
+                  vec3 x0 = v - i + dot(i, C.xxx) ;
+                  
+                  vec3 g = step(x0.yzx, x0.xyz);
+                  vec3 l = 1.0 - g;
+                  vec3 i1 = min( g.xyz, l.zxy );
+                  vec3 i2 = max( g.xyz, l.zxy );
+                  
+                  vec3 x1 = x0 - i1 + C.xxx;
+                  vec3 x2 = x0 - i2 + C.yyy;
+                  vec3 x3 = x0 - D.yyy;
+                  
+                  i = mod289(i);
+                  vec4 p = permute( permute( permute(
+                             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+                           + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
+                           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+                           
+                  float n_ = 0.142857142857;
+                  vec3  ns = n_ * D.wyz - D.xzx;
+                  
+                  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+                  
+                  vec4 x_ = floor(j * ns.z);
+                  vec4 y_ = floor(j - 7.0 * x_ );
+                  
+                  vec4 x = x_ *ns.x + ns.yyyy;
+                  vec4 y = y_ *ns.x + ns.yyyy;
+                  vec4 h = 1.0 - abs(x) - abs(y);
+                  
+                  vec4 b0 = vec4( x.xy, y.xy );
+                  vec4 b1 = vec4( x.zw, y.zw );
+                  
+                  vec4 s0 = floor(b0)*2.0 + 1.0;
+                  vec4 s1 = floor(b1)*2.0 + 1.0;
+                  vec4 sh = -step(h, vec4(0.0));
+                  
+                  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+                  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+                  
+                  vec3 p0 = vec3(a0.xy,h.x);
+                  vec3 p1 = vec3(a0.zw,h.y);
+                  vec3 p2 = vec3(a1.xy,h.z);
+                  vec3 p3 = vec3(a1.zw,h.w);
+                  
+                  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+                  p0 *= norm.x;
+                  p1 *= norm.y;
+                  p2 *= norm.z;
+                  p3 *= norm.w;
+                  
+                  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+                  m = m * m;
+                  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1),
+                                                dot(p2,x2), dot(p3,x3) ) );
+                }
+                `
+              );
+              
+              shader.vertexShader = shader.vertexShader.replace(
+                '#include <begin_vertex>',
+                `
+                #include <begin_vertex>
+                vUv = uv;
+                
+                // Make water appear only in valleys and paths
+                // Define river paths same as terrain
+                float riverPath1 = abs(position.x * 0.7 + position.z * 0.3);
+                float riverPath2 = abs(-position.x * 0.5 + position.z * 0.5);
+                float riverPath3 = abs(position.x * 0.2 - position.z * 0.8);
+                
+                float riverWidth = 0.16;
+                float isRiver = 0.0;
+                
+                if (riverPath1 < riverWidth || riverPath2 < riverWidth || riverPath3 < riverWidth) {
+                  isRiver = 1.0;
+                  
+                  // Add gentle water waves
+                  float waveHeight = 0.05;
+                  float waveSpeed = 0.5;
+                  float waveFreq = 3.0;
+                  
+                  transformed.y += sin(position.x * waveFreq + uTime * waveSpeed) * 
+                                  cos(position.z * waveFreq + uTime * waveSpeed) * 
+                                  waveHeight;
+                } else {
+                  // Hide water where there's no river
+                  transformed.y = -10.0;
+                }
+                `
+              );
+              
+              // Update time for animation
+              shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <common>',
+                `
+                #include <common>
+                uniform float uTime;
+                varying vec2 vUv;
+                `
+              );
+              
+              // Add specular highlights to water
+              shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <output_fragment>',
+                `
+                #include <output_fragment>
+                
+                // Add gentle ripples to water
+                float rippleIntensity = 0.1;
+                float rippleSpeed = 0.5;
+                float ripple = sin(vUv.x * 20.0 + uTime * rippleSpeed) * 
+                               sin(vUv.y * 20.0 + uTime * rippleSpeed) * 
+                               rippleIntensity;
+                               
+                gl_FragColor.rgb += vec3(ripple);
+                `
+              );
+              
+              // Add animation update in render loop
+              const clock = new THREE.Clock();
+              
+              const originalOnBeforeRender = shader.onBeforeRender || (() => {});
+              shader.onBeforeRender = function(renderer, scene, camera, geometry, material) {
+                originalOnBeforeRender(renderer, scene, camera, geometry, material);
+                shader.uniforms.uTime.value = clock.getElapsedTime();
+              };
+            }}
           />
         </mesh>
 
         {/* Sky dome */}
         <mesh position={[0, 0, 0]}>
-          <sphereGeometry args={[8, 32, 32]} />
+          <sphereGeometry args={[12, 32, 32]} />
           <meshBasicMaterial color="#D3E4FD" side={THREE.BackSide} />
         </mesh>
 
         {/* Clouds */}
-        {[...Array(12)].map((_, i) => {
+        {[...Array(20)].map((_, i) => {
           const scale = 0.3 + Math.random() * 0.5;
-          const x = (Math.random() - 0.5) * 8;
-          const y = 2 + Math.random() * 2;
-          const z = (Math.random() - 0.5) * 8;
+          const x = (Math.random() - 0.5) * 12;
+          const y = 3 + Math.random() * 3;
+          const z = (Math.random() - 0.5) * 12;
           const position: [number, number, number] = [x, y, z];
           
           return (
@@ -166,33 +464,106 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
           );
         })}
 
-        {/* Trees and vegetation scattered around */}
-        {[...Array(30)].map((_, i) => {
+        {/* Trees and vegetation along paths and valleys */}
+        {[...Array(60)].map((_, i) => {
           const height = 0.2 + Math.random() * 0.3;
-          const x = (Math.random() - 0.5) * 8;
-          const z = (Math.random() - 0.5) * 8;
-          // Calculate y based on terrain height (simplified approximation)
-          const y = -0.3 + Math.sin(x * 0.2 * 2.0) * Math.cos(z * 0.2 * 2.0) * 0.4 * 0.5;
-          const position: [number, number, number] = [x, y, z];
+          const x = (Math.random() - 0.5) * 12;
+          const z = (Math.random() - 0.5) * 12;
           
-          // Skip trees in water
-          if (y < -0.35) return null;
+          // Position trees along paths
+          const onPath = (idx: number) => {
+            const pathNoise = Math.sin(idx * 0.5) * 0.3;
+            const paths = [
+              { x: -0.5 + pathNoise, z: idx * 0.2 - 3 },
+              { x: 0.5 + pathNoise, z: idx * 0.2 - 3 },
+              { x: idx * 0.2 - 3, z: 0.5 + pathNoise },
+              { x: idx * 0.2 - 3, z: -0.5 + pathNoise },
+            ];
+            return paths[i % 4];
+          };
+          
+          let treeX = x;
+          let treeZ = z;
+          
+          // Position some trees along paths
+          if (i < 20) {
+            const pathPos = onPath(i);
+            treeX = pathPos.x + (Math.random() - 0.5) * 0.8;
+            treeZ = pathPos.z + (Math.random() - 0.5) * 0.8;
+          }
+          
+          // Calculate y based on terrain height (simplified approximation)
+          const centerDist = Math.sqrt(treeX * treeX + treeZ * treeZ);
+          const y = -0.3 + Math.sin(treeX * 0.5) * Math.cos(treeZ * 0.5) * 0.2 - Math.min(0.2, centerDist * 0.02);
+          const position: [number, number, number] = [treeX, y, treeZ];
+          
+          // Skip trees in water or very high elevations
+          const riverPath1 = Math.abs(treeX * 0.7 + treeZ * 0.3);
+          const riverPath2 = Math.abs(-treeX * 0.5 + treeZ * 0.5);
+          const riverPath3 = Math.abs(treeX * 0.2 - treeZ * 0.8);
+          const riverWidth = 0.15;
+          const isRiver = riverPath1 < riverWidth || riverPath2 < riverWidth || riverPath3 < riverWidth;
+          
+          if (isRiver || centerDist > 6) return null;
+          
+          // Vary tree colors and sizes based on region/position
+          const treeSizeVariation = 0.7 + (Math.random() * 0.6);
+          const isPathTree = i < 20;
+          
+          // Tree color variation
+          const colorVariants = ["#F2FCE2", "#D6EFBF", "#C7E8A5", "#B4E08B"];
+          const colorIndex = Math.floor(Math.random() * colorVariants.length);
           
           return (
-            <group key={`tree-${i}`} position={position}>
+            <group key={`tree-${i}`} position={position} scale={treeSizeVariation}>
               {/* Tree trunk */}
               <mesh position={[0, height/2, 0]} scale={[0.05, height, 0.05]}>
                 <cylinderGeometry />
-                <meshStandardMaterial color="#403E43" />
+                <meshStandardMaterial color={isPathTree ? "#614E3D" : "#403E43"} />
               </mesh>
               {/* Tree top */}
               <mesh position={[0, height + 0.15, 0]} scale={[0.2, 0.3, 0.2]}>
                 <coneGeometry />
-                <meshStandardMaterial color={Math.random() > 0.5 ? "#F2FCE2" : "#D6EFBF"} />
+                <meshStandardMaterial color={colorVariants[colorIndex]} />
               </mesh>
             </group>
           );
         })}
+        
+        {/* Path indicators - small stones/markers along the connecting paths */}
+        {pathConnections.map((connection, idx) => {
+          // Find connected mountains
+          const fromMountain = mountainPositions.find(m => m.id === connection.from);
+          const toMountain = mountainPositions.find(m => m.id === connection.to);
+          
+          if (!fromMountain || !toMountain) return null;
+          
+          // Create path markers along the connection
+          return [...Array(5)].map((_, i) => {
+            // Interpolate position along path
+            const t = (i + 1) / 6; // Fraction of the path (avoiding start/end)
+            const x = fromMountain.x + (toMountain.x - fromMountain.x) * t;
+            const z = fromMountain.z + (toMountain.z - fromMountain.z) * t;
+            
+            // Add some random variation to make path natural
+            const jitterX = (Math.random() - 0.5) * 0.2;
+            const jitterZ = (Math.random() - 0.5) * 0.2;
+            
+            // Y position follows terrain
+            const pathHeight = -0.2 + Math.sin(x * 0.5) * Math.cos(z * 0.5) * 0.2;
+            
+            return (
+              <mesh 
+                key={`path-${idx}-${i}`} 
+                position={[x + jitterX, pathHeight, z + jitterZ]}
+                rotation={[Math.random() * 0.5, Math.random() * Math.PI, Math.random() * 0.5]}
+              >
+                <boxGeometry args={[0.1, 0.05, 0.1]} />
+                <meshStandardMaterial color="#D5D8DC" roughness={0.9} />
+              </mesh>
+            );
+          });
+        }).flat()}
       </>
     );
   };
