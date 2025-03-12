@@ -1,4 +1,3 @@
-
 import { Canvas } from '@react-three/fiber';
 import { 
   OrbitControls, 
@@ -831,13 +830,12 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
           const phi = Math.random() * Math.PI;
           const radius = 1.3 + Math.random() * 0.3;
           
-          // Calculate each coordinate separately
-          const x = radius * Math.sin(phi) * Math.cos(theta);
-          const y = radius * Math.sin(phi) * Math.sin(theta);
-          const z = radius * Math.cos(phi);
-          
-          // Create a properly typed position tuple
-          const position: [number, number, number] = [x, y, z];
+          // Calculate position coordinates
+          const position = new THREE.Vector3(
+            radius * Math.sin(phi) * Math.cos(theta),
+            radius * Math.sin(phi) * Math.sin(theta),
+            radius * Math.cos(phi)
+          );
           
           return (
             <mesh key={`neural-net-${i}`} position={position} scale={[0.1, 0.1, 0.1]}>
@@ -932,3 +930,4 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     </Canvas>
   );
 };
+
