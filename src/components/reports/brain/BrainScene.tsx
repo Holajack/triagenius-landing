@@ -15,42 +15,42 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     {
       id: "frontal",
       name: "Frontal Lobe",
-      position: [0, 1, 0],
+      position: [0, 1, 0] as [number, number, number],
       color: "#D946EF",
       activity: 0.85
     },
     {
       id: "temporal",
       name: "Temporal Lobe",
-      position: [-1.2, 0, 0],
+      position: [-1.2, 0, 0] as [number, number, number],
       color: "#FEF7CD",
       activity: 0.6
     },
     {
       id: "parietal",
       name: "Parietal Lobe",
-      position: [0, 0.5, -1],
+      position: [0, 0.5, -1] as [number, number, number],
       color: "#F2FCE2",
       activity: 0.75
     },
     {
       id: "occipital",
       name: "Occipital Lobe",
-      position: [0, -0.5, -1],
+      position: [0, -0.5, -1] as [number, number, number],
       color: "#D6BCFA",
       activity: 0.4
     },
     {
       id: "cerebellum",
       name: "Cerebellum",
-      position: [0, -1.2, 0],
+      position: [0, -1.2, 0] as [number, number, number],
       color: "#8B5CF6",
       activity: 0.5
     },
     {
       id: "brainstem",
       name: "Brain Stem",
-      position: [0, -1.8, 0],
+      position: [0, -1.8, 0] as [number, number, number],
       color: "#0EA5E9",
       activity: 0.55
     }

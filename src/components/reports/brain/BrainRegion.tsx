@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Mesh } from 'three';
 import * as THREE from 'three';
@@ -27,6 +27,9 @@ export const BrainRegion = ({
 }: BrainRegionProps) => {
   const [hovered, setHovered] = useState(false);
   
+  // Create ref using useRef instead of useState
+  const meshRef = useRef<Mesh>(null);
+  
   // Pulse animation based on activity level
   useFrame((state) => {
     if (meshRef.current) {
@@ -34,9 +37,6 @@ export const BrainRegion = ({
       meshRef.current.scale.setScalar(isActive || hovered ? scale : 1);
     }
   });
-
-  // Create refs for the mesh
-  const meshRef = useState<Mesh>(null);
 
   const material = new THREE.MeshPhysicalMaterial({
     color: new THREE.Color(color),
