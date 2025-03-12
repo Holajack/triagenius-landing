@@ -31,9 +31,9 @@ export const BrainRegion = ({
 
   useFrame((state) => {
     if (meshRef.current) {
-      // Calculate pulse scale based on activity level
-      const pulseIntensity = 0.02 * activity;
-      const baseScale = isActive ? 1.05 : 1;
+      // Subtler pulse scale based on activity level to maintain cohesive shape
+      const pulseIntensity = 0.015 * activity;
+      const baseScale = isActive ? 1.03 : 1;
       const pulseScale = baseScale + Math.sin(state.clock.elapsedTime * 2) * pulseIntensity;
       
       meshRef.current.scale.setScalar(pulseScale);
@@ -108,7 +108,7 @@ export const BrainRegion = ({
   const brainGeometry = useMemo(() => {
     let baseGeometry;
     
-    const highPolyCount = geometry === 'cerebellum' ? 96 : 64; // Increased polygon count
+    const highPolyCount = geometry === 'cerebellum' ? 96 : 72; // Increased polygon count
     
     switch(geometry) {
       case 'frontal':
@@ -157,7 +157,7 @@ export const BrainRegion = ({
           new THREE.Vector3(0.4, 0.1, 0),
           new THREE.Vector3(0.5, 0, -0.2),
         ]);
-        baseGeometry = new THREE.TubeGeometry(curve, highPolyCount, 0.15, 16, false);
+        baseGeometry = new THREE.TubeGeometry(curve, highPolyCount, 0.15, 18, false);
         break;
       default:
         baseGeometry = new THREE.SphereGeometry(1, highPolyCount, highPolyCount);
@@ -172,7 +172,7 @@ export const BrainRegion = ({
       color: new THREE.Color(color),
       roughness: 0.7,
       metalness: 0.0,
-      transmission: 0.15,
+      transmission: 0.12, // Reduced for better visibility
       thickness: 1.0,
       clearcoat: 0.3,
       clearcoatRoughness: 0.25,
@@ -185,7 +185,7 @@ export const BrainRegion = ({
       attenuationColor: new THREE.Color(color).multiplyScalar(0.9),
       attenuationDistance: 0.5,
       transparent: true,
-      opacity: isActive ? 0.95 : 0.85 // Adjust opacity to ensure regions are always visible
+      opacity: isActive ? 0.95 : 0.88 // Slightly higher baseline opacity
     });
   }, [color, isActive]);
 
