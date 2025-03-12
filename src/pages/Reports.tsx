@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -29,6 +28,7 @@ import BrainModel from "@/components/reports/BrainModel";
 import CognitiveMetrics from "@/components/reports/CognitiveMetrics";
 import FocusBreakdown from "@/components/reports/FocusBreakdown";
 import RecommendationsCard from "@/components/reports/RecommendationsCard";
+import { Suspense, ErrorBoundary } from "react";
 
 const Reports = () => {
   const { state } = useOnboarding();
@@ -105,12 +105,16 @@ const Reports = () => {
                   </div>
                   
                   <div className="relative h-[400px] bg-black/5 rounded-md overflow-hidden">
-                    <BrainModel 
-                      activeRegion={activeRegion} 
-                      setActiveRegion={setActiveRegion}
-                      zoomLevel={zoomLevel}
-                      rotation={rotation}
-                    />
+                    <ErrorBoundary fallback={<div>Error loading 3D visualization</div>}>
+                      <Suspense fallback={<div>Loading 3D visualization...</div>}>
+                        <BrainModel 
+                          activeRegion={activeRegion} 
+                          setActiveRegion={setActiveRegion}
+                          zoomLevel={zoomLevel}
+                          rotation={rotation}
+                        />
+                      </Suspense>
+                    </ErrorBoundary>
                   </div>
                 </div>
               </CardContent>
