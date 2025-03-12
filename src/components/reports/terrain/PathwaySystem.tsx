@@ -32,7 +32,6 @@ export const PathwaySystem = ({ paths, onPathClick }: PathwaySystemProps) => {
     <group>
       {/* Render pathway lines */}
       <Line
-        ref={pathRef}
         points={paths.map(p => p.position).flat()}
         color="#FFD700"
         lineWidth={3}
