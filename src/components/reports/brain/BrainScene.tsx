@@ -1,3 +1,4 @@
+
 import { Canvas } from '@react-three/fiber';
 import { 
   OrbitControls, 
@@ -830,11 +831,13 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
           const phi = Math.random() * Math.PI;
           const radius = 1.3 + Math.random() * 0.3;
           
-          const position: [number, number, number] = [
-            radius * Math.sin(phi) * Math.cos(theta),
-            radius * Math.sin(phi) * Math.sin(theta),
-            radius * Math.cos(phi)
-          ];
+          // Fix: Explicitly create a tuple with the correct type annotation
+          const x = radius * Math.sin(phi) * Math.cos(theta);
+          const y = radius * Math.sin(phi) * Math.sin(theta);
+          const z = radius * Math.cos(phi);
+          
+          // Use explicit tuple type for position
+          const position: [number, number, number] = [x, y, z];
           
           return (
             <mesh key={`neural-net-${i}`} position={position} scale={[0.1, 0.1, 0.1]}>
