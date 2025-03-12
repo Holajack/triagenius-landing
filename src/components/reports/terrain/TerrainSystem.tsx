@@ -1,8 +1,7 @@
 
-import { useRef, useEffect } from 'react';
+import { useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { useTexture } from '@react-three/drei';
 
 interface TerrainSystemProps {
   resolution?: number;
@@ -17,15 +16,10 @@ export const TerrainSystem = ({
 }: TerrainSystemProps) => {
   const meshRef = useRef<THREE.Mesh>(null);
   
-  // Create heightmap-based terrain with advanced materials
+  // Create heightmap-based terrain with colors
   const terrainMaterial = new THREE.ShaderMaterial({
     uniforms: {
       time: { value: 0 },
-      elevationTexture: { value: null },
-      snowTexture: { value: useTexture('/textures/snow.jpg') },
-      rockTexture: { value: useTexture('/textures/rock.jpg') },
-      grassTexture: { value: useTexture('/textures/grass.jpg') },
-      waterTexture: { value: useTexture('/textures/water.jpg') },
     },
     vertexShader: `
       uniform float time;
@@ -65,11 +59,6 @@ export const TerrainSystem = ({
       }
     `,
     fragmentShader: `
-      uniform sampler2D snowTexture;
-      uniform sampler2D rockTexture;
-      uniform sampler2D grassTexture;
-      uniform sampler2D waterTexture;
-      
       varying vec2 vUv;
       varying float vElevation;
       
@@ -79,14 +68,14 @@ export const TerrainSystem = ({
         float rockLevel = 1.5;
         float grassLevel = 0.5;
         
-        // Sample textures
-        vec4 snowColor = texture2D(snowTexture, vUv * 5.0);
-        vec4 rockColor = texture2D(rockTexture, vUv * 5.0);
-        vec4 grassColor = texture2D(grassTexture, vUv * 5.0);
-        vec4 waterColor = texture2D(waterTexture, vUv * 5.0);
+        // Define colors directly
+        vec3 snowColor = vec3(0.95, 0.95, 0.97);
+        vec3 rockColor = vec3(0.5, 0.5, 0.55);
+        vec3 grassColor = vec3(0.2, 0.6, 0.3);
+        vec3 waterColor = vec3(0.1, 0.3, 0.8);
         
-        // Blend textures based on elevation
-        vec4 terrainColor;
+        // Blend colors based on elevation
+        vec3 terrainColor;
         
         if (vElevation > snowLevel) {
           terrainColor = snowColor;
@@ -100,7 +89,7 @@ export const TerrainSystem = ({
           terrainColor = waterColor;
         }
         
-        gl_FragColor = terrainColor;
+        gl_FragColor = vec4(terrainColor, 1.0);
       }
     `,
     wireframe: false
@@ -119,4 +108,3 @@ export const TerrainSystem = ({
     </mesh>
   );
 };
-
