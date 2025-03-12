@@ -17,9 +17,10 @@ import {
   Book, 
   ArrowLeft, 
   Activity,
+  Search,
+  RotateCw,
   ZoomIn,
-  ZoomOut,
-  RotateCw
+  ZoomOut
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
@@ -38,15 +39,7 @@ const Reports = () => {
 
   const increaseZoom = () => setZoomLevel(prev => Math.min(prev + 0.1, 1.5));
   const decreaseZoom = () => setZoomLevel(prev => Math.max(prev - 0.1, 0.5));
-  const rotateModel = () => setRotation(prev => (prev + 15) % 360);
-
-  const regionDescriptions = {
-    "Frontal Lobe": "Critical thinking & problem solving. Active during math and coding tasks.",
-    "Temporal Lobe": "Memory retention & language processing. Active during language learning & memorization.",
-    "Parietal Lobe": "Sensory processing & spatial awareness. Active during visualization exercises.",
-    "Occipital Lobe": "Visual processing. Active during reading & visual learning.",
-    "Cerebellum": "Coordination & procedural memory. Active during repetitive practice."
-  };
+  const rotateModel = () => setRotation(prev => (prev + 45) % 360);
 
   return (
     <div className={cn(
@@ -75,7 +68,7 @@ const Reports = () => {
               <CardHeader className="pb-2">
                 <CardTitle className="text-xl flex items-center">
                   <Brain className="h-5 w-5 mr-2 text-primary" />
-                  Neural Activity Visualization
+                  3D Brain Activity Map
                 </CardTitle>
                 <CardDescription>
                   Explore how different study activities engage various brain regions
@@ -122,9 +115,11 @@ const Reports = () => {
                       <div className="absolute bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm p-3 border-t">
                         <h4 className="font-medium">{activeRegion} Region</h4>
                         <p className="text-xs text-muted-foreground">
-                          {activeRegion in regionDescriptions ? 
-                            regionDescriptions[activeRegion as keyof typeof regionDescriptions] : 
-                            "Information about this region is not available."}
+                          {activeRegion === "Frontal Lobe" && "Critical thinking & problem solving. Active during math and coding tasks."}
+                          {activeRegion === "Temporal Lobe" && "Memory retention & language processing. Active during language learning & memorization."}
+                          {activeRegion === "Parietal Lobe" && "Sensory processing & spatial awareness. Active during visualization exercises."}
+                          {activeRegion === "Occipital Lobe" && "Visual processing. Active during reading & visual learning."}
+                          {activeRegion === "Cerebellum" && "Coordination & procedural memory. Active during repetitive practice."}
                         </p>
                       </div>
                     )}

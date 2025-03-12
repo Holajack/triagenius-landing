@@ -12,20 +12,20 @@ const BrainModel = ({ activeRegion, setActiveRegion, zoomLevel, rotation }: Brai
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate loading the brain image
+    // Simulate loading the 3D model
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 800);
+    }, 1000);
     
     return () => clearTimeout(timer);
   }, []);
 
   const brainRegions = [
-    { id: "frontal", name: "Frontal Lobe", position: { top: "25%", left: "20%" }, activity: 0.85, color: "rgba(255, 0, 128, 0.7)" },
-    { id: "temporal", name: "Temporal Lobe", position: { top: "55%", left: "35%" }, activity: 0.6, color: "rgba(0, 255, 128, 0.7)" },
-    { id: "parietal", name: "Parietal Lobe", position: { top: "30%", left: "55%" }, activity: 0.75, color: "rgba(128, 0, 255, 0.7)" },
-    { id: "occipital", name: "Occipital Lobe", position: { top: "50%", left: "75%" }, activity: 0.4, color: "rgba(255, 128, 0, 0.7)" },
-    { id: "cerebellum", name: "Cerebellum", position: { top: "75%", left: "60%" }, activity: 0.5, color: "rgba(0, 128, 255, 0.7)" },
+    { id: "frontal", name: "Frontal Lobe", position: { top: "25%", left: "30%" }, activity: 0.85 },
+    { id: "temporal", name: "Temporal Lobe", position: { top: "55%", left: "25%" }, activity: 0.6 },
+    { id: "parietal", name: "Parietal Lobe", position: { top: "35%", left: "60%" }, activity: 0.75 },
+    { id: "occipital", name: "Occipital Lobe", position: { top: "60%", left: "70%" }, activity: 0.4 },
+    { id: "cerebellum", name: "Cerebellum", position: { top: "75%", left: "50%" }, activity: 0.5 },
   ];
 
   // Get activity level color
@@ -52,58 +52,51 @@ const BrainModel = ({ activeRegion, setActiveRegion, zoomLevel, rotation }: Brai
         </div>
       ) : (
         <>
-          {/* 2D Brain image using the uploaded colorful brain */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative w-full h-full">
-              <img 
-                src="/lovable-uploads/bb0c6272-e8d5-4d18-b0c6-0e4495de221c.png" 
-                alt="Colorful brain visualization" 
-                className="object-contain w-full h-full max-h-[350px] mx-auto"
-              />
-              
-              {/* Interactive brain regions - positioned over the image */}
-              {brainRegions.map((region) => (
-                <div
-                  key={region.id}
-                  className="absolute"
-                  style={{ 
-                    top: region.position.top, 
-                    left: region.position.left,
-                  }}
-                >
-                  <button
-                    className={`w-8 h-8 rounded-full cursor-pointer transition-all duration-300 flex items-center justify-center
-                      ${activeRegion === region.name ? "ring-4 ring-primary ring-offset-2 z-10" : ""}
-                      shadow-lg backdrop-blur-sm`}
-                    style={{ 
-                      backgroundColor: region.color,
-                      boxShadow: "0 0 10px rgba(0,0,0,0.2)"
-                    }}
-                    onClick={() => setActiveRegion(region.name === activeRegion ? null : region.name)}
-                    aria-label={`${region.name} - Activity level: ${Math.round(region.activity * 100)}%`}
-                  >
-                    <span className="sr-only">{region.name}</span>
-                  </button>
-                  
-                  {activeRegion === region.name && (
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-black/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                      {region.name}
-                    </div>
-                  )}
-                </div>
-              ))}
+          {/* Placeholder for 3D brain - In a real implementation, this would use Three.js or a similar library */}
+          <div className="absolute w-[70%] h-[70%] top-[15%] left-[15%] rounded-[50%] bg-gradient-to-br from-gray-200 to-gray-300 shadow-inner">
+            {/* Brain texture/details */}
+            <div className="absolute w-[90%] h-[80%] top-[10%] left-[5%] rounded-[50%] opacity-30">
+              <div className="absolute w-[60%] h-[30%] top-[20%] left-[20%] rounded-full bg-gray-400 rotate-45"></div>
+              <div className="absolute w-[40%] h-[20%] top-[40%] left-[30%] rounded-full bg-gray-400 -rotate-12"></div>
+              <div className="absolute w-[55%] h-[25%] top-[60%] left-[25%] rounded-full bg-gray-400 rotate-12"></div>
             </div>
+            
+            {/* Interactive brain regions */}
+            {brainRegions.map((region) => (
+              <button
+                key={region.id}
+                className={`absolute w-6 h-6 rounded-full cursor-pointer transition-all duration-300 ${
+                  activeRegion === region.name 
+                    ? "ring-4 ring-primary ring-offset-2 z-10" 
+                    : ""
+                } ${getActivityColor(region.activity)}`}
+                style={{ 
+                  top: region.position.top, 
+                  left: region.position.left,
+                }}
+                onClick={() => setActiveRegion(region.name === activeRegion ? null : region.name)}
+                aria-label={`${region.name} - Activity level: ${Math.round(region.activity * 100)}%`}
+              >
+                <span className="sr-only">{region.name}</span>
+              </button>
+            ))}
           </div>
           
-          {/* Legend for the visualization */}
-          <div className="absolute bottom-4 left-4 bg-background/70 backdrop-blur-sm p-2 rounded-md flex flex-wrap items-center gap-2 text-xs">
-            <span>Brain Regions:</span>
-            {brainRegions.map((region) => (
-              <span key={region.id} className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: region.color }}></div>
-                {region.name}
-              </span>
-            ))}
+          {/* Legend */}
+          <div className="absolute bottom-4 left-4 bg-background/70 backdrop-blur-sm p-2 rounded-md flex items-center gap-2 text-xs">
+            <span>Activity Level:</span>
+            <span className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-blue-500"></div> Low
+            </span>
+            <span className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-green-500"></div> Medium
+            </span>
+            <span className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-orange-500"></div> High
+            </span>
+            <span className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-red-500"></div> Very High
+            </span>
           </div>
         </>
       )}
