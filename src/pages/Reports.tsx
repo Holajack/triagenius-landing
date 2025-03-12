@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
-  Brain, 
   BarChart3, 
   ChartLine, 
   Lightbulb, 
@@ -21,11 +20,12 @@ import {
   RotateCw,
   ZoomIn,
   ZoomOut,
-  Mountain
+  Mountain,
+  Route
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
-import BrainModel from "@/components/reports/BrainModel";
+import LearningPathModel from "@/components/reports/BrainModel";
 import CognitiveMetrics from "@/components/reports/CognitiveMetrics";
 import FocusBreakdown from "@/components/reports/FocusBreakdown";
 import RecommendationsCard from "@/components/reports/RecommendationsCard";
@@ -35,7 +35,7 @@ const Reports = () => {
   const { state } = useOnboarding();
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const [activeRegion, setActiveRegion] = useState<string | null>(null);
+  const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [rotation, setRotation] = useState(0);
 
@@ -59,8 +59,8 @@ const Reports = () => {
             Back
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">Cognitive Reports</h1>
-            <p className="text-muted-foreground">Track your learning progress across cognitive domains</p>
+            <h1 className="text-2xl font-bold">Learning Path Analysis</h1>
+            <p className="text-muted-foreground">Track your progress through different subject areas</p>
           </div>
         </div>
 
@@ -69,11 +69,11 @@ const Reports = () => {
             <Card className="shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xl flex items-center">
-                  <Mountain className="h-5 w-5 mr-2 text-primary" />
-                  Cognitive Landscape Map
+                  <Route className="h-5 w-5 mr-2 text-primary" />
+                  Learning Path Map
                 </CardTitle>
                 <CardDescription>
-                  Explore how different study activities develop various cognitive regions
+                  Explore your learning journey across different subject areas
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -107,9 +107,9 @@ const Reports = () => {
                   
                   <div className="relative h-[400px] bg-black/5 rounded-md overflow-hidden">
                     <ErrorBoundary fallback={<div className="flex items-center justify-center h-full">Error loading 3D visualization</div>}>
-                      <BrainModel 
-                        activeRegion={activeRegion} 
-                        setActiveRegion={setActiveRegion}
+                      <LearningPathModel 
+                        activeSubject={activeSubject} 
+                        setActiveSubject={setActiveSubject}
                         zoomLevel={zoomLevel}
                         rotation={rotation}
                       />
@@ -128,7 +128,7 @@ const Reports = () => {
         <Tabs defaultValue="cognitive" className="space-y-4">
           <TabsList className="grid grid-cols-2 mb-4">
             <TabsTrigger value="cognitive" className="flex items-center gap-1">
-              <Brain className="h-4 w-4" /> Cognitive Analysis
+              <Book className="h-4 w-4" /> Learning Analysis
             </TabsTrigger>
             <TabsTrigger value="focus" className="flex items-center gap-1">
               <Activity className="h-4 w-4" /> Focus Metrics

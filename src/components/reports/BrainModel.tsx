@@ -1,23 +1,23 @@
 
 import { Suspense } from 'react';
-import { BrainScene } from './brain/BrainScene';
+import { LearningPathScene } from './brain/LearningPathScene';
 import ErrorBoundary from '../ErrorBoundary';
 
-interface BrainModelProps {
-  activeRegion: string | null;
-  setActiveRegion: (region: string | null) => void;
+interface LearningPathModelProps {
+  activeSubject: string | null;
+  setActiveSubject: (subject: string | null) => void;
   zoomLevel: number;
   rotation: number;
 }
 
-const BrainModel = ({ activeRegion, setActiveRegion, zoomLevel, rotation }: BrainModelProps) => {
+const LearningPathModel = ({ activeSubject, setActiveSubject, zoomLevel, rotation }: LearningPathModelProps) => {
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <ErrorBoundary fallback={<div className="flex items-center justify-center h-full">Error loading 3D visualization</div>}>
         <Suspense fallback={<div className="flex items-center justify-center h-full">Loading 3D visualization...</div>}>
-          <BrainScene 
-            activeRegion={activeRegion}
-            setActiveRegion={setActiveRegion}
+          <LearningPathScene 
+            activeSubject={activeSubject}
+            setActiveSubject={setActiveSubject}
             zoomLevel={zoomLevel}
             rotation={rotation}
           />
@@ -27,4 +27,4 @@ const BrainModel = ({ activeRegion, setActiveRegion, zoomLevel, rotation }: Brai
   );
 };
 
-export default BrainModel;
+export default LearningPathModel;
