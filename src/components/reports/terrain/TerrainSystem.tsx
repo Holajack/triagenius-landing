@@ -81,18 +81,23 @@ export const TerrainSystem = ({
         float lowRockLevel = 1.2;
         float grassLevel = 0.6;
         float sandLevel = 0.2;
+        float waterLevel = 0.0;
         
-        // Define natural mountain colors
+        // Define natural mountain colors with reduced blue tints
         vec3 snowColor = vec3(0.95, 0.95, 0.97);
         vec3 highRockColor = vec3(0.55, 0.52, 0.5);
-        vec3 midRockColor = vec3(0.6, 0.57, 0.53);
-        vec3 lowRockColor = vec3(0.7, 0.65, 0.6);
-        vec3 grassColor = vec3(0.4, 0.55, 0.3);
-        vec3 sandColor = vec3(0.76, 0.7, 0.5);
-        vec3 waterColor = vec3(0.3, 0.4, 0.5); // Reduced blue for water
+        vec3 midRockColor = vec3(0.62, 0.58, 0.54);
+        vec3 lowRockColor = vec3(0.72, 0.67, 0.62);
+        vec3 grassColor = vec3(0.45, 0.57, 0.32);
+        vec3 sandColor = vec3(0.78, 0.73, 0.53);
+        vec3 mudColor = vec3(0.52, 0.46, 0.35);
+        vec3 waterColor = vec3(0.42, 0.47, 0.55); // Even less blue, more gray-green
         
         // Add some variation based on UV coordinates for subtle texture
         float noiseVal = fract(sin(vUv.x * 100.0 + vUv.y * 100.0) * 10000.0) * 0.05;
+        
+        // Additional variation for horizontal banding
+        float bandNoise = sin(vElevation * 8.0) * 0.02;
         
         // Blend colors based on elevation with smooth transitions
         vec3 terrainColor;
@@ -120,17 +125,24 @@ export const TerrainSystem = ({
           // Sandy areas
           float blend = (vElevation - sandLevel) / (grassLevel - sandLevel);
           terrainColor = mix(sandColor, grassColor, blend);
+        } else if (vElevation > waterLevel) {
+          // Muddy areas near water
+          float blend = (vElevation - waterLevel) / (sandLevel - waterLevel);
+          terrainColor = mix(mudColor, sandColor, blend);
         } else {
-          // Water level (with less blue tint)
+          // Water level (with much less blue tint)
           terrainColor = waterColor;
         }
         
         // Add subtle noise variation to break up flat colors
-        terrainColor += vec3(noiseVal);
+        terrainColor += vec3(noiseVal + bandNoise);
         
-        // Add atmospheric fog effect - objects farther away fade slightly
+        // Enhance contrast slightly to make colors more visible
+        terrainColor = terrainColor * 1.1;
+        
+        // Add atmospheric fog effect - objects farther away fade slightly to a warm tint
         float fog = 1.0 - smoothstep(0.0, 1.0, distance(vUv, vec2(0.5)));
-        terrainColor = mix(terrainColor, vec3(0.8, 0.8, 0.8), (1.0 - fog) * 0.15);
+        terrainColor = mix(terrainColor, vec3(0.85, 0.82, 0.78), (1.0 - fog) * 0.15);
         
         gl_FragColor = vec4(terrainColor, 1.0);
       }
