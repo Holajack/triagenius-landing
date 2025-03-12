@@ -1,3 +1,4 @@
+
 import { Canvas } from '@react-three/fiber';
 import { 
   OrbitControls, 
@@ -383,7 +384,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
           <sphereGeometry args={[0.65, 32, 32]} />
           <meshPhysicalMaterial
             color="#B19DF7"
-            roughness={0.6,}
+            roughness={0.6}
             metalness={0.1}
             transmission={0.2}
             thickness={0.8}
