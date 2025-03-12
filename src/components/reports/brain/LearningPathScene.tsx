@@ -1,3 +1,4 @@
+
 import { Canvas } from '@react-three/fiber';
 import { 
   OrbitControls, 
@@ -23,20 +24,20 @@ export const LearningPathScene = ({ activeSubject, setActiveSubject, zoomLevel, 
         <mesh position={[0, -0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[30, 30, 128, 128]} />
           <meshStandardMaterial
-            color="#8A898C"
             roughness={0.9}
             metalness={0.1}
             wireframe={false}
             onBeforeCompile={(shader) => {
               shader.uniforms.time = { value: 0 };
               
-              // Add time uniform
+              // Add time and color uniforms
               shader.vertexShader = `
                 uniform float time;
+                varying float vElevation;
                 ${shader.vertexShader}
               `;
               
-              // Modify position in vertex shader for mountains
+              // Pass the elevation to the fragment shader
               shader.vertexShader = shader.vertexShader.replace(
                 '#include <begin_vertex>',
                 `
@@ -75,6 +76,51 @@ export const LearningPathScene = ({ activeSubject, setActiveSubject, zoomLevel, 
                   1.0,
                   noise1 - sin(position.x * frequency) * cos((position.z + 0.01) * frequency) * amplitude
                 ));
+                
+                // Pass elevation to fragment shader
+                vElevation = mountainHeight;
+                `
+              );
+              
+              // Add varying to fragment shader
+              shader.fragmentShader = `
+                varying float vElevation;
+                ${shader.fragmentShader}
+              `;
+              
+              // Add color calculation based on elevation
+              shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <color_fragment>',
+                `
+                #include <color_fragment>
+                
+                // Color the terrain based on elevation
+                float normalizedElevation = (vElevation + 2.0) / 4.0; // Normalize to 0-1 range
+                
+                // Base colors
+                vec3 lowColor = vec3(0.53, 0.81, 0.92);    // Light blue (#87CEEB) for water/valleys
+                vec3 midColor = vec3(0.33, 0.55, 0.0);     // Forest green (#547700) for mid elevations
+                vec3 highColor = vec3(0.63, 0.63, 0.63);   // Light gray (#A1A1A1) for peaks
+                vec3 peakColor = vec3(0.99, 0.99, 0.99);   // White (#FFFFFF) for snow caps
+                
+                // Blend colors based on elevation
+                vec3 terrainColor;
+                if (normalizedElevation < 0.3) {
+                  // Blend from low to mid
+                  float t = normalizedElevation / 0.3;
+                  terrainColor = mix(lowColor, midColor, t);
+                } else if (normalizedElevation < 0.75) {
+                  // Blend from mid to high
+                  float t = (normalizedElevation - 0.3) / 0.45;
+                  terrainColor = mix(midColor, highColor, t);
+                } else {
+                  // Blend from high to peak
+                  float t = (normalizedElevation - 0.75) / 0.25;
+                  terrainColor = mix(highColor, peakColor, t);
+                }
+                
+                // Apply the color
+                diffuseColor.rgb = terrainColor;
                 `
               );
               
