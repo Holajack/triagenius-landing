@@ -1,3 +1,4 @@
+
 import { Canvas } from '@react-three/fiber';
 import { 
   OrbitControls, 
@@ -7,7 +8,7 @@ import {
   BakeShadows,
   useHelper,
 } from '@react-three/drei';
-import { BrainRegion } from './BrainRegion';
+import { MountainRegion } from './MountainRegion';
 import { useRef } from 'react';
 import * as THREE from 'three';
 
@@ -19,838 +20,213 @@ interface BrainSceneProps {
 }
 
 export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation }: BrainSceneProps) => {
-  const brainRegions = [
+  const cognitiveRegions = [
     {
-      id: "frontal_left",
-      name: "Frontal Lobe",
-      position: [-0.5, 0.7, 0.8] as [number, number, number],
+      id: "memory_retention",
+      name: "Memory Retention",
+      position: [-0.8, 0.7, 0.8] as [number, number, number],
       scale: [1.2, 1.1, 1.1] as [number, number, number],
       rotation: [0.2, 0, -0.1] as [number, number, number],
       color: "#D946EF",
       activity: 0.85,
-      geometry: "frontal"
+      altitude: 1.2,
+      geometry: "large_peak"
     },
     {
-      id: "temporal_left",
-      name: "Temporal Lobe",
-      position: [-1.2, -0.1, 0.3] as [number, number, number],
-      scale: [1.0, 0.8, 0.9] as [number, number, number],
+      id: "critical_thinking",
+      name: "Critical Thinking",
+      position: [0.8, 0.9, 0.3] as [number, number, number],
+      scale: [1.0, 1.4, 0.9] as [number, number, number],
       rotation: [0, 0.2, 0] as [number, number, number],
       color: "#FEF7CD",
-      activity: 0.6,
-      geometry: "temporal"
+      activity: 0.7,
+      altitude: 1.4,
+      geometry: "sharp_peak"
     },
     {
-      id: "parietal_left",
-      name: "Parietal Lobe",
+      id: "problem_solving",
+      name: "Problem Solving",
       position: [-0.5, 0.5, -0.7] as [number, number, number],
       scale: [1.0, 0.9, 1.0] as [number, number, number],
       rotation: [-0.3, 0, -0.1] as [number, number, number],
       color: "#F2FCE2",
       activity: 0.75,
-      geometry: "parietal"
+      altitude: 0.9,
+      geometry: "medium_peak"
     },
     {
-      id: "occipital_left",
-      name: "Occipital Lobe",
-      position: [-0.3, -0.2, -1.1] as [number, number, number],
-      scale: [0.9, 0.8, 0.9] as [number, number, number],
+      id: "creative_thinking",
+      name: "Creativity",
+      position: [0.3, 0.6, -1.1] as [number, number, number],
+      scale: [0.9, 1.2, 0.9] as [number, number, number],
       rotation: [-0.4, 0, -0.1] as [number, number, number],
       color: "#D6BCFA",
-      activity: 0.4,
-      geometry: "occipital"
+      activity: 0.65,
+      altitude: 1.2,
+      geometry: "rolling_hill"
     },
     {
-      id: "frontal_right",
-      name: "Frontal Lobe",
+      id: "analytical_processing",
+      name: "Analytical Processing",
       position: [0.5, 0.7, 0.8] as [number, number, number],
       scale: [1.2, 1.1, 1.1] as [number, number, number],
       rotation: [0.2, 0, 0.1] as [number, number, number],
       color: "#D946EF",
       activity: 0.85,
-      geometry: "frontal"
+      altitude: 1.1,
+      geometry: "plateau"
     },
     {
-      id: "temporal_right",
-      name: "Temporal Lobe",
-      position: [1.2, -0.1, 0.3] as [number, number, number],
+      id: "language_processing",
+      name: "Language Processing",
+      position: [-0.9, 0.4, 0.3] as [number, number, number],
       scale: [1.0, 0.8, 0.9] as [number, number, number],
       rotation: [0, -0.2, 0] as [number, number, number],
       color: "#FEF7CD",
       activity: 0.6,
-      geometry: "temporal"
+      altitude: 0.8,
+      geometry: "gentle_slope"
     },
     {
-      id: "parietal_right",
-      name: "Parietal Lobe",
+      id: "spatial_awareness",
+      name: "Spatial Awareness",
       position: [0.5, 0.5, -0.7] as [number, number, number],
       scale: [1.0, 0.9, 1.0] as [number, number, number],
       rotation: [-0.3, 0, 0.1] as [number, number, number],
       color: "#F2FCE2",
       activity: 0.75,
-      geometry: "parietal"
+      altitude: 0.9,
+      geometry: "rocky_terrain"
     },
     {
-      id: "occipital_right",
-      name: "Occipital Lobe",
-      position: [0.3, -0.2, -1.1] as [number, number, number],
+      id: "visual_processing",
+      name: "Visual Processing",
+      position: [-0.3, 0.2, -1.1] as [number, number, number],
       scale: [0.9, 0.8, 0.9] as [number, number, number],
       rotation: [-0.4, 0, 0.1] as [number, number, number],
       color: "#D6BCFA",
-      activity: 0.4,
-      geometry: "occipital"
+      activity: 0.5,
+      altitude: 0.8,
+      geometry: "smooth_hill"
     },
     {
-      id: "cerebellum",
-      name: "Cerebellum",
-      position: [0, -0.8, -0.5] as [number, number, number],
-      scale: [1.2, 0.7, 1.0] as [number, number, number],
+      id: "focus_concentration",
+      name: "Focus & Concentration",
+      position: [0, 1.0, -0.2] as [number, number, number],
+      scale: [1.2, 1.5, 1.0] as [number, number, number],
       rotation: [0.3, 0, 0] as [number, number, number],
       color: "#8B5CF6",
-      activity: 0.5,
-      geometry: "cerebellum"
+      activity: 0.9,
+      altitude: 1.5,
+      geometry: "highest_peak"
     },
-    {
-      id: "brainstem",
-      name: "Brain Stem",
-      position: [0, -1.5, 0] as [number, number, number],
-      scale: [0.7, 0.7, 0.7] as [number, number, number],
-      rotation: [0.1, 0, 0] as [number, number, number],
-      color: "#0EA5E9",
-      activity: 0.55,
-      geometry: "brainstem"
-    },
-    {
-      id: "hippocampus_left",
-      name: "Hippocampus",
-      position: [-0.5, -0.3, 0] as [number, number, number],
-      scale: [0.4, 0.3, 0.7] as [number, number, number],
-      rotation: [0, 0.5, 0] as [number, number, number],
-      color: "#E5DEFF",
-      activity: 0.75,
-      geometry: "hippocampus"
-    },
-    {
-      id: "hippocampus_right",
-      name: "Hippocampus",
-      position: [0.5, -0.3, 0] as [number, number, number],
-      scale: [0.4, 0.3, 0.7] as [number, number, number],
-      rotation: [0, -0.5, 0] as [number, number, number],
-      color: "#E5DEFF",
-      activity: 0.75,
-      geometry: "hippocampus"
-    }
   ];
 
   const spotLightRef = useRef<THREE.SpotLight>(null);
   const directionalLightRef = useRef<THREE.DirectionalLight>(null);
 
-  const createConnectingTissue = () => {
+  const createTerrainBase = () => {
     return (
       <>
-        {/* Base cerebral cortex outer layer with improved sulci and gyri texture */}
-        <mesh position={[0, 0, 0]} scale={[1.7, 1.5, 1.6]}>
-          <sphereGeometry args={[1, 128, 128]} />
+        {/* Base terrain */}
+        <mesh position={[0, -0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[10, 10, 64, 64]} />
           <meshPhysicalMaterial
-            color="#FCE7DF"
-            transparent={true}
-            opacity={0.3}
-            roughness={0.4}
-            transmission={0.85}
-            thickness={0.3}
-            envMapIntensity={0.3}
-          />
-        </mesh>
-
-        {/* Dense gyri and sulci pattern over the entire surface for realistic wrinkles */}
-        <mesh position={[0, 0, 0]} scale={[1.65, 1.45, 1.55]}>
-          <sphereGeometry args={[1, 192, 192]} />
-          <meshPhysicalMaterial
-            color="#F9D5C8"
-            transparent={true}
-            opacity={0.3}
-            roughness={0.7}
-            transmission={0.8}
-            thickness={0.3}
-            envMapIntensity={0.4}
-            wireframe={false}
-            flatShading={true}
-          />
-        </mesh>
-        
-        {/* Meninges layer - thin protective covering */}
-        <mesh position={[0, 0, 0]} scale={[1.72, 1.52, 1.62]}>
-          <sphereGeometry args={[1, 64, 64]} />
-          <meshPhysicalMaterial
-            color="#FCE7DF"
-            transparent={true}
-            opacity={0.15}
-            roughness={0.3}
-            transmission={0.95}
-            thickness={0.1}
-            envMapIntensity={0.2}
-          />
-        </mesh>
-
-        {/* NEW: Frontal and temporal connecting tissue - fills gap between regions */}
-        <mesh position={[-0.5, 0.3, 0.5]} scale={[0.6, 0.6, 0.6]}>
-          <sphereGeometry args={[1, 48, 48]} />
-          <meshPhysicalMaterial
-            color="#F5DDD5"
-            roughness={0.6}
+            color="#8E9196"
+            roughness={0.8}
             metalness={0.1}
-            transmission={0.3}
-            thickness={0.8}
-            clearcoat={0.2}
-            transparent={true}
-            opacity={0.85}
+            displacementScale={0.4}
+            displacementBias={-0.2}
+            onBeforeCompile={(shader) => {
+              shader.uniforms.time = { value: 0 };
+              shader.vertexShader = `
+                uniform float time;
+                ${shader.vertexShader}
+              `.replace(
+                '#include <begin_vertex>',
+                `
+                #include <begin_vertex>
+                
+                float frequency = 0.2;
+                float amplitude = 0.4;
+                
+                // Base terrain
+                transformed.y += sin(transformed.x * frequency * 2.0) * cos(transformed.z * frequency * 2.0) * amplitude * 0.5;
+                
+                // Add some variation
+                transformed.y += sin(transformed.x * frequency * 4.0 + 1.5) * sin(transformed.z * frequency * 3.0 + 0.5) * amplitude * 0.25;
+                transformed.y += cos(transformed.x * frequency * 3.0 + 2.0) * sin(transformed.z * frequency * 5.0 + 1.0) * amplitude * 0.125;
+                
+                // Flatten some areas 
+                transformed.y *= 1.0 - smoothstep(0.0, 0.4, length(vec2(transformed.x, transformed.z) * 0.2));
+                `
+              );
+            }}
           />
         </mesh>
 
-        <mesh position={[0.5, 0.3, 0.5]} scale={[0.6, 0.6, 0.6]}>
-          <sphereGeometry args={[1, 48, 48]} />
+        {/* Water surface */}
+        <mesh position={[0, -0.4, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[12, 12]} />
           <meshPhysicalMaterial
-            color="#F5DDD5"
-            roughness={0.6}
+            color="#33C3F0"
+            roughness={0.1}
             metalness={0.1}
-            transmission={0.3}
-            thickness={0.8}
-            clearcoat={0.2}
-            transparent={true}
-            opacity={0.85}
-          />
-        </mesh>
-
-        {/* NEW: Parietal and occipital connecting tissue */}
-        <mesh position={[-0.4, 0.15, -0.9]} scale={[0.6, 0.6, 0.6]}>
-          <sphereGeometry args={[1, 48, 48]} />
-          <meshPhysicalMaterial
-            color="#F0EAED"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.3}
-            thickness={0.8}
-            clearcoat={0.2}
-            transparent={true}
-            opacity={0.85}
-          />
-        </mesh>
-
-        <mesh position={[0.4, 0.15, -0.9]} scale={[0.6, 0.6, 0.6]}>
-          <sphereGeometry args={[1, 48, 48]} />
-          <meshPhysicalMaterial
-            color="#F0EAED"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.3}
-            thickness={0.8}
-            clearcoat={0.2}
-            transparent={true}
-            opacity={0.85}
-          />
-        </mesh>
-
-        {/* Corpus callosum - main hemispheric bridge with more visual presence */}
-        <mesh position={[0, 0.1, 0]} rotation={[0, 0, Math.PI / 2]} scale={[1.3, 0.35, 0.9]}>
-          <capsuleGeometry args={[0.25, 1.6, 36, 36]} />
-          <meshPhysicalMaterial
-            color="#FDE1D3"
-            roughness={0.7}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={1.0}
-            clearcoat={0.3}
-            clearcoatRoughness={0.25}
-          />
-        </mesh>
-
-        {/* Enhanced anterior commissure - front connection */}
-        <mesh position={[0, 0.4, 0.3]} rotation={[0.2, 0, Math.PI / 2]} scale={[0.9, 0.2, 0.7]}>
-          <capsuleGeometry args={[0.15, 1.8, 32, 32]} />
-          <meshPhysicalMaterial
-            color="#F7D5CA"
-            roughness={0.7}
-            metalness={0.1}
-            transmission={0.15}
-            thickness={1.0}
-            clearcoat={0.3}
-          />
-        </mesh>
-
-        {/* Enhanced posterior commissure - rear connection */}
-        <mesh position={[0, 0.1, -0.3]} rotation={[-0.1, 0, Math.PI / 2]} scale={[0.8, 0.2, 0.7]}>
-          <capsuleGeometry args={[0.15, 1.7, 32, 32]} />
-          <meshPhysicalMaterial
-            color="#F9DCD2"
-            roughness={0.7}
-            metalness={0.1}
-            transmission={0.15}
-            thickness={1.0}
-            clearcoat={0.3}
-          />
-        </mesh>
-
-        {/* Longitudinal fissure - central division between hemispheres */}
-        <mesh position={[0, 0.8, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[0.05, 1.5, 1.4]}>
-          <planeGeometry args={[1, 1, 1, 1]} />
-          <meshPhysicalMaterial
-            color="#FCE7DF"
-            roughness={0.7}
-            metalness={0.1}
-            transmission={0.2}
+            transmission={0.6}
             thickness={0.5}
-            clearcoat={0.3}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-
-        {/* NEW: Frontal-temporal connecting tissue (left & right) */}
-        <mesh position={[-0.85, 0.3, 0.55]} scale={[0.7, 0.7, 0.7]}>
-          <sphereGeometry args={[0.7, 48, 48]} />
-          <meshPhysicalMaterial
-            color="#EFDCE5"
-            roughness={0.7}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={0.9}
-            clearcoat={0.3}
-            transparent={true}
-            opacity={0.9}
-          />
-        </mesh>
-
-        <mesh position={[0.85, 0.3, 0.55]} scale={[0.7, 0.7, 0.7]}>
-          <sphereGeometry args={[0.7, 48, 48]} />
-          <meshPhysicalMaterial
-            color="#EFDCE5"
-            roughness={0.7}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={0.9}
-            clearcoat={0.3}
-            transparent={true}
-            opacity={0.9}
-          />
-        </mesh>
-
-        {/* Enhanced frontal lobe connecting tissue */}
-        <mesh position={[0, 0.7, 0.8]} scale={[1.8, 0.85, 0.85]}>
-          <sphereGeometry args={[0.7, 64, 64]} />
-          <meshPhysicalMaterial
-            color="#E5D7F0"
-            roughness={0.7}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={1.0}
-            clearcoat={0.3}
-            transparent={true}
-            opacity={0.8}
-          />
-        </mesh>
-
-        {/* Enhanced parietal lobe connecting tissue */}
-        <mesh position={[0, 0.5, -0.7]} scale={[1.8, 0.85, 0.85]}>
-          <sphereGeometry args={[0.7, 64, 64]} />
-          <meshPhysicalMaterial
-            color="#F2FCE2"
-            roughness={0.7}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={1.0}
-            clearcoat={0.3}
-            transparent={true}
-            opacity={0.8}
-          />
-        </mesh>
-
-        {/* Enhanced temporal lobe connecting tissue */}
-        <mesh position={[0, -0.1, 0.3]} scale={[1.8, 0.75, 0.85]}>
-          <sphereGeometry args={[0.7, 64, 64]} />
-          <meshPhysicalMaterial
-            color="#FEEED0"
-            roughness={0.7}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={1.0}
-            clearcoat={0.3}
-            transparent={true}
-            opacity={0.8}
-          />
-        </mesh>
-
-        {/* Enhanced occipital lobe connecting tissue */}
-        <mesh position={[0, -0.2, -1.1]} scale={[1.8, 0.85, 0.85]}>
-          <sphereGeometry args={[0.7, 64, 64]} />
-          <meshPhysicalMaterial
-            color="#DECFF9"
-            roughness={0.7}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={1.0}
-            clearcoat={0.3}
-            transparent={true}
-            opacity={0.8}
-          />
-        </mesh>
-
-        {/* NEW: Additional bridging tissues to fill gaps */}
-        <mesh position={[-0.8, 0.2, -0.2]} scale={[0.65, 0.7, 0.7]}>
-          <sphereGeometry args={[0.7, 48, 48]} />
-          <meshPhysicalMaterial
-            color="#F4E8E1"
-            roughness={0.7}
-            metalness={0.1}
-            transmission={0.25}
-            thickness={0.8}
-            clearcoat={0.3}
-            transparent={true}
-            opacity={0.85}
-          />
-        </mesh>
-
-        <mesh position={[0.8, 0.2, -0.2]} scale={[0.65, 0.7, 0.7]}>
-          <sphereGeometry args={[0.7, 48, 48]} />
-          <meshPhysicalMaterial
-            color="#F4E8E1"
-            roughness={0.7}
-            metalness={0.1}
-            transmission={0.25}
-            thickness={0.8}
-            clearcoat={0.3}
-            transparent={true}
-            opacity={0.85}
-          />
-        </mesh>
-
-        {/* Comprehensive white matter core */}
-        <mesh position={[0, 0, 0]} scale={[1.2, 1.0, 1.3]}>
-          <sphereGeometry args={[1, 64, 64]} />
-          <meshPhysicalMaterial
-            color="#FFF8F5"
-            transparent={true}
-            opacity={0.3}
-            roughness={0.4}
-            transmission={0.8}
-            thickness={0.3}
-            envMapIntensity={0.3}
-          />
-        </mesh>
-
-        {/* Enhanced thalamus with more detail */}
-        <mesh position={[0, 0, 0]} scale={[0.85, 0.75, 0.85]}>
-          <sphereGeometry args={[0.7, 48, 48]} />
-          <meshPhysicalMaterial
-            color="#FFDFCE"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={0.8}
-            clearcoat={0.3}
-            transparent={true}
-            opacity={0.8}
-          />
-        </mesh>
-
-        {/* Left and right thalamic structures */}
-        <mesh position={[-0.3, 0, 0]} scale={[0.45, 0.4, 0.45]}>
-          <sphereGeometry args={[0.7, 32, 32]} />
-          <meshPhysicalMaterial
-            color="#FFE8DB"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={0.8}
-            clearcoat={0.3}
-            transparent={true}
-            opacity={0.8}
-          />
-        </mesh>
-
-        <mesh position={[0.3, 0, 0]} scale={[0.45, 0.4, 0.45]}>
-          <sphereGeometry args={[0.7, 32, 32]} />
-          <meshPhysicalMaterial
-            color="#FFE8DB"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={0.8}
-            clearcoat={0.3}
-            transparent={true}
-            opacity={0.8}
-          />
-        </mesh>
-
-        {/* NEW: Temporal-cerebellar connecting tissue */}
-        <mesh position={[-0.6, -0.5, -0.1]} scale={[0.6, 0.6, 0.6]}>
-          <sphereGeometry args={[0.7, 40, 40]} />
-          <meshPhysicalMaterial
-            color="#F5E4DB"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={0.7}
-            clearcoat={0.3}
-            transparent={true}
-            opacity={0.85}
-          />
-        </mesh>
-
-        <mesh position={[0.6, -0.5, -0.1]} scale={[0.6, 0.6, 0.6]}>
-          <sphereGeometry args={[0.7, 40, 40]} />
-          <meshPhysicalMaterial
-            color="#F5E4DB"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={0.7}
-            clearcoat={0.3}
-            transparent={true}
-            opacity={0.85}
-          />
-        </mesh>
-
-        {/* Additional enhanced connections between cerebellum and brainstem */}
-        <mesh position={[0, -1.15, -0.25]} rotation={[0.3, 0, 0]} scale={[0.9, 0.7, 0.7]}>
-          <sphereGeometry args={[0.7, 32, 32]} />
-          <meshPhysicalMaterial
-            color="#A794F7"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={0.8}
-            clearcoat={0.2}
-          />
-        </mesh>
-
-        {/* Enhanced cerebellar peduncles (connections to cerebellum) */}
-        <mesh position={[0, -0.9, -0.4]} rotation={[0.3, 0, 0]} scale={[1.1, 0.6, 0.7]}>
-          <sphereGeometry args={[0.65, 32, 32]} />
-          <meshPhysicalMaterial
-            color="#B19DF7"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={0.8}
-            clearcoat={0.2}
-          />
-        </mesh>
-
-        {/* NEW: Cerebellar-occipital connecting tissue */}
-        <mesh position={[0, -0.5, -0.8]} scale={[1.0, 0.7, 0.7]}>
-          <sphereGeometry args={[0.7, 48, 48]} />
-          <meshPhysicalMaterial
-            color="#D5C9F1"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={0.7}
-            clearcoat={0.3}
-            transparent={true}
-            opacity={0.9}
-          />
-        </mesh>
-
-        {/* Left and right temporal-hippocampal connections */}
-        <mesh position={[-0.85, -0.2, 0.15]} rotation={[0, 0.2, 0]} scale={[0.7, 0.6, 0.7]}>
-          <sphereGeometry args={[0.55, 32, 32]} />
-          <meshPhysicalMaterial
-            color="#FEF0E4"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={0.8}
-            clearcoat={0.2}
-            transparent={true}
-            opacity={0.9}
-          />
-        </mesh>
-
-        <mesh position={[0.85, -0.2, 0.15]} rotation={[0, -0.2, 0]} scale={[0.7, 0.6, 0.7]}>
-          <sphereGeometry args={[0.55, 32, 32]} />
-          <meshPhysicalMaterial
-            color="#FEF0E4"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={0.8}
-            clearcoat={0.2}
-            transparent={true}
-            opacity={0.9}
-          />
-        </mesh>
-
-        {/* Frontal-parietal connection network */}
-        <mesh position={[-0.5, 0.6, 0.1]} rotation={[0, 0, -0.1]} scale={[0.7, 0.6, 0.7]}>
-          <sphereGeometry args={[0.65, 32, 32]} />
-          <meshPhysicalMaterial
-            color="#EAE0F5"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={0.8}
-            clearcoat={0.2}
-            transparent={true}
-            opacity={0.9}
-          />
-        </mesh>
-
-        <mesh position={[0.5, 0.6, 0.1]} rotation={[0, 0, 0.1]} scale={[0.7, 0.6, 0.7]}>
-          <sphereGeometry args={[0.65, 32, 32]} />
-          <meshPhysicalMaterial
-            color="#EAE0F5"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={0.8}
-            clearcoat={0.2}
-            transparent={true}
-            opacity={0.9}
-          />
-        </mesh>
-
-        {/* Temporal-occipital connection network */}
-        <mesh position={[-0.8, -0.2, -0.4]} scale={[0.7, 0.6, 0.7]}>
-          <sphereGeometry args={[0.6, 32, 32]} />
-          <meshPhysicalMaterial
-            color="#E8E8F7"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={0.8}
-            clearcoat={0.2}
-            transparent={true}
-            opacity={0.9}
-          />
-        </mesh>
-
-        <mesh position={[0.8, -0.2, -0.4]} scale={[0.7, 0.6, 0.7]}>
-          <sphereGeometry args={[0.6, 32, 32]} />
-          <meshPhysicalMaterial
-            color="#E8E8F7"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={0.8}
-            clearcoat={0.2}
-            transparent={true}
-            opacity={0.9}
-          />
-        </mesh>
-
-        {/* Additional cerebellum-occipital connections */}
-        <mesh position={[0, -0.6, -0.8]} scale={[1.0, 0.6, 0.7]}>
-          <sphereGeometry args={[0.6, 32, 32]} />
-          <meshPhysicalMaterial
-            color="#C0B2F9"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.2}
-            thickness={0.8}
-            clearcoat={0.2}
-            transparent={true}
-            opacity={0.9}
-          />
-        </mesh>
-
-        {/* Additional left-right connecting tissue - frontal */}
-        <mesh position={[0, 0.7, 0.5]} scale={[1.7, 0.7, 0.7]}>
-          <sphereGeometry args={[0.5, 32, 32]} />
-          <meshPhysicalMaterial
-            color="#EAD8EC"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.15}
-            thickness={0.8}
-            clearcoat={0.2}
-            transparent={true}
-            opacity={0.8}
-          />
-        </mesh>
-
-        {/* Additional left-right connecting tissue - parietal */}
-        <mesh position={[0, 0.5, -0.3]} scale={[1.7, 0.7, 0.7]}>
-          <sphereGeometry args={[0.5, 32, 32]} />
-          <meshPhysicalMaterial
-            color="#EAF6DD"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.15}
-            thickness={0.8}
-            clearcoat={0.2}
-            transparent={true}
-            opacity={0.8}
-          />
-        </mesh>
-
-        {/* Additional left-right connecting tissue - temporal */}
-        <mesh position={[0, -0.1, 0.0]} scale={[1.7, 0.6, 0.7]}>
-          <sphereGeometry args={[0.5, 32, 32]} />
-          <meshPhysicalMaterial
-            color="#FEF4E0"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.15}
-            thickness={0.8}
-            clearcoat={0.2}
-            transparent={true}
-            opacity={0.8}
-          />
-        </mesh>
-
-        {/* Additional left-right connecting tissue - occipital */}
-        <mesh position={[0, -0.2, -0.7]} scale={[1.7, 0.6, 0.7]}>
-          <sphereGeometry args={[0.5, 32, 32]} />
-          <meshPhysicalMaterial
-            color="#E4DCF9"
-            roughness={0.6}
-            metalness={0.1}
-            transmission={0.15}
-            thickness={0.8}
-            clearcoat={0.2}
-            transparent={true}
-            opacity={0.8}
-          />
-        </mesh>
-
-        {/* Sulci network - creating folds across the surface */}
-        {[-0.8, 0, 0.8].map((x, i) => (
-          <mesh key={`sulci-x-${i}`} position={[x, 0.5, 0]} rotation={[0, 0, x > 0 ? -0.5 : 0.5]} scale={[0.05, 0.8, 1.5]}>
-            <planeGeometry args={[1, 1, 1, 1]} />
-            <meshPhysicalMaterial
-              color="#F9E0D5"
-              transparent={true}
-              opacity={0.4}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-        ))}
-
-        {[-0.6, 0.6].map((z, i) => (
-          <mesh key={`sulci-z-${i}`} position={[0, 0.5, z]} rotation={[0.5, 0, 0]} scale={[1.5, 0.05, 0.8]}>
-            <planeGeometry args={[1, 1, 1, 1]} />
-            <meshPhysicalMaterial
-              color="#F9E0D5"
-              transparent={true}
-              opacity={0.4}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-        ))}
-
-        {/* Ventricles - fluid-filled cavities */}
-        <mesh position={[0, 0.2, 0]} scale={[0.4, 0.2, 0.35]}>
-          <sphereGeometry args={[1, 24, 24]} />
-          <meshPhysicalMaterial
-            color="#E0F0FF"
-            roughness={0.2}
-            metalness={0.1}
-            transmission={0.6}
             ior={1.4}
-            thickness={1.0}
             transparent={true}
-            opacity={0.5}
+            opacity={0.6}
           />
         </mesh>
 
-        {/* Lateral ventricles */}
-        <mesh position={[-0.3, 0.2, 0]} scale={[0.2, 0.15, 0.3]}>
-          <sphereGeometry args={[1, 24, 24]} />
-          <meshPhysicalMaterial
-            color="#E0F0FF"
-            roughness={0.2}
-            metalness={0.1}
-            transmission={0.6}
-            ior={1.4}
-            thickness={1.0}
-            transparent={true}
-            opacity={0.5}
-          />
+        {/* Sky dome */}
+        <mesh position={[0, 0, 0]}>
+          <sphereGeometry args={[8, 32, 32]} />
+          <meshBasicMaterial color="#D3E4FD" side={THREE.BackSide} />
         </mesh>
 
-        <mesh position={[0.3, 0.2, 0]} scale={[0.2, 0.15, 0.3]}>
-          <sphereGeometry args={[1, 24, 24]} />
-          <meshPhysicalMaterial
-            color="#E0F0FF"
-            roughness={0.2}
-            metalness={0.1}
-            transmission={0.6}
-            ior={1.4}
-            thickness={1.0}
-            transparent={true}
-            opacity={0.5}
-          />
-        </mesh>
-
-        {/* NEW: Gap-filling connective tissue between all regions */}
-        {[
-          // Frontal to parietal connections
-          { pos: [-0.5, 0.6, 0], scale: [0.6, 0.5, 0.6], color: "#EADFF1" },
-          { pos: [0.5, 0.6, 0], scale: [0.6, 0.5, 0.6], color: "#EADFF1" },
-          
-          // Parietal to occipital connections
-          { pos: [-0.4, 0.15, -0.9], scale: [0.55, 0.45, 0.6], color: "#E4DCF9" },
-          { pos: [0.4, 0.15, -0.9], scale: [0.55, 0.45, 0.6], color: "#E4DCF9" },
-          
-          // Temporal to frontal connections
-          { pos: [-0.9, 0.3, 0.55], scale: [0.55, 0.5, 0.55], color: "#F9DDD0" },
-          { pos: [0.9, 0.3, 0.55], scale: [0.55, 0.5, 0.55], color: "#F9DDD0" },
-          
-          // Temporal to occipital connections
-          { pos: [-0.75, -0.15, -0.4], scale: [0.6, 0.5, 0.6], color: "#E6E2F5" },
-          { pos: [0.75, -0.15, -0.4], scale: [0.6, 0.5, 0.6], color: "#E6E2F5" },
-          
-          // Cerebellum connections
-          { pos: [-0.5, -0.65, -0.45], scale: [0.6, 0.5, 0.5], color: "#CABCF9" },
-          { pos: [0.5, -0.65, -0.45], scale: [0.6, 0.5, 0.5], color: "#CABCF9" },
-          
-          // Additional gap fillers
-          { pos: [0, 0.4, 0.5], scale: [0.8, 0.4, 0.5], color: "#EFDCE8" },
-          { pos: [0, 0.3, -0.5], scale: [0.8, 0.4, 0.5], color: "#E9F3DC" },
-          { pos: [0, -0.4, -0.3], scale: [0.8, 0.4, 0.5], color: "#D8C4F5" },
-          { pos: [0, 0, 0.5], scale: [0.7, 0.4, 0.5], color: "#FCE9DE" },
-        ].map((item, i) => (
-          <mesh key={`filler-${i}`} position={item.pos} scale={item.scale}>
-            <sphereGeometry args={[0.7, 32, 32]} />
-            <meshPhysicalMaterial
-              color={item.color}
-              roughness={0.6}
-              metalness={0.1}
-              transmission={0.2}
-              thickness={0.7}
-              clearcoat={0.25}
-              transparent={true}
-              opacity={0.85}
-            />
-          </mesh>
-        ))}
-
-        {/* Additional neural network connections */}
-        {[...Array(20)].map((_, i) => {
-          const theta = Math.random() * Math.PI * 2;
-          const phi = Math.random() * Math.PI;
-          const radius = 1.3 + Math.random() * 0.3;
-          
-          // Calculate position coordinates as a properly typed tuple
-          const x = radius * Math.sin(phi) * Math.cos(theta);
-          const y = radius * Math.sin(phi) * Math.sin(theta);
-          const z = radius * Math.cos(phi);
-          
-          // Create a properly typed position tuple with explicit type annotation
+        {/* Clouds */}
+        {[...Array(12)].map((_, i) => {
+          const scale = 0.3 + Math.random() * 0.5;
+          const x = (Math.random() - 0.5) * 8;
+          const y = 2 + Math.random() * 2;
+          const z = (Math.random() - 0.5) * 8;
           const position: [number, number, number] = [x, y, z];
           
           return (
-            <mesh key={`neural-net-${i}`} position={position} scale={[0.1, 0.1, 0.1]}>
-              <sphereGeometry args={[0.5, 12, 12]} />
-              <meshPhysicalMaterial
-                color="#FFE8DB"
-                roughness={0.6}
-                metalness={0.1}
-                transmission={0.4}
-                thickness={0.5}
-                transparent={true}
-                opacity={0.3}
-              />
+            <mesh key={`cloud-${i}`} position={position} scale={[scale, scale * 0.6, scale]}>
+              <sphereGeometry args={[1, 16, 16]} />
+              <meshBasicMaterial color="white" transparent opacity={0.8} />
             </mesh>
+          );
+        })}
+
+        {/* Trees and vegetation scattered around */}
+        {[...Array(30)].map((_, i) => {
+          const height = 0.2 + Math.random() * 0.3;
+          const x = (Math.random() - 0.5) * 8;
+          const z = (Math.random() - 0.5) * 8;
+          // Calculate y based on terrain height (simplified approximation)
+          const y = -0.3 + Math.sin(x * 0.2 * 2.0) * Math.cos(z * 0.2 * 2.0) * 0.4 * 0.5;
+          const position: [number, number, number] = [x, y, z];
+          
+          // Skip trees in water
+          if (y < -0.35) return null;
+          
+          return (
+            <group key={`tree-${i}`} position={position}>
+              {/* Tree trunk */}
+              <mesh position={[0, height/2, 0]} scale={[0.05, height, 0.05]}>
+                <cylinderGeometry />
+                <meshStandardMaterial color="#403E43" />
+              </mesh>
+              {/* Tree top */}
+              <mesh position={[0, height + 0.15, 0]} scale={[0.2, 0.3, 0.2]}>
+                <coneGeometry />
+                <meshStandardMaterial color={Math.random() > 0.5 ? "#F2FCE2" : "#D6EFBF"} />
+              </mesh>
+            </group>
           );
         })}
       </>
@@ -859,11 +235,11 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
 
   return (
     <Canvas
-      camera={{ position: [0, 0, 5], fov: 60 }}
+      camera={{ position: [0, 2, 5], fov: 60 }}
       style={{ background: 'transparent' }}
       shadows
     >
-      <Environment preset="studio" background={false} />
+      <Environment preset="sunset" background={false} />
       <ambientLight intensity={0.5} />
       <directionalLight 
         ref={directionalLightRef}
@@ -881,18 +257,18 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
         intensity={1.5}
         castShadow
       />
-      <hemisphereLight intensity={0.3} groundColor="#ff0000" />
+      <hemisphereLight intensity={0.3} groundColor="#403E43" />
 
       <group 
         rotation-y={rotation * (Math.PI / 180)}
         scale={[zoomLevel, zoomLevel, zoomLevel]}
       >
-        {/* Base brain structure - render first for proper layering */}
-        {createConnectingTissue()}
+        {/* Base terrain and environment */}
+        {createTerrainBase()}
 
-        {/* Brain regions - these will remain interactive and visible */}
-        {brainRegions.map((region) => (
-          <BrainRegion
+        {/* Cognitive regions as mountains */}
+        {cognitiveRegions.map((region) => (
+          <MountainRegion
             key={region.id}
             position={region.position}
             rotation={region.rotation}
@@ -900,11 +276,81 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
             color={region.color}
             name={region.name}
             activity={region.activity}
+            altitude={region.altitude}
             isActive={activeRegion === region.name}
             geometry={region.geometry}
             onClick={() => setActiveRegion(region.name === activeRegion ? null : region.name)}
           />
         ))}
+
+        {/* Cognitive pathways connecting regions - neural networks */}
+        {cognitiveRegions.map((startRegion, i) => 
+          cognitiveRegions.slice(i + 1).map((endRegion, j) => {
+            // Only connect some regions to avoid over-cluttering
+            if (Math.random() > 0.6) return null;
+            
+            const midPointHeight = Math.max(startRegion.altitude, endRegion.altitude) * 0.4;
+            
+            // Create control points for curved path
+            const startPoint = new THREE.Vector3(...startRegion.position);
+            const endPoint = new THREE.Vector3(...endRegion.position);
+            const midPoint = new THREE.Vector3(
+              (startPoint.x + endPoint.x) / 2,
+              -0.3 + midPointHeight,
+              (startPoint.z + endPoint.z) / 2
+            );
+            
+            const curve = new THREE.QuadraticBezierCurve3(
+              startPoint,
+              midPoint,
+              endPoint
+            );
+            
+            const points = curve.getPoints(20);
+            
+            return (
+              <line key={`connection-${startRegion.id}-${endRegion.id}`}>
+                <bufferGeometry>
+                  <bufferAttribute
+                    attach="attributes-position"
+                    array={new Float32Array(points.flatMap(p => [p.x, p.y, p.z]))}
+                    count={points.length}
+                    itemSize={3}
+                  />
+                </bufferGeometry>
+                <lineBasicMaterial 
+                  color={new THREE.Color(startRegion.color).lerp(new THREE.Color(endRegion.color), 0.5)} 
+                  linewidth={1}
+                  transparent
+                  opacity={0.5}
+                />
+              </line>
+            );
+          })
+        )}
+
+        {/* Study session indicators - particles rising from active regions */}
+        {cognitiveRegions.filter(r => r.activity > 0.5).map((region) => {
+          // Create particles based on activity level
+          const particleCount = Math.floor(region.activity * 10);
+          
+          return [...Array(particleCount)].map((_, i) => {
+            // Calculate random position near the region peak
+            const jitter = 0.2;
+            const xPos = region.position[0] + (Math.random() - 0.5) * jitter;
+            const zPos = region.position[2] + (Math.random() - 0.5) * jitter;
+            const yOffset = (i % 3) * 0.1; // Stagger heights
+            const yPos = region.position[1] + region.altitude * 0.8 + yOffset;
+            const position: [number, number, number] = [xPos, yPos, zPos];
+            
+            return (
+              <mesh key={`particle-${region.id}-${i}`} position={position} scale={[0.05, 0.05, 0.05]}>
+                <sphereGeometry args={[1, 8, 8]} />
+                <meshBasicMaterial color={region.color} transparent opacity={0.7} />
+              </mesh>
+            );
+          });
+        })}
       </group>
 
       <ContactShadows
@@ -923,8 +369,8 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
         autoRotateSpeed={0.5}
         enableDamping={true}
         dampingFactor={0.05}
-        maxPolarAngle={Math.PI - 0.2} // Limit rotation to prevent seeing "under" the brain
-        minPolarAngle={0.2} // Limit rotation to prevent seeing "over" the brain too much
+        maxPolarAngle={Math.PI / 2 - 0.1} // Limit rotation to prevent seeing "under" the terrain
+        minPolarAngle={0.1} // Limit rotation to prevent seeing "over" the scene too much
       />
       
       <BakeShadows />

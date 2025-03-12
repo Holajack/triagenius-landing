@@ -6,7 +6,7 @@ import NavigationBar from "@/components/dashboard/NavigationBar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { 
+import {
   Brain, 
   BarChart3, 
   ChartLine, 
@@ -20,7 +20,8 @@ import {
   Search,
   RotateCw,
   ZoomIn,
-  ZoomOut
+  ZoomOut,
+  Mountain
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
@@ -58,7 +59,7 @@ const Reports = () => {
           </Button>
           <div>
             <h1 className="text-2xl font-bold">Cognitive Reports</h1>
-            <p className="text-muted-foreground">Track your brain activity and learning progress</p>
+            <p className="text-muted-foreground">Track your learning progress across cognitive domains</p>
           </div>
         </div>
 
@@ -67,11 +68,11 @@ const Reports = () => {
             <Card className="shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xl flex items-center">
-                  <Brain className="h-5 w-5 mr-2 text-primary" />
-                  3D Brain Activity Map
+                  <Mountain className="h-5 w-5 mr-2 text-primary" />
+                  Cognitive Landscape Map
                 </CardTitle>
                 <CardDescription>
-                  Explore how different study activities engage various brain regions
+                  Explore how different study activities develop various cognitive regions
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -110,19 +111,6 @@ const Reports = () => {
                       zoomLevel={zoomLevel}
                       rotation={rotation}
                     />
-                    
-                    {activeRegion && (
-                      <div className="absolute bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm p-3 border-t">
-                        <h4 className="font-medium">{activeRegion} Region</h4>
-                        <p className="text-xs text-muted-foreground">
-                          {activeRegion === "Frontal Lobe" && "Critical thinking & problem solving. Active during math and coding tasks."}
-                          {activeRegion === "Temporal Lobe" && "Memory retention & language processing. Active during language learning & memorization."}
-                          {activeRegion === "Parietal Lobe" && "Sensory processing & spatial awareness. Active during visualization exercises."}
-                          {activeRegion === "Occipital Lobe" && "Visual processing. Active during reading & visual learning."}
-                          {activeRegion === "Cerebellum" && "Coordination & procedural memory. Active during repetitive practice."}
-                        </p>
-                      </div>
-                    )}
                   </div>
                 </div>
               </CardContent>
