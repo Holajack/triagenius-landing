@@ -166,7 +166,7 @@ export const BrainRegion = ({
     return createDistortedGeometry(baseGeometry);
   }, [geometry]);
 
-  // Enhanced PBR material properties for tissue-like appearance
+  // Enhanced PBR material properties for tissue-like appearance with improved transparency
   const material = useMemo(() => {
     return new THREE.MeshPhysicalMaterial({
       color: new THREE.Color(color),
@@ -183,9 +183,11 @@ export const BrainRegion = ({
       specularIntensity: 0.4,
       specularColor: new THREE.Color(0xffffff),
       attenuationColor: new THREE.Color(color).multiplyScalar(0.9),
-      attenuationDistance: 0.5
+      attenuationDistance: 0.5,
+      transparent: true,
+      opacity: isActive ? 0.95 : 0.85 // Adjust opacity to ensure regions are always visible
     });
-  }, [color]);
+  }, [color, isActive]);
 
   return (
     <mesh
