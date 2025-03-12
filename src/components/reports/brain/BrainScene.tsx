@@ -831,12 +831,12 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
           const phi = Math.random() * Math.PI;
           const radius = 1.3 + Math.random() * 0.3;
           
-          // Fix: Explicitly create a tuple with the correct type annotation
+          // Calculate each coordinate separately
           const x = radius * Math.sin(phi) * Math.cos(theta);
           const y = radius * Math.sin(phi) * Math.sin(theta);
           const z = radius * Math.cos(phi);
           
-          // Use explicit tuple type for position
+          // Create a properly typed position tuple
           const position: [number, number, number] = [x, y, z];
           
           return (
