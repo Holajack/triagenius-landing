@@ -57,12 +57,65 @@ export const TerrainSystem = ({
         
         return value;
       }
+
+      // Function to create paths between points
+      float path(vec2 p, vec2 a, vec2 b, float width) {
+        vec2 pa = p - a;
+        vec2 ba = b - a;
+        float t = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+        vec2 point = a + ba * t;
+        float dist = length(p - point);
+        return smoothstep(width, width * 0.7, dist);
+      }
       
       void main() {
         vUv = uv;
         vec3 pos = position;
         
         float elevation = fbm(pos.xy * 0.5) * ${heightMultiplier}.0;
+        
+        // Define hiking paths as coordinate pairs
+        vec2 pathStart1 = vec2(-10.0, -10.0);
+        vec2 pathEnd1 = vec2(0.0, 0.0);
+        
+        vec2 pathStart2 = vec2(10.0, -8.0);
+        vec2 pathEnd2 = vec2(5.0, 5.0);
+        
+        vec2 pathStart3 = vec2(-5.0, 10.0);
+        vec2 pathEnd3 = vec2(0.0, 0.0);
+        
+        // Create paths
+        float pathMask1 = path(pos.xy, pathStart1, pathEnd1, 0.8);
+        float pathMask2 = path(pos.xy, pathStart2, pathEnd2, 0.8);
+        float pathMask3 = path(pos.xy, pathStart3, pathEnd3, 0.8);
+        
+        // Combine paths
+        float pathMask = max(max(pathMask1, pathMask2), pathMask3);
+        
+        // Slightly flatten the paths by reducing elevation where paths exist
+        // Only flatten if the elevation is below certain threshold to preserve mountains
+        if (elevation < 2.0) {
+          elevation = mix(elevation, min(elevation, 0.5), pathMask);
+        }
+        
+        // Create water bodies (depressions)
+        float waterMask = 0.0;
+        
+        // Circular lake
+        vec2 lakeCenter1 = vec2(-8.0, 5.0);
+        float lakeDist1 = length(pos.xy - lakeCenter1);
+        waterMask = max(waterMask, smoothstep(3.5, 3.0, lakeDist1));
+        
+        // Another lake
+        vec2 lakeCenter2 = vec2(7.0, -5.0);
+        float lakeDist2 = length(pos.xy - lakeCenter2);
+        waterMask = max(waterMask, smoothstep(2.8, 2.5, lakeDist2));
+        
+        // Lower elevation for water bodies
+        if (waterMask > 0.0 && elevation < 1.0) {
+          elevation = mix(elevation, -0.5, waterMask);
+        }
+        
         pos.z += elevation;
         
         vElevation = elevation;
@@ -82,6 +135,7 @@ export const TerrainSystem = ({
         float grassLevel = 0.6;
         float sandLevel = 0.2;
         float waterLevel = 0.0;
+        float deepWaterLevel = -0.3;
         
         // Define natural mountain colors with brown tones instead of blue
         vec3 snowColor = vec3(0.95, 0.95, 0.97);
@@ -91,7 +145,9 @@ export const TerrainSystem = ({
         vec3 grassColor = vec3(0.45, 0.57, 0.32);
         vec3 sandColor = vec3(0.78, 0.73, 0.53);
         vec3 mudColor = vec3(0.6, 0.5, 0.4);
-        vec3 waterColor = vec3(0.5, 0.4, 0.35); // Brown water instead of blue
+        vec3 pathColor = vec3(0.82, 0.70, 0.55); // Light brown path color
+        vec3 waterColor = vec3(0.42, 0.37, 0.35); // Dark brown water
+        vec3 deepWaterColor = vec3(0.32, 0.28, 0.26); // Deeper brown water
         
         // Add some variation based on UV coordinates for subtle texture
         float noiseVal = fract(sin(vUv.x * 100.0 + vUv.y * 100.0) * 10000.0) * 0.05;
@@ -129,9 +185,20 @@ export const TerrainSystem = ({
           // Muddy areas near water
           float blend = (vElevation - waterLevel) / (sandLevel - waterLevel);
           terrainColor = mix(mudColor, sandColor, blend);
+          
+          // Check if we're on a path (where elevation has been artificially lowered)
+          // Use path detection based on the exact elevation values the path creates
+          if (vElevation < 0.55 && vElevation > 0.45) {
+            // Add path coloring - we blend in the path color
+            terrainColor = mix(terrainColor, pathColor, 0.7);
+          }
+        } else if (vElevation > deepWaterLevel) {
+          // Shallow water
+          float blend = (vElevation - deepWaterLevel) / (waterLevel - deepWaterLevel);
+          terrainColor = mix(deepWaterColor, waterColor, blend);
         } else {
-          // Water level (now brown instead of blue)
-          terrainColor = waterColor;
+          // Deep water
+          terrainColor = deepWaterColor;
         }
         
         // Add subtle noise variation to break up flat colors
