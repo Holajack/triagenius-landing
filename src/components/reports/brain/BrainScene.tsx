@@ -837,7 +837,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
           const z = radius * Math.cos(phi);
           
           return (
-            <mesh key={`neural-net-${i}`} position={[x, y, z]} scale={[0.1, 0.1, 0.1]}>
+            <mesh key={`neural-net-${i}`} position={[x, y, z] as [number, number, number]} scale={[0.1, 0.1, 0.1]}>
               <sphereGeometry args={[0.5, 12, 12]} />
               <meshPhysicalMaterial
                 color="#FFE8DB"
