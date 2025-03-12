@@ -3,7 +3,7 @@ import {
   OrbitControls, 
   Environment, 
   PerspectiveCamera, 
-  ContactShadows, 
+  ContactShadows,
   BakeShadows,
   useHelper,
 } from '@react-three/drei';
@@ -234,10 +234,23 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
 
   return (
     <Canvas
-      camera={{ position: [0, 2, 5], fov: 60 }}
+      gl={{ 
+        antialias: true,
+        alpha: true,
+        preserveDrawingBuffer: true
+      }}
+      dpr={[1, 2]}
+      camera={{ 
+        position: [0, 2, 5], 
+        fov: 60,
+        near: 0.1,
+        far: 1000
+      }}
       style={{ background: 'transparent' }}
       shadows
     >
+      <color attach="background" args={['#f0f0f0']} />
+      
       <Environment preset="sunset" background={false} />
       <ambientLight intensity={0.5} />
       <directionalLight 

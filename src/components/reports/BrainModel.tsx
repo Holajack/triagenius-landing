@@ -1,4 +1,5 @@
 
+import { Suspense } from 'react';
 import { BrainScene } from './brain/BrainScene';
 
 interface BrainModelProps {
@@ -11,12 +12,14 @@ interface BrainModelProps {
 const BrainModel = ({ activeRegion, setActiveRegion, zoomLevel, rotation }: BrainModelProps) => {
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <BrainScene 
-        activeRegion={activeRegion}
-        setActiveRegion={setActiveRegion}
-        zoomLevel={zoomLevel}
-        rotation={rotation}
-      />
+      <Suspense fallback={<div>Loading...</div>}>
+        <BrainScene 
+          activeRegion={activeRegion}
+          setActiveRegion={setActiveRegion}
+          zoomLevel={zoomLevel}
+          rotation={rotation}
+        />
+      </Suspense>
     </div>
   );
 };
