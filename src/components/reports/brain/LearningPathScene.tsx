@@ -1,4 +1,3 @@
-
 import { Canvas } from '@react-three/fiber';
 import { 
   OrbitControls, 
@@ -22,11 +21,11 @@ export const LearningPathScene = ({
   zoomLevel, 
   rotation 
 }: LearningPathSceneProps) => {
-  // Example path points - these would typically come from your learning progress data
+  // Example path points with explicit tuple typing for position
   const pathPoints = [
-    { position: [-5, 0, -5], type: 'basecamp' as const },
-    { position: [0, 2, 0], type: 'checkpoint' as const },
-    { position: [5, 4, 5], type: 'milestone' as const },
+    { position: [-5, 0, -5] as [number, number, number], type: 'basecamp' as const },
+    { position: [0, 2, 0] as [number, number, number], type: 'checkpoint' as const },
+    { position: [5, 4, 5] as [number, number, number], type: 'milestone' as const },
   ];
 
   return (
@@ -42,7 +41,6 @@ export const LearningPathScene = ({
       <color attach="background" args={['#f8f9fa']} />
       <fog attach="fog" args={['#e0f7fa', 30, 40]} />
       
-      {/* Lighting setup */}
       <ambientLight intensity={0.4} />
       <directionalLight 
         position={[5, 10, 5]} 
@@ -54,7 +52,6 @@ export const LearningPathScene = ({
         intensity={0.4}
       />
 
-      {/* Main scene content */}
       <group 
         rotation-y={rotation * (Math.PI / 180)}
         scale={[zoomLevel, zoomLevel, zoomLevel]}
@@ -69,7 +66,6 @@ export const LearningPathScene = ({
         />
       </group>
 
-      {/* Environment and effects */}
       <Sky
         distance={450000}
         sunPosition={[10, 5, 5]}

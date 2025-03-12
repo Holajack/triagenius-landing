@@ -1,7 +1,8 @@
 
-import { useRef, useEffect } from 'react';
+import { useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
+import { Line } from '@react-three/drei';
 
 interface PathPoint {
   position: [number, number, number];
@@ -14,7 +15,7 @@ interface PathwaySystemProps {
 }
 
 export const PathwaySystem = ({ paths, onPathClick }: PathwaySystemProps) => {
-  const pathRef = useRef<THREE.Line>(null);
+  const pathRef = useRef<THREE.Line>();
 
   // Create curved pathway between points
   const createPathGeometry = (points: PathPoint[]) => {
@@ -30,16 +31,18 @@ export const PathwaySystem = ({ paths, onPathClick }: PathwaySystemProps) => {
   return (
     <group>
       {/* Render pathway lines */}
-      <line ref={pathRef}>
-        <bufferGeometry attach="geometry" {...createPathGeometry(paths)} />
-        <lineBasicMaterial attach="material" color="#FFD700" linewidth={3} />
-      </line>
+      <Line
+        ref={pathRef}
+        points={paths.map(p => p.position).flat()}
+        color="#FFD700"
+        lineWidth={3}
+      />
       
       {/* Render checkpoints */}
       {paths.map((point, index) => (
         <mesh
           key={index}
-          position={new THREE.Vector3(...point.position)}
+          position={point.position}
           onClick={() => onPathClick?.(point)}
         >
           <sphereGeometry args={[0.2, 32, 32]} />
@@ -53,4 +56,3 @@ export const PathwaySystem = ({ paths, onPathClick }: PathwaySystemProps) => {
     </group>
   );
 };
-
