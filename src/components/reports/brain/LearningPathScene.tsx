@@ -6,6 +6,7 @@ import {
   ContactShadows,
   BakeShadows,
   Sky,
+  useGLTF
 } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -21,8 +22,9 @@ export const LearningPathScene = ({ activeSubject, setActiveSubject, zoomLevel, 
     return (
       <>
         <mesh position={[0, -0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[30, 30, 128, 128]} />
+          <planeGeometry args={[30, 30, 64, 64]} />
           <meshStandardMaterial
+            color="#4a8505"
             roughness={0.9}
             metalness={0.1}
             wireframe={false}
@@ -40,41 +42,31 @@ export const LearningPathScene = ({ activeSubject, setActiveSubject, zoomLevel, 
                 `
                 #include <begin_vertex>
                 
-                // Terrain generation parameters
-                float amplitude = 4.0; // Increased amplitude for more dramatic terrain
-                float frequency = 0.2; // Adjusted frequency
+                // Base terrain remains flat but with slight variations
+                float amplitude = 2.0;
+                float frequency = 0.15;
                 
-                // Primary mountains (large features)
+                // Create gentle hills and valleys
                 float noise1 = sin(position.x * frequency) * cos(position.z * frequency) * amplitude;
+                float noise2 = sin(position.x * frequency * 2.0) * cos(position.z * frequency * 2.0) * amplitude * 0.3;
                 
-                // Secondary ridges (medium features)
-                float noise2 = sin(position.x * frequency * 3.0) * cos(position.z * frequency * 2.0) * amplitude * 0.4;
+                // Edge water features
+                float edgeWater = smoothstep(14.0, 15.0, abs(position.x)) + smoothstep(14.0, 15.0, abs(position.z));
+                float waterDepth = -1.0;
                 
-                // Fine details
-                float noise3 = sin(position.x * frequency * 5.0) * cos(position.z * frequency * 5.0) * amplitude * 0.2;
+                // Combine features
+                float elevation = noise1 + noise2;
+                elevation = mix(elevation, waterDepth, edgeWater);
                 
-                // Combine different noise layers
-                float mountainHeight = noise1 + noise2 + noise3;
+                transformed.y += elevation;
+                vElevation = elevation;
                 
-                // Create plateaus
-                float plateauFactor = smoothstep(0.3, 0.7, sin(position.x * 0.1) * sin(position.z * 0.1));
-                mountainHeight *= mix(1.0, 0.5, plateauFactor);
-                
-                // Create valleys
-                float valleyDepth = smoothstep(-0.5, 0.5, sin(position.x * 0.05) + cos(position.z * 0.05));
-                mountainHeight *= mix(0.2, 1.0, valleyDepth);
-                
-                // Apply height
-                transformed.y += mountainHeight;
-                
-                // Calculate normal based on the terrain height
+                // Update normal for lighting
                 objectNormal = normalize(vec3(
                   noise1 - sin((position.x + 0.01) * frequency) * cos(position.z * frequency) * amplitude,
                   1.0,
                   noise1 - sin(position.x * frequency) * cos((position.z + 0.01) * frequency) * amplitude
                 ));
-                
-                vElevation = mountainHeight;
                 `
               );
               
@@ -88,37 +80,30 @@ export const LearningPathScene = ({ activeSubject, setActiveSubject, zoomLevel, 
                 `
                 #include <color_fragment>
                 
-                // Calculate normalized elevation value for color mapping
-                float normalizedElevation = (vElevation + 4.0) / 8.0; // Adjusted range for better color distribution
+                // Normalized elevation for coloring
+                float normalizedElevation = (vElevation + 2.0) / 4.0;
                 
-                // Enhanced color palette with more defined transitions
-                vec3 waterColor = vec3(0.1, 0.4, 0.8);      // Deeper blue for water
-                vec3 shoreColor = vec3(0.76, 0.7, 0.5);     // Sandy shore
-                vec3 grassColor = vec3(0.3, 0.5, 0.2);      // Dark grass
-                vec3 forestColor = vec3(0.2, 0.35, 0.1);    // Forest green
-                vec3 rockColor = vec3(0.5, 0.5, 0.5);       // Gray rock
-                vec3 snowColor = vec3(0.95, 0.95, 0.95);    // Snow white
+                // Color palette
+                vec3 baseGreen = vec3(0.29, 0.52, 0.03);  // Base terrain green
+                vec3 waterColor = vec3(0.1, 0.4, 0.8);    // Deep blue water
+                vec3 shoreColor = vec3(0.76, 0.7, 0.5);   // Sandy shore
+                vec3 rockColor = vec3(0.5, 0.5, 0.5);     // Gray rocks
+                vec3 snowColor = vec3(0.95, 0.95, 0.95);  // Snow caps
                 
-                // More defined color mapping with smoother transitions
-                vec3 terrainColor;
+                // Color blending
+                vec3 terrainColor = baseGreen;  // Start with base green
+                
+                // Add water at the edges and low points
                 if (normalizedElevation < 0.2) {
-                    float t = normalizedElevation / 0.2;
-                    terrainColor = mix(waterColor, shoreColor, smoothstep(0.0, 1.0, t));
-                } else if (normalizedElevation < 0.4) {
-                    float t = (normalizedElevation - 0.2) / 0.2;
-                    terrainColor = mix(shoreColor, grassColor, smoothstep(0.0, 1.0, t));
-                } else if (normalizedElevation < 0.6) {
-                    float t = (normalizedElevation - 0.4) / 0.2;
-                    terrainColor = mix(grassColor, forestColor, smoothstep(0.0, 1.0, t));
-                } else if (normalizedElevation < 0.8) {
-                    float t = (normalizedElevation - 0.6) / 0.2;
-                    terrainColor = mix(forestColor, rockColor, smoothstep(0.0, 1.0, t));
-                } else {
-                    float t = (normalizedElevation - 0.8) / 0.2;
-                    terrainColor = mix(rockColor, snowColor, smoothstep(0.0, 1.0, t));
+                    float t = smoothstep(0.0, 0.2, normalizedElevation);
+                    terrainColor = mix(waterColor, shoreColor, t);
+                } else if (normalizedElevation > 0.8) {
+                    float t = smoothstep(0.8, 1.0, normalizedElevation);
+                    terrainColor = mix(baseGreen, rockColor, t);
+                    t = smoothstep(0.9, 1.0, normalizedElevation);
+                    terrainColor = mix(terrainColor, snowColor, t);
                 }
                 
-                // Apply the terrain color, completely replacing the default color
                 diffuseColor.rgb = terrainColor;
                 `
               );
@@ -132,9 +117,68 @@ export const LearningPathScene = ({ activeSubject, setActiveSubject, zoomLevel, 
           />
         </mesh>
 
+        {/* Add environmental objects */}
+        <group>
+          {/* Water planes at edges */}
+          <mesh position={[0, -1.5, 15]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[32, 4]} />
+            <meshStandardMaterial color="#2196f3" transparent opacity={0.8} />
+          </mesh>
+          <mesh position={[0, -1.5, -15]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[32, 4]} />
+            <meshStandardMaterial color="#2196f3" transparent opacity={0.8} />
+          </mesh>
+          <mesh position={[15, -1.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[4, 32]} />
+            <meshStandardMaterial color="#2196f3" transparent opacity={0.8} />
+          </mesh>
+          <mesh position={[-15, -1.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[4, 32]} />
+            <meshStandardMaterial color="#2196f3" transparent opacity={0.8} />
+          </mesh>
+
+          {/* Trees */}
+          {Array.from({ length: 20 }).map((_, i) => (
+            <group key={i} position={[
+              Math.random() * 20 - 10,
+              0,
+              Math.random() * 20 - 10
+            ]}>
+              <mesh position={[0, 1, 0]}>
+                <coneGeometry args={[0.5, 1.5, 8]} />
+                <meshStandardMaterial color="#2d5a27" />
+              </mesh>
+              <mesh position={[0, 0, 0]}>
+                <cylinderGeometry args={[0.1, 0.1, 1]} />
+                <meshStandardMaterial color="#3e2723" />
+              </mesh>
+            </group>
+          ))}
+
+          {/* Rocks */}
+          {Array.from({ length: 10 }).map((_, i) => (
+            <mesh 
+              key={`rock-${i}`}
+              position={[
+                Math.random() * 24 - 12,
+                0,
+                Math.random() * 24 - 12
+              ]}
+              rotation={[
+                Math.random() * Math.PI,
+                Math.random() * Math.PI,
+                Math.random() * Math.PI
+              ]}
+            >
+              <octahedronGeometry args={[0.3 + Math.random() * 0.3]} />
+              <meshStandardMaterial color="#757575" roughness={0.9} />
+            </mesh>
+          ))}
+        </group>
+
         <Sky
           distance={450000}
-          sunPosition={[5, 3, 8]} // Adjusted sun position for better lighting
+          sunPosition={[5, 3, 8]}
           inclination={0.5}
           azimuth={0.25}
         />
