@@ -28,17 +28,21 @@ const BrainModel = ({ activeRegion, setActiveRegion, zoomLevel, rotation }: Brai
   const getRegionDescription = (regionName: string | null) => {
     switch (regionName) {
       case "Frontal Lobe":
-        return "Executive function center responsible for decision-making, planning, problem-solving, self-control, and complex cognitive behaviors. Critical for personality, working memory, and higher-order thinking. Most active during analytical tasks and critical reasoning.";
+        return "The largest lobe of the brain, located at the front. Executive function center responsible for decision-making, planning, problem-solving, self-control, and complex cognitive behaviors. Critical for personality, working memory, and higher-order thinking. Most active during analytical tasks and critical reasoning.";
       case "Temporal Lobe":
-        return "Processes auditory information and plays a key role in language comprehension, memory formation, and emotion regulation. Houses the hippocampus for long-term memory and amygdala for emotional processing. Essential for verbal learning and memory retrieval.";
+        return "Located on the sides of the brain beneath the lateral fissure. Processes auditory information and plays a key role in language comprehension, memory formation, and emotion regulation. Houses the hippocampus for long-term memory and amygdala for emotional processing. Essential for verbal learning and memory retrieval.";
       case "Parietal Lobe":
-        return "Integrates sensory information and spatial awareness. Responsible for processing touch, pressure, temperature, and pain. Crucial for mathematics, reading comprehension, and navigation tasks requiring spatial orientation and body awareness.";
+        return "Located behind the frontal lobe and above the temporal lobe. Integrates sensory information and spatial awareness. Responsible for processing touch, pressure, temperature, and pain. Crucial for mathematics, reading comprehension, and navigation tasks requiring spatial orientation and body awareness.";
       case "Occipital Lobe":
-        return "Primary visual processing center that interprets signals from the retina. Processes visual information including color, form, motion, and spatial relationships. Essential for reading, visual learning, pattern recognition, and interpreting symbols and diagrams.";
+        return "Located at the back of the brain. Primary visual processing center that interprets signals from the retina. Processes visual information including color, form, motion, and spatial relationships. Essential for reading, visual learning, pattern recognition, and interpreting symbols and diagrams.";
       case "Cerebellum":
-        return "Controls coordination, precision, and timing of movements. Plays a role in motor learning, balance, posture, and fine muscle control. Recent research shows it's also involved in cognitive functions including attention and language processing.";
+        return "Located at the base of the brain below the occipital lobe. Controls coordination, precision, and timing of movements. Plays a role in motor learning, balance, posture, and fine muscle control. Recent research shows it's also involved in cognitive functions including attention and language processing.";
       case "Brain Stem":
-        return "Connects the brain to the spinal cord and controls basic life functions including breathing, heart rate, blood pressure, and sleep cycles. Manages alertness, consciousness, and maintains the autonomic nervous system. Critical for concentration and arousal.";
+        return "Located at the base of the brain, connecting to the spinal cord. Controls basic life functions including breathing, heart rate, blood pressure, and sleep cycles. Manages alertness, consciousness, and maintains the autonomic nervous system. Critical for concentration and arousal.";
+      case "Hippocampus":
+        return "Deep structure within the temporal lobe shaped like a seahorse. Essential for forming new memories, particularly declarative memories for facts and events. Crucial for spatial navigation and orientation. Damage to the hippocampus causes anterograde amnesia - the inability to form new memories.";
+      case "Thalamus":
+        return "Located near the center of the brain. Acts as the brain's relay station, processing and transmitting almost all sensory information to the cerebral cortex. Plays a role in regulating consciousness, sleep, and alertness. Helps filter relevant sensory information from background noise.";
       default:
         return "";
     }
@@ -58,6 +62,10 @@ const BrainModel = ({ activeRegion, setActiveRegion, zoomLevel, rotation }: Brai
         return "Motor learning, balance, coordination, timing";
       case "Brain Stem":
         return "Vital functions, alertness, attention regulation";
+      case "Hippocampus":
+        return "Memory formation, spatial navigation, learning";
+      case "Thalamus":
+        return "Sensory relay, information filtering, consciousness";
       default:
         return "";
     }

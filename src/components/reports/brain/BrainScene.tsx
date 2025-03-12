@@ -6,7 +6,8 @@ import {
   PerspectiveCamera, 
   ContactShadows, 
   BakeShadows,
-  useHelper
+  useHelper,
+  useGLTF
 } from '@react-three/drei';
 import { BrainRegion } from './BrainRegion';
 import { useRef } from 'react';
@@ -20,7 +21,7 @@ interface BrainSceneProps {
 }
 
 export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation }: BrainSceneProps) => {
-  // Define brain regions with anatomically-inspired positions and shapes
+  // Define anatomically positioned brain regions
   const brainRegions = [
     {
       id: "frontal",
@@ -28,7 +29,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
       position: [0, 0.7, 0.8] as [number, number, number],
       scale: [1.2, 1.1, 1.1] as [number, number, number],
       rotation: [0.2, 0, 0] as [number, number, number],
-      color: "#D946EF",
+      color: "#D946EF", // Pinkish-red color
       activity: 0.85,
       geometry: "frontal"
     },
@@ -38,7 +39,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
       position: [-1.0, -0.1, 0.3] as [number, number, number],
       scale: [1.0, 0.8, 0.9] as [number, number, number],
       rotation: [0, 0.2, 0] as [number, number, number],
-      color: "#FEF7CD",
+      color: "#FEF7CD", // Yellow-green color
       activity: 0.6,
       geometry: "temporal"
     },
@@ -48,7 +49,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
       position: [0, 0.5, -0.7] as [number, number, number],
       scale: [1.0, 0.9, 1.0] as [number, number, number],
       rotation: [-0.3, 0, 0] as [number, number, number],
-      color: "#F2FCE2",
+      color: "#F2FCE2", // Green color
       activity: 0.75,
       geometry: "parietal"
     },
@@ -58,7 +59,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
       position: [0, -0.2, -1.1] as [number, number, number],
       scale: [0.9, 0.8, 0.9] as [number, number, number],
       rotation: [-0.4, 0, 0] as [number, number, number],
-      color: "#D6BCFA", 
+      color: "#D6BCFA", // Light purple color
       activity: 0.4,
       geometry: "occipital"
     },
@@ -68,7 +69,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
       position: [0, -0.8, -0.5] as [number, number, number],
       scale: [1.2, 0.7, 1.0] as [number, number, number],
       rotation: [0.3, 0, 0] as [number, number, number],
-      color: "#8B5CF6",
+      color: "#8B5CF6", // Deep purple color
       activity: 0.5,
       geometry: "cerebellum"
     },
@@ -78,14 +79,82 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
       position: [0, -1.5, 0] as [number, number, number],
       scale: [0.7, 0.7, 0.7] as [number, number, number],
       rotation: [0.1, 0, 0] as [number, number, number],
-      color: "#0EA5E9",
+      color: "#0EA5E9", // Blue color
       activity: 0.55,
       geometry: "brainstem"
     }
   ];
 
-  // Setup lighting
+  // Add additional anatomically accurate regions for a more complete brain model
+  const additionalRegions = [
+    {
+      id: "temporal_right",
+      name: "Temporal Lobe",
+      position: [1.0, -0.1, 0.3] as [number, number, number],
+      scale: [1.0, 0.8, 0.9] as [number, number, number],
+      rotation: [0, -0.2, 0] as [number, number, number],
+      color: "#FEF7CD", // Same as left temporal
+      activity: 0.6,
+      geometry: "temporal"
+    },
+    {
+      id: "frontal_right",
+      name: "Frontal Lobe",
+      position: [0.7, 0.7, 0.6] as [number, number, number],
+      scale: [0.9, 1.0, 0.9] as [number, number, number],
+      rotation: [0.2, 0, 0] as [number, number, number],
+      color: "#D946EF", // Same as left frontal
+      activity: 0.8,
+      geometry: "frontal"
+    },
+    {
+      id: "parietal_right",
+      name: "Parietal Lobe",
+      position: [0.7, 0.5, -0.7] as [number, number, number],
+      scale: [0.9, 0.9, 0.9] as [number, number, number],
+      rotation: [-0.3, 0, 0] as [number, number, number],
+      color: "#F2FCE2", // Same as left parietal
+      activity: 0.7,
+      geometry: "parietal"
+    },
+    {
+      id: "thalamus",
+      name: "Thalamus",
+      position: [0, 0, 0] as [number, number, number],
+      scale: [0.5, 0.5, 0.5] as [number, number, number],
+      rotation: [0, 0, 0] as [number, number, number],
+      color: "#FDE1D3", // Soft peach
+      activity: 0.9,
+      geometry: "sphere"
+    },
+    {
+      id: "hippocampus_left",
+      name: "Hippocampus",
+      position: [-0.5, -0.3, 0] as [number, number, number],
+      scale: [0.4, 0.3, 0.7] as [number, number, number],
+      rotation: [0, 0.5, 0] as [number, number, number],
+      color: "#E5DEFF", // Soft purple
+      activity: 0.75,
+      geometry: "sphere"
+    },
+    {
+      id: "hippocampus_right",
+      name: "Hippocampus",
+      position: [0.5, -0.3, 0] as [number, number, number],
+      scale: [0.4, 0.3, 0.7] as [number, number, number],
+      rotation: [0, -0.5, 0] as [number, number, number],
+      color: "#E5DEFF", // Soft purple
+      activity: 0.75,
+      geometry: "sphere"
+    }
+  ];
+
+  // Combine all regions
+  const allBrainRegions = [...brainRegions, ...additionalRegions];
+
+  // Setup enhanced lighting system
   const spotLightRef = useRef<THREE.SpotLight>(null);
+  const directionalLightRef = useRef<THREE.DirectionalLight>(null);
 
   return (
     <Canvas
@@ -97,6 +166,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
       <Environment preset="studio" background={false} />
       <ambientLight intensity={0.5} />
       <directionalLight 
+        ref={directionalLightRef}
         position={[5, 5, 5]} 
         intensity={1} 
         castShadow 
@@ -120,7 +190,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
       >
         {/* Transparent outer brain shell to give sense of unity */}
         <mesh position={[0, 0, 0]} scale={[1.5, 1.3, 1.4]}>
-          <sphereGeometry args={[1, 24, 24]} />
+          <sphereGeometry args={[1, 32, 32]} />
           <meshPhysicalMaterial
             color="#ffffff"
             transparent={true}
@@ -132,8 +202,19 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
           />
         </mesh>
 
+        {/* Corpus callosum - connection between hemispheres */}
+        <mesh position={[0, 0.1, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.15, 0.15, 1.6, 16]} />
+          <meshPhysicalMaterial
+            color="#FDE1D3"
+            roughness={0.7}
+            clearcoat={0.2}
+            clearcoatRoughness={0.2}
+          />
+        </mesh>
+
         {/* Brain regions */}
-        {brainRegions.map((region) => (
+        {allBrainRegions.map((region) => (
           <BrainRegion
             key={region.id}
             position={region.position}
@@ -143,7 +224,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
             name={region.name}
             activity={region.activity}
             isActive={activeRegion === region.name}
-            geometry={region.id as string}
+            geometry={region.geometry}
             onClick={() => setActiveRegion(region.name === activeRegion ? null : region.name)}
           />
         ))}
