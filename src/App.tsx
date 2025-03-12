@@ -16,6 +16,7 @@ import Community from "./pages/Community";
 import Chat from "./pages/Chat";
 import StudyRoom from "./pages/StudyRoom";
 import Reports from "./pages/Reports";
+import Profile from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
               <Route path="/community/chat/:id" element={<Chat />} />
               <Route path="/study-room/:id" element={<StudyRoom />} />
               <Route path="/reports" element={<Reports />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

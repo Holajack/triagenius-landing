@@ -3,12 +3,14 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { LayoutDashboard, Bot, BarChart3, UserCircle2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOnboarding } from "@/contexts/OnboardingContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 
 const NavigationBar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { state } = useOnboarding();
+  const { theme } = useTheme();
   
   // Get accent color based on environment
   const getAccentColor = () => {
@@ -56,7 +58,7 @@ const NavigationBar = () => {
   ];
   
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-background border-t z-50">
+    <div className={`fixed bottom-0 left-0 right-0 bg-background border-t z-50 ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-around items-center">
           {navItems.map((item) => (
