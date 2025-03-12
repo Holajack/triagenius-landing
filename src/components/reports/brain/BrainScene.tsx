@@ -1,14 +1,12 @@
+
 import { Canvas } from '@react-three/fiber';
 import { 
   OrbitControls, 
   Environment, 
-  PerspectiveCamera, 
   ContactShadows,
   BakeShadows,
-  useHelper,
 } from '@react-three/drei';
 import { MountainRegion } from './MountainRegion';
-import { useRef } from 'react';
 import * as THREE from 'three';
 
 interface BrainSceneProps {
@@ -121,59 +119,26 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     },
   ];
 
-  const spotLightRef = useRef<THREE.SpotLight>(null);
-  const directionalLightRef = useRef<THREE.DirectionalLight>(null);
-
   const createTerrainBase = () => {
     return (
       <>
         {/* Base terrain */}
         <mesh position={[0, -0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[10, 10, 64, 64]} />
-          <meshPhysicalMaterial
+          <meshStandardMaterial
             color="#8E9196"
             roughness={0.8}
             metalness={0.1}
-            displacementScale={0.4}
-            displacementBias={-0.2}
-            onBeforeCompile={(shader) => {
-              shader.uniforms.time = { value: 0 };
-              shader.vertexShader = `
-                uniform float time;
-                ${shader.vertexShader}
-              `.replace(
-                '#include <begin_vertex>',
-                `
-                #include <begin_vertex>
-                
-                float frequency = 0.2;
-                float amplitude = 0.4;
-                
-                // Base terrain
-                transformed.y += sin(transformed.x * frequency * 2.0) * cos(transformed.z * frequency * 2.0) * amplitude * 0.5;
-                
-                // Add some variation
-                transformed.y += sin(transformed.x * frequency * 4.0 + 1.5) * sin(transformed.z * frequency * 3.0 + 0.5) * amplitude * 0.25;
-                transformed.y += cos(transformed.x * frequency * 3.0 + 2.0) * sin(transformed.z * frequency * 5.0 + 1.0) * amplitude * 0.125;
-                
-                // Flatten some areas 
-                transformed.y *= 1.0 - smoothstep(0.0, 0.4, length(vec2(transformed.x, transformed.z) * 0.2));
-                `
-              );
-            }}
           />
         </mesh>
 
         {/* Water surface */}
         <mesh position={[0, -0.4, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[12, 12]} />
-          <meshPhysicalMaterial
+          <meshStandardMaterial
             color="#33C3F0"
             roughness={0.1}
             metalness={0.1}
-            transmission={0.6}
-            thickness={0.5}
-            ior={1.4}
             transparent={true}
             opacity={0.6}
           />
@@ -237,37 +202,22 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
       gl={{ 
         antialias: true,
         alpha: true,
-        preserveDrawingBuffer: true
+        powerPreference: 'high-performance',
+        preserveDrawingBuffer: true,
+        failIfMajorPerformanceCaveat: false,
       }}
-      dpr={[1, 2]}
-      camera={{ 
-        position: [0, 2, 5], 
-        fov: 60,
-        near: 0.1,
-        far: 1000
-      }}
+      dpr={[1, 1.5]} // Reduced DPR for better performance
+      frameloop="demand"
+      shadows={false} // Disable shadows for performance
       style={{ background: 'transparent' }}
-      shadows
     >
       <color attach="background" args={['#f0f0f0']} />
       
       <Environment preset="sunset" background={false} />
       <ambientLight intensity={0.5} />
       <directionalLight 
-        ref={directionalLightRef}
         position={[5, 5, 5]} 
         intensity={1} 
-        castShadow 
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-      />
-      <spotLight
-        ref={spotLightRef}
-        position={[-5, 5, 5]}
-        angle={0.3}
-        penumbra={0.8}
-        intensity={1.5}
-        castShadow
       />
       <hemisphereLight intensity={0.3} groundColor="#403E43" />
 
@@ -294,75 +244,6 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
             onClick={() => setActiveRegion(region.name === activeRegion ? null : region.name)}
           />
         ))}
-
-        {/* Cognitive pathways connecting regions - neural networks */}
-        {cognitiveRegions.map((startRegion, i) => 
-          cognitiveRegions.slice(i + 1).map((endRegion, j) => {
-            // Only connect some regions to avoid over-cluttering
-            if (Math.random() > 0.6) return null;
-            
-            const midPointHeight = Math.max(startRegion.altitude, endRegion.altitude) * 0.4;
-            
-            // Create control points for curved path
-            const startPoint = new THREE.Vector3(...startRegion.position);
-            const endPoint = new THREE.Vector3(...endRegion.position);
-            const midPoint = new THREE.Vector3(
-              (startPoint.x + endPoint.x) / 2,
-              -0.3 + midPointHeight,
-              (startPoint.z + endPoint.z) / 2
-            );
-            
-            const curve = new THREE.QuadraticBezierCurve3(
-              startPoint,
-              midPoint,
-              endPoint
-            );
-            
-            const points = curve.getPoints(20);
-            
-            return (
-              <line key={`connection-${startRegion.id}-${endRegion.id}`}>
-                <bufferGeometry>
-                  <bufferAttribute
-                    attach="attributes-position"
-                    array={new Float32Array(points.flatMap(p => [p.x, p.y, p.z]))}
-                    count={points.length}
-                    itemSize={3}
-                  />
-                </bufferGeometry>
-                <lineBasicMaterial 
-                  color={new THREE.Color(startRegion.color).lerp(new THREE.Color(endRegion.color), 0.5)} 
-                  linewidth={1}
-                  transparent
-                  opacity={0.5}
-                />
-              </line>
-            );
-          })
-        )}
-
-        {/* Study session indicators - particles rising from active regions */}
-        {cognitiveRegions.filter(r => r.activity > 0.5).map((region) => {
-          // Create particles based on activity level
-          const particleCount = Math.floor(region.activity * 10);
-          
-          return [...Array(particleCount)].map((_, i) => {
-            // Calculate random position near the region peak
-            const jitter = 0.2;
-            const xPos = region.position[0] + (Math.random() - 0.5) * jitter;
-            const zPos = region.position[2] + (Math.random() - 0.5) * jitter;
-            const yOffset = (i % 3) * 0.1; // Stagger heights
-            const yPos = region.position[1] + region.altitude * 0.8 + yOffset;
-            const position: [number, number, number] = [xPos, yPos, zPos];
-            
-            return (
-              <mesh key={`particle-${region.id}-${i}`} position={position} scale={[0.05, 0.05, 0.05]}>
-                <sphereGeometry args={[1, 8, 8]} />
-                <meshBasicMaterial color={region.color} transparent opacity={0.7} />
-              </mesh>
-            );
-          });
-        })}
       </group>
 
       <ContactShadows
@@ -381,8 +262,8 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
         autoRotateSpeed={0.5}
         enableDamping={true}
         dampingFactor={0.05}
-        maxPolarAngle={Math.PI / 2 - 0.1} // Limit rotation to prevent seeing "under" the terrain
-        minPolarAngle={0.1} // Limit rotation to prevent seeing "over" the scene too much
+        maxPolarAngle={Math.PI / 2 - 0.1}
+        minPolarAngle={0.1}
       />
       
       <BakeShadows />

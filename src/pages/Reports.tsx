@@ -107,14 +107,12 @@ const Reports = () => {
                   
                   <div className="relative h-[400px] bg-black/5 rounded-md overflow-hidden">
                     <ErrorBoundary fallback={<div className="flex items-center justify-center h-full">Error loading 3D visualization</div>}>
-                      <Suspense fallback={<div className="flex items-center justify-center h-full">Loading 3D visualization...</div>}>
-                        <BrainModel 
-                          activeRegion={activeRegion} 
-                          setActiveRegion={setActiveRegion}
-                          zoomLevel={zoomLevel}
-                          rotation={rotation}
-                        />
-                      </Suspense>
+                      <BrainModel 
+                        activeRegion={activeRegion} 
+                        setActiveRegion={setActiveRegion}
+                        zoomLevel={zoomLevel}
+                        rotation={rotation}
+                      />
                     </ErrorBoundary>
                   </div>
                 </div>
