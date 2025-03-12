@@ -1,3 +1,4 @@
+
 import { Canvas } from '@react-three/fiber';
 import { 
   OrbitControls, 
@@ -40,8 +41,8 @@ export const LearningPathScene = ({ activeSubject, setActiveSubject, zoomLevel, 
                 #include <begin_vertex>
                 
                 // Terrain generation parameters
-                float amplitude = 3.0;
-                float frequency = 0.15;
+                float amplitude = 4.0; // Increased amplitude for more dramatic terrain
+                float frequency = 0.2; // Adjusted frequency
                 
                 // Primary mountains (large features)
                 float noise1 = sin(position.x * frequency) * cos(position.z * frequency) * amplitude;
@@ -87,34 +88,37 @@ export const LearningPathScene = ({ activeSubject, setActiveSubject, zoomLevel, 
                 `
                 #include <color_fragment>
                 
-                float normalizedElevation = (vElevation + 3.0) / 6.0;
+                // Calculate normalized elevation value for color mapping
+                float normalizedElevation = (vElevation + 4.0) / 8.0; // Adjusted range for better color distribution
                 
-                // Enhanced color palette
-                vec3 waterColor = vec3(0.2, 0.5, 0.8);     // Deep blue for water
-                vec3 shoreColor = vec3(0.76, 0.7, 0.5);    // Sandy shore
-                vec3 grassColor = vec3(0.3, 0.5, 0.2);     // Dark grass
-                vec3 forestColor = vec3(0.2, 0.35, 0.1);   // Forest green
-                vec3 rockColor = vec3(0.6, 0.6, 0.6);      // Gray rock
-                vec3 snowColor = vec3(0.95, 0.95, 0.95);   // Snow white
+                // Enhanced color palette with more defined transitions
+                vec3 waterColor = vec3(0.1, 0.4, 0.8);      // Deeper blue for water
+                vec3 shoreColor = vec3(0.76, 0.7, 0.5);     // Sandy shore
+                vec3 grassColor = vec3(0.3, 0.5, 0.2);      // Dark grass
+                vec3 forestColor = vec3(0.2, 0.35, 0.1);    // Forest green
+                vec3 rockColor = vec3(0.5, 0.5, 0.5);       // Gray rock
+                vec3 snowColor = vec3(0.95, 0.95, 0.95);    // Snow white
                 
+                // More defined color mapping with smoother transitions
                 vec3 terrainColor;
                 if (normalizedElevation < 0.2) {
                     float t = normalizedElevation / 0.2;
-                    terrainColor = mix(waterColor, shoreColor, t);
+                    terrainColor = mix(waterColor, shoreColor, smoothstep(0.0, 1.0, t));
                 } else if (normalizedElevation < 0.4) {
                     float t = (normalizedElevation - 0.2) / 0.2;
-                    terrainColor = mix(shoreColor, grassColor, t);
+                    terrainColor = mix(shoreColor, grassColor, smoothstep(0.0, 1.0, t));
                 } else if (normalizedElevation < 0.6) {
                     float t = (normalizedElevation - 0.4) / 0.2;
-                    terrainColor = mix(grassColor, forestColor, t);
+                    terrainColor = mix(grassColor, forestColor, smoothstep(0.0, 1.0, t));
                 } else if (normalizedElevation < 0.8) {
                     float t = (normalizedElevation - 0.6) / 0.2;
-                    terrainColor = mix(forestColor, rockColor, t);
+                    terrainColor = mix(forestColor, rockColor, smoothstep(0.0, 1.0, t));
                 } else {
                     float t = (normalizedElevation - 0.8) / 0.2;
-                    terrainColor = mix(rockColor, snowColor, t);
+                    terrainColor = mix(rockColor, snowColor, smoothstep(0.0, 1.0, t));
                 }
                 
+                // Apply the terrain color, completely replacing the default color
                 diffuseColor.rgb = terrainColor;
                 `
               );
@@ -130,7 +134,7 @@ export const LearningPathScene = ({ activeSubject, setActiveSubject, zoomLevel, 
 
         <Sky
           distance={450000}
-          sunPosition={[5, 1, 0]}
+          sunPosition={[5, 3, 8]} // Adjusted sun position for better lighting
           inclination={0.5}
           azimuth={0.25}
         />
