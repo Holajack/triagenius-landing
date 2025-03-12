@@ -1,3 +1,4 @@
+
 import { Canvas } from '@react-three/fiber';
 import { 
   OrbitControls, 
@@ -21,11 +22,15 @@ export const LearningPathScene = ({
   zoomLevel, 
   rotation 
 }: LearningPathSceneProps) => {
-  // Example path points with explicit tuple typing for position
+  // Path points to match the mountain peaks defined in the vertex shader
   const pathPoints = [
-    { position: [-5, 0, -5] as [number, number, number], type: 'basecamp' as const },
-    { position: [0, 2, 0] as [number, number, number], type: 'checkpoint' as const },
-    { position: [5, 4, 5] as [number, number, number], type: 'milestone' as const },
+    { position: [0, 0, 0] as [number, number, number], type: 'basecamp' as const },
+    { position: [-10, 4, 8] as [number, number, number], type: 'milestone' as const },
+    { position: [12, 5, 6] as [number, number, number], type: 'checkpoint' as const },
+    { position: [8, 4, -10] as [number, number, number], type: 'milestone' as const },
+    { position: [-5, 4, -12] as [number, number, number], type: 'checkpoint' as const },
+    { position: [-12, 4, -3] as [number, number, number], type: 'milestone' as const },
+    { position: [5, 5, 12] as [number, number, number], type: 'checkpoint' as const },
   ];
 
   return (
@@ -35,7 +40,7 @@ export const LearningPathScene = ({
         powerPreference: 'high-performance',
       }}
       dpr={[1, 1.5]}
-      camera={{ position: [0, 8, 15], fov: 45 }}
+      camera={{ position: [0, 10, 20], fov: 45 }}
       shadows
     >
       <color attach="background" args={['#f8f9fa']} />
@@ -56,12 +61,16 @@ export const LearningPathScene = ({
         rotation-y={rotation * (Math.PI / 180)}
         scale={[zoomLevel, zoomLevel, zoomLevel]}
       >
-        <TerrainSystem />
+        <TerrainSystem 
+          resolution={128}
+          size={30}
+          heightMultiplier={5}
+        />
         <PathwaySystem 
           paths={pathPoints}
           onPathClick={(point) => {
             console.log('Clicked pathway point:', point);
-            // Handle pathway interactions here
+            setActiveSubject(point.type);
           }}
         />
       </group>
