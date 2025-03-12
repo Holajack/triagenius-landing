@@ -1,4 +1,6 @@
 
+import { noiseUtils } from './terrainUtils';
+
 export const createVertexShader = (heightMultiplier: number) => `
 uniform float time;
 varying vec2 vUv;
