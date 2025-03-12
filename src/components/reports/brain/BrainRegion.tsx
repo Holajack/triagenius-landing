@@ -1,9 +1,7 @@
-
-import { useRef, useState, useMemo } from 'react';
+import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Mesh } from 'three';
 import * as THREE from 'three';
-import { useTexture, MeshDistortMaterial } from '@react-three/drei';
 
 interface BrainRegionProps {
   position: [number, number, number];
@@ -28,196 +26,165 @@ export const BrainRegion = ({
   geometry = 'sphere',
   onClick
 }: BrainRegionProps) => {
-  const [hovered, setHovered] = useState(false);
   const meshRef = useRef<Mesh>(null);
-  
-  // Pulse animation based on activity level
+
   useFrame((state) => {
     if (meshRef.current) {
       // Calculate pulse scale based on activity level
       const pulseIntensity = 0.02 * activity;
-      const baseScale = isActive || hovered ? 1.05 : 1;
+      const baseScale = isActive ? 1.05 : 1;
       const pulseScale = baseScale + Math.sin(state.clock.elapsedTime * 2) * pulseIntensity;
       
-      // Apply different scale factors for different regions to maintain brain shape
-      if (Array.isArray(scale)) {
-        meshRef.current.scale.set(
-          scale[0] * pulseScale,
-          scale[1] * pulseScale,
-          scale[2] * pulseScale
-        );
-      } else {
-        meshRef.current.scale.setScalar(pulseScale);
-      }
-      
-      // Add subtle rotation for active regions to enhance visual interest
-      if (isActive) {
-        meshRef.current.rotation.y += 0.001;
-      }
+      meshRef.current.scale.setScalar(pulseScale);
     }
   });
 
-  // Create advanced PBR material with physically realistic properties
-  const material = useMemo(() => {
-    return new THREE.MeshPhysicalMaterial({
-      color: new THREE.Color(color),
-      roughness: 0.6,             // Slightly rough like biological tissue
-      metalness: 0.0,             // Non-metallic
-      transmission: 0.1,          // Slight subsurface scattering effect
-      thickness: 1.0,             // For transmission
-      clearcoat: 0.5,             // Light waxy/moist coating
-      clearcoatRoughness: 0.2,    // Slightly uneven coating
-      envMapIntensity: 0.8,       // Responsive to environment lighting
-      sheenColor: new THREE.Color(color).multiplyScalar(0.8),
-      sheen: 0.1,                 // Subtle silky sheen
-    });
-  }, [color]);
-
-  // Define distortion for the geometry to simulate gyri and sulci
+  // Enhanced distortion algorithm for realistic brain folds
   const createDistortedGeometry = (baseGeometry: THREE.BufferGeometry) => {
     const positionAttr = baseGeometry.getAttribute('position');
+    const vertexCount = positionAttr.count;
+    const newPositions = new Float32Array(positionAttr.array.length);
     const vertex = new THREE.Vector3();
     const normal = new THREE.Vector3();
-    
-    // Clone the position attribute to avoid modifying the original
-    const newPositions = new Float32Array(positionAttr.array.length);
-    
-    // Copy original positions first
-    for (let i = 0; i < positionAttr.count; i++) {
+
+    // Region-specific fold patterns
+    const getFoldPattern = (regionType: string, vertex: THREE.Vector3) => {
+      const baseFreq = regionType === 'frontal' ? 6.0 : 
+                      regionType === 'temporal' ? 5.0 :
+                      regionType === 'parietal' ? 4.5 :
+                      regionType === 'occipital' ? 5.5 :
+                      regionType === 'cerebellum' ? 7.0 : 4.0;
+
+      const primary = Math.sin(vertex.x * baseFreq) * 
+                     Math.cos(vertex.y * baseFreq * 1.3) * 
+                     Math.sin(vertex.z * baseFreq * 0.8);
+
+      const secondary = Math.cos(vertex.x * baseFreq * 1.5 + 1.5) * 
+                       Math.sin(vertex.y * baseFreq * 0.9 + 0.8) * 
+                       Math.cos(vertex.z * baseFreq * 1.2 + 0.5);
+
+      const tertiary = Math.sin(vertex.x * baseFreq * 0.7 + 2.1) * 
+                      Math.sin(vertex.y * baseFreq * 1.1 + 1.3) * 
+                      Math.cos(vertex.z * baseFreq * 1.4 + 0.9);
+
+      // Combine patterns with varying weights
+      return {
+        primary: primary * 0.5,
+        secondary: secondary * 0.3,
+        tertiary: tertiary * 0.2
+      };
+    };
+
+    for (let i = 0; i < vertexCount; i++) {
       vertex.fromBufferAttribute(positionAttr, i);
       
-      // Store the original position
-      newPositions[i * 3] = vertex.x;
-      newPositions[i * 3 + 1] = vertex.y;
-      newPositions[i * 3 + 2] = vertex.z;
-    }
-    
-    // Apply distortion to create gyri (ridges) and sulci (grooves)
-    for (let i = 0; i < positionAttr.count; i++) {
-      vertex.set(
-        newPositions[i * 3], 
-        newPositions[i * 3 + 1], 
-        newPositions[i * 3 + 2]
-      );
+      // Get region-specific fold pattern
+      const folds = getFoldPattern(geometry, vertex);
+      const totalFoldIntensity = folds.primary + folds.secondary + folds.tertiary;
       
-      // Calculate distortion based on 3D simplex noise approximation
-      const distortionAmount = 0.15; // Deeper grooves for more realism
-      const noiseScale = 4.0;  // Higher frequency noise for finer details
+      // Calculate distortion intensity based on region and position
+      const distortionIntensity = geometry === 'cerebellum' ? 0.2 : 
+                                 geometry === 'brainstem' ? 0.1 : 0.15;
       
-      // Simulate complex noise patterns using trigonometric functions
-      // This creates wave patterns at different frequencies to mimic brain folds
-      const noise1 = Math.sin(vertex.x * noiseScale) * 
-                    Math.cos(vertex.y * noiseScale * 1.3) * 
-                    Math.sin(vertex.z * noiseScale * 0.8);
-                    
-      const noise2 = Math.cos(vertex.x * noiseScale * 1.5) * 
-                    Math.sin(vertex.y * noiseScale * 0.9) * 
-                    Math.cos(vertex.z * noiseScale * 1.2);
-                    
-      const noise3 = Math.sin(vertex.x * noiseScale * 0.7) * 
-                    Math.sin(vertex.y * noiseScale * 1.1) * 
-                    Math.cos(vertex.z * noiseScale * 1.4);
-      
-      // Combine noise patterns at different scales for organic feel
-      const combinedNoise = (noise1 * 0.5 + noise2 * 0.3 + noise3 * 0.2);
-      
-      // Apply more distortion to specific brain regions
-      let regionMultiplier = 1.0;
-      switch(geometry) {
-        case 'frontal':
-          regionMultiplier = 1.2; // More prominent folds in frontal lobe
-          break;
-        case 'cerebellum':
-          regionMultiplier = 1.4; // Very defined ridges in cerebellum
-          break;
-        default:
-          regionMultiplier = 1.0;
-      }
-      
-      // Apply distortion along normal direction
+      // Apply anatomically-inspired distortion
       normal.copy(vertex).normalize();
-      vertex.add(normal.multiplyScalar(combinedNoise * distortionAmount * regionMultiplier));
+      vertex.add(normal.multiplyScalar(totalFoldIntensity * distortionIntensity));
       
-      // Store the new position
+      // Store the distorted position
       newPositions[i * 3] = vertex.x;
       newPositions[i * 3 + 1] = vertex.y;
       newPositions[i * 3 + 2] = vertex.z;
     }
-    
-    // Update geometry with distorted positions
+
+    // Create and return the distorted geometry
     const distortedGeometry = baseGeometry.clone();
     distortedGeometry.setAttribute('position', new THREE.BufferAttribute(newPositions, 3));
-    distortedGeometry.computeVertexNormals(); // Recalculate normals for proper lighting
-    
+    distortedGeometry.computeVertexNormals();
     return distortedGeometry;
   };
 
-  // Create anatomically-inspired geometry based on the region type
+  // Create anatomically-inspired geometry with higher polygon counts
   const brainGeometry = useMemo(() => {
     let baseGeometry;
     
+    const highPolyCount = geometry === 'cerebellum' ? 96 : 64; // Increased polygon count
+    
     switch(geometry) {
       case 'frontal':
-        // Frontal lobe - elongated and wider at top
-        baseGeometry = new THREE.SphereGeometry(1, 48, 48);
-        baseGeometry.scale(1.2, 1, 1);
-        baseGeometry.translate(0, 0.2, 0);
+        baseGeometry = new THREE.SphereGeometry(1, highPolyCount, highPolyCount);
+        baseGeometry.scale(1.2, 1.1, 1.1);
         break;
       case 'temporal':
-        // Temporal lobe - slightly flattened with a hook-like shape
-        baseGeometry = new THREE.SphereGeometry(0.8, 48, 48);
+        baseGeometry = new THREE.SphereGeometry(0.8, highPolyCount, highPolyCount);
         baseGeometry.scale(1.2, 0.8, 0.9);
-        // Create hook-like curve for temporal lobe
-        const posAttr = baseGeometry.getAttribute('position');
-        const tempVec = new THREE.Vector3();
-        for (let i = 0; i < posAttr.count; i++) {
-          tempVec.fromBufferAttribute(posAttr, i);
-          if (tempVec.y < 0 && tempVec.x < 0) {
-            // Curve the bottom part forward
-            tempVec.z += 0.2 * Math.abs(tempVec.y);
-            posAttr.setXYZ(i, tempVec.x, tempVec.y, tempVec.z);
+        // Apply temporal lobe specific deformation
+        const tempVerts = baseGeometry.getAttribute('position');
+        for (let i = 0; i < tempVerts.count; i++) {
+          const vertex = new THREE.Vector3().fromBufferAttribute(tempVerts, i);
+          if (vertex.y < 0 && vertex.x < 0) {
+            vertex.z += Math.pow(Math.abs(vertex.y), 1.5) * 0.3;
+            tempVerts.setXYZ(i, vertex.x, vertex.y, vertex.z);
           }
         }
         break;
       case 'parietal':
-        // Parietal lobe - rounded and slightly elevated
-        baseGeometry = new THREE.SphereGeometry(0.9, 48, 48);
-        baseGeometry.scale(1, 1.1, 1);
+        baseGeometry = new THREE.SphereGeometry(0.9, highPolyCount, highPolyCount);
+        baseGeometry.scale(1.1, 1.1, 1);
         break;
       case 'occipital':
-        // Occipital lobe - slightly pointed
-        baseGeometry = new THREE.SphereGeometry(0.8, 48, 48);
-        baseGeometry.scale(1, 1, 1.1);
-        // Make it slightly more pointed at the back
-        const occPosAttr = baseGeometry.getAttribute('position');
-        const occVec = new THREE.Vector3();
-        for (let i = 0; i < occPosAttr.count; i++) {
-          occVec.fromBufferAttribute(occPosAttr, i);
-          if (occVec.z < -0.5) {
-            // Stretch points at the back
-            occVec.z *= 1.1;
-            occPosAttr.setXYZ(i, occVec.x, occVec.y, occVec.z);
+        baseGeometry = new THREE.SphereGeometry(0.8, highPolyCount, highPolyCount);
+        // Create more pronounced curvature at the back
+        const occVerts = baseGeometry.getAttribute('position');
+        for (let i = 0; i < occVerts.count; i++) {
+          const vertex = new THREE.Vector3().fromBufferAttribute(occVerts, i);
+          if (vertex.z < -0.5) {
+            vertex.z *= 1.2;
+            vertex.y *= 0.9;
+            occVerts.setXYZ(i, vertex.x, vertex.y, vertex.z);
           }
         }
         break;
       case 'cerebellum':
-        // Cerebellum - distinctive ridged shape
-        baseGeometry = new THREE.SphereGeometry(0.9, 48, 48);
+        baseGeometry = new THREE.SphereGeometry(0.9, highPolyCount, highPolyCount);
         baseGeometry.scale(1.2, 0.7, 1);
         break;
-      case 'brainstem':
-        // Brain stem - elongated cylindrical shape
-        baseGeometry = new THREE.CylinderGeometry(0.4, 0.3, 1.2, 24);
-        baseGeometry.rotateX(Math.PI / 2);
+      case 'hippocampus':
+        // Create curved hippocampus shape
+        const curve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(0, 0, 0),
+          new THREE.Vector3(0.2, 0.1, 0.1),
+          new THREE.Vector3(0.4, 0.1, 0),
+          new THREE.Vector3(0.5, 0, -0.2),
+        ]);
+        baseGeometry = new THREE.TubeGeometry(curve, highPolyCount, 0.15, 16, false);
         break;
       default:
-        // Default spherical shape with higher polygon count
-        baseGeometry = new THREE.SphereGeometry(1, 48, 48);
+        baseGeometry = new THREE.SphereGeometry(1, highPolyCount, highPolyCount);
     }
     
-    // Apply distortion to create gyri and sulci
     return createDistortedGeometry(baseGeometry);
   }, [geometry]);
+
+  // Enhanced PBR material properties for tissue-like appearance
+  const material = useMemo(() => {
+    return new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color(color),
+      roughness: 0.7,
+      metalness: 0.0,
+      transmission: 0.15,
+      thickness: 1.0,
+      clearcoat: 0.3,
+      clearcoatRoughness: 0.25,
+      envMapIntensity: 1.0,
+      sheenColor: new THREE.Color(color).multiplyScalar(0.8),
+      sheen: 0.15,
+      ior: 1.4,
+      specularIntensity: 0.4,
+      specularColor: new THREE.Color(0xffffff),
+      attenuationColor: new THREE.Color(color).multiplyScalar(0.9),
+      attenuationDistance: 0.5
+    });
+  }, [color]);
 
   return (
     <mesh
@@ -226,8 +193,8 @@ export const BrainRegion = ({
       rotation={rotation}
       scale={scale}
       onClick={onClick}
-      onPointerOver={() => setHovered(true)}
-      onPointerOut={() => setHovered(false)}
+      onPointerOver={() => document.body.style.cursor = 'pointer'}
+      onPointerOut={() => document.body.style.cursor = 'default'}
       geometry={brainGeometry}
       castShadow
       receiveShadow
