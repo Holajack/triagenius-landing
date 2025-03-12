@@ -16,7 +16,7 @@ export const TerrainSystem = ({
 }: TerrainSystemProps) => {
   const meshRef = useRef<THREE.Mesh>(null);
   
-  // Create heightmap-based terrain with colors
+  // Create heightmap-based terrain with earth-toned colors
   const terrainMaterial = new THREE.ShaderMaterial({
     uniforms: {
       time: { value: 0 },
@@ -74,31 +74,63 @@ export const TerrainSystem = ({
       varying float vElevation;
       
       void main() {
-        // Define elevation thresholds
-        float snowLevel = 3.0;
-        float rockLevel = 1.5;
-        float grassLevel = 0.5;
+        // Define elevation thresholds for different terrain types
+        float snowLevel = 3.5;
+        float highRockLevel = 2.8;
+        float midRockLevel = 2.0;
+        float lowRockLevel = 1.2;
+        float grassLevel = 0.6;
+        float sandLevel = 0.2;
         
-        // Define colors directly
+        // Define natural mountain colors
         vec3 snowColor = vec3(0.95, 0.95, 0.97);
-        vec3 rockColor = vec3(0.5, 0.5, 0.55);
-        vec3 grassColor = vec3(0.2, 0.6, 0.3);
-        vec3 waterColor = vec3(0.1, 0.3, 0.8);
+        vec3 highRockColor = vec3(0.55, 0.52, 0.5);
+        vec3 midRockColor = vec3(0.6, 0.57, 0.53);
+        vec3 lowRockColor = vec3(0.7, 0.65, 0.6);
+        vec3 grassColor = vec3(0.4, 0.55, 0.3);
+        vec3 sandColor = vec3(0.76, 0.7, 0.5);
+        vec3 waterColor = vec3(0.3, 0.4, 0.5); // Reduced blue for water
         
-        // Blend colors based on elevation
+        // Add some variation based on UV coordinates for subtle texture
+        float noiseVal = fract(sin(vUv.x * 100.0 + vUv.y * 100.0) * 10000.0) * 0.05;
+        
+        // Blend colors based on elevation with smooth transitions
         vec3 terrainColor;
         
         if (vElevation > snowLevel) {
+          // Snow caps
           terrainColor = snowColor;
-        } else if (vElevation > rockLevel) {
-          float blend = (vElevation - rockLevel) / (snowLevel - rockLevel);
-          terrainColor = mix(rockColor, snowColor, blend);
+        } else if (vElevation > highRockLevel) {
+          // Transition to high rocks
+          float blend = (vElevation - highRockLevel) / (snowLevel - highRockLevel);
+          terrainColor = mix(highRockColor, snowColor, blend);
+        } else if (vElevation > midRockLevel) {
+          // Mid-level rocks
+          float blend = (vElevation - midRockLevel) / (highRockLevel - midRockLevel);
+          terrainColor = mix(midRockColor, highRockColor, blend);
+        } else if (vElevation > lowRockLevel) {
+          // Lower rocks
+          float blend = (vElevation - lowRockLevel) / (midRockLevel - lowRockLevel);
+          terrainColor = mix(lowRockColor, midRockColor, blend);
         } else if (vElevation > grassLevel) {
-          float blend = (vElevation - grassLevel) / (rockLevel - grassLevel);
-          terrainColor = mix(grassColor, rockColor, blend);
+          // Grassy areas
+          float blend = (vElevation - grassLevel) / (lowRockLevel - grassLevel);
+          terrainColor = mix(grassColor, lowRockColor, blend);
+        } else if (vElevation > sandLevel) {
+          // Sandy areas
+          float blend = (vElevation - sandLevel) / (grassLevel - sandLevel);
+          terrainColor = mix(sandColor, grassColor, blend);
         } else {
+          // Water level (with less blue tint)
           terrainColor = waterColor;
         }
+        
+        // Add subtle noise variation to break up flat colors
+        terrainColor += vec3(noiseVal);
+        
+        // Add atmospheric fog effect - objects farther away fade slightly
+        float fog = 1.0 - smoothstep(0.0, 1.0, distance(vUv, vec2(0.5)));
+        terrainColor = mix(terrainColor, vec3(0.8, 0.8, 0.8), (1.0 - fog) * 0.15);
         
         gl_FragColor = vec4(terrainColor, 1.0);
       }
