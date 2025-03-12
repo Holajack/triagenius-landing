@@ -83,15 +83,15 @@ export const TerrainSystem = ({
         float sandLevel = 0.2;
         float waterLevel = 0.0;
         
-        // Define natural mountain colors with reduced blue tints
+        // Define natural mountain colors with brown tones instead of blue
         vec3 snowColor = vec3(0.95, 0.95, 0.97);
         vec3 highRockColor = vec3(0.55, 0.52, 0.5);
         vec3 midRockColor = vec3(0.62, 0.58, 0.54);
         vec3 lowRockColor = vec3(0.72, 0.67, 0.62);
         vec3 grassColor = vec3(0.45, 0.57, 0.32);
         vec3 sandColor = vec3(0.78, 0.73, 0.53);
-        vec3 mudColor = vec3(0.52, 0.46, 0.35);
-        vec3 waterColor = vec3(0.42, 0.47, 0.55); // Even less blue, more gray-green
+        vec3 mudColor = vec3(0.6, 0.5, 0.4);
+        vec3 waterColor = vec3(0.5, 0.4, 0.35); // Brown water instead of blue
         
         // Add some variation based on UV coordinates for subtle texture
         float noiseVal = fract(sin(vUv.x * 100.0 + vUv.y * 100.0) * 10000.0) * 0.05;
@@ -130,7 +130,7 @@ export const TerrainSystem = ({
           float blend = (vElevation - waterLevel) / (sandLevel - waterLevel);
           terrainColor = mix(mudColor, sandColor, blend);
         } else {
-          // Water level (with much less blue tint)
+          // Water level (now brown instead of blue)
           terrainColor = waterColor;
         }
         
@@ -140,9 +140,9 @@ export const TerrainSystem = ({
         // Enhance contrast slightly to make colors more visible
         terrainColor = terrainColor * 1.1;
         
-        // Add atmospheric fog effect - objects farther away fade slightly to a warm tint
+        // Add atmospheric fog effect - objects farther away fade to warm brown tint
         float fog = 1.0 - smoothstep(0.0, 1.0, distance(vUv, vec2(0.5)));
-        terrainColor = mix(terrainColor, vec3(0.85, 0.82, 0.78), (1.0 - fog) * 0.15);
+        terrainColor = mix(terrainColor, vec3(0.85, 0.75, 0.65), (1.0 - fog) * 0.15);
         
         gl_FragColor = vec4(terrainColor, 1.0);
       }
