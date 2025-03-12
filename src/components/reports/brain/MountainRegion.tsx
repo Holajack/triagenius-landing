@@ -1,3 +1,4 @@
+
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Mesh } from 'three';
@@ -222,7 +223,7 @@ export const MountainRegion = ({
     const shadedColor = baseColor.clone().multiplyScalar(0.8);
     
     // Create more realistic mountain material
-    return new THREE.MeshStandardMaterial({
+    const material = new THREE.MeshStandardMaterial({
       color: baseColor,
       roughness: 0.8,
       metalness: 0.1,
@@ -232,7 +233,12 @@ export const MountainRegion = ({
       emissiveIntensity: isActive ? 0.2 : 0,
       // Use vertex colors for height-based coloring
       vertexColors: true,
-      onBeforeCompile: (shader) => {
+    });
+    
+    // Add custom shader modification through userData to bypass TypeScript type issues
+    // This is a workaround since onBeforeCompile is available at runtime but not in the TypeScript type
+    material.userData = {
+      shader: (shader: any) => {
         // Add snow caps to peaks
         shader.fragmentShader = shader.fragmentShader.replace(
           '#include <common>',
@@ -258,7 +264,16 @@ export const MountainRegion = ({
           `
         );
       }
-    });
+    };
+    
+    // Apply our custom shader function
+    material.onBeforeCompile = (shader) => {
+      if (material.userData && typeof material.userData.shader === 'function') {
+        material.userData.shader(shader);
+      }
+    };
+    
+    return material;
   }, [color, isActive, activity]);
 
   return (
