@@ -50,8 +50,8 @@ const NavigationBar = () => {
     {
       label: "Profile",
       icon: <UserCircle2 className="h-5 w-5" />,
-      onClick: () => navigate("/dashboard"),
-      active: false,
+      onClick: () => navigate("/profile"),
+      active: location.pathname === "/profile",
     },
   ];
   
