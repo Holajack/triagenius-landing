@@ -1,4 +1,3 @@
-
 import { Canvas } from '@react-three/fiber';
 import { 
   OrbitControls, 
@@ -20,7 +19,6 @@ export const LearningPathScene = ({ activeSubject, setActiveSubject, zoomLevel, 
   const createMountainousTerrain = () => {
     return (
       <>
-        {/* Mountainous terrain */}
         <mesh position={[0, -0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[30, 30, 128, 128]} />
           <meshStandardMaterial
@@ -30,117 +28,110 @@ export const LearningPathScene = ({ activeSubject, setActiveSubject, zoomLevel, 
             onBeforeCompile={(shader) => {
               shader.uniforms.time = { value: 0 };
               
-              // Add time and color uniforms
               shader.vertexShader = `
                 uniform float time;
                 varying float vElevation;
                 ${shader.vertexShader}
               `;
               
-              // Pass the elevation to the fragment shader
               shader.vertexShader = shader.vertexShader.replace(
                 '#include <begin_vertex>',
                 `
                 #include <begin_vertex>
                 
-                // Mountain generation
-                float amplitude = 2.0;
-                float frequency = 0.2;
+                // Terrain generation parameters
+                float amplitude = 3.0;
+                float frequency = 0.15;
                 
-                // Primary mountains
+                // Primary mountains (large features)
                 float noise1 = sin(position.x * frequency) * cos(position.z * frequency) * amplitude;
                 
-                // Secondary ridges
-                float noise2 = sin(position.x * frequency * 2.0 + 0.5) * sin(position.z * frequency * 2.0) * amplitude * 0.5;
+                // Secondary ridges (medium features)
+                float noise2 = sin(position.x * frequency * 3.0) * cos(position.z * frequency * 2.0) * amplitude * 0.4;
                 
-                // Tertiary details
-                float noise3 = sin(position.x * frequency * 4.0) * sin(position.z * frequency * 4.0) * amplitude * 0.25;
+                // Fine details
+                float noise3 = sin(position.x * frequency * 5.0) * cos(position.z * frequency * 5.0) * amplitude * 0.2;
                 
-                // Add different frequencies of noise for more natural look
+                // Combine different noise layers
                 float mountainHeight = noise1 + noise2 + noise3;
                 
-                // Create some flat areas occasionally
-                float flatteningFactor = smoothstep(0.4, 0.6, sin(position.x * 0.05) * sin(position.z * 0.05) + 0.5);
-                mountainHeight *= flatteningFactor;
+                // Create plateaus
+                float plateauFactor = smoothstep(0.3, 0.7, sin(position.x * 0.1) * sin(position.z * 0.1));
+                mountainHeight *= mix(1.0, 0.5, plateauFactor);
                 
-                // Valleys
-                float valleyFactor = smoothstep(0.0, 0.3, abs(sin(position.x * 0.1) * sin(position.z * 0.1)));
-                mountainHeight *= valleyFactor;
+                // Create valleys
+                float valleyDepth = smoothstep(-0.5, 0.5, sin(position.x * 0.05) + cos(position.z * 0.05));
+                mountainHeight *= mix(0.2, 1.0, valleyDepth);
                 
                 // Apply height
                 transformed.y += mountainHeight;
                 
-                // Calculate normal based on the terrain height for proper lighting
+                // Calculate normal based on the terrain height
                 objectNormal = normalize(vec3(
                   noise1 - sin((position.x + 0.01) * frequency) * cos(position.z * frequency) * amplitude,
                   1.0,
                   noise1 - sin(position.x * frequency) * cos((position.z + 0.01) * frequency) * amplitude
                 ));
                 
-                // Pass elevation to fragment shader
                 vElevation = mountainHeight;
                 `
               );
               
-              // Add varying to fragment shader
               shader.fragmentShader = `
                 varying float vElevation;
                 ${shader.fragmentShader}
               `;
               
-              // Add color calculation based on elevation
               shader.fragmentShader = shader.fragmentShader.replace(
                 '#include <color_fragment>',
                 `
                 #include <color_fragment>
                 
-                // Color the terrain based on elevation
-                float normalizedElevation = (vElevation + 2.0) / 4.0; // Normalize to 0-1 range
+                float normalizedElevation = (vElevation + 3.0) / 6.0;
                 
-                // Base colors
-                vec3 lowColor = vec3(0.53, 0.81, 0.92);    // Light blue (#87CEEB) for water/valleys
-                vec3 midColor = vec3(0.33, 0.55, 0.0);     // Forest green (#547700) for mid elevations
-                vec3 highColor = vec3(0.63, 0.63, 0.63);   // Light gray (#A1A1A1) for peaks
-                vec3 peakColor = vec3(0.99, 0.99, 0.99);   // White (#FFFFFF) for snow caps
+                // Enhanced color palette
+                vec3 waterColor = vec3(0.2, 0.5, 0.8);     // Deep blue for water
+                vec3 shoreColor = vec3(0.76, 0.7, 0.5);    // Sandy shore
+                vec3 grassColor = vec3(0.3, 0.5, 0.2);     // Dark grass
+                vec3 forestColor = vec3(0.2, 0.35, 0.1);   // Forest green
+                vec3 rockColor = vec3(0.6, 0.6, 0.6);      // Gray rock
+                vec3 snowColor = vec3(0.95, 0.95, 0.95);   // Snow white
                 
-                // Blend colors based on elevation
                 vec3 terrainColor;
-                if (normalizedElevation < 0.3) {
-                  // Blend from low to mid
-                  float t = normalizedElevation / 0.3;
-                  terrainColor = mix(lowColor, midColor, t);
-                } else if (normalizedElevation < 0.75) {
-                  // Blend from mid to high
-                  float t = (normalizedElevation - 0.3) / 0.45;
-                  terrainColor = mix(midColor, highColor, t);
+                if (normalizedElevation < 0.2) {
+                    float t = normalizedElevation / 0.2;
+                    terrainColor = mix(waterColor, shoreColor, t);
+                } else if (normalizedElevation < 0.4) {
+                    float t = (normalizedElevation - 0.2) / 0.2;
+                    terrainColor = mix(shoreColor, grassColor, t);
+                } else if (normalizedElevation < 0.6) {
+                    float t = (normalizedElevation - 0.4) / 0.2;
+                    terrainColor = mix(grassColor, forestColor, t);
+                } else if (normalizedElevation < 0.8) {
+                    float t = (normalizedElevation - 0.6) / 0.2;
+                    terrainColor = mix(forestColor, rockColor, t);
                 } else {
-                  // Blend from high to peak
-                  float t = (normalizedElevation - 0.75) / 0.25;
-                  terrainColor = mix(highColor, peakColor, t);
+                    float t = (normalizedElevation - 0.8) / 0.2;
+                    terrainColor = mix(rockColor, snowColor, t);
                 }
                 
-                // Apply the color
                 diffuseColor.rgb = terrainColor;
                 `
               );
               
-              // Keep track of the time for animation
               const animate = () => {
                 shader.uniforms.time.value += 0.001;
                 requestAnimationFrame(animate);
               };
-              
-              // Start animation
               animate();
             }}
           />
         </mesh>
 
-        {/* Sky with mountains */}
         <Sky
           distance={450000}
-          sunPosition={[0, 1, 0]}
-          inclination={0.6}
+          sunPosition={[5, 1, 0]}
+          inclination={0.5}
           azimuth={0.25}
         />
       </>
