@@ -98,8 +98,6 @@ export const LearningPathScene = ({
         maxPolarAngle={Math.PI / 2 - 0.1}
         minPolarAngle={0.1}
       />
-    </group>
-  </Canvas>
+    </Canvas>
   );
 };
-
