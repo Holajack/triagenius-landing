@@ -1,3 +1,4 @@
+
 import { useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
@@ -65,12 +66,53 @@ export const TerrainSystem = ({
         return smoothstep(width, width * 0.7, dist);
       }
       
+      // Function to create a continent-like shape
+      float continent(vec2 p, vec2 center, float radius, float noiseScale) {
+        float dist = length(p - center) / radius;
+        float edge = 1.0 - smoothstep(0.0, 1.0, dist);
+        float noise = fbm(p * noiseScale) * 0.5 + 0.5;
+        return edge * noise;
+      }
+      
       void main() {
         vUv = uv;
         vec3 pos = position;
         
-        float elevation = fbm(pos.xy * 0.5) * ${heightMultiplier}.0;
+        // Base terrain with fractal noise
+        float baseElevation = fbm(pos.xy * 0.5) * ${heightMultiplier}.0;
         
+        // Create a primary continent shape
+        float continentShape = continent(pos.xy, vec2(0.0, 0.0), 15.0, 0.1);
+        continentShape = pow(continentShape, 1.2); // Sharpen edges a bit
+        
+        // Blend continental highlands with base terrain
+        float elevation = mix(baseElevation * 0.5, baseElevation * 1.5, continentShape);
+        
+        // Create secondary plateau regions
+        float plateau1 = continent(pos.xy, vec2(-5.0, 4.0), 5.0, 0.2);
+        float plateau2 = continent(pos.xy, vec2(6.0, -3.0), 4.0, 0.2);
+        
+        // Connect the plateaus with land bridges
+        vec2 bridge1Start = vec2(-3.0, 2.0);
+        vec2 bridge1End = vec2(3.0, -1.0);
+        float landBridge1 = path(pos.xy, bridge1Start, bridge1End, 2.5);
+        
+        vec2 bridge2Start = vec2(-6.0, -2.0);
+        vec2 bridge2End = vec2(1.0, -5.0);
+        float landBridge2 = path(pos.xy, bridge2Start, bridge2End, 2.2);
+        
+        // Add some highlands in plateau areas
+        if (plateau1 > 0.6 || plateau2 > 0.6) {
+          elevation = max(elevation, max(plateau1, plateau2) * ${heightMultiplier}.0 * 0.7);
+        }
+        
+        // Ensure land bridges connect raised areas
+        if (landBridge1 > 0.3 || landBridge2 > 0.3) {
+          float bridgeHeight = max(landBridge1, landBridge2) * ${heightMultiplier}.0 * 0.6;
+          elevation = max(elevation, mix(elevation, bridgeHeight, 0.7));
+        }
+        
+        // Define hiking paths through the terrain
         vec2 pathStart1 = vec2(-10.0, -10.0);
         vec2 pathEnd1 = vec2(0.0, 0.0);
         
@@ -86,10 +128,12 @@ export const TerrainSystem = ({
         
         float pathMask = max(max(pathMask1, pathMask2), pathMask3);
         
+        // Smooth out paths in lowlands but not in highlands
         if (elevation < 2.0) {
           elevation = mix(elevation, min(elevation, 0.5), pathMask);
         }
         
+        // Create water bodies in the lowlands
         float waterMask = 0.0;
         
         vec2 lakeCenter1 = vec2(-8.0, 5.0);
@@ -100,6 +144,13 @@ export const TerrainSystem = ({
         float lakeDist2 = length(pos.xy - lakeCenter2);
         waterMask = max(waterMask, smoothstep(2.8, 2.5, lakeDist2));
         
+        // Add a connecting river between the lakes
+        vec2 riverStart = lakeCenter1;
+        vec2 riverEnd = lakeCenter2;
+        float riverPath = path(pos.xy, riverStart, riverEnd, 1.0);
+        waterMask = max(waterMask, riverPath * 0.7);
+        
+        // Make water areas deeper
         if (waterMask > 0.0 && elevation < 1.0) {
           elevation = mix(elevation, -0.5, waterMask);
         }
@@ -161,6 +212,7 @@ export const TerrainSystem = ({
           float blend = (vElevation - waterLevel) / (sandLevel - waterLevel);
           terrainColor = mix(mudColor, sandColor, blend);
           
+          // Make paths more visible in the lowlands
           if (vElevation < 0.55 && vElevation > 0.45) {
             terrainColor = mix(terrainColor, pathColor, 0.7);
           }
