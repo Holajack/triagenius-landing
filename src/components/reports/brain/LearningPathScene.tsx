@@ -1,12 +1,11 @@
-
 import { Canvas } from '@react-three/fiber';
 import { 
   OrbitControls, 
   Environment, 
   ContactShadows,
   BakeShadows,
+  Sky,
 } from '@react-three/drei';
-import { PathwayPoint } from './PathwayPoint';
 import * as THREE from 'three';
 
 interface LearningPathSceneProps {
@@ -17,138 +16,87 @@ interface LearningPathSceneProps {
 }
 
 export const LearningPathScene = ({ activeSubject, setActiveSubject, zoomLevel, rotation }: LearningPathSceneProps) => {
-  // Define learning subjects and their positions on the pathway
-  const learningSubjects = [
-    {
-      id: "mathematics",
-      name: "Mathematics",
-      position: [0, 0.2, -1.5] as [number, number, number],
-      scale: [1.0, 1.1, 1.0] as [number, number, number],
-      color: "#D946EF",
-      progress: 0.65,
-      difficulty: 0.8
-    },
-    {
-      id: "physics",
-      name: "Physics",
-      position: [1.5, 0.3, 0] as [number, number, number],
-      scale: [1.0, 1.2, 1.0] as [number, number, number],
-      color: "#8B5CF6",
-      progress: 0.45,
-      difficulty: 0.9
-    },
-    {
-      id: "computer_science",
-      name: "Computer Science",
-      position: [3.0, 0.4, 0.8] as [number, number, number],
-      scale: [1.1, 1.4, 1.0] as [number, number, number],
-      color: "#2DD4BF",
-      progress: 0.7,
-      difficulty: 0.75
-    },
-    {
-      id: "literature",
-      name: "Literature",
-      position: [-1.5, 0.2, -0.8] as [number, number, number],
-      scale: [1.0, 0.8, 1.0] as [number, number, number],
-      color: "#F59E0B",
-      progress: 0.85,
-      difficulty: 0.5
-    },
-    {
-      id: "history",
-      name: "History",
-      position: [-3.0, 0.3, 0.5] as [number, number, number],
-      scale: [1.0, 1.0, 1.0] as [number, number, number],
-      color: "#EF4444",
-      progress: 0.6,
-      difficulty: 0.6
-    },
-    {
-      id: "biology",
-      name: "Biology",
-      position: [2.2, 0.2, -1.2] as [number, number, number],
-      scale: [1.0, 0.9, 1.0] as [number, number, number],
-      color: "#10B981",
-      progress: 0.5,
-      difficulty: 0.7
-    },
-    {
-      id: "language",
-      name: "Languages",
-      position: [-2.0, 0.1, -1.8] as [number, number, number],
-      scale: [1.0, 0.7, 1.0] as [number, number, number],
-      color: "#3B82F6",
-      progress: 0.55,
-      difficulty: 0.65
-    }
-  ];
-
-  // Define pathway connections between subjects
-  const pathConnections = [
-    { from: "mathematics", to: "physics" },
-    { from: "physics", to: "computer_science" },
-    { from: "mathematics", to: "computer_science" },
-    { from: "literature", to: "history" },
-    { from: "literature", to: "language" },
-    { from: "history", to: "language" },
-    { from: "biology", to: "physics" },
-    { from: "mathematics", to: "biology" }
-  ];
-
-  const createPathTerrain = () => {
-    const subjectPositions = learningSubjects.map(subject => ({
-      x: subject.position[0],
-      z: subject.position[2],
-      id: subject.id
-    }));
-    
+  const createMountainousTerrain = () => {
     return (
       <>
-        {/* Flat ground with subtle texture */}
+        {/* Mountainous terrain */}
         <mesh position={[0, -0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[15, 15]} />
+          <planeGeometry args={[30, 30, 128, 128]} />
           <meshStandardMaterial
-            color="#f0f0f0"
-            roughness={0.8}
+            color="#8A898C"
+            roughness={0.9}
             metalness={0.1}
+            wireframe={false}
+            onBeforeCompile={(shader) => {
+              shader.uniforms.time = { value: 0 };
+              
+              // Add time uniform
+              shader.vertexShader = `
+                uniform float time;
+                ${shader.vertexShader}
+              `;
+              
+              // Modify position in vertex shader for mountains
+              shader.vertexShader = shader.vertexShader.replace(
+                '#include <begin_vertex>',
+                `
+                #include <begin_vertex>
+                
+                // Mountain generation
+                float amplitude = 2.0;
+                float frequency = 0.2;
+                
+                // Primary mountains
+                float noise1 = sin(position.x * frequency) * cos(position.z * frequency) * amplitude;
+                
+                // Secondary ridges
+                float noise2 = sin(position.x * frequency * 2.0 + 0.5) * sin(position.z * frequency * 2.0) * amplitude * 0.5;
+                
+                // Tertiary details
+                float noise3 = sin(position.x * frequency * 4.0) * sin(position.z * frequency * 4.0) * amplitude * 0.25;
+                
+                // Add different frequencies of noise for more natural look
+                float mountainHeight = noise1 + noise2 + noise3;
+                
+                // Create some flat areas occasionally
+                float flatteningFactor = smoothstep(0.4, 0.6, sin(position.x * 0.05) * sin(position.z * 0.05) + 0.5);
+                mountainHeight *= flatteningFactor;
+                
+                // Valleys
+                float valleyFactor = smoothstep(0.0, 0.3, abs(sin(position.x * 0.1) * sin(position.z * 0.1)));
+                mountainHeight *= valleyFactor;
+                
+                // Apply height
+                transformed.y += mountainHeight;
+                
+                // Calculate normal based on the terrain height for proper lighting
+                objectNormal = normalize(vec3(
+                  noise1 - sin((position.x + 0.01) * frequency) * cos(position.z * frequency) * amplitude,
+                  1.0,
+                  noise1 - sin(position.x * frequency) * cos((position.z + 0.01) * frequency) * amplitude
+                ));
+                `
+              );
+              
+              // Keep track of the time for animation
+              const animate = () => {
+                shader.uniforms.time.value += 0.001;
+                requestAnimationFrame(animate);
+              };
+              
+              // Start animation
+              animate();
+            }}
           />
         </mesh>
 
-        {/* Path connections */}
-        {pathConnections.map((connection, idx) => {
-          const fromSubject = subjectPositions.find(s => s.id === connection.from);
-          const toSubject = subjectPositions.find(s => s.id === connection.to);
-          
-          if (!fromSubject || !toSubject) return null;
-          
-          // Create path markers
-          return [...Array(5)].map((_, i) => {
-            const t = (i + 1) / 6;
-            const x = fromSubject.x + (toSubject.x - fromSubject.x) * t;
-            const z = fromSubject.z + (toSubject.z - fromSubject.z) * t;
-            
-            const jitterX = (Math.random() - 0.5) * 0.1;
-            const jitterZ = (Math.random() - 0.5) * 0.1;
-            
-            return (
-              <mesh 
-                key={`path-${idx}-${i}`} 
-                position={[x + jitterX, -0.4, z + jitterZ]}
-                rotation={[0, Math.random() * Math.PI, 0]}
-              >
-                <boxGeometry args={[0.1, 0.02, 0.1]} />
-                <meshStandardMaterial color="#e0e0e0" roughness={0.9} />
-              </mesh>
-            );
-          });
-        }).flat()}
-
-        {/* Background sky */}
-        <mesh position={[0, 0, 0]}>
-          <sphereGeometry args={[12, 32, 32]} />
-          <meshBasicMaterial color="#f8f9fa" side={THREE.BackSide} />
-        </mesh>
+        {/* Sky with mountains */}
+        <Sky
+          distance={450000}
+          sunPosition={[0, 1, 0]}
+          inclination={0.6}
+          azimuth={0.25}
+        />
       </>
     );
   };
@@ -161,6 +109,7 @@ export const LearningPathScene = ({ activeSubject, setActiveSubject, zoomLevel, 
         powerPreference: 'high-performance',
       }}
       dpr={[1, 1.5]}
+      camera={{ position: [0, 5, 10], fov: 50 }}
       frameloop="demand"
       shadows={false}
       style={{ background: 'transparent' }}
@@ -175,21 +124,7 @@ export const LearningPathScene = ({ activeSubject, setActiveSubject, zoomLevel, 
         rotation-y={rotation * (Math.PI / 180)}
         scale={[zoomLevel, zoomLevel, zoomLevel]}
       >
-        {createPathTerrain()}
-
-        {learningSubjects.map((subject) => (
-          <PathwayPoint
-            key={subject.id}
-            position={subject.position}
-            scale={subject.scale}
-            color={subject.color}
-            name={subject.name}
-            progress={subject.progress}
-            difficulty={subject.difficulty}
-            isActive={activeSubject === subject.name}
-            onClick={() => setActiveSubject(subject.name === activeSubject ? null : subject.name)}
-          />
-        ))}
+        {createMountainousTerrain()}
       </group>
 
       <ContactShadows
@@ -203,7 +138,7 @@ export const LearningPathScene = ({ activeSubject, setActiveSubject, zoomLevel, 
       <OrbitControls
         enablePan={false}
         minDistance={3}
-        maxDistance={10}
+        maxDistance={20}
         autoRotate={!activeSubject}
         autoRotateSpeed={0.5}
         enableDamping={true}
