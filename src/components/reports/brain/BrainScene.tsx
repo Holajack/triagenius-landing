@@ -21,7 +21,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     {
       id: "memory_retention",
       name: "Memory Retention",
-      position: [-2.2, 0.7, 0.8] as [number, number, number],
+      position: [-3.0, 0.7, 1.2] as [number, number, number], // More separated
       scale: [1.2, 1.1, 1.1] as [number, number, number],
       rotation: [0.2, 0, -0.1] as [number, number, number],
       color: "#D946EF",
@@ -32,7 +32,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     {
       id: "critical_thinking",
       name: "Critical Thinking",
-      position: [1.8, 0.9, 1.3] as [number, number, number],
+      position: [2.5, 0.9, 1.8] as [number, number, number], // More separated
       scale: [1.0, 1.4, 0.9] as [number, number, number],
       rotation: [0, 0.2, 0] as [number, number, number],
       color: "#FEF7CD",
@@ -43,7 +43,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     {
       id: "problem_solving",
       name: "Problem Solving",
-      position: [-0.8, 0.5, -1.7] as [number, number, number],
+      position: [-1.2, 0.5, -2.3] as [number, number, number], // More separated
       scale: [1.0, 0.9, 1.0] as [number, number, number],
       rotation: [-0.3, 0, -0.1] as [number, number, number],
       color: "#F2FCE2",
@@ -54,7 +54,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     {
       id: "creative_thinking",
       name: "Creativity",
-      position: [1.0, 0.6, -1.8] as [number, number, number],
+      position: [1.5, 0.6, -2.5] as [number, number, number], // More separated
       scale: [0.9, 1.2, 0.9] as [number, number, number],
       rotation: [-0.4, 0, -0.1] as [number, number, number],
       color: "#D6BCFA",
@@ -65,7 +65,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     {
       id: "analytical_processing",
       name: "Analytical Processing",
-      position: [1.5, 0.7, 0.2] as [number, number, number],
+      position: [2.2, 0.7, 0.2] as [number, number, number], // More separated
       scale: [1.2, 1.1, 1.1] as [number, number, number],
       rotation: [0.2, 0, 0.1] as [number, number, number],
       color: "#D946EF",
@@ -76,7 +76,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     {
       id: "language_processing",
       name: "Language Processing",
-      position: [-1.5, 0.4, 0.0] as [number, number, number],
+      position: [-2.2, 0.4, 0.0] as [number, number, number], // More separated
       scale: [1.0, 0.8, 0.9] as [number, number, number],
       rotation: [0, -0.2, 0] as [number, number, number],
       color: "#FEF7CD",
@@ -87,7 +87,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     {
       id: "spatial_awareness",
       name: "Spatial Awareness",
-      position: [0.5, 0.5, -0.7] as [number, number, number],
+      position: [0.8, 0.5, -1.2] as [number, number, number], // More separated
       scale: [1.0, 0.9, 1.0] as [number, number, number],
       rotation: [-0.3, 0, 0.1] as [number, number, number],
       color: "#F2FCE2",
@@ -98,7 +98,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     {
       id: "visual_processing",
       name: "Visual Processing",
-      position: [-0.7, 0.2, -0.4] as [number, number, number],
+      position: [-1.0, 0.2, -0.8] as [number, number, number], // More separated
       scale: [0.9, 0.8, 0.9] as [number, number, number],
       rotation: [-0.4, 0, 0.1] as [number, number, number],
       color: "#D6BCFA",
@@ -143,16 +143,18 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
     
     return (
       <>
-        {/* Base terrain - now more mountainous */}
+        {/* Base terrain - with topographic-style mountain paths */}
         <mesh position={[0, -0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[15, 15, 128, 128]} />
           <meshStandardMaterial
-            color="#8E9196"
-            roughness={0.8}
+            color="#4B6455" // Forest green base color matching reference image
+            roughness={0.9}
             metalness={0.1}
             wireframe={false}
             onBeforeCompile={(shader) => {
               // Add height variation for mountainous terrain
+              shader.uniforms.uTime = { value: 0 };
+              
               shader.vertexShader = shader.vertexShader.replace(
                 '#include <common>',
                 `
@@ -228,6 +230,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
                 uniform float uTime;
                 varying vec3 vPosition;
                 varying vec2 vUv;
+                varying float vElevation;
                 `
               );
               
@@ -243,34 +246,70 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
                 float amplitude = 0.7;
                 
                 // Create valleys connecting the cognitive regions
-                float valleyDepth = 0.2;
-                float valleyWidth = 0.15;
-                float pathElevation = 0.0;
+                float valleyDepth = 0.3;
+                float valleyWidth = 0.18;
                 
-                // Base terrain with noise
+                // Base terrain with noise - more separated mountains
                 float noise1 = snoise(vec3(position.x * frequency, position.z * frequency, 0.0)) * amplitude;
                 float noise2 = snoise(vec3(position.x * frequency * 2.0, position.z * frequency * 2.0, 0.0)) * amplitude * 0.5;
                 float noise = noise1 + noise2;
                 
+                // Create topographic contour effect
+                float contourLines = sin(position.y * 50.0 + noise * 20.0);
+                float contourPattern = smoothstep(0.0, 0.1, abs(contourLines));
+                
                 // Central mountain for 'focus_concentration'
                 float centerDistance = distance(vec2(position.x, position.z), vec2(0.0, 0.0));
-                float centralPeak = 1.5 * exp(-centerDistance * 0.6);
+                float centralPeak = 1.5 * exp(-centerDistance * 0.8); // Steeper falloff
                 
-                // Create a river/valley system with tributaries
+                // Create a more defined river/valley system with tributaries
                 float riverDepth = 0.3;
-                float riverWidth = 0.1;
-                float riverPath1 = abs(position.x * 0.7 + position.z * 0.3);
-                float riverPath2 = abs(-position.x * 0.5 + position.z * 0.5);
-                float riverPath3 = abs(position.x * 0.2 - position.z * 0.8);
+                float riverWidth = 0.15;
                 
-                float riverChannel = min(min(
-                  smoothstep(0.0, riverWidth, riverPath1),
-                  smoothstep(0.0, riverWidth, riverPath2)),
-                  smoothstep(0.0, riverWidth, riverPath3)
+                // Main paths - bright blue in reference image
+                float riverPath1 = abs(position.x * 0.7 + position.z * 0.3);
+                float riverPath2 = abs(-position.x * 0.5 + position.z * 0.5); 
+                float riverPath3 = abs(position.x * 0.2 - position.z * 0.8);
+                float riverPath4 = abs(position.x * 0.5 + position.z * 0.8);
+                float riverPath5 = abs(-position.x * 0.8 + position.z * 0.5);
+                
+                float riverChannel = min(
+                  min(min(
+                    smoothstep(0.0, riverWidth, riverPath1),
+                    smoothstep(0.0, riverWidth, riverPath2)),
+                    min(
+                      smoothstep(0.0, riverWidth, riverPath3),
+                      smoothstep(0.0, riverWidth, riverPath4)
+                    )
+                  ),
+                  smoothstep(0.0, riverWidth, riverPath5)
                 );
                 
-                // Combine all terrain features
-                transformed.y += noise * 0.8 + centralPeak - riverDepth * (1.0 - riverChannel);
+                // Secondary paths
+                float secondaryPath1 = abs(sin(position.x * 2.0) * 0.5 - position.z * 0.5);
+                float secondaryPath2 = abs(cos(position.z * 2.0) * 0.5 - position.x * 0.3);
+                
+                float secondaryChannel = min(
+                  smoothstep(0.0, riverWidth * 0.7, secondaryPath1),
+                  smoothstep(0.0, riverWidth * 0.7, secondaryPath2)
+                );
+                
+                // Combined paths
+                float allPaths = min(riverChannel, secondaryChannel);
+                
+                // Topographic pattern - creates the contour line effect seen in the reference
+                float topoLines = sin(noise * 40.0) * 0.5 + 0.5;
+                float topoPattern = step(0.8, topoLines) * 0.03;
+                
+                // Create elevation variation similar to reference image
+                float elevation = noise * 0.8 + centralPeak - riverDepth * (1.0 - allPaths);
+                vElevation = elevation;
+                
+                // Add topographic detail
+                elevation += topoPattern;
+                
+                // Apply elevation with valley paths
+                transformed.y += elevation;
                 
                 // Add elevation variation to create rolling mountainous terrain
                 float distanceFromCenter = length(position.xz);
@@ -278,6 +317,88 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
                 transformed.y *= edgeFalloff;
                 `
               );
+              
+              // Add fragment shader modifications for topographic coloration
+              shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <common>',
+                `
+                #include <common>
+                varying vec3 vPosition;
+                varying vec2 vUv;
+                varying float vElevation;
+                uniform float uTime;
+                `
+              );
+              
+              // Modify the fragment shader to create topographic map coloration
+              shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <output_fragment>',
+                `
+                #include <output_fragment>
+                
+                // Create topographic map coloration
+                float elevationColor = vElevation * 3.0;
+                
+                // Height-based coloration similar to reference
+                vec3 lowlandColor = vec3(0.3, 0.45, 0.3);     // Dark green
+                vec3 midlandColor = vec3(0.45, 0.52, 0.4);    // Mid green
+                vec3 highlandColor = vec3(0.6, 0.63, 0.58);   // Light green-gray
+                vec3 peakColor = vec3(0.8, 0.8, 0.8);         // White-gray for peaks
+                
+                // Topographic lines
+                float lineWidth = 0.05;
+                float contourLines = mod(vElevation * 8.0, 1.0);
+                float linePattern = smoothstep(0.0, lineWidth, contourLines) * smoothstep(lineWidth * 2.0, lineWidth, contourLines);
+                
+                // Create color based on elevation
+                vec3 terrainColor = mix(
+                  lowlandColor,
+                  midlandColor,
+                  smoothstep(0.0, 0.3, elevationColor)
+                );
+                
+                terrainColor = mix(
+                  terrainColor,
+                  highlandColor,
+                  smoothstep(0.3, 0.7, elevationColor)
+                );
+                
+                terrainColor = mix(
+                  terrainColor,
+                  peakColor,
+                  smoothstep(0.7, 1.0, elevationColor)
+                );
+                
+                // Add subtle contour lines
+                terrainColor = mix(terrainColor, vec3(0.2, 0.2, 0.2), linePattern * 0.3);
+                
+                // Path coloration - subtle lighter green for paths
+                float pathHighlight = (1.0 - min(
+                  min(
+                    abs(sin(vPosition.x * 0.7 + vPosition.z * 0.3) * 5.0),
+                    abs(sin(-vPosition.x * 0.5 + vPosition.z * 0.5) * 5.0)
+                  ),
+                  min(
+                    abs(sin(vPosition.x * 0.2 - vPosition.z * 0.8) * 5.0),
+                    abs(sin(vPosition.x * 0.8 + vPosition.z * 0.2) * 5.0)
+                  )
+                ));
+                
+                pathHighlight = smoothstep(0.9, 1.0, pathHighlight) * 0.15;
+                terrainColor += vec3(pathHighlight);
+                
+                gl_FragColor.rgb = terrainColor;
+                `
+              );
+              
+              // Setup animation update
+              const originalOnBeforeRender = shader.onBeforeRender;
+              shader.onBeforeRender = function(renderer, scene, camera) {
+                if (originalOnBeforeRender) {
+                  originalOnBeforeRender(renderer, scene, camera);
+                }
+                shader.uniforms.uTime.value = performance.now() / 1000;
+              };
             }}
           />
         </mesh>
@@ -377,15 +498,18 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
                 vUv = uv;
                 
                 // Make water appear only in valleys and paths
-                // Define river paths same as terrain
+                // Define river paths - make them match the reference image blue paths
                 float riverPath1 = abs(position.x * 0.7 + position.z * 0.3);
                 float riverPath2 = abs(-position.x * 0.5 + position.z * 0.5);
                 float riverPath3 = abs(position.x * 0.2 - position.z * 0.8);
+                float riverPath4 = abs(position.x * 0.5 + position.z * 0.8);
+                float riverPath5 = abs(-position.x * 0.8 + position.z * 0.5);
                 
-                float riverWidth = 0.16;
+                float riverWidth = 0.14;
                 float isRiver = 0.0;
                 
-                if (riverPath1 < riverWidth || riverPath2 < riverWidth || riverPath3 < riverWidth) {
+                if (riverPath1 < riverWidth || riverPath2 < riverWidth || riverPath3 < riverWidth || 
+                    riverPath4 < riverWidth || riverPath5 < riverWidth) {
                   isRiver = 1.0;
                   
                   // Add gentle water waves
@@ -433,9 +557,9 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
               // Add animation update in render loop
               const clock = new THREE.Clock();
               
-              const originalOnBeforeRender = shader.onBeforeRender || (() => {});
-              shader.onBeforeRender = function(renderer, scene, camera, geometry, material) {
-                originalOnBeforeRender(renderer, scene, camera, geometry, material);
+              const originalOnBeforeRender = shader.onBeforeRender || function() {};
+              shader.onBeforeRender = function(renderer, scene, camera) {
+                originalOnBeforeRender(renderer, scene, camera);
                 shader.uniforms.uTime.value = clock.getElapsedTime();
               };
             }}
@@ -465,7 +589,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
         })}
 
         {/* Trees and vegetation along paths and valleys */}
-        {[...Array(60)].map((_, i) => {
+        {[...Array(80)].map((_, i) => {
           const height = 0.2 + Math.random() * 0.3;
           const x = (Math.random() - 0.5) * 12;
           const z = (Math.random() - 0.5) * 12;
@@ -486,7 +610,7 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
           let treeZ = z;
           
           // Position some trees along paths
-          if (i < 20) {
+          if (i < 35) {
             const pathPos = onPath(i);
             treeX = pathPos.x + (Math.random() - 0.5) * 0.8;
             treeZ = pathPos.z + (Math.random() - 0.5) * 0.8;
@@ -508,10 +632,10 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
           
           // Vary tree colors and sizes based on region/position
           const treeSizeVariation = 0.7 + (Math.random() * 0.6);
-          const isPathTree = i < 20;
+          const isPathTree = i < 35;
           
-          // Tree color variation
-          const colorVariants = ["#F2FCE2", "#D6EFBF", "#C7E8A5", "#B4E08B"];
+          // Tree color variation - using more muted greens to match reference
+          const colorVariants = ["#435D43", "#3F4E3F", "#5A7D5A", "#2F3C2F"];
           const colorIndex = Math.floor(Math.random() * colorVariants.length);
           
           return (
