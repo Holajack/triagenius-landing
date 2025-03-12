@@ -1,3 +1,4 @@
+
 import { Canvas } from '@react-three/fiber';
 import { 
   OrbitControls, 
@@ -145,6 +146,122 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
   const spotLightRef = useRef<THREE.SpotLight>(null);
   const directionalLightRef = useRef<THREE.DirectionalLight>(null);
 
+  // Create connecting tissue geometry
+  const createConnectingTissue = () => {
+    return (
+      <>
+        {/* Cerebral cortex outer layer */}
+        <mesh position={[0, 0, 0]} scale={[1.7, 1.5, 1.6]}>
+          <sphereGeometry args={[1, 64, 64]} />
+          <meshPhysicalMaterial
+            color="#FCE7DF"
+            transparent={true}
+            opacity={0.08}
+            roughness={0.4}
+            transmission={0.95}
+            thickness={0.3}
+            envMapIntensity={0.3}
+          />
+        </mesh>
+
+        {/* Corpus callosum connecting the hemispheres */}
+        <mesh position={[0, 0.1, 0]} rotation={[0, 0, Math.PI / 2]} scale={[1, 1, 1]}>
+          <cylinderGeometry args={[0.15, 0.15, 1.6, 32]} />
+          <meshPhysicalMaterial
+            color="#FDE1D3"
+            roughness={0.7}
+            metalness={0.1}
+            transmission={0.1}
+            thickness={1.0}
+            clearcoat={0.3}
+            clearcoatRoughness={0.25}
+          />
+        </mesh>
+
+        {/* Connecting tissue between frontal lobes */}
+        <mesh position={[0, 0.7, 0.8]} scale={[0.5, 0.4, 0.5]}>
+          <sphereGeometry args={[1, 32, 32]} />
+          <meshPhysicalMaterial
+            color="#E5D7F0"
+            roughness={0.7}
+            metalness={0.1}
+            transmission={0.1}
+            thickness={1.0}
+            clearcoat={0.3}
+          />
+        </mesh>
+
+        {/* Connecting tissue between parietal lobes */}
+        <mesh position={[0, 0.5, -0.7]} scale={[0.5, 0.4, 0.5]}>
+          <sphereGeometry args={[1, 32, 32]} />
+          <meshPhysicalMaterial
+            color="#F2FCE2"
+            roughness={0.7}
+            metalness={0.1}
+            transmission={0.1}
+            thickness={1.0}
+            clearcoat={0.3}
+          />
+        </mesh>
+
+        {/* Connecting tissue between temporal lobes */}
+        <mesh position={[0, -0.1, 0.3]} scale={[0.5, 0.4, 0.5]}>
+          <sphereGeometry args={[1, 32, 32]} />
+          <meshPhysicalMaterial
+            color="#FEEED0"
+            roughness={0.7}
+            metalness={0.1}
+            transmission={0.1}
+            thickness={1.0}
+            clearcoat={0.3}
+          />
+        </mesh>
+
+        {/* Connecting tissue between occipital lobes */}
+        <mesh position={[0, -0.2, -1.1]} scale={[0.5, 0.4, 0.5]}>
+          <sphereGeometry args={[1, 32, 32]} />
+          <meshPhysicalMaterial
+            color="#DECFF9"
+            roughness={0.7}
+            metalness={0.1}
+            transmission={0.1}
+            thickness={1.0}
+            clearcoat={0.3}
+          />
+        </mesh>
+
+        {/* Central white matter */}
+        <mesh position={[0, 0, 0]} scale={[1.0, 0.9, 1.1]}>
+          <sphereGeometry args={[1, 48, 48]} />
+          <meshPhysicalMaterial
+            color="#ffffff"
+            transparent={true}
+            opacity={0.1}
+            roughness={0.4}
+            transmission={0.9}
+            thickness={0.3}
+            envMapIntensity={0.3}
+          />
+        </mesh>
+
+        {/* Thalamus */}
+        <mesh position={[0, 0, 0]} scale={[0.7, 0.6, 0.7]}>
+          <sphereGeometry args={[0.7, 32, 32]} />
+          <meshPhysicalMaterial
+            color="#FDE1D3"
+            roughness={0.6}
+            metalness={0.1}
+            transmission={0.2}
+            thickness={0.8}
+            clearcoat={0.3}
+            transparent={true}
+            opacity={0.6}
+          />
+        </mesh>
+      </>
+    );
+  };
+
   return (
     <Canvas
       camera={{ position: [0, 0, 5], fov: 60 }}
@@ -175,39 +292,10 @@ export const BrainScene = ({ activeRegion, setActiveRegion, zoomLevel, rotation 
         rotation-y={rotation * (Math.PI / 180)}
         scale={[zoomLevel, zoomLevel, zoomLevel]}
       >
-        <mesh 
-          position={[0, 0, 0]} 
-          scale={[1.5, 1.3, 1.4]}
-        >
-          <sphereGeometry args={[1, 32, 32]} />
-          <meshPhysicalMaterial
-            color="#ffffff"
-            transparent={true}
-            opacity={0.05}
-            roughness={0.3}
-            transmission={0.9}
-            thickness={0.5}
-            envMapIntensity={0.2}
-          />
-        </mesh>
+        {/* Base brain structure */}
+        {createConnectingTissue()}
 
-        <mesh 
-          position={[0, 0.1, 0]} 
-          rotation={[0, 0, Math.PI / 2]}
-          scale={[1, 1, 1]}
-        >
-          <cylinderGeometry args={[0.15, 0.15, 1.6, 32]} />
-          <meshPhysicalMaterial
-            color="#FDE1D3"
-            roughness={0.7}
-            metalness={0.1}
-            transmission={0.1}
-            thickness={1.0}
-            clearcoat={0.3}
-            clearcoatRoughness={0.25}
-          />
-        </mesh>
-
+        {/* Brain regions */}
         {brainRegions.map((region) => (
           <BrainRegion
             key={region.id}
