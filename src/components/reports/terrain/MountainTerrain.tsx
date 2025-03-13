@@ -257,12 +257,13 @@ export const MountainTerrain = ({
         break;
     }
     
-    return new THREE.MeshPhongMaterial({ 
+    // Switch to MeshStandardMaterial for better lighting and rendering
+    return new THREE.MeshStandardMaterial({ 
       color: baseColor,
+      roughness: 0.8,
+      metalness: 0.2,
       flatShading: true,
-      shininess: 0,
       side: THREE.DoubleSide, // Make sure terrain is visible from both sides
-      wireframe: false, // Set to true temporarily for debugging if needed
     });
   }, [biomeType]);
   
@@ -274,7 +275,7 @@ export const MountainTerrain = ({
       
       // Set initial position
       if (meshRef.current) {
-        meshRef.current.position.set(0, 0, 0);
+        meshRef.current.position.set(0, -2, 0); // Adjust Y position to be visible
       }
     }
     
@@ -283,13 +284,21 @@ export const MountainTerrain = ({
     };
   }, [resolution]);
   
+  // Add a small animation to make sure it's rendering
+  useFrame(() => {
+    if (meshRef.current) {
+      // Just a very subtle movement to ensure it's alive
+      meshRef.current.rotation.z = Math.sin(Date.now() * 0.0001) * 0.01;
+    }
+  });
+  
   return (
     <mesh 
       ref={meshRef} 
       geometry={geometry}
       material={material}
       rotation={[-Math.PI / 2, 0, 0]} 
-      position={[0, 0, 0]} 
+      position={[0, -2, 0]} // Adjust position to be visible
       receiveShadow
       castShadow
     />
