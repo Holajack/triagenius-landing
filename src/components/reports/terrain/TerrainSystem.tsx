@@ -21,6 +21,8 @@ export const TerrainSystem = ({
   
   // Create shader material
   useEffect(() => {
+    if (!meshRef.current) return;
+    
     materialRef.current = new THREE.ShaderMaterial({
       uniforms: {
         time: { value: 0 },
@@ -30,13 +32,13 @@ export const TerrainSystem = ({
       lights: true,
       wireframe: false,
       side: THREE.DoubleSide,
-      defines: {
-        USE_NORMALMAP: ''
-      }
     });
     
-    // Add normalized normals for better lighting
-    if (meshRef.current && meshRef.current.geometry) {
+    // Apply material directly to the mesh
+    if (meshRef.current) {
+      meshRef.current.material = materialRef.current;
+      
+      // Add normalized normals for better lighting
       meshRef.current.geometry.computeVertexNormals();
     }
   }, [heightMultiplier]);
@@ -56,7 +58,6 @@ export const TerrainSystem = ({
       castShadow
     >
       <planeGeometry args={[size, size, resolution - 1, resolution - 1]} />
-      {materialRef.current && <primitive object={materialRef.current} attach="material" />}
     </mesh>
   );
 };
