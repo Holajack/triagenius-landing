@@ -108,8 +108,8 @@ interface MountainTerrainProps {
 
 export const MountainTerrain = ({
   size = 100,
-  resolution = 300, // This creates around 300*300 = 90,000 vertices
-  heightMultiplier = 20,
+  resolution = 200, // Reduce slightly from 300 for better performance
+  heightMultiplier = 15,
   biomeType = 'mountains'
 }: MountainTerrainProps) => {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -260,8 +260,9 @@ export const MountainTerrain = ({
     return new THREE.MeshPhongMaterial({ 
       color: baseColor,
       flatShading: true,
-      shininess: 0,
-      vertexColors: false
+      shininess: 5,
+      vertexColors: false,
+      side: THREE.DoubleSide // Make sure terrain is visible from both sides
     });
   }, [biomeType]);
   
@@ -288,7 +289,7 @@ export const MountainTerrain = ({
       geometry={geometry}
       material={material}
       rotation={[-Math.PI / 2, 0, 0]} 
-      position={[0, 0, 0]} 
+      position={[0, -1, 0]} // Slightly below the center to align with grid
       receiveShadow
       castShadow
       visible={true}

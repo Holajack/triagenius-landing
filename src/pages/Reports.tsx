@@ -104,9 +104,14 @@ const Reports = () => {
                     </Button>
                   </div>
                   
-                  <div className="relative h-[400px] bg-black/5 rounded-md overflow-hidden">
+                  <div className="relative h-[400px] bg-black/5 rounded-md overflow-hidden border border-gray-200">
                     <ErrorBoundary fallback={<div className="flex items-center justify-center h-full">Error loading 3D visualization</div>}>
-                      <Suspense fallback={<div className="flex items-center justify-center h-full">Loading terrain...</div>}>
+                      <Suspense fallback={<div className="flex items-center justify-center h-full bg-gray-50">
+                        <div className="flex flex-col items-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
+                          <p>Loading terrain...</p>
+                        </div>
+                      </div>}>
                         <TerrainModel 
                           activeSubject={activeSubject} 
                           setActiveSubject={setActiveSubject}

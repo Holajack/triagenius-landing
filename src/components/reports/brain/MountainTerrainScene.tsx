@@ -17,14 +17,17 @@ const CameraController = ({ zoomLevel, rotation }: { zoomLevel: number; rotation
   
   useEffect(() => {
     if (controlsRef.current) {
-      // Apply zoom level
-      camera.position.z = 20 / zoomLevel;
-      camera.position.y = 15 / zoomLevel;
+      // Apply zoom level - closer initial position
+      camera.position.z = 15 / zoomLevel;
+      camera.position.y = 10 / zoomLevel;
       
       // Apply rotation
       const radians = (rotation * Math.PI) / 180;
-      camera.position.x = Math.sin(radians) * (20 / zoomLevel);
-      camera.position.z = Math.cos(radians) * (20 / zoomLevel);
+      camera.position.x = Math.sin(radians) * (15 / zoomLevel);
+      camera.position.z = Math.cos(radians) * (15 / zoomLevel);
+      
+      // Look at the center of the scene
+      camera.lookAt(0, 0, 0);
       
       controlsRef.current.update();
     }
@@ -48,14 +51,14 @@ const SceneLighting = () => {
   
   return (
     <>
-      {/* Ambient light for general illumination */}
-      <ambientLight intensity={0.5} />
+      {/* Ambient light for general illumination - brighter */}
+      <ambientLight intensity={0.8} />
       
-      {/* Directional light for shadows and highlights */}
+      {/* Directional light for shadows and highlights - brighter */}
       <directionalLight
         ref={directionalLightRef}
-        intensity={1.2}
-        position={[10, 10, 10]}
+        intensity={1.5}
+        position={[10, 15, 10]}
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
@@ -63,7 +66,7 @@ const SceneLighting = () => {
       
       {/* Hemisphere light for sky/ground color variation */}
       <hemisphereLight 
-        args={[0x8cc7de, 0x5e6b70, 0.5]}
+        args={[0x8cc7de, 0x5e6b70, 0.7]}
         position={[0, 50, 0]} 
       />
     </>
@@ -76,7 +79,7 @@ export const MountainTerrainScene = ({ zoomLevel, rotation }: MountainTerrainSce
   return (
     <Canvas
       shadows
-      camera={{ position: [15, 15, 15], fov: 45 }}
+      camera={{ position: [10, 10, 10], fov: 60 }}
       dpr={[1, 2]} // Responsive pixel ratio
       gl={{ antialias: true }}
       style={{ 
@@ -88,17 +91,20 @@ export const MountainTerrainScene = ({ zoomLevel, rotation }: MountainTerrainSce
         left: 0
       }}
     >
-      <fog attach="fog" args={['#e0e8f5', 30, 100]} />
+      <fog attach="fog" args={['#e0e8f5', 50, 150]} />
       <color attach="background" args={['#e0e8f5']} />
       
       <CameraController zoomLevel={zoomLevel} rotation={rotation} />
       <SceneLighting />
       
-      {/* High-resolution mountain terrain */}
+      {/* High-resolution mountain terrain with debug helpers */}
+      <axesHelper args={[5]} /> {/* XYZ axes to help with orientation */}
+      <gridHelper args={[100, 100]} rotation={[0, 0, 0]} position={[0, -0.1, 0]} /> {/* Grid helper */}
+      
       <MountainTerrain 
-        size={100} 
-        resolution={300} 
-        heightMultiplier={20} 
+        size={80} 
+        resolution={200} 
+        heightMultiplier={15} 
         biomeType="mountains" 
       />
     </Canvas>
