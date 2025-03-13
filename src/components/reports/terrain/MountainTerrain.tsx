@@ -1,3 +1,4 @@
+
 import { useRef, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
@@ -120,7 +121,7 @@ export const MountainTerrain = ({
     });
     
     // Create a plane geometry with high vertex count
-    const geo = new THREE.PlaneGeometry(size, size, resolution, resolution);
+    const geo = new THREE.PlaneGeometry(size, size, resolution - 1, resolution - 1);
     
     try {
       // Create noise generators with different seeds
@@ -198,7 +199,7 @@ export const MountainTerrain = ({
           microNoise * 0.03
         );
         
-        // Apply elevation
+        // Apply elevation - ensure values are properly applied to y-coordinate
         vertices[i + 1] = combinedNoise * heightMultiplier;
         
         // Add biome-specific features
@@ -256,12 +257,12 @@ export const MountainTerrain = ({
         break;
     }
     
-    return new THREE.MeshStandardMaterial({ 
+    return new THREE.MeshPhongMaterial({ 
       color: baseColor,
       flatShading: true,
-      roughness: 0.8,
-      metalness: 0.2,
+      shininess: 0,
       side: THREE.DoubleSide, // Make sure terrain is visible from both sides
+      wireframe: false, // Set to true temporarily for debugging if needed
     });
   }, [biomeType]);
   
@@ -270,17 +271,17 @@ export const MountainTerrain = ({
     if (meshRef.current && meshRef.current.geometry) {
       const vertexCount = resolution * resolution;
       console.log(`MountainTerrain mounted with ~${vertexCount.toLocaleString()} vertices`);
+      
+      // Set initial position
+      if (meshRef.current) {
+        meshRef.current.position.set(0, 0, 0);
+      }
     }
+    
+    return () => {
+      console.log("MountainTerrain unmounting");
+    };
   }, [resolution]);
-  
-  // Add subtle animation to simulate atmospheric effects
-  useFrame(({ clock }) => {
-    if (meshRef.current) {
-      // Very subtle movement to simulate atmospheric distortion
-      const time = clock.getElapsedTime() * 0.05;
-      meshRef.current.rotation.z = Math.sin(time) * 0.001;
-    }
-  });
   
   return (
     <mesh 
@@ -288,10 +289,9 @@ export const MountainTerrain = ({
       geometry={geometry}
       material={material}
       rotation={[-Math.PI / 2, 0, 0]} 
-      position={[0, 0, 0]} // Positioned at the center of the scene
+      position={[0, 0, 0]} 
       receiveShadow
       castShadow
-      visible={true}
     />
   );
 };
