@@ -1,6 +1,6 @@
 
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutDashboard, Bot, BarChart3, UserCircle2, Users } from "lucide-react";
+import { LayoutDashboard, Bot, BarChart3, UserCircle2, Users, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -36,6 +36,12 @@ const NavigationBar = () => {
       icon: <Users className="h-5 w-5" />,
       onClick: () => navigate("/community"),
       active: location.pathname === "/community" || location.pathname.startsWith("/community/"),
+    },
+    {
+      label: "Bonuses",
+      icon: <Gift className="h-5 w-5" />,
+      onClick: () => navigate("/bonuses"),
+      active: location.pathname === "/bonuses",
     },
     {
       label: "Nora",
