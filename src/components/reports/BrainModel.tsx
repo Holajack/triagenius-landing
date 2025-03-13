@@ -19,15 +19,12 @@ const BrainModel = ({
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
-    // Mark the component as loaded after a short delay to ensure proper initialization
-    const timer = setTimeout(() => {
-      setIsLoaded(true);
-    }, 100);
+    // Mark the component as loaded immediately for faster rendering
+    setIsLoaded(true);
     
     console.log("MountainTerrain component initialized", { zoomLevel, rotation });
     
     return () => {
-      clearTimeout(timer);
       console.log("MountainTerrain component unmounted");
     };
   }, [zoomLevel, rotation]);
@@ -49,16 +46,13 @@ const BrainModel = ({
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center h-full w-full bg-slate-100">
-        <div className="flex flex-col items-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
-          <p className="text-gray-500">Loading terrain visualization...</p>
-        </div>
+        <p className="text-gray-500">Loading visualization...</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-full relative overflow-hidden rounded-md">
+    <div className="w-full h-full relative overflow-hidden rounded-md border border-gray-300">
       <MountainTerrainScene 
         zoomLevel={zoomLevel}
         rotation={rotation}

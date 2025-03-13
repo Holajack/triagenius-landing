@@ -1,4 +1,3 @@
-
 import { useRef, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
@@ -108,7 +107,7 @@ interface MountainTerrainProps {
 
 export const MountainTerrain = ({
   size = 100,
-  resolution = 100, // Adjustable resolution for performance
+  resolution = 120, // Reduce for better performance
   heightMultiplier = 15,
   biomeType = 'mountains'
 }: MountainTerrainProps) => {
@@ -216,14 +215,6 @@ export const MountainTerrain = ({
               vertices[i + 1] += ridgeValue * 2;
             }
           }
-        } else if (biomeType === 'desert') {
-          // Desert dunes - smoother undulations
-          if (vertices[i + 1] < heightMultiplier * 0.4) {
-            vertices[i + 1] += Math.sin(x / 8) * Math.cos(z / 10) * 0.8;
-          }
-        } else if (biomeType === 'forest') {
-          // Forest terrain - more small variations
-          vertices[i + 1] += noise4.noise(x * 0.4, z * 0.4) * 0.8;
         }
       }
       
@@ -257,10 +248,10 @@ export const MountainTerrain = ({
         break;
     }
     
-    // Use MeshPhongMaterial for better performance on mobile
+    // Changed to MeshPhongMaterial for better compatibility and performance
     return new THREE.MeshPhongMaterial({ 
       color: baseColor,
-      shininess: 0,
+      shininess: 10,
       flatShading: true,
       side: THREE.DoubleSide, // Make sure terrain is visible from both sides
     });
@@ -274,7 +265,7 @@ export const MountainTerrain = ({
       
       // Set initial position
       if (meshRef.current) {
-        meshRef.current.position.set(0, -5, 0); // Lower position for better visibility
+        meshRef.current.position.set(0, -5, 0); // Adjust Y position to be more visible
       }
     }
     
@@ -283,13 +274,21 @@ export const MountainTerrain = ({
     };
   }, [resolution]);
   
+  // Add a small animation to make sure it's rendering
+  useFrame(() => {
+    if (meshRef.current) {
+      // Just a very subtle movement to ensure it's alive
+      meshRef.current.rotation.z = Math.sin(Date.now() * 0.0001) * 0.02;
+    }
+  });
+  
   return (
     <mesh 
       ref={meshRef} 
       geometry={geometry}
       material={material}
       rotation={[-Math.PI / 2, 0, 0]} 
-      position={[0, -5, 0]} // Lower position for better visibility
+      position={[0, -5, 0]} // Adjust position to be more visible
       receiveShadow
       castShadow
     />
