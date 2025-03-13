@@ -71,13 +71,22 @@ const SceneLighting = () => {
 };
 
 export const MountainTerrainScene = ({ zoomLevel, rotation }: MountainTerrainSceneProps) => {
+  console.log("Rendering MountainTerrainScene with", { zoomLevel, rotation });
+  
   return (
     <Canvas
       shadows
       camera={{ position: [15, 15, 15], fov: 45 }}
       dpr={[1, 2]} // Responsive pixel ratio
       gl={{ antialias: true }}
-      style={{ background: '#e0e8f5' }} // Set background explicitly
+      style={{ 
+        background: '#e0e8f5',
+        height: '100%',
+        width: '100%',
+        position: 'absolute',
+        top: 0,
+        left: 0
+      }}
     >
       <fog attach="fog" args={['#e0e8f5', 30, 100]} />
       <color attach="background" args={['#e0e8f5']} />

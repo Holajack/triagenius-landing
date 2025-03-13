@@ -27,7 +27,7 @@ const BrainModel = ({
     return () => {
       console.log("MountainTerrain component unmounted");
     };
-  }, []);
+  }, [zoomLevel, rotation]);
 
   // Handle errors during rendering
   const handleError = (error: Error) => {
@@ -52,7 +52,7 @@ const BrainModel = ({
   }
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full relative">
       <MountainTerrainScene 
         zoomLevel={zoomLevel}
         rotation={rotation}
