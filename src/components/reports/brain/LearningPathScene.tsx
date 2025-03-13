@@ -1,17 +1,20 @@
 
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { 
   OrbitControls, 
   Environment,
   ContactShadows,
   Sky,
-  useHelper,
-  PerspectiveCamera
+  PerspectiveCamera,
+  Float,
+  Text,
+  Effects
 } from '@react-three/drei';
 import { TerrainSystem } from '../terrain/TerrainSystem';
 import { PathwaySystem } from '../terrain/PathwaySystem';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { easing } from 'maath';
 
 interface LearningPathSceneProps {
   activeSubject: string | null;
@@ -26,31 +29,78 @@ export const LearningPathScene = ({
   zoomLevel, 
   rotation 
 }: LearningPathSceneProps) => {
-  // Path points to match the mountain peaks defined in the vertex shader
+  // Path points corresponding to brain regions
   const pathPoints = [
-    { position: [0, 0, 0] as [number, number, number], type: 'basecamp' as const },
-    { position: [-10, 4, 8] as [number, number, number], type: 'milestone' as const },
-    { position: [12, 5, 6] as [number, number, number], type: 'checkpoint' as const },
-    { position: [8, 4, -10] as [number, number, number], type: 'milestone' as const },
-    { position: [-5, 4, -12] as [number, number, number], type: 'checkpoint' as const },
-    { position: [-12, 4, -3] as [number, number, number], type: 'milestone' as const },
-    { position: [5, 5, 12] as [number, number, number], type: 'checkpoint' as const },
+    { position: [0, 0, 0] as [number, number, number], type: 'basecamp' as const, label: 'Learning Center' },
+    { position: [-10, 4, 8] as [number, number, number], type: 'prefrontal' as const, label: 'Prefrontal Cortex: Planning & Decision-Making' },
+    { position: [12, 5, 6] as [number, number, number], type: 'hippocampus' as const, label: 'Hippocampus: Memory Formation' },
+    { position: [8, 4, -10] as [number, number, number], type: 'amygdala' as const, label: 'Amygdala: Emotional Learning' },
+    { position: [-12, 4, -3] as [number, number, number], type: 'cerebellum' as const, label: 'Cerebellum: Skill Mastery' },
+    { position: [-5, 4, -12] as [number, number, number], type: 'parietal' as const, label: 'Parietal Lobe: Problem Solving' },
   ];
+
+  // Camera control for focusing on specific regions
+  const CameraController = () => {
+    const { camera } = useThree();
+    const targetPosition = useRef(new THREE.Vector3(0, 15, 25));
+    
+    useEffect(() => {
+      // Set initial camera position
+      camera.position.set(0, 15, 25);
+      camera.lookAt(0, 0, 0);
+    }, [camera]);
+    
+    useFrame((state, delta) => {
+      if (activeSubject) {
+        // Find the selected brain region
+        const selectedPoint = pathPoints.find(p => p.type === activeSubject);
+        
+        if (selectedPoint) {
+          // Create target position slightly offset from the selected point
+          const targetPos = new THREE.Vector3(
+            selectedPoint.position[0] * 0.7,
+            selectedPoint.position[1] + 5,
+            selectedPoint.position[2] * 0.7
+          );
+          
+          // Smoothly transition to focus on the selected point
+          targetPosition.current.lerp(targetPos, 0.05);
+          easing.damp3(camera.position, targetPosition.current, 0.25, delta);
+          
+          // Make camera look at the selected point
+          const lookAtPos = new THREE.Vector3(...selectedPoint.position);
+          camera.lookAt(lookAtPos);
+        }
+      } else {
+        // Return to default orbit position when no subject is selected
+        const defaultPos = new THREE.Vector3(0, 15, 25);
+        targetPosition.current.lerp(defaultPos, 0.05);
+        easing.damp3(camera.position, targetPosition.current, 0.25, delta);
+      }
+    });
+    
+    return null;
+  };
 
   return (
     <Canvas
       gl={{ 
         antialias: true,
         powerPreference: 'high-performance',
+        stencil: false,
+        depth: true,
+        alpha: false
       }}
       dpr={[1, 1.5]}
       camera={{ position: [0, 15, 25], fov: 45 }}
       shadows
     >
-      <color attach="background" args={['#f0f4f8']} />
-      <fog attach="fog" args={['#e0f7fa', 35, 45]} />
+      <color attach="background" args={['#071025']} />
+      <fog attach="fog" args={['#071025', 35, 45]} />
       
-      {/* Improved lighting */}
+      <CameraController />
+      
+      {/* Enhanced lighting */}
       <ambientLight intensity={0.5} />
       <directionalLight 
         position={[5, 15, 5]} 
@@ -87,6 +137,29 @@ export const LearningPathScene = ({
             setActiveSubject(point.type);
           }}
         />
+        
+        {/* Floating region labels */}
+        {pathPoints.slice(1).map((point, index) => (
+          <Float 
+            key={index}
+            position={[point.position[0], point.position[1] + 2, point.position[2]]}
+            speed={2} 
+            rotationIntensity={0.2} 
+            floatIntensity={0.5}
+            visible={!activeSubject || activeSubject === point.type}
+          >
+            <Text
+              color={getPointTypeColor(point.type)}
+              fontSize={0.5}
+              maxWidth={4}
+              textAlign="center"
+              font="/fonts/Inter-Bold.woff"
+              anchorY="bottom"
+            >
+              {getBrainRegionShortName(point.type)}
+            </Text>
+          </Float>
+        ))}
       </group>
 
       <Sky
@@ -107,6 +180,7 @@ export const LearningPathScene = ({
       />
 
       <OrbitControls
+        enabled={!activeSubject}
         enablePan={false}
         minDistance={10}
         maxDistance={35}
@@ -117,6 +191,35 @@ export const LearningPathScene = ({
         maxPolarAngle={Math.PI / 2 - 0.1}
         minPolarAngle={0.1}
       />
+      
+      {/* Post-processing effects */}
+      <Effects disableGamma>
+        {/* Add subtle bloom effect for glowing paths */}
+        {/* <unrealBloomPass threshold={0.5} strength={0.5} radius={0.7} /> */}
+      </Effects>
     </Canvas>
   );
 };
+
+// Helper functions
+function getPointTypeColor(type: string): string {
+  switch (type) {
+    case 'prefrontal': return '#ea384c';
+    case 'hippocampus': return '#1EAEDB';
+    case 'amygdala': return '#4AC157';
+    case 'cerebellum': return '#FDC536';
+    case 'parietal': return '#D946EF';
+    default: return '#FFFFFF';
+  }
+}
+
+function getBrainRegionShortName(type: string): string {
+  switch (type) {
+    case 'prefrontal': return 'Prefrontal Cortex';
+    case 'hippocampus': return 'Hippocampus';
+    case 'amygdala': return 'Amygdala';
+    case 'cerebellum': return 'Cerebellum';
+    case 'parietal': return 'Parietal Lobe';
+    default: return '';
+  }
+}

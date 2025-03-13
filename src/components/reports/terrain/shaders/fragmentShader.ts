@@ -2,6 +2,10 @@
 export const fragmentShader = `
 varying vec2 vUv;
 varying float vElevation;
+varying vec3 vPosition;
+varying vec3 vNormal;
+varying vec3 vPathColors[5];
+varying float vPathIntensities[5];
 
 void main() {
   float snowLevel = 3.8;
@@ -64,11 +68,6 @@ void main() {
     // Shorelines and paths
     float blend = (vElevation - waterLevel) / (sandLevel - waterLevel);
     terrainColor = mix(mudColor, sandColor, blend);
-    
-    // Highlight paths 
-    if (vElevation < 0.65 && vElevation > 0.45) {
-      terrainColor = mix(terrainColor, pathColor, 0.8);
-    }
   } else if (vElevation > deepWaterLevel) {
     // Shallow water
     float blend = (vElevation - deepWaterLevel) / (waterLevel - deepWaterLevel);
@@ -84,6 +83,31 @@ void main() {
   
   // Add subtle texture variations
   terrainColor += vec3(noiseVal + bandNoise);
+  
+  // Overlay brain region trails on the terrain
+  vec3 pathColorContribution = vec3(0.0);
+  float totalPathIntensity = 0.0;
+  
+  // Mix in each brain region path color based on its intensity
+  for (int i = 0; i < 5; i++) {
+    pathColorContribution += vPathColors[i] * vPathIntensities[i] * 1.2;
+    totalPathIntensity += vPathIntensities[i];
+  }
+  
+  // Blend path colors with terrain
+  if (totalPathIntensity > 0.0) {
+    // Add glow effect to paths
+    float glow = min(totalPathIntensity * 1.5, 1.0);
+    terrainColor = mix(terrainColor, pathColorContribution, glow);
+    
+    // Add subtle pulse effect to paths
+    terrainColor *= 1.0 + (totalPathIntensity * 0.3);
+  }
+  
+  // Add simple lighting effect based on normal
+  vec3 lightDir = normalize(vec3(0.5, 0.8, 1.0));
+  float diffuse = max(dot(vNormal, lightDir), 0.0) * 0.3 + 0.7;
+  terrainColor *= diffuse;
   
   // Enhance overall lighting
   terrainColor = terrainColor * 1.1;

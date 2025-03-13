@@ -97,4 +97,40 @@ float ridgeFbm(vec2 p) {
   
   return sum;
 }
+
+// Brain region trail paths
+vec3 getBrainRegionColor(int regionType) {
+  // Color-coded brain regions
+  if (regionType == 0) return vec3(0.92, 0.22, 0.30);      // Prefrontal Cortex (Red)
+  else if (regionType == 1) return vec3(0.12, 0.63, 0.87); // Hippocampus (Blue)
+  else if (regionType == 2) return vec3(0.29, 0.75, 0.34); // Amygdala (Green)
+  else if (regionType == 3) return vec3(0.99, 0.84, 0.21); // Cerebellum (Yellow)
+  else if (regionType == 4) return vec3(0.85, 0.27, 0.94); // Parietal Lobe (Magenta)
+  else return vec3(1.0, 1.0, 1.0);                         // Default white
+}
+
+// Calculate trail intensity for a specific brain region
+float brainRegionTrail(vec2 p, vec2 start, vec2 end, float width, int regionType) {
+  float pathIntensity = path(p, start, end, width);
+  
+  // Add region-specific trail variations
+  if (regionType == 0) {
+    // Prefrontal Cortex - more analytical, structured paths
+    pathIntensity *= (1.0 + 0.2 * sin(length(p) * 10.0));
+  } else if (regionType == 1) {
+    // Hippocampus - memory related, flowing paths
+    pathIntensity *= (1.0 + 0.3 * fbm(p * 2.0));
+  } else if (regionType == 2) {
+    // Amygdala - emotional processing, more variable paths
+    pathIntensity *= (1.0 + 0.4 * noise(p * 3.0));
+  } else if (regionType == 3) {
+    // Cerebellum - motor skills, smooth paths
+    pathIntensity *= (1.0 + 0.2 * sin(p.x * 8.0) * sin(p.y * 8.0));
+  } else if (regionType == 4) {
+    // Parietal Lobe - sensory processing, intricate paths
+    pathIntensity *= (1.0 + 0.3 * ridgedNoise(p * 2.5));
+  }
+  
+  return pathIntensity;
+}
 `;
