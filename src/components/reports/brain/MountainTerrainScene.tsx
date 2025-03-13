@@ -18,15 +18,16 @@ const CameraController = ({ zoomLevel, rotation }: { zoomLevel: number; rotation
   
   useEffect(() => {
     if (controlsRef.current) {
-      // Position camera to better view the terrain - aligned with reference images
+      // Position camera to better view the terrain
       camera.position.set(
         Math.sin(rotation * Math.PI / 180) * (30 / zoomLevel),
-        20 / zoomLevel,  // Higher to see more of the terrain
+        25 / zoomLevel,  // Higher to see more of the terrain
         Math.cos(rotation * Math.PI / 180) * (30 / zoomLevel)
       );
       
       // Look at center point slightly above terrain for better perspective
       camera.lookAt(0, 2, 0);
+      camera.updateProjectionMatrix();
       
       controlsRef.current.update();
     }
@@ -47,13 +48,13 @@ const CameraController = ({ zoomLevel, rotation }: { zoomLevel: number; rotation
   );
 };
 
-// Enhanced lighting for dramatic mountain shadows like in the reference images
+// Enhanced lighting for dramatic mountain shadows
 const SceneLighting = () => {
   const directionalLightRef = useRef<THREE.DirectionalLight>(null);
   
   useFrame(({ clock }) => {
     if (directionalLightRef.current) {
-      // Slowly rotate the light for dynamic shadows similar to reference images
+      // Slowly rotate the light for dynamic shadows
       const time = clock.getElapsedTime() * 0.05;
       directionalLightRef.current.position.x = Math.sin(time) * 15;
       directionalLightRef.current.position.z = Math.cos(time) * 15;
@@ -65,7 +66,7 @@ const SceneLighting = () => {
       {/* Ambient light for base illumination */}
       <ambientLight intensity={0.7} color="#f5f5f5" />
       
-      {/* Main directional light casting shadows like in reference images */}
+      {/* Main directional light casting shadows */}
       <directionalLight
         ref={directionalLightRef}
         intensity={2.5}
@@ -78,7 +79,7 @@ const SceneLighting = () => {
         shadow-camera-right={20}
         shadow-camera-top={20}
         shadow-camera-bottom={-20}
-        color="#fff9e8" // Warm light like in references
+        color="#fff9e8" // Warm light
       />
       
       {/* Secondary fill light for detailed illumination */}
@@ -113,6 +114,7 @@ export const MountainTerrainScene = ({
         antialias: true,
         alpha: false,
         logarithmicDepthBuffer: true, // Better depth perception
+        preserveDrawingBuffer: true // Important for screenshots
       }}
       style={{ 
         background: '#e0e8f5',
@@ -136,14 +138,14 @@ export const MountainTerrainScene = ({
         mieDirectionalG={0.8}
       />
       
-      {/* Scene fog like in the distance of the reference images */}
+      {/* Scene fog like in the distance */}
       <fog attach="fog" args={['#e0e8f5', 60, 120]} />
       <color attach="background" args={['#e0e8f5']} />
       
       <CameraController zoomLevel={zoomLevel} rotation={rotation} />
       <SceneLighting />
       
-      {/* The terrain mesh - with increased size for better detail */}
+      {/* The terrain mesh with appropriate size */}
       <MountainTerrain 
         size={80} 
         resolution={120} // ~90,000 vertices for desktop

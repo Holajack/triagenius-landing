@@ -26,7 +26,7 @@ const BrainModel = ({
     // Mark the component as loaded after a short delay to ensure proper initialization
     const timer = setTimeout(() => {
       setIsLoaded(true);
-    }, 100);
+    }, 500); // Increased to give more time for the WebGL context to initialize
     
     console.log("MountainTerrain component initialized", { zoomLevel, rotation, biomeType });
     
@@ -42,6 +42,7 @@ const BrainModel = ({
     setHasError(true);
   };
 
+  // If there's an error, show an error message
   if (hasError) {
     return (
       <div className="flex items-center justify-center h-full w-full bg-slate-100 text-red-500 p-4 rounded-md">
@@ -50,6 +51,7 @@ const BrainModel = ({
     );
   }
 
+  // Show loading state
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center h-full w-full bg-slate-100">
@@ -62,8 +64,8 @@ const BrainModel = ({
   }
 
   return (
-    <div className="w-full h-full relative overflow-hidden rounded-md">
-      {/* Add terrain style selector */}
+    <div className="w-full h-full relative overflow-hidden rounded-md bg-slate-100">
+      {/* Terrain style selector */}
       <div className="absolute top-2 right-2 z-10 bg-white/80 backdrop-blur-sm p-2 rounded-md shadow-md">
         <Select
           value={biomeType}
@@ -86,11 +88,14 @@ const BrainModel = ({
         {isMobile ? "~30k vertices (mobile)" : "~90k vertices (desktop)"}
       </div>
       
-      <MountainTerrainScene 
-        zoomLevel={zoomLevel}
-        rotation={rotation}
-        biomeType={biomeType}
-      />
+      {/* The actual 3D scene */}
+      <div className="h-full w-full" style={{ position: 'relative' }}>
+        <MountainTerrainScene 
+          zoomLevel={zoomLevel}
+          rotation={rotation}
+          biomeType={biomeType}
+        />
+      </div>
     </div>
   );
 };

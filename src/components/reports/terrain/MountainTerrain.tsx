@@ -99,6 +99,14 @@ class SimplexNoise {
     const gi = this.perm[ii + this.perm[jj]] % 12;
     return t * t * t * t * this.grad(gi, x, y);
   }
+  
+  private grad(hash: number, x: number, y: number): number {
+    const h = hash & 15;
+    const grad = 1 + (h & 7); // Gradient value from 1-8
+    const u = h < 8 ? x : y;
+    const v = h < 4 ? y : x;
+    return ((h & 1) ? -u : u) + ((h & 2) ? -v : v);
+  }
 }
 
 interface MountainTerrainProps {
@@ -120,7 +128,7 @@ export const MountainTerrain = ({
   const meshRef = useRef<THREE.Mesh>(null);
   
   // Adjust resolution based on device to optimize performance
-  const adjustedResolution = isMobile ? 60 : resolution; // Lower for mobile (~30k vertices vs ~90k for desktop)
+  const adjustedResolution = isMobile ? Math.floor(resolution / 2) : resolution; // Lower for mobile (30k vs 90k vertices)
   
   // Generate terrain geometry with appropriate resolution
   const geometry = useMemo(() => {
@@ -139,7 +147,7 @@ export const MountainTerrain = ({
       // Apply multiple noise layers for realistic terrain
       const vertices = geo.attributes.position.array;
       
-      // Constants for different terrain features - adjusted based on reference images
+      // Constants for different terrain features
       const MOUNTAIN_SCALE = 40;
       const RIDGE_SCALE = 25;
       const HILL_SCALE = 15;
@@ -181,18 +189,18 @@ export const MountainTerrain = ({
         
         // Create complex mountainous terrain with multiple noise layers
         
-        // Large mountain features - creating main peaks like in the reference
+        // Large mountain features
         const mountainNoise = noise1.noise(x / MOUNTAIN_SCALE, z / MOUNTAIN_SCALE) * peakHeight;
         
-        // Ridge formations for mountain ranges - creating the sharp ridges visible in the reference
+        // Ridge formations for mountain ranges
         const nx = x / RIDGE_SCALE;
         const nz = z / RIDGE_SCALE;
         const ridgeNoise = ridgeIntensity * Math.pow(1 - Math.abs(noise2.noise(nx, nz)), 2);
         
-        // Medium hills and valleys - creating the rolling terrain visible in the reference
+        // Medium hills and valleys
         const hillNoise = 0.3 * noise3.noise(x / HILL_SCALE, z / HILL_SCALE) * roughness;
         
-        // Small terrain details - mimicking the fine details in the reference
+        // Small terrain details
         const detailNoise = 0.1 * noise1.noise(x / DETAIL_SCALE, z / DETAIL_SCALE);
         
         // Micro details for rock formations
@@ -212,23 +220,23 @@ export const MountainTerrain = ({
         
         // Add biome-specific features
         if (biomeType === 'mountains') {
-          // Make higher areas more jagged - creating snow-capped peaks like in the reference
+          // Make higher areas more jagged
           if (vertices[i + 1] > heightMultiplier * 0.6) {
             vertices[i + 1] += noise2.noise(x * 0.2, z * 0.2) * (vertices[i + 1] / heightMultiplier) * 2;
           }
           
-          // Create deeper valleys - mimicking the dark valleys in the reference
+          // Create deeper valleys
           if (vertices[i + 1] < heightMultiplier * 0.3) {
             vertices[i + 1] -= noise3.noise(x * 0.3, z * 0.3) * 0.5;
           }
         }
         
-        // Generate vertex colors based on height for texture blending
+        // Generate vertex colors based on height for visual appeal
         const normalizedHeight = (vertices[i + 1] / heightMultiplier);
         const colorIndex = i / 3 * 3;
         
         if (normalizedHeight > 0.8) {
-          // Snow caps - white like in first reference
+          // Snow caps - white
           colors[colorIndex] = 0.95; // R
           colors[colorIndex + 1] = 0.95; // G
           colors[colorIndex + 2] = 0.98; // B
@@ -238,7 +246,7 @@ export const MountainTerrain = ({
           colors[colorIndex + 1] = 0.65;
           colors[colorIndex + 2] = 0.65;
         } else if (normalizedHeight > 0.4) {
-          // Mid-level terrain - brown like in second reference
+          // Mid-level terrain - brown
           colors[colorIndex] = 0.55;
           colors[colorIndex + 1] = 0.45;
           colors[colorIndex + 2] = 0.40;
@@ -248,7 +256,7 @@ export const MountainTerrain = ({
           colors[colorIndex + 1] = 0.38;
           colors[colorIndex + 2] = 0.35;
         } else {
-          // Valley floors - darkest brown like in third/fourth reference
+          // Valley floors - darkest brown
           colors[colorIndex] = 0.35;
           colors[colorIndex + 1] = 0.30;
           colors[colorIndex + 2] = 0.28;
@@ -270,11 +278,9 @@ export const MountainTerrain = ({
   
   // Create optimized material for better performance and visibility
   const material = useMemo(() => {
-    // Load texture maps based on biome type
-    const textureLoader = new TextureLoader();
+    // Select color based on biome type
     let baseColor;
     
-    // Select color based on biome type
     switch(biomeType) {
       case 'mountains':
         baseColor = new THREE.Color(0x8c9484);
@@ -331,7 +337,7 @@ export const MountainTerrain = ({
       geometry={geometry}
       material={material}
       rotation={[-Math.PI / 2, 0, 0]} 
-      position={[0, -4, 0]} // Lowered position to be more visible in the scene
+      position={[0, -5, 0]} // Position lower to be more visible
       receiveShadow
       castShadow
     />
