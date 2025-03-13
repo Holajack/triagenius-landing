@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { LearningPathScene } from './brain/LearningPathScene';
+import { MountainTerrainScene } from './brain/MountainTerrainScene';
 
 interface BrainModelProps {
   activeSubject: string | null;
@@ -22,16 +22,16 @@ const BrainModel = ({
     // Mark the component as loaded
     setIsLoaded(true);
     
-    console.log("BrainModel component initialized", { activeSubject, zoomLevel, rotation });
+    console.log("MountainTerrain component initialized", { zoomLevel, rotation });
     
     return () => {
-      console.log("BrainModel component unmounted");
+      console.log("MountainTerrain component unmounted");
     };
   }, []);
 
   // Handle errors during rendering
   const handleError = (error: Error) => {
-    console.error("Error in BrainModel:", error);
+    console.error("Error in MountainTerrain:", error);
     setHasError(true);
   };
 
@@ -53,9 +53,7 @@ const BrainModel = ({
 
   return (
     <div className="w-full h-full">
-      <LearningPathScene 
-        activeSubject={activeSubject} 
-        setActiveSubject={setActiveSubject}
+      <MountainTerrainScene 
         zoomLevel={zoomLevel}
         rotation={rotation}
       />

@@ -20,12 +20,11 @@ import {
   RotateCw,
   ZoomIn,
   ZoomOut,
-  Mountain,
-  Route
+  Mountain
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
-import LearningPathModel from "@/components/reports/BrainModel";
+import TerrainModel from "@/components/reports/BrainModel";
 import CognitiveMetrics from "@/components/reports/CognitiveMetrics";
 import FocusBreakdown from "@/components/reports/FocusBreakdown";
 import RecommendationsCard from "@/components/reports/RecommendationsCard";
@@ -59,8 +58,8 @@ const Reports = () => {
             Back
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">Learning Path Analysis</h1>
-            <p className="text-muted-foreground">Track your progress through different subject areas</p>
+            <h1 className="text-2xl font-bold">Terrain Visualization</h1>
+            <p className="text-muted-foreground">Explore the mountainous terrain visualization</p>
           </div>
         </div>
 
@@ -69,11 +68,11 @@ const Reports = () => {
             <Card className="shadow-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xl flex items-center">
-                  <Route className="h-5 w-5 mr-2 text-primary" />
-                  Learning Path Map
+                  <Mountain className="h-5 w-5 mr-2 text-primary" />
+                  Mountain Terrain Visualization
                 </CardTitle>
                 <CardDescription>
-                  Explore your learning journey across different subject areas
+                  High-resolution 3D terrain with ~9,000,000 vertices
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -107,7 +106,7 @@ const Reports = () => {
                   
                   <div className="relative h-[400px] bg-black/5 rounded-md overflow-hidden">
                     <ErrorBoundary fallback={<div className="flex items-center justify-center h-full">Error loading 3D visualization</div>}>
-                      <LearningPathModel 
+                      <TerrainModel 
                         activeSubject={activeSubject} 
                         setActiveSubject={setActiveSubject}
                         zoomLevel={zoomLevel}
