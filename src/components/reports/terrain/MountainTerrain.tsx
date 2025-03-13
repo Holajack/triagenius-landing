@@ -2,7 +2,7 @@
 import { useRef, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { useMediaQuery } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Custom SimplexNoise implementation
 class SimplexNoise {
@@ -113,7 +113,7 @@ export const MountainTerrain = ({
   heightMultiplier = 15,
   biomeType = 'mountains'
 }: MountainTerrainProps) => {
-  const isMobile = useMediaQuery("(max-width: 768px)");
+  const isMobile = useIsMobile();
   const meshRef = useRef<THREE.Mesh>(null);
   
   // Adjust resolution based on device to optimize performance
