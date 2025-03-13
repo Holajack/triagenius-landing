@@ -17,8 +17,6 @@ import Chat from "./pages/Chat";
 import StudyRoom from "./pages/StudyRoom";
 import Reports from "./pages/Reports";
 import Profile from "./pages/Profile";
-import Bonuses from "./pages/Bonuses";
-import SideDrawerMenu from "./components/SideDrawerMenu";
 
 const queryClient = new QueryClient();
 
@@ -30,25 +28,19 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <div className="flex min-h-screen">
-              <SideDrawerMenu />
-              <div className="flex-1">
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/onboarding" element={<Onboarding />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/focus-session" element={<FocusSession />} />
-                  <Route path="/session-report" element={<SessionReport />} />
-                  <Route path="/community" element={<Community />} />
-                  <Route path="/community/chat/:id" element={<Chat />} />
-                  <Route path="/study-room/:id" element={<StudyRoom />} />
-                  <Route path="/reports" element={<Reports />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/bonuses" element={<Bonuses />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </div>
-            </div>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/focus-session" element={<FocusSession />} />
+              <Route path="/session-report" element={<SessionReport />} />
+              <Route path="/community" element={<Community />} />
+              <Route path="/community/chat/:id" element={<Chat />} />
+              <Route path="/study-room/:id" element={<StudyRoom />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
           </BrowserRouter>
         </TooltipProvider>
       </ThemeProvider>
