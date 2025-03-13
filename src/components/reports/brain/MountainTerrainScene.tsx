@@ -17,17 +17,16 @@ const CameraController = ({ zoomLevel, rotation }: { zoomLevel: number; rotation
   
   useEffect(() => {
     if (controlsRef.current) {
-      // Position camera to better view the terrain - adjusted for better visibility
+      // Position camera to better view the terrain
       camera.position.set(
         Math.sin(rotation * Math.PI / 180) * (20 / zoomLevel),
-        15 / zoomLevel,  // Lower height to see the terrain more directly
+        10 / zoomLevel,  // Lower height to see the terrain better
         Math.cos(rotation * Math.PI / 180) * (20 / zoomLevel)
       );
       
-      // Look directly at the center of the terrain
+      // Look directly at the center
       camera.lookAt(0, 0, 0);
       
-      // Update controls
       controlsRef.current.update();
     }
   }, [zoomLevel, rotation, camera]);
@@ -50,22 +49,22 @@ const SceneLighting = () => {
   
   return (
     <>
-      {/* Ambient light for general illumination - increased brightness */}
-      <ambientLight intensity={1.2} />
+      {/* Increased ambient light for better visibility */}
+      <ambientLight intensity={1.5} />
       
-      {/* Directional light for shadows and highlights - increased intensity */}
+      {/* Stronger directional light */}
       <directionalLight
         ref={directionalLightRef}
-        intensity={2.5}
+        intensity={3.0}
         position={[10, 20, 10]}
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
       />
       
-      {/* Hemisphere light for sky/ground color variation */}
+      {/* Hemisphere light for more natural lighting */}
       <hemisphereLight 
-        args={[0x8cc7de, 0x5e6b70, 1.0]}  // Increased intensity
+        args={[0x8cc7de, 0x5e6b70, 1.5]} 
         position={[0, 50, 0]} 
       />
     </>
@@ -83,7 +82,6 @@ export const MountainTerrainScene = ({ zoomLevel, rotation }: MountainTerrainSce
       gl={{ 
         antialias: true,
         alpha: false, // Use a solid background
-        // Removing the outputEncoding property as it's not supported
       }}
       style={{ 
         background: '#e0e8f5',
@@ -101,15 +99,15 @@ export const MountainTerrainScene = ({ zoomLevel, rotation }: MountainTerrainSce
       <CameraController zoomLevel={zoomLevel} rotation={rotation} />
       <SceneLighting />
       
-      {/* Helpers for orientation - made smaller for less distraction */}
-      <axesHelper args={[5]} />
-      <gridHelper args={[60, 60]} rotation={[0, 0, 0]} position={[0, -0.1, 0]} />
+      {/* Made grid and axes smaller and more subtle */}
+      <axesHelper args={[3]} />
+      <gridHelper args={[30, 30]} rotation={[0, 0, 0]} position={[0, -0.1, 0]} />
       
-      {/* The terrain mesh */}
+      {/* The terrain mesh - with proper positioning */}
       <MountainTerrain 
         size={60} 
         resolution={100}  
-        heightMultiplier={12} 
+        heightMultiplier={10} 
         biomeType="mountains" 
       />
     </Canvas>

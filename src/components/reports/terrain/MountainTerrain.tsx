@@ -2,8 +2,9 @@
 import { useRef, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
+import { useMediaQuery } from '@/hooks/use-mobile';
 
-// Create a custom SimplexNoise implementation
+// Custom SimplexNoise implementation
 class SimplexNoise {
   private perm: number[] = [];
   
@@ -108,27 +109,29 @@ interface MountainTerrainProps {
 
 export const MountainTerrain = ({
   size = 100,
-  resolution = 120, // Reduce for better performance
+  resolution = 120,
   heightMultiplier = 15,
   biomeType = 'mountains'
 }: MountainTerrainProps) => {
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const meshRef = useRef<THREE.Mesh>(null);
+  
+  // Adjust resolution based on device to optimize performance
+  const adjustedResolution = isMobile ? 60 : 120; // Lower for mobile
   
   // Generate terrain geometry with appropriate resolution
   const geometry = useMemo(() => {
-    console.log("Creating high-resolution mountain terrain geometry", { 
-      size, resolution, vertexCount: resolution * resolution 
-    });
+    const vertexCount = adjustedResolution * adjustedResolution;
+    console.log(`Creating mountain terrain geometry with ${vertexCount} vertices, mobile: ${isMobile}`);
     
     // Create a plane geometry with high vertex count
-    const geo = new THREE.PlaneGeometry(size, size, resolution - 1, resolution - 1);
+    const geo = new THREE.PlaneGeometry(size, size, adjustedResolution - 1, adjustedResolution - 1);
     
     try {
       // Create noise generators with different seeds
       const noise1 = new SimplexNoise(42);
       const noise2 = new SimplexNoise(123);
       const noise3 = new SimplexNoise(789);
-      const noise4 = new SimplexNoise(456);
       
       // Apply multiple noise layers for realistic terrain
       const vertices = geo.attributes.position.array;
@@ -138,7 +141,6 @@ export const MountainTerrain = ({
       const RIDGE_SCALE = 25;
       const HILL_SCALE = 15;
       const DETAIL_SCALE = 8;
-      const MICRO_DETAIL_SCALE = 3;
       
       // Biome-specific modifiers
       let peakHeight = 1.0;
@@ -163,7 +165,6 @@ export const MountainTerrain = ({
           break;
         case 'mixed':
         default:
-          // Default values
           break;
       }
       
@@ -185,21 +186,17 @@ export const MountainTerrain = ({
         const hillNoise = 0.3 * noise3.noise(x / HILL_SCALE, z / HILL_SCALE) * roughness;
         
         // Small terrain details
-        const detailNoise = 0.1 * noise4.noise(x / DETAIL_SCALE, z / DETAIL_SCALE);
-        
-        // Micro details (rocks, small bumps)
-        const microNoise = 0.05 * noise1.noise(x / MICRO_DETAIL_SCALE, z / MICRO_DETAIL_SCALE);
+        const detailNoise = 0.1 * noise1.noise(x / DETAIL_SCALE, z / DETAIL_SCALE);
         
         // Combine all noise layers
         const combinedNoise = (
           mountainNoise * 0.5 + 
           ridgeNoise * 0.25 + 
           hillNoise * 0.15 + 
-          detailNoise * 0.07 +
-          microNoise * 0.03
+          detailNoise * 0.1
         );
         
-        // Apply elevation - ensure values are properly applied to y-coordinate
+        // Apply elevation
         vertices[i + 1] = combinedNoise * heightMultiplier;
         
         // Add biome-specific features
@@ -208,89 +205,41 @@ export const MountainTerrain = ({
           if (vertices[i + 1] > heightMultiplier * 0.6) {
             vertices[i + 1] += noise2.noise(x * 0.2, z * 0.2) * (vertices[i + 1] / heightMultiplier) * 2;
           }
-          
-          // Create sharp ridges along mountain tops
-          if (vertices[i + 1] > heightMultiplier * 0.7) {
-            const ridgeValue = Math.abs(noise3.noise(x * 0.1, z * 0.1));
-            if (ridgeValue > 0.7) {
-              vertices[i + 1] += ridgeValue * 2;
-            }
-          }
-        } else if (biomeType === 'desert') {
-          // Desert dunes - smoother undulations
-          if (vertices[i + 1] < heightMultiplier * 0.4) {
-            vertices[i + 1] += Math.sin(x / 8) * Math.cos(z / 10) * 0.8;
-          }
-        } else if (biomeType === 'forest') {
-          // Forest terrain - more small variations
-          vertices[i + 1] += noise4.noise(x * 0.4, z * 0.4) * 0.8;
         }
       }
       
       // Update normals for proper lighting
       geo.computeVertexNormals();
-      console.log("High-resolution mountain terrain created successfully");
+      console.log("Mountain terrain created successfully");
     } catch (error) {
       console.error("Error creating mountain terrain:", error);
     }
     
     return geo;
-  }, [size, resolution, heightMultiplier, biomeType]);
+  }, [size, adjustedResolution, heightMultiplier, biomeType, isMobile]);
   
-  // Create biome-specific material with enhanced features
+  // Create optimized material for better performance and visibility
   const material = useMemo(() => {
-    let baseColor;
-    
-    switch(biomeType) {
-      case 'mountains':
-        baseColor = new THREE.Color(0x8c9484); // Gray-green for mountains
-        break;
-      case 'desert':
-        baseColor = new THREE.Color(0xd2b48c); // Tan for desert
-        break;
-      case 'forest':
-        baseColor = new THREE.Color(0x4c7a3d); // Dark green for forest
-        break;
-      case 'mixed':
-      default:
-        baseColor = new THREE.Color(0x95a186); // Mixed terrain color
-        break;
-    }
-    
-    // Switch to MeshStandardMaterial for better lighting and rendering
-    return new THREE.MeshStandardMaterial({ 
-      color: baseColor,
-      roughness: 0.8,
-      metalness: 0.2,
+    // Using MeshPhongMaterial for better performance than MeshStandardMaterial
+    return new THREE.MeshPhongMaterial({ 
+      color: new THREE.Color(0x8c9484),
+      shininess: 10,
       flatShading: true,
-      side: THREE.DoubleSide, // Make sure terrain is visible from both sides
+      side: THREE.DoubleSide,
     });
   }, [biomeType]);
   
   // Log vertex count when mounted
   useEffect(() => {
-    if (meshRef.current && meshRef.current.geometry) {
-      const vertexCount = resolution * resolution;
-      console.log(`MountainTerrain mounted with ~${vertexCount.toLocaleString()} vertices`);
-      
-      // Set initial position
-      if (meshRef.current) {
-        meshRef.current.position.set(0, -2, 0); // Adjust Y position to be visible
-      }
+    if (meshRef.current) {
+      const vertexCount = adjustedResolution * adjustedResolution;
+      console.log(`MountainTerrain mounted with ${vertexCount} vertices (mobile: ${isMobile})`);
     }
     
     return () => {
       console.log("MountainTerrain unmounting");
     };
-  }, [resolution]);
-  
-  // Add a small animation to make sure it's rendering
-  useFrame(() => {
-    if (meshRef.current) {
-      // Just a very subtle movement to ensure it's alive
-      meshRef.current.rotation.z = Math.sin(Date.now() * 0.0001) * 0.01;
-    }
-  });
+  }, [adjustedResolution, isMobile]);
   
   return (
     <mesh 
@@ -298,7 +247,7 @@ export const MountainTerrain = ({
       geometry={geometry}
       material={material}
       rotation={[-Math.PI / 2, 0, 0]} 
-      position={[0, -2, 0]} // Adjust position to be visible
+      position={[0, -4, 0]} // Lowered position to be more visible in the scene
       receiveShadow
       castShadow
     />
