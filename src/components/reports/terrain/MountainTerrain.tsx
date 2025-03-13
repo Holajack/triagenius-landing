@@ -99,14 +99,6 @@ class SimplexNoise {
     const gi = this.perm[ii + this.perm[jj]] % 12;
     return t * t * t * t * this.grad(gi, x, y);
   }
-  
-  private grad(hash: number, x: number, y: number): number {
-    const h = hash & 15;
-    const grad = 1 + (h & 7); // Gradient value from 1-8
-    const u = h < 8 ? x : y;
-    const v = h < 4 ? y : x;
-    return ((h & 1) ? -u : u) + ((h & 2) ? -v : v);
-  }
 }
 
 interface MountainTerrainProps {
