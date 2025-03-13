@@ -12,7 +12,7 @@ interface LearningPathModelProps {
 
 const LearningPathModel = ({ activeSubject, setActiveSubject, zoomLevel, rotation }: LearningPathModelProps) => {
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div className="w-full h-full relative">
       <ErrorBoundary fallback={<div className="flex items-center justify-center h-full">Error loading 3D visualization</div>}>
         <Suspense fallback={<div className="flex items-center justify-center h-full">Loading 3D visualization...</div>}>
           <LearningPathScene 

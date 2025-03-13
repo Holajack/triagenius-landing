@@ -2,7 +2,7 @@
 import { useRef, useState, useEffect } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { Line, Html, Trail, PointMaterial } from '@react-three/drei';
+import { Line, Html, PointMaterial } from '@react-three/drei';
 
 interface PathPoint {
   position: [number, number, number];
@@ -19,6 +19,10 @@ export const PathwaySystem = ({ paths, onPathClick }: PathwaySystemProps) => {
   const [hoveredPoint, setHoveredPoint] = useState<PathPoint | null>(null);
   const pathRef = useRef<THREE.Group>(null);
   const pointsRef = useRef<THREE.Points[]>([]);
+  
+  useEffect(() => {
+    console.log("PathwaySystem initialized with paths:", paths);
+  }, [paths]);
   
   // Create curved pathway between points
   const createPathGeometry = (points: PathPoint[]) => {
@@ -76,7 +80,9 @@ export const PathwaySystem = ({ paths, onPathClick }: PathwaySystemProps) => {
         if (points && points.material) {
           const material = points.material as THREE.PointsMaterial;
           material.size = 0.3 + Math.sin(state.clock.elapsedTime * 0.8 + i) * 0.1;
-          points.position.y = Math.sin(state.clock.elapsedTime * 0.5 + i * 0.5) * 0.05;
+          if (points.position) {
+            points.position.y = Math.sin(state.clock.elapsedTime * 0.5 + i * 0.5) * 0.05;
+          }
         }
       });
     }
@@ -124,7 +130,10 @@ export const PathwaySystem = ({ paths, onPathClick }: PathwaySystemProps) => {
           <mesh
             onPointerOver={() => setHoveredPoint(point)}
             onPointerOut={() => setHoveredPoint(null)}
-            onClick={() => onPathClick?.(point)}
+            onClick={() => {
+              console.log('Clicked on brain region:', point.type);
+              onPathClick?.(point);
+            }}
           >
             <sphereGeometry args={[0.4, 16, 16]} />
             <meshStandardMaterial

@@ -23,6 +23,7 @@ export const TerrainSystem = ({
   useEffect(() => {
     if (!meshRef.current) return;
     
+    // Create the shader material with proper uniforms
     materialRef.current = new THREE.ShaderMaterial({
       uniforms: {
         time: { value: 0 },
@@ -41,8 +42,12 @@ export const TerrainSystem = ({
       // Add normalized normals for better lighting
       meshRef.current.geometry.computeVertexNormals();
     }
+    
+    // Debug log to check if material is created
+    console.log("Terrain material created:", materialRef.current);
   }, [heightMultiplier]);
 
+  // Animate the terrain by updating time uniform
   useFrame((state) => {
     if (materialRef.current) {
       materialRef.current.uniforms.time.value = state.clock.elapsedTime;
