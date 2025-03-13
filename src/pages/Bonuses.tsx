@@ -212,15 +212,15 @@ function getBrainRegionName(region: string): string {
 function getBrainRegionDescription(region: string): string {
   switch(region) {
     case 'prefrontal': 
-      return 'The frontal lobe handles executive functions like planning, decision-making, and critical thinking. It's essential for organizing your study approach and setting goals.';
+      return `The frontal lobe handles executive functions like planning, decision-making, and critical thinking. It's essential for organizing your study approach and setting goals.`;
     case 'hippocampus': 
-      return 'Located in the temporal lobe, the hippocampus is crucial for forming new memories and retrieving existing ones. It helps you consolidate what you've learned into long-term memory.';
+      return `Located in the temporal lobe, the hippocampus is crucial for forming new memories and retrieving existing ones. It helps you consolidate what you've learned into long-term memory.`;
     case 'amygdala': 
-      return 'Part of the limbic system, the amygdala processes emotional responses to information, making content more memorable when it has emotional significance.';
+      return `Part of the limbic system, the amygdala processes emotional responses to information, making content more memorable when it has emotional significance.`;
     case 'cerebellum': 
-      return 'Though known for motor coordination, the cerebellum also plays a role in cognitive functions, especially procedural learning and skill mastery through practice.';
+      return `Though known for motor coordination, the cerebellum also plays a role in cognitive functions, especially procedural learning and skill mastery through practice.`;
     case 'parietal': 
-      return 'The parietal lobe integrates sensory information and is involved in mathematical reasoning, spatial awareness, and problem-solving tasks.';
+      return `The parietal lobe integrates sensory information and is involved in mathematical reasoning, spatial awareness, and problem-solving tasks.`;
     default: 
       return 'Select a brain region to learn more about its function in the learning process.';
   }
