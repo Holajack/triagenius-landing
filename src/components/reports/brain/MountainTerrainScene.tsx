@@ -83,7 +83,7 @@ export const MountainTerrainScene = ({ zoomLevel, rotation }: MountainTerrainSce
       gl={{ 
         antialias: true,
         alpha: false, // Use a solid background
-        outputEncoding: THREE.sRGBEncoding,
+        // Removing the outputEncoding property as it's not supported
       }}
       style={{ 
         background: '#e0e8f5',
