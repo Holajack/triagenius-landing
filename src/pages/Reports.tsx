@@ -29,6 +29,7 @@ import CognitiveMetrics from "@/components/reports/CognitiveMetrics";
 import FocusBreakdown from "@/components/reports/FocusBreakdown";
 import RecommendationsCard from "@/components/reports/RecommendationsCard";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Reports = () => {
   const { state } = useOnboarding();
@@ -37,6 +38,7 @@ const Reports = () => {
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [rotation, setRotation] = useState(0);
+  const isMobile = useIsMobile();
 
   const increaseZoom = () => setZoomLevel(prev => Math.min(prev + 0.1, 1.5));
   const decreaseZoom = () => setZoomLevel(prev => Math.max(prev - 0.1, 0.5));
@@ -72,7 +74,7 @@ const Reports = () => {
                   Mountain Terrain Visualization
                 </CardTitle>
                 <CardDescription>
-                  High-resolution 3D terrain with ~90,000 vertices
+                  High-resolution 3D terrain with {isMobile ? '~36,000' : '~90,000'} vertices
                 </CardDescription>
               </CardHeader>
               <CardContent>

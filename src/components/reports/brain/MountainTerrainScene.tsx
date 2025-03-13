@@ -4,6 +4,7 @@ import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { MountainTerrain } from '../terrain/MountainTerrain';
 import * as THREE from 'three';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MountainTerrainSceneProps {
   zoomLevel: number;
@@ -32,7 +33,7 @@ const CameraController = ({ zoomLevel, rotation }: { zoomLevel: number; rotation
     }
   }, [zoomLevel, rotation, camera]);
   
-  return <OrbitControls ref={controlsRef} args={[camera, gl.domElement]} />;
+  return <OrbitControls ref={controlsRef} args={[camera, gl.domElement]} enableDamping dampingFactor={0.25} />;
 };
 
 // Lighting setup for the scene
@@ -51,12 +52,12 @@ const SceneLighting = () => {
   return (
     <>
       {/* Ambient light for general illumination - increased brightness */}
-      <ambientLight intensity={1.2} />
+      <ambientLight intensity={1.5} />
       
       {/* Directional light for shadows and highlights - increased intensity */}
       <directionalLight
         ref={directionalLightRef}
-        intensity={2.5}
+        intensity={2.8}
         position={[10, 20, 10]}
         castShadow
         shadow-mapSize-width={2048}
@@ -65,7 +66,7 @@ const SceneLighting = () => {
       
       {/* Hemisphere light for sky/ground color variation */}
       <hemisphereLight 
-        args={[0x8cc7de, 0x5e6b70, 1.0]}  // Increased intensity
+        args={[0x8cc7de, 0x5e6b70, 1.2]}  // Increased intensity
         position={[0, 50, 0]} 
       />
     </>
@@ -73,7 +74,11 @@ const SceneLighting = () => {
 };
 
 export const MountainTerrainScene = ({ zoomLevel, rotation }: MountainTerrainSceneProps) => {
-  console.log("Rendering MountainTerrainScene with", { zoomLevel, rotation });
+  const isMobile = useIsMobile();
+  console.log("Rendering MountainTerrainScene with", { zoomLevel, rotation, isMobile });
+  
+  // Adjust resolution based on device capabilities
+  const resolution = isMobile ? 60 : 100; // Lower resolution for mobile
   
   return (
     <Canvas
@@ -83,7 +88,7 @@ export const MountainTerrainScene = ({ zoomLevel, rotation }: MountainTerrainSce
       gl={{ 
         antialias: true,
         alpha: false, // Use a solid background
-        // Removing the outputEncoding property as it's not supported
+        powerPreference: 'high-performance',
       }}
       style={{ 
         background: '#e0e8f5',
@@ -94,6 +99,7 @@ export const MountainTerrainScene = ({ zoomLevel, rotation }: MountainTerrainSce
         top: 0,
         left: 0
       }}
+      performance={{ min: 0.5 }}
     >
       <fog attach="fog" args={['#e0e8f5', 30, 100]} />
       <color attach="background" args={['#e0e8f5']} />
@@ -101,14 +107,10 @@ export const MountainTerrainScene = ({ zoomLevel, rotation }: MountainTerrainSce
       <CameraController zoomLevel={zoomLevel} rotation={rotation} />
       <SceneLighting />
       
-      {/* Helpers for orientation - made smaller for less distraction */}
-      <axesHelper args={[5]} />
-      <gridHelper args={[60, 60]} rotation={[0, 0, 0]} position={[0, -0.1, 0]} />
-      
-      {/* The terrain mesh */}
+      {/* The terrain mesh - responsive resolution based on device */}
       <MountainTerrain 
         size={60} 
-        resolution={100}  
+        resolution={resolution}  
         heightMultiplier={12} 
         biomeType="mountains" 
       />

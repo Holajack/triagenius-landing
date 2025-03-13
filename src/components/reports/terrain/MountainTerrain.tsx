@@ -108,7 +108,7 @@ interface MountainTerrainProps {
 
 export const MountainTerrain = ({
   size = 100,
-  resolution = 120, // Reduce for better performance
+  resolution = 100, // Adjustable resolution for performance
   heightMultiplier = 15,
   biomeType = 'mountains'
 }: MountainTerrainProps) => {
@@ -257,11 +257,10 @@ export const MountainTerrain = ({
         break;
     }
     
-    // Switch to MeshStandardMaterial for better lighting and rendering
-    return new THREE.MeshStandardMaterial({ 
+    // Use MeshPhongMaterial for better performance on mobile
+    return new THREE.MeshPhongMaterial({ 
       color: baseColor,
-      roughness: 0.8,
-      metalness: 0.2,
+      shininess: 0,
       flatShading: true,
       side: THREE.DoubleSide, // Make sure terrain is visible from both sides
     });
@@ -275,7 +274,7 @@ export const MountainTerrain = ({
       
       // Set initial position
       if (meshRef.current) {
-        meshRef.current.position.set(0, -2, 0); // Adjust Y position to be visible
+        meshRef.current.position.set(0, -5, 0); // Lower position for better visibility
       }
     }
     
@@ -284,21 +283,13 @@ export const MountainTerrain = ({
     };
   }, [resolution]);
   
-  // Add a small animation to make sure it's rendering
-  useFrame(() => {
-    if (meshRef.current) {
-      // Just a very subtle movement to ensure it's alive
-      meshRef.current.rotation.z = Math.sin(Date.now() * 0.0001) * 0.01;
-    }
-  });
-  
   return (
     <mesh 
       ref={meshRef} 
       geometry={geometry}
       material={material}
       rotation={[-Math.PI / 2, 0, 0]} 
-      position={[0, -2, 0]} // Adjust position to be visible
+      position={[0, -5, 0]} // Lower position for better visibility
       receiveShadow
       castShadow
     />
