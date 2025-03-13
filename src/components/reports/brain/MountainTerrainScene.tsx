@@ -77,6 +77,7 @@ export const MountainTerrainScene = ({ zoomLevel, rotation }: MountainTerrainSce
       camera={{ position: [15, 15, 15], fov: 45 }}
       dpr={[1, 2]} // Responsive pixel ratio
       gl={{ antialias: true }}
+      style={{ background: '#e0e8f5' }} // Set background explicitly
     >
       <fog attach="fog" args={['#e0e8f5', 30, 100]} />
       <color attach="background" args={['#e0e8f5']} />
