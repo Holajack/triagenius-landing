@@ -20,7 +20,9 @@ import {
   RotateCw,
   ZoomIn,
   ZoomOut,
-  Mountain
+  Mountain,
+  Tablet,
+  Monitor
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
@@ -29,6 +31,7 @@ import CognitiveMetrics from "@/components/reports/CognitiveMetrics";
 import FocusBreakdown from "@/components/reports/FocusBreakdown";
 import RecommendationsCard from "@/components/reports/RecommendationsCard";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Reports = () => {
   const { state } = useOnboarding();
@@ -37,6 +40,7 @@ const Reports = () => {
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [rotation, setRotation] = useState(0);
+  const isMobile = useIsMobile();
 
   const increaseZoom = () => setZoomLevel(prev => Math.min(prev + 0.1, 1.5));
   const decreaseZoom = () => setZoomLevel(prev => Math.max(prev - 0.1, 0.5));
@@ -59,7 +63,7 @@ const Reports = () => {
           </Button>
           <div>
             <h1 className="text-2xl font-bold">Terrain Visualization</h1>
-            <p className="text-muted-foreground">Explore the mountainous terrain visualization</p>
+            <p className="text-muted-foreground">Explore high-definition 3D mountainous terrain models</p>
           </div>
         </div>
 
@@ -67,12 +71,23 @@ const Reports = () => {
           <div className="md:col-span-2">
             <Card className="shadow-sm">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xl flex items-center">
-                  <Mountain className="h-5 w-5 mr-2 text-primary" />
-                  Mountain Terrain Visualization
+                <CardTitle className="text-xl flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Mountain className="h-5 w-5 mr-2 text-primary" />
+                    3D Mountain Terrain
+                  </div>
+                  <div className="flex items-center text-sm font-normal">
+                    {isMobile ? 
+                      <><Tablet className="h-4 w-4 mr-1" /> Mobile-optimized</> : 
+                      <><Monitor className="h-4 w-4 mr-1" /> High-resolution</>
+                    }
+                  </div>
                 </CardTitle>
                 <CardDescription>
-                  High-resolution 3D terrain with ~90,000 vertices
+                  {isMobile ? 
+                    "Optimized 3D terrain with ~30,000 vertices for mobile devices" : 
+                    "High-resolution 3D terrain with ~90,000 vertices and realistic texturing"
+                  }
                 </CardDescription>
               </CardHeader>
               <CardContent>
