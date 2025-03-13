@@ -17,18 +17,17 @@ const CameraController = ({ zoomLevel, rotation }: { zoomLevel: number; rotation
   
   useEffect(() => {
     if (controlsRef.current) {
-      // Apply zoom level - closer initial position
-      camera.position.z = 15 / zoomLevel;
-      camera.position.y = 10 / zoomLevel;
-      
-      // Apply rotation
-      const radians = (rotation * Math.PI) / 180;
-      camera.position.x = Math.sin(radians) * (15 / zoomLevel);
-      camera.position.z = Math.cos(radians) * (15 / zoomLevel);
+      // Position camera to better view the terrain
+      camera.position.set(
+        Math.sin(rotation * Math.PI / 180) * (20 / zoomLevel),
+        15 / zoomLevel,
+        Math.cos(rotation * Math.PI / 180) * (20 / zoomLevel)
+      );
       
       // Look at the center of the scene
       camera.lookAt(0, 0, 0);
       
+      // Update controls
       controlsRef.current.update();
     }
   }, [zoomLevel, rotation, camera]);
@@ -51,10 +50,10 @@ const SceneLighting = () => {
   
   return (
     <>
-      {/* Ambient light for general illumination - brighter */}
+      {/* Ambient light for general illumination */}
       <ambientLight intensity={0.8} />
       
-      {/* Directional light for shadows and highlights - brighter */}
+      {/* Directional light for shadows and highlights */}
       <directionalLight
         ref={directionalLightRef}
         intensity={1.5}
@@ -79,13 +78,14 @@ export const MountainTerrainScene = ({ zoomLevel, rotation }: MountainTerrainSce
   return (
     <Canvas
       shadows
-      camera={{ position: [10, 10, 10], fov: 60 }}
+      camera={{ position: [15, 15, 15], fov: 60 }}
       dpr={[1, 2]} // Responsive pixel ratio
       gl={{ antialias: true }}
       style={{ 
         background: '#e0e8f5',
         height: '100%',
         width: '100%',
+        display: 'block',
         position: 'absolute',
         top: 0,
         left: 0
@@ -97,13 +97,14 @@ export const MountainTerrainScene = ({ zoomLevel, rotation }: MountainTerrainSce
       <CameraController zoomLevel={zoomLevel} rotation={rotation} />
       <SceneLighting />
       
-      {/* High-resolution mountain terrain with debug helpers */}
-      <axesHelper args={[5]} /> {/* XYZ axes to help with orientation */}
-      <gridHelper args={[100, 100]} rotation={[0, 0, 0]} position={[0, -0.1, 0]} /> {/* Grid helper */}
+      {/* Helpers for orientation */}
+      <axesHelper args={[5]} />
+      <gridHelper args={[100, 100]} rotation={[0, 0, 0]} position={[0, -0.1, 0]} />
       
+      {/* The terrain mesh */}
       <MountainTerrain 
         size={80} 
-        resolution={200} 
+        resolution={120}  
         heightMultiplier={15} 
         biomeType="mountains" 
       />

@@ -19,12 +19,15 @@ const BrainModel = ({
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
-    // Mark the component as loaded
-    setIsLoaded(true);
+    // Mark the component as loaded after a short delay
+    const timer = setTimeout(() => {
+      setIsLoaded(true);
+    }, 100);
     
     console.log("MountainTerrain component initialized", { zoomLevel, rotation });
     
     return () => {
+      clearTimeout(timer);
       console.log("MountainTerrain component unmounted");
     };
   }, [zoomLevel, rotation]);
@@ -52,7 +55,7 @@ const BrainModel = ({
   }
 
   return (
-    <div className="w-full h-full relative overflow-hidden rounded-md">
+    <div className="w-full h-full relative overflow-hidden rounded-md bg-slate-100">
       <MountainTerrainScene 
         zoomLevel={zoomLevel}
         rotation={rotation}

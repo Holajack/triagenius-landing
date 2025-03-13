@@ -1,4 +1,3 @@
-
 import { useRef, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
@@ -108,13 +107,13 @@ interface MountainTerrainProps {
 
 export const MountainTerrain = ({
   size = 100,
-  resolution = 200, // Reduce slightly from 300 for better performance
+  resolution = 120, // Reduce for better performance
   heightMultiplier = 15,
   biomeType = 'mountains'
 }: MountainTerrainProps) => {
   const meshRef = useRef<THREE.Mesh>(null);
   
-  // Generate terrain geometry with high resolution
+  // Generate terrain geometry with appropriate resolution
   const geometry = useMemo(() => {
     console.log("Creating high-resolution mountain terrain geometry", { 
       size, resolution, vertexCount: resolution * resolution 
@@ -257,12 +256,12 @@ export const MountainTerrain = ({
         break;
     }
     
-    return new THREE.MeshPhongMaterial({ 
+    return new THREE.MeshStandardMaterial({ 
       color: baseColor,
       flatShading: true,
-      shininess: 5,
-      vertexColors: false,
-      side: THREE.DoubleSide // Make sure terrain is visible from both sides
+      roughness: 0.8,
+      metalness: 0.2,
+      side: THREE.DoubleSide, // Make sure terrain is visible from both sides
     });
   }, [biomeType]);
   
@@ -289,7 +288,7 @@ export const MountainTerrain = ({
       geometry={geometry}
       material={material}
       rotation={[-Math.PI / 2, 0, 0]} 
-      position={[0, -1, 0]} // Slightly below the center to align with grid
+      position={[0, 0, 0]} // Positioned at the center of the scene
       receiveShadow
       castShadow
       visible={true}
