@@ -1,5 +1,5 @@
 
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { LearningPathScene } from './brain/LearningPathScene';
 import ErrorBoundary from '../ErrorBoundary';
 
@@ -11,6 +11,10 @@ interface LearningPathModelProps {
 }
 
 const LearningPathModel = ({ activeSubject, setActiveSubject, zoomLevel, rotation }: LearningPathModelProps) => {
+  useEffect(() => {
+    console.log("BrainModel mounted with props:", { activeSubject, zoomLevel, rotation });
+  }, [activeSubject, zoomLevel, rotation]);
+
   return (
     <div className="w-full h-full relative">
       <ErrorBoundary fallback={<div className="flex items-center justify-center h-full">Error loading 3D visualization</div>}>

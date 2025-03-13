@@ -19,33 +19,35 @@ export const TerrainSystem = ({
   const meshRef = useRef<THREE.Mesh>(null);
   const materialRef = useRef<THREE.ShaderMaterial | null>(null);
   
-  // Create shader material
+  // Create and apply shader material
   useEffect(() => {
-    if (!meshRef.current) return;
+    if (!meshRef.current) {
+      console.error("Mesh reference is null");
+      return;
+    }
     
-    // Create the shader material with proper uniforms
-    materialRef.current = new THREE.ShaderMaterial({
-      uniforms: {
-        time: { value: 0 },
-      },
-      vertexShader: createVertexShader(heightMultiplier),
-      fragmentShader,
-      lights: true,
-      wireframe: false,
-      side: THREE.DoubleSide,
-    });
-    
-    // Apply material directly to the mesh
-    if (meshRef.current) {
+    try {
+      // Create the shader material with proper uniforms
+      materialRef.current = new THREE.ShaderMaterial({
+        uniforms: {
+          time: { value: 0.0 },
+        },
+        vertexShader: createVertexShader(heightMultiplier),
+        fragmentShader,
+        side: THREE.DoubleSide,
+      });
+      
+      // Apply material directly to the mesh
       meshRef.current.material = materialRef.current;
       
       // Add normalized normals for better lighting
       meshRef.current.geometry.computeVertexNormals();
+      
+      console.log("Terrain material created and applied successfully:", materialRef.current);
+    } catch (error) {
+      console.error("Error creating terrain material:", error);
     }
-    
-    // Debug log to check if material is created
-    console.log("Terrain material created:", materialRef.current);
-  }, [heightMultiplier]);
+  }, [heightMultiplier, resolution, size]);
 
   // Animate the terrain by updating time uniform
   useFrame((state) => {
@@ -63,6 +65,7 @@ export const TerrainSystem = ({
       castShadow
     >
       <planeGeometry args={[size, size, resolution - 1, resolution - 1]} />
+      <meshStandardMaterial visible={false} /> {/* Placeholder material that will be replaced */}
     </mesh>
   );
 };

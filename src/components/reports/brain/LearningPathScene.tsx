@@ -7,8 +7,7 @@ import {
   Sky,
   PerspectiveCamera,
   Float,
-  Text,
-  Effects
+  Text
 } from '@react-three/drei';
 import { TerrainSystem } from '../terrain/TerrainSystem';
 import { PathwaySystem } from '../terrain/PathwaySystem';
@@ -29,6 +28,8 @@ export const LearningPathScene = ({
   zoomLevel, 
   rotation 
 }: LearningPathSceneProps) => {
+  console.log("LearningPathScene rendering with props:", { activeSubject, zoomLevel, rotation });
+  
   // Path points corresponding to brain regions
   const pathPoints = [
     { position: [0, 0, 0] as [number, number, number], type: 'basecamp' as const, label: 'Learning Center' },
@@ -48,6 +49,7 @@ export const LearningPathScene = ({
       // Set initial camera position
       camera.position.set(0, 15, 25);
       camera.lookAt(0, 0, 0);
+      console.log("Camera initialized:", camera.position);
     }, [camera]);
     
     useFrame((state, delta) => {
@@ -89,8 +91,8 @@ export const LearningPathScene = ({
         powerPreference: 'high-performance',
         stencil: false,
         depth: true,
-        alpha: false
       }}
+      style={{ width: '100%', height: '100%' }}
       dpr={[1, 1.5]}
       camera={{ position: [0, 15, 25], fov: 45 }}
       shadows
@@ -106,12 +108,6 @@ export const LearningPathScene = ({
         position={[5, 15, 5]} 
         intensity={1.2} 
         castShadow 
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-far={50}
-        shadow-camera-left={-20}
-        shadow-camera-right={20}
-        shadow-camera-top={20}
-        shadow-camera-bottom={-20}
       />
       <directionalLight 
         position={[-5, 10, -5]} 
@@ -153,7 +149,6 @@ export const LearningPathScene = ({
               fontSize={0.5}
               maxWidth={4}
               textAlign="center"
-              font="/fonts/Inter-Bold.woff"
               anchorY="bottom"
             >
               {getBrainRegionShortName(point.type)}
@@ -167,8 +162,6 @@ export const LearningPathScene = ({
         sunPosition={[10, 5, 5]}
         inclination={0.5}
         azimuth={0.25}
-        rayleigh={0.5}
-        turbidity={8}
       />
 
       <ContactShadows
@@ -191,12 +184,6 @@ export const LearningPathScene = ({
         maxPolarAngle={Math.PI / 2 - 0.1}
         minPolarAngle={0.1}
       />
-      
-      {/* Post-processing effects */}
-      <Effects disableGamma>
-        {/* Add subtle bloom effect for glowing paths */}
-        {/* <unrealBloomPass threshold={0.5} strength={0.5} radius={0.7} /> */}
-      </Effects>
     </Canvas>
   );
 };
