@@ -1,13 +1,6 @@
 
 import { Canvas, useThree } from '@react-three/fiber';
-import { 
-  OrbitControls, 
-  Environment,
-  Sky,
-  PerspectiveCamera,
-  Text
-} from '@react-three/drei';
-import { TerrainSystem } from '../terrain/TerrainSystem';
+import { OrbitControls, Text } from '@react-three/drei';
 import { BrainTrails } from './BrainTrails';
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
@@ -19,14 +12,14 @@ interface LearningPathSceneProps {
   rotation: number;
 }
 
-// Brain region data
+// Brain region data - simplified positions to match the image
 const pathPoints = [
   { position: [0, 0, 0] as [number, number, number], type: 'basecamp' as const, label: 'Learning Center' },
-  { position: [-10, 4, 8] as [number, number, number], type: 'prefrontal' as const, label: 'Prefrontal Cortex: Planning & Decision-Making' },
-  { position: [12, 5, 6] as [number, number, number], type: 'hippocampus' as const, label: 'Hippocampus: Memory Formation' },
-  { position: [8, 4, -10] as [number, number, number], type: 'amygdala' as const, label: 'Amygdala: Emotional Learning' },
-  { position: [-12, 4, -3] as [number, number, number], type: 'cerebellum' as const, label: 'Cerebellum: Skill Mastery' },
-  { position: [-5, 4, -12] as [number, number, number], type: 'parietal' as const, label: 'Parietal Lobe: Problem Solving' },
+  { position: [-5, 0, 4] as [number, number, number], type: 'prefrontal' as const, label: 'Planning & Decision-Making' },
+  { position: [6, 0, 3] as [number, number, number], type: 'hippocampus' as const, label: 'Memory Formation' },
+  { position: [4, 0, -5] as [number, number, number], type: 'amygdala' as const, label: 'Emotional Learning' },
+  { position: [-6, 0, -1.5] as [number, number, number], type: 'cerebellum' as const, label: 'Skill Mastery' },
+  { position: [-3, 0, -6] as [number, number, number], type: 'parietal' as const, label: 'Problem Solving' },
 ];
 
 // Camera controller component
@@ -41,8 +34,8 @@ const CameraController = ({
   const cameraRef = useRef(camera);
   
   useEffect(() => {
-    // Set initial camera position
-    cameraRef.current.position.set(0, 20, 50);
+    // Set initial camera position - higher up and looking down
+    cameraRef.current.position.set(0, 15, 0);
     cameraRef.current.lookAt(0, 0, 0);
     console.log("Camera initialized:", cameraRef.current.position);
   }, []);
@@ -55,9 +48,9 @@ const CameraController = ({
       if (selectedPoint) {
         // Move camera to focus on the selected region
         const targetPosition = new THREE.Vector3(
-          selectedPoint.position[0] * 1.5,
-          selectedPoint.position[1] + 15,
-          selectedPoint.position[2] * 1.5
+          selectedPoint.position[0] * 1.2,
+          10,
+          selectedPoint.position[2] * 1.2
         );
         
         // Animate camera movement
@@ -65,7 +58,7 @@ const CameraController = ({
           cameraRef.current.position.lerp(targetPosition, 0.05);
           cameraRef.current.lookAt(
             selectedPoint.position[0],
-            selectedPoint.position[1],
+            0,
             selectedPoint.position[2]
           );
           
@@ -96,13 +89,13 @@ const RegionLabels = ({
         region.type !== 'basecamp' && (
           <group 
             key={index} 
-            position={[region.position[0], region.position[1] + 3, region.position[2]]}
+            position={[region.position[0], 1.2, region.position[2]]}
             visible={!activeSubject || activeSubject === region.type}
           >
             <Text
               color={getPointTypeColor(region.type)}
-              fontSize={1.2}
-              maxWidth={10}
+              fontSize={0.4}
+              maxWidth={4}
               textAlign="center"
               anchorY="bottom"
             >
@@ -128,39 +121,28 @@ export const LearningPathScene = ({
       gl={{ 
         antialias: true,
         powerPreference: 'high-performance',
-        stencil: false,
-        depth: true,
       }}
       style={{ width: '100%', height: '100%' }}
-      dpr={[1, 1.5]}
-      shadows
+      camera={{ position: [0, 15, 0], fov: 50 }}
     >
-      <color attach="background" args={['#071025']} />
-      <fog attach="fog" args={['#071025', 80, 100]} />
+      <color attach="background" args={['#f0f4f8']} />
       
       <CameraController activeSubject={activeSubject} zoomLevel={zoomLevel} />
       
       {/* Lighting */}
-      <ambientLight intensity={0.5} />
-      <directionalLight 
-        position={[10, 20, 10]} 
-        intensity={1} 
-        castShadow 
-      />
-      <hemisphereLight 
-        args={['#87CEEB', '#8A2BE2', 0.5]} 
-      />
-
+      <ambientLight intensity={0.8} />
+      <directionalLight position={[10, 10, 5]} intensity={0.5} />
+      
       {/* Scene content */}
       <group 
         rotation-y={rotation * (Math.PI / 180)}
         scale={[zoomLevel, zoomLevel, zoomLevel]}
       >
-        <TerrainSystem 
-          size={100}
-          resolution={100}
-          heightMultiplier={10}
-        />
+        {/* Flat circular base */}
+        <mesh position={[0, -0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[12, 32]} />
+          <meshStandardMaterial color="#e9eef6" />
+        </mesh>
         
         <BrainTrails brainRegions={pathPoints} />
         
@@ -174,50 +156,43 @@ export const LearningPathScene = ({
           point.type !== 'basecamp' && (
             <mesh 
               key={index}
-              position={[point.position[0], point.position[1] + 1, point.position[2]]}
+              position={[point.position[0], 0.3, point.position[2]]}
               onClick={(e) => {
                 e.stopPropagation();
                 console.log('Clicked region:', point.type);
                 setActiveSubject(point.type);
               }}
             >
-              <sphereGeometry args={[1, 16, 16]} />
+              <sphereGeometry args={[0.4, 16, 16]} />
               <meshStandardMaterial 
                 color={getPointTypeColor(point.type)} 
                 emissive={getPointTypeColor(point.type)}
-                emissiveIntensity={0.5}
+                emissiveIntensity={0.3}
               />
             </mesh>
           )
         ))}
         
-        {/* Learning center (basecamp) */}
+        {/* Learning center (basecamp) - gray box like in image */}
         <mesh
-          position={[0, 1, 0]}
+          position={[0, 0.3, 0]}
           onClick={() => setActiveSubject(null)}
         >
-          <boxGeometry args={[2, 2, 2]} />
-          <meshStandardMaterial color="#FFFFFF" />
+          <boxGeometry args={[0.8, 0.8, 0.8]} />
+          <meshStandardMaterial color="#9ca3af" />
         </mesh>
       </group>
-
-      <Sky
-        distance={450000}
-        sunPosition={[10, 5, 5]}
-        inclination={0.5}
-        azimuth={0.25}
-      />
 
       <OrbitControls
         enabled={!activeSubject}
         enablePan={false}
-        minDistance={10}
-        maxDistance={70}
+        minDistance={5}
+        maxDistance={25}
         autoRotate={!activeSubject}
         autoRotateSpeed={0.5}
         enableDamping={true}
         dampingFactor={0.05}
-        maxPolarAngle={Math.PI / 2 - 0.1}
+        maxPolarAngle={Math.PI / 2.5}
         minPolarAngle={0.1}
       />
     </Canvas>
@@ -227,22 +202,22 @@ export const LearningPathScene = ({
 // Helper functions
 function getPointTypeColor(type: string): string {
   switch (type) {
-    case 'prefrontal': return '#ea384c';
-    case 'hippocampus': return '#1EAEDB';
-    case 'amygdala': return '#4AC157';
-    case 'cerebellum': return '#FDC536';
-    case 'parietal': return '#D946EF';
+    case 'prefrontal': return '#ea384c'; // Red
+    case 'hippocampus': return '#1EAEDB'; // Blue
+    case 'amygdala': return '#4AC157';  // Green
+    case 'cerebellum': return '#FDC536'; // Yellow
+    case 'parietal': return '#D946EF';  // Magenta
     default: return '#FFFFFF';
   }
 }
 
 function getBrainRegionShortName(type: string): string {
   switch (type) {
-    case 'prefrontal': return 'Prefrontal Cortex';
-    case 'hippocampus': return 'Hippocampus';
-    case 'amygdala': return 'Amygdala';
-    case 'cerebellum': return 'Cerebellum';
-    case 'parietal': return 'Parietal Lobe';
+    case 'prefrontal': return 'Planning';
+    case 'hippocampus': return 'Memory';
+    case 'amygdala': return 'Emotions';
+    case 'cerebellum': return 'Skills';
+    case 'parietal': return 'Problem Solving';
     default: return '';
   }
 }

@@ -38,7 +38,7 @@ const BrainModel = ({
   if (hasError) {
     return (
       <div className="flex items-center justify-center h-full bg-slate-100 text-red-500 p-4 rounded-md">
-        <p>Error rendering 3D visualization. Please try refreshing the page.</p>
+        <p>Error rendering visualization. Please try refreshing the page.</p>
       </div>
     );
   }
@@ -46,7 +46,7 @@ const BrainModel = ({
   if (!isLoaded) {
     return (
       <div className="flex items-center justify-center h-full bg-slate-100">
-        <p className="text-gray-500">Loading brain visualization...</p>
+        <p className="text-gray-500">Loading visualization...</p>
       </div>
     );
   }
@@ -64,4 +64,3 @@ const BrainModel = ({
 };
 
 export default BrainModel;
-
