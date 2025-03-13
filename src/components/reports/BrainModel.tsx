@@ -52,7 +52,7 @@ const BrainModel = ({
   }
 
   return (
-    <div className="w-full h-full relative overflow-hidden rounded-md">
+    <div className="w-full h-full relative overflow-hidden rounded-md border border-gray-300">
       <MountainTerrainScene 
         zoomLevel={zoomLevel}
         rotation={rotation}
