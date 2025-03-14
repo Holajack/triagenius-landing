@@ -7,6 +7,9 @@ import { EnvironmentStep } from "@/components/onboarding/steps/EnvironmentStep";
 import { SoundStep } from "@/components/onboarding/steps/SoundStep";
 import { SummaryStep } from "@/components/onboarding/steps/SummaryStep";
 import { useOnboarding } from "@/contexts/OnboardingContext";
+import { TaskProvider } from "@/contexts/TaskContext";
+import TaskList from "@/components/tasks/TaskList";
+import QuickStartButton from "@/components/dashboard/QuickStartButton";
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -66,7 +69,25 @@ const Onboarding = () => {
     }
   };
 
-  if (state.isComplete) return null;
+  if (state.isComplete) {
+    return (
+      <TaskProvider>
+        <div className="min-h-screen bg-white">
+          <div className="max-w-4xl mx-auto p-4 sm:p-6">
+            <h1 className="text-3xl font-bold mb-8 text-center">Ready to Get Started</h1>
+            
+            <div className="space-y-8">
+              <TaskList />
+              
+              <div className="mt-12">
+                <QuickStartButton />
+              </div>
+            </div>
+          </div>
+        </div>
+      </TaskProvider>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
