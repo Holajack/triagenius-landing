@@ -11,9 +11,13 @@ interface HikingTrailProps {
 }
 
 // 2D Animated Hiker Component
-const AnimatedPerson = ({ className = "", isWalking = true }: { className?: string; isWalking?: boolean }) => {
+const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true }: { 
+  className?: string; 
+  isWalking?: boolean;
+  facingRight?: boolean;
+}) => {
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative ${className} ${facingRight ? '' : 'scale-x-[-1]'}`}>
       {/* Head */}
       <div className="w-4 h-5 rounded-t-full bg-[#e8b89b] absolute left-1/2 -translate-x-1/2 -top-7">
         {/* Hair */}
@@ -261,7 +265,7 @@ export const HikingTrail = ({
         }}
       >
         <div className="relative">
-          <AnimatedPerson isWalking={isWalking} />
+          <AnimatedPerson isWalking={isWalking} facingRight={true} />
           
           {isCelebrating && (
             <motion.div 
