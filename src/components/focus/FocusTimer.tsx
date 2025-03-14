@@ -12,6 +12,7 @@ interface FocusTimerProps {
   onResume: () => void;
   onComplete: () => void;
   onMilestoneReached?: (milestone: number) => void;
+  onProgressUpdate?: (progress: number) => void;
   isPaused: boolean;
   autoStart?: boolean;
   showControls?: boolean;
@@ -26,6 +27,7 @@ export const FocusTimer = ({
   onResume, 
   onComplete,
   onMilestoneReached,
+  onProgressUpdate,
   isPaused,
   autoStart = false,
   showControls = true
@@ -160,6 +162,12 @@ export const FocusTimer = ({
           const currentElapsedTime = elapsedTimeRef.current + (initialTimeRef.current - prevTime);
           const currentMilestone = Math.floor(currentElapsedTime / MILESTONE_TIME);
           
+          if (onProgressUpdate) {
+            const segmentElapsedTime = currentElapsedTime % MILESTONE_TIME;
+            const segmentProgress = (segmentElapsedTime / MILESTONE_TIME) * 100;
+            onProgressUpdate(segmentProgress);
+          }
+          
           if (currentMilestone > milestoneReached && currentMilestone <= 3) {
             setMilestoneReached(currentMilestone);
             
@@ -189,7 +197,7 @@ export const FocusTimer = ({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isActive, isPaused, onComplete, onMilestoneReached, milestoneReached]);
+  }, [isActive, isPaused, onComplete, onMilestoneReached, milestoneReached, onProgressUpdate]);
   
   useEffect(() => {
     const totalTime = minutes * 60 + seconds;

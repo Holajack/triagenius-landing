@@ -21,6 +21,7 @@ const FocusSession = () => {
   const [currentMilestone, setCurrentMilestone] = useState(0);
   const [isCelebrating, setIsCelebrating] = useState(false);
   const [lowPowerMode, setLowPowerMode] = useState(false);
+  const [segmentProgress, setSegmentProgress] = useState(0); // Progress within the current segment (0-100)
   
   const handlePause = () => {
     setIsPaused(true);
@@ -47,11 +48,17 @@ const FocusSession = () => {
   const handleMilestoneReached = (milestone: number) => {
     setCurrentMilestone(milestone);
     setIsCelebrating(true);
+    setSegmentProgress(0); // Reset segment progress when milestone is reached
     
     // Reset celebrating state after animation plays
     setTimeout(() => {
       setIsCelebrating(false);
     }, 3000);
+  };
+  
+  // Handle progress update from timer
+  const handleProgressUpdate = (progress: number) => {
+    setSegmentProgress(progress);
   };
 
   return (
@@ -70,6 +77,7 @@ const FocusSession = () => {
             onResume={handleResume}
             onComplete={handleSessionEnd}
             onMilestoneReached={handleMilestoneReached}
+            onProgressUpdate={handleProgressUpdate}
             isPaused={isPaused}
             autoStart={true}
             showControls={false}
@@ -81,6 +89,7 @@ const FocusSession = () => {
                 environment={state.environment} 
                 milestone={currentMilestone}
                 isCelebrating={isCelebrating}
+                progress={segmentProgress}
               />
             </div>
           )}
