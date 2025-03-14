@@ -112,17 +112,15 @@ export const MountainTerrainScene = ({
       camera={{ position: [0, 20, 20], fov: 60 }}
       gl={{ 
         antialias: true,
-        alpha: true,
+        alpha: false, // Disabling alpha can improve performance
         logarithmicDepthBuffer: true, // Better depth perception
         preserveDrawingBuffer: true // Important for screenshots
       }}
       style={{ 
-        background: '#e0e8f5',
-        position: 'absolute',
-        top: 0,
-        left: 0,
         width: '100%',
-        height: '100%'
+        height: '100%',
+        display: 'block',
+        backgroundColor: '#e0e8f5'
       }}
     >
       {/* Sky background */}
