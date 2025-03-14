@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useWalkthrough } from '@/contexts/WalkthroughContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
@@ -94,7 +93,7 @@ const DashboardWalkthrough = () => {
       {
         id: 'nav-bonuses',
         title: 'Bonuses Section',
-        description: 'Access special rewards, achievements, and unlock additional features as you progress.',
+        description: 'Access premium features like study technique quizzes, brain mapping visualizations, and other tools to enhance your learning experience.',
         targetSelector: '[data-walkthrough="navigation-bar"] button:nth-child(3)',
         placement: 'top' as const,
       },

@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -12,11 +11,9 @@ type HighlightOverlayProps = {
   targetRect: DOMRect | null;
 };
 
-// This creates a spotlight effect around the target element
 const HighlightOverlay = ({ targetRect }: HighlightOverlayProps) => {
   if (!targetRect) return null;
 
-  // Add padding around the element for better visibility
   const padding = 8;
   const highlightRect = {
     left: targetRect.left - padding,
@@ -29,10 +26,7 @@ const HighlightOverlay = ({ targetRect }: HighlightOverlayProps) => {
 
   return createPortal(
     <div className="fixed inset-0 z-40 pointer-events-none">
-      {/* Semi-transparent overlay */}
       <div className="absolute inset-0 bg-black/60 transition-opacity duration-300" />
-      
-      {/* Cutout for the target element - transparent area */}
       <div 
         className="absolute bg-transparent"
         style={{
@@ -42,12 +36,9 @@ const HighlightOverlay = ({ targetRect }: HighlightOverlayProps) => {
           height: highlightRect.height,
           boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.6)',
           borderRadius: '4px',
-          // Remove pointer-events none to allow interaction with the highlighted element
           pointerEvents: 'none',
         }}
       />
-      
-      {/* Animated border around the target */}
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -87,51 +78,65 @@ const WalkthroughStep = () => {
       setTargetElement(element);
       setTargetRect(element.getBoundingClientRect());
       
-      // Add highlight effect to the element
       element.classList.add('ring-2', 'ring-triage-purple', 'ring-offset-2', 'transition-all');
-      
-      // Make the element interactive by removing pointer-events-none
       element.style.pointerEvents = 'auto';
       element.style.zIndex = '50';
       element.style.position = 'relative';
       
-      // Scroll element into view with proper positioning based on device
-      const elementRect = element.getBoundingClientRect();
-      const isInViewport = 
-        elementRect.top >= 0 &&
-        elementRect.left >= 0 &&
-        elementRect.bottom <= window.innerHeight &&
-        elementRect.right <= window.innerWidth;
+      const scrollToElement = () => {
+        const elementRect = element.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const isInViewport = 
+          elementRect.top >= 0 &&
+          elementRect.bottom <= viewportHeight;
         
-      if (!isInViewport) {
-        const block = isMobile ? 'center' : 
-          (currentStep.placement === 'top' ? 'end' : 
-           currentStep.placement === 'bottom' ? 'start' : 'center');
-        
-        element.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: block as ScrollLogicalPosition,
-          inline: 'nearest'
-        });
-      }
+        if (!isInViewport) {
+          const isNearTop = elementRect.top < viewportHeight * 0.2;
+          const isNearBottom = elementRect.bottom > viewportHeight * 0.8;
+          
+          let block: ScrollLogicalPosition = 'center';
+          
+          if (isNearTop) {
+            block = 'start';
+          } else if (isNearBottom) {
+            block = 'end';
+          }
+          
+          if (isMobile) {
+            if (currentStep.placement === 'top') {
+              block = 'end';
+            } else if (currentStep.placement === 'bottom') {
+              block = 'start';
+            } else {
+              block = 'center';
+            }
+          }
+          
+          setTimeout(() => {
+            element.scrollIntoView({
+              behavior: 'smooth',
+              block,
+              inline: 'nearest'
+            });
+          }, 100);
+        }
+      };
       
-      // Open popover after a short delay
+      scrollToElement();
+      
       setTimeout(() => {
         setIsOpen(true);
-      }, 400);
+      }, 500);
     } else {
       console.error("Element not found for selector:", currentStep.targetSelector);
       
-      // If element is not found, try again after a short delay
       const retryTimer = setTimeout(() => {
         const retryElement = document.querySelector(currentStep.targetSelector) as HTMLElement;
         if (retryElement) {
           console.log("Element found on retry");
-          // Re-trigger the current step effect by forcing a re-render
           setTargetElement(retryElement);
         } else {
           console.error("Element still not found after retry, moving to next step");
-          // Skip to the next step if element is still not found
           dispatch({ type: 'NEXT_STEP' });
         }
       }, 1000);
@@ -139,7 +144,6 @@ const WalkthroughStep = () => {
       return () => clearTimeout(retryTimer);
     }
     
-    // Update rect on window resize and scroll
     const handleUpdate = () => {
       if (element) {
         setTargetRect(element.getBoundingClientRect());
@@ -149,8 +153,6 @@ const WalkthroughStep = () => {
     window.addEventListener('resize', handleUpdate);
     window.addEventListener('scroll', handleUpdate);
     
-    // Set up an interval to periodically update the rect
-    // This helps when elements move due to animations or other dynamic changes
     const updateInterval = setInterval(handleUpdate, 100);
     
     return () => {
@@ -189,54 +191,48 @@ const WalkthroughStep = () => {
   
   if (!state.isActive || !currentStep) return null;
 
-  // Determine popover position with better mobile handling
   const getPopoverPosition = () => {
     if (!targetRect) return { top: 0, left: 0 };
     
-    const padding = isMobile ? 16 : 10;
+    const padding = isMobile ? 20 : 12;
     
-    // Base position at center of element
     let position = {
       top: targetRect.top + targetRect.height / 2,
       left: targetRect.left + targetRect.width / 2,
     };
     
-    // Adjust based on placement
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    
     switch (currentStep.placement) {
       case 'top':
-        position.top = targetRect.top - padding;
+        position.top = Math.max(padding, targetRect.top - padding);
         break;
       case 'bottom':
-        position.top = targetRect.bottom + padding;
+        position.top = Math.min(viewportHeight - padding, targetRect.bottom + padding);
         break;
       case 'left':
-        position.left = targetRect.left - padding;
+        position.left = Math.max(padding, targetRect.left - padding);
         break;
       case 'right':
-        position.left = targetRect.right + padding;
+        position.left = Math.min(viewportWidth - padding, targetRect.right + padding);
         break;
       default:
-        // Default to bottom if not specified
-        position.top = targetRect.bottom + padding;
+        position.top = Math.min(viewportHeight - padding, targetRect.bottom + padding);
     }
     
     return position;
   };
   
-  // Determine optimal width based on screen size
   const getPopoverWidth = () => {
     if (isMobile) {
-      // For very small screens, use almost full width
-      if (window.innerWidth < 320) return 'calc(100vw - 40px)';
-      // For small mobile screens
-      if (window.innerWidth < 375) return '85vw';
-      // For medium mobile screens
-      if (window.innerWidth < 480) return '80vw';
-      // For larger mobile screens
-      return '75vw';
+      if (window.innerWidth < 320) return 'calc(100vw - 32px)';
+      if (window.innerWidth < 375) return 'calc(90vw - 20px)';
+      if (window.innerWidth < 480) return 'calc(85vw - 16px)';
+      return 'calc(80vw - 16px)';
     }
-    // Default width for tablets and desktops
-    return '20rem';
+    if (window.innerWidth < 768) return '320px';
+    return '360px';
   };
   
   return (
