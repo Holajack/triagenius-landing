@@ -18,6 +18,7 @@ import StudyRoom from "./pages/StudyRoom";
 import Reports from "./pages/Reports";
 import Profile from "./pages/Profile";
 import Bonuses from "./pages/Bonuses";
+import Nora from "./pages/Nora";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/reports" element={<Reports />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/bonuses" element={<Bonuses />} />
+              <Route path="/nora" element={<Nora />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

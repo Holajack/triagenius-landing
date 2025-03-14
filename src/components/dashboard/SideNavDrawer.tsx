@@ -49,7 +49,7 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
     {
       label: "Nora",
       icon: <Bot className="h-5 w-5" />,
-      onClick: () => navigate("/dashboard"),
+      onClick: () => navigate("/nora"),
     },
     {
       label: "Reports",
