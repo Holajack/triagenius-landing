@@ -1,12 +1,16 @@
 
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { Award, Crown, Medal } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { getFriendsLeaderboardData } from "@/utils/leaderboardData";
 
 const Leaderboard = () => {
   const { state } = useOnboarding();
+  const navigate = useNavigate();
   
   // Get accent color based on environment
   const getAccentColor = () => {
@@ -31,43 +35,8 @@ const Leaderboard = () => {
     }
   };
   
-  const leaderboardData = [
-    {
-      rank: 1,
-      name: "Sarah Johnson",
-      avatar: "/placeholder.svg",
-      hours: 42.5,
-      isCurrentUser: false,
-    },
-    {
-      rank: 2,
-      name: "Michael Chen",
-      avatar: "/placeholder.svg",
-      hours: 38.1,
-      isCurrentUser: false,
-    },
-    {
-      rank: 3,
-      name: "You",
-      avatar: "/placeholder.svg",
-      hours: 32.8,
-      isCurrentUser: true,
-    },
-    {
-      rank: 4,
-      name: "David Miller",
-      avatar: "/placeholder.svg",
-      hours: 29.4,
-      isCurrentUser: false,
-    },
-    {
-      rank: 5,
-      name: "Emily Wilson",
-      avatar: "/placeholder.svg",
-      hours: 24.7,
-      isCurrentUser: false,
-    },
-  ];
+  // Get users from the shared data source
+  const leaderboardData = getFriendsLeaderboardData();
   
   // Get badge based on rank
   const getRankBadge = (rank: number) => {
@@ -86,9 +55,19 @@ const Leaderboard = () => {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center">
-          <Award className="w-5 h-5 mr-2 text-triage-purple" />
-          Focus Leaderboard
+        <CardTitle className="text-lg flex items-center justify-between">
+          <div className="flex items-center">
+            <Award className="w-5 h-5 mr-2 text-triage-purple" />
+            Focus Leaderboard
+          </div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-xs text-muted-foreground"
+            onClick={() => navigate("/leaderboard")}
+          >
+            View All
+          </Button>
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
@@ -114,10 +93,10 @@ const Leaderboard = () => {
                   <p className={`text-sm font-medium truncate ${user.isCurrentUser ? getAccentColor().split(" ")[0] : ""}`}>
                     {user.name}
                   </p>
-                  <span className="text-xs text-muted-foreground">{user.hours}h</span>
+                  <span className="text-xs text-muted-foreground">{user.focusHours}h</span>
                 </div>
                 <Progress 
-                  value={user.hours / 0.5} 
+                  value={user.focusHours / 0.5} 
                   className="h-1.5" 
                   indicatorClassName={user.isCurrentUser ? getProgressColor() : ""}
                 />
