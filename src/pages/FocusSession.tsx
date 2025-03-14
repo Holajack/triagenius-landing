@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { HikingTrail } from "@/components/focus/HikingTrail";
@@ -11,6 +12,7 @@ import PageHeader from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Battery, BatteryLow } from "lucide-react";
+import { ConfirmEndDialog } from "@/components/focus/ConfirmEndDialog";
 
 const FocusSession = () => {
   const navigate = useNavigate();
@@ -22,6 +24,8 @@ const FocusSession = () => {
   const [isCelebrating, setIsCelebrating] = useState(false);
   const [lowPowerMode, setLowPowerMode] = useState(false);
   const [segmentProgress, setSegmentProgress] = useState(0); // Progress within the current segment (0-100)
+  const [showEndConfirmation, setShowEndConfirmation] = useState(false);
+  const timerRef = useRef<{ stopTimer: () => void } | null>(null);
   
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -50,6 +54,16 @@ const FocusSession = () => {
     }));
     
     navigate("/session-report");
+  };
+
+  const handleEndSessionConfirm = () => {
+    // Stop the timer when user confirms ending the session
+    if (timerRef.current) {
+      timerRef.current.stopTimer();
+    }
+    
+    setShowEndConfirmation(false);
+    handleSessionEnd();
   };
   
   const handleMilestoneReached = (milestone: number) => {
@@ -96,6 +110,7 @@ const FocusSession = () => {
         
         <div className="flex flex-col items-center space-y-8 mt-4">
           <FocusTimer
+            ref={timerRef}
             onPause={handlePause}
             onResume={handleResume}
             onComplete={handleSessionEnd}
@@ -104,6 +119,7 @@ const FocusSession = () => {
             isPaused={isPaused}
             autoStart={true}
             showControls={false}
+            onEndSessionClick={() => setShowEndConfirmation(true)}
           />
           
           {!lowPowerMode && (
@@ -124,6 +140,13 @@ const FocusSession = () => {
       <MotivationalDialog
         open={showMotivation}
         onClose={() => setShowMotivation(false)}
+      />
+
+      <ConfirmEndDialog
+        open={showEndConfirmation}
+        onOpenChange={setShowEndConfirmation}
+        onConfirm={handleEndSessionConfirm}
+        onCancel={() => setShowEndConfirmation(false)}
       />
     </div>
   );

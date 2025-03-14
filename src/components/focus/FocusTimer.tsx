@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -16,13 +17,14 @@ interface FocusTimerProps {
   isPaused: boolean;
   autoStart?: boolean;
   showControls?: boolean;
+  onEndSessionClick?: () => void;
 }
 
 // Full session is 3 hours = 180 minutes
 const TOTAL_SESSION_TIME = 180 * 60; // 3 hours in seconds
 const MILESTONE_TIME = 45 * 60; // 45 minutes in seconds
 
-export const FocusTimer = ({ 
+export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>(({ 
   onPause, 
   onResume, 
   onComplete,
@@ -30,8 +32,9 @@ export const FocusTimer = ({
   onProgressUpdate,
   isPaused,
   autoStart = false,
-  showControls = true
-}: FocusTimerProps) => {
+  showControls = true,
+  onEndSessionClick
+}: FocusTimerProps, ref) => {
   const { state } = useOnboarding();
   const [minutes, setMinutes] = useState(25);
   const [seconds, setSeconds] = useState(0);
@@ -48,6 +51,17 @@ export const FocusTimer = ({
   // This is used for milestone tracking
   const initialTimeRef = useRef(0);
   const elapsedTimeRef = useRef(0);
+
+  // Expose stopTimer method to parent component
+  useImperativeHandle(ref, () => ({
+    stopTimer: () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = undefined;
+      }
+      setIsActive(false);
+    }
+  }));
   
   useEffect(() => {
     // Initialize with 45 minutes if auto-starting (default session segment)
@@ -232,7 +246,11 @@ export const FocusTimer = ({
 
   const handleEndSessionClick = () => {
     if (time > 0 && isActive) {
-      setShowEndConfirmation(true);
+      if (onEndSessionClick) {
+        onEndSessionClick();
+      } else {
+        setShowEndConfirmation(true);
+      }
     } else {
       onComplete();
     }
@@ -333,17 +351,21 @@ export const FocusTimer = ({
         </div>
       </div>
 
-      <ConfirmEndDialog
-        open={showEndConfirmation}
-        onOpenChange={setShowEndConfirmation}
-        onConfirm={() => {
-          setShowEndConfirmation(false);
-          onComplete();
-        }}
-        onCancel={() => {
-          setShowEndConfirmation(false);
-        }}
-      />
+      {!onEndSessionClick && (
+        <ConfirmEndDialog
+          open={showEndConfirmation}
+          onOpenChange={setShowEndConfirmation}
+          onConfirm={() => {
+            setShowEndConfirmation(false);
+            onComplete();
+          }}
+          onCancel={() => {
+            setShowEndConfirmation(false);
+          }}
+        />
+      )}
     </Card>
   );
-};
+});
+
+FocusTimer.displayName = "FocusTimer";
