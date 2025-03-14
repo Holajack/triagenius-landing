@@ -16,7 +16,8 @@ import {
   Book, 
   ArrowLeft, 
   Activity,
-  Search
+  Search,
+  Brain
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
@@ -69,9 +70,23 @@ const Reports = () => {
                     <ErrorBoundary fallback={<div className="flex items-center justify-center h-full">Error loading visualization</div>}>
                       <div className="flex items-center justify-center h-full bg-gray-50">
                         <div className="text-center p-6">
-                          <Activity className="h-12 w-12 text-primary mx-auto mb-4" />
-                          <h3 className="font-medium text-lg mb-2">Activity Dashboard</h3>
-                          <p className="text-muted-foreground">Track your learning progress over time</p>
+                          <Brain className="h-16 w-16 text-primary mx-auto mb-4 animate-pulse" />
+                          <h3 className="font-medium text-lg mb-2">Learning Pathways Visualization</h3>
+                          <p className="text-muted-foreground mb-4">View your cognitive learning pathways and brain region activity</p>
+                          <div className="grid grid-cols-5 gap-2 max-w-md mx-auto">
+                            {[
+                              { name: "Prefrontal", color: "bg-red-500" },
+                              { name: "Hippocampus", color: "bg-blue-500" },
+                              { name: "Amygdala", color: "bg-green-500" },
+                              { name: "Cerebellum", color: "bg-yellow-500" },
+                              { name: "Parietal", color: "bg-purple-500" }
+                            ].map((region, i) => (
+                              <div key={i} className="flex flex-col items-center">
+                                <div className={`w-3 h-3 rounded-full ${region.color} mb-1`}></div>
+                                <span className="text-xs">{region.name}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </ErrorBoundary>
