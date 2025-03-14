@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { StudyEnvironment } from "@/types/onboarding";
 import { Navigation, Flag, Mountain, Trees } from "lucide-react";
@@ -136,11 +135,11 @@ export const HikingTrail = ({
   
   const getMilestonePosition = (mile: number) => {
     switch (mile) {
-      case 0: return "15%"; // Adjusted from 25% to 15% to make character visible from start
+      case 0: return "25%"; // Adjusted from 15% to 25% to make character more forward on the trail
       case 1: return "50%";
       case 2: return "75%";
       case 3: return "95%";
-      default: return "15%"; // Default position is now also 15%
+      default: return "25%"; // Default position is now also 25%
     }
   };
   
@@ -161,14 +160,14 @@ export const HikingTrail = ({
         {/* Medium Blue Hills */}
         <div className="absolute bottom-[40%] left-0 right-0 h-[25%]">
           <svg viewBox="0 0 100 20" preserveAspectRatio="none" className="h-full w-full">
-            <path d="M0,3 L15,6 L30,2 L45,8 L60,4 L75,9 L90,5 L100,7 L100,20 L0,20 Z" fill="#1d4ed8" />
+            <path d="M0,3 L15,6 L30,2 L45,8 L60,4 L75,9 L90,5 L100,7 L100,20 Z" fill="#1d4ed8" />
           </svg>
         </div>
         
         {/* Teal Hills */}
         <div className="absolute bottom-[30%] left-0 right-0 h-[25%]">
           <svg viewBox="0 0 100 20" preserveAspectRatio="none" className="h-full w-full">
-            <path d="M0,8 L20,5 L40,10 L60,6 L80,11 L100,7 L100,20 L0,20 Z" fill="#0d9488" />
+            <path d="M0,8 L20,5 L40,10 L60,6 L80,11 L100,7 L100,20 Z" fill="#0d9488" />
           </svg>
         </div>
       </div>
@@ -246,10 +245,10 @@ export const HikingTrail = ({
         <Flag className="h-6 w-6 text-red-500" />
       </div>
       
-      {/* Hiker Character - positioned directly on the path and fully visible from the start */}
+      {/* Hiker Character - positioned with improved visibility from the start */}
       <motion.div
         className="absolute bottom-[18%]"
-        initial={{ x: "15%" }} // Changed initial position to 15% to ensure full visibility
+        initial={{ x: "25%" }} // Changed initial position to 25% to position character more forward
         animate={{ 
           x: getMilestonePosition(milestone),
           y: animate ? -10 : 0
