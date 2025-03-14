@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -15,11 +14,15 @@ import { PieChartIcon, BarChart4, LineChart, Clock } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import DashboardWalkthrough from "@/components/walkthrough/DashboardWalkthrough";
 import { useIsMobile } from "@/hooks/use-mobile";
-
 const Dashboard = () => {
-  const { state } = useOnboarding();
+  const {
+    state
+  } = useOnboarding();
   const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
+  const {
+    theme,
+    setTheme
+  } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const isMobile = useIsMobile();
 
@@ -39,24 +42,16 @@ const Dashboard = () => {
     if (!state.environment) return "office";
     return state.environment;
   };
-
   if (isLoading) {
-    return (
-      <div className="h-screen flex items-center justify-center">
+    return <div className="h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-triage-purple"></div>
-      </div>
-    );
+      </div>;
   }
-
-  const renderTaskList = () => (
-    <div className="mb-6">
-      <h2 className="text-xl font-semibold mb-4">Your Subjects & Tasks</h2>
+  const renderTaskList = () => <div className="mb-6">
+      
       <TaskList />
-    </div>
-  );
-
-  return (
-    <div className={`min-h-screen bg-background text-foreground theme-${getEnvTheme()} ${theme}`}>
+    </div>;
+  return <div className={`min-h-screen bg-background text-foreground theme-${getEnvTheme()} ${theme}`}>
       <div className="max-w-6xl mx-auto px-4 pb-20">
         <div data-walkthrough="dashboard-header">
           <DashboardHeader />
@@ -128,8 +123,6 @@ const Dashboard = () => {
       
       {/* Walkthrough component */}
       <DashboardWalkthrough />
-    </div>
-  );
+    </div>;
 };
-
 export default Dashboard;
