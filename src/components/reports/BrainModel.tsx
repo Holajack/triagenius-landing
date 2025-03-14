@@ -23,15 +23,11 @@ const BrainModel = ({
   const [biomeType, setBiomeType] = useState<'mountains' | 'desert' | 'forest' | 'mixed'>('mountains');
 
   useEffect(() => {
-    // Mark the component as loaded after a short delay to ensure proper initialization
-    const timer = setTimeout(() => {
-      setIsLoaded(true);
-    }, 500);
-    
+    // Mark the component as loaded immediately to ensure the 3D scene renders
+    setIsLoaded(true);
     console.log("BrainModel component initialized", { zoomLevel, rotation, biomeType });
     
     return () => {
-      clearTimeout(timer);
       console.log("BrainModel component unmounted");
     };
   }, [zoomLevel, rotation, biomeType]);
@@ -88,8 +84,8 @@ const BrainModel = ({
         {isMobile ? "~30k vertices (mobile)" : "~90k vertices (desktop)"}
       </div>
       
-      {/* The actual 3D scene - ensuring it fills the container completely */}
-      <div className="h-full w-full" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+      {/* The actual 3D scene */}
+      <div className="absolute inset-0 w-full h-full">
         <MountainTerrainScene 
           zoomLevel={zoomLevel}
           rotation={rotation}
