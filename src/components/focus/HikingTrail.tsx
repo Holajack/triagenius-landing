@@ -28,8 +28,8 @@ const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true }
       <div className="w-5 h-5 bg-[#d3a05d] absolute left-1/2 -translate-x-1/2 -top-3 rounded-sm"></div>
       
       {/* Backpack */}
-      <div className="w-4 h-6 bg-[#5f8d4e] absolute left-1/2 translate-x-0 -top-4 rounded-md"></div>
-      <div className="w-1 h-3 bg-[#4a6d3b] absolute left-1/2 translate-x-1 -top-3"></div>
+      <div className="w-4 h-6 bg-[#5f8d4e] absolute left-1/2 -translate-x-0.5 -top-4 -ml-3 rounded-md"></div>
+      <div className="w-1 h-3 bg-[#4a6d3b] absolute left-1/2 -translate-x-2 -top-3"></div>
       {/* Backpack strap */}
       <div className="w-1 h-3 bg-[#6b4219] absolute left-1/2 -translate-x-2 -top-2 rounded-sm"></div>
       
@@ -136,11 +136,11 @@ export const HikingTrail = ({
   
   const getMilestonePosition = (mile: number) => {
     switch (mile) {
-      case 0: return "25%"; 
+      case 0: return "15%"; // Adjusted from 25% to 15% to make character visible from start
       case 1: return "50%";
       case 2: return "75%";
       case 3: return "95%";
-      default: return "15%";
+      default: return "15%"; // Default position is now also 15%
     }
   };
   
@@ -246,10 +246,10 @@ export const HikingTrail = ({
         <Flag className="h-6 w-6 text-red-500" />
       </div>
       
-      {/* Hiker Character - positioned DIRECTLY on the path with smaller size */}
+      {/* Hiker Character - positioned directly on the path and fully visible from the start */}
       <motion.div
         className="absolute bottom-[18%]"
-        initial={{ x: "15%" }}
+        initial={{ x: "15%" }} // Changed initial position to 15% to ensure full visibility
         animate={{ 
           x: getMilestonePosition(milestone),
           y: animate ? -10 : 0
