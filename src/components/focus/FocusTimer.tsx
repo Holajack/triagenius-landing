@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -6,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Play, Pause, StopCircle, ChevronUp, ChevronDown } from "lucide-react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { toast } from "sonner";
+import { ConfirmEndDialog } from "./ConfirmEndDialog";
 
 interface FocusTimerProps {
   onPause: () => void;
@@ -32,6 +32,7 @@ export const FocusTimer = ({
   const [isActive, setIsActive] = useState(false);
   const timerRef = useRef<number>();
   const notificationShownRef = useRef(false);
+  const [showEndConfirmation, setShowEndConfirmation] = useState(false);
   
   useEffect(() => {
     const savedDuration = localStorage.getItem('focusTimerDuration');
@@ -47,11 +48,9 @@ export const FocusTimer = ({
       }
     }
     
-    // Auto-start timer if specified
     if (autoStart) {
       setTimeout(() => {
         setIsActive(true);
-        // Only show notification if it hasn't been shown yet
         if (!notificationShownRef.current) {
           toast.success("Focus session started!");
           notificationShownRef.current = true;
@@ -61,8 +60,8 @@ export const FocusTimer = ({
   }, [autoStart]);
   
   const adjustTime = (type: 'minutes' | 'seconds', increment: boolean) => {
-    if (isActive) return; // Don't allow changes while timer is running
-
+    if (isActive) return;
+    
     if (type === 'minutes') {
       const newMinutes = increment ? minutes + 1 : minutes - 1;
       if (newMinutes >= 0 && newMinutes <= 45) {
@@ -126,6 +125,14 @@ export const FocusTimer = ({
   const handleResume = () => {
     setIsActive(true);
     onResume();
+  };
+
+  const handleEndSessionClick = () => {
+    if (time > 0 && isActive) {
+      setShowEndConfirmation(true);
+    } else {
+      onComplete();
+    }
   };
   
   return (
@@ -205,7 +212,7 @@ export const FocusTimer = ({
           
           {isActive && (
             <Button 
-              onClick={onComplete} 
+              onClick={handleEndSessionClick} 
               size="lg"
               variant="ghost"
             >
@@ -215,6 +222,18 @@ export const FocusTimer = ({
           )}
         </div>
       </div>
+
+      <ConfirmEndDialog
+        open={showEndConfirmation}
+        onOpenChange={setShowEndConfirmation}
+        onConfirm={() => {
+          setShowEndConfirmation(false);
+          onComplete();
+        }}
+        onCancel={() => {
+          setShowEndConfirmation(false);
+        }}
+      />
     </Card>
   );
 };
