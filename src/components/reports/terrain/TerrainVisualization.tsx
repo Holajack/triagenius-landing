@@ -15,129 +15,6 @@ const TerrainVisualization = () => {
   const controlsRef = useRef<OrbitControls | null>(null);
   const terrainRef = useRef<THREE.Mesh | null>(null);
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    // Scene setup
-    const scene = new THREE.Scene();
-    sceneRef.current = scene;
-    scene.background = new THREE.Color(isNightMode ? 0x0a0a20 : 0x87ceeb);
-
-    // Camera setup
-    const camera = new THREE.PerspectiveCamera(
-      75,
-      containerRef.current.clientWidth / containerRef.current.clientHeight,
-      0.1,
-      1000
-    );
-    cameraRef.current = camera;
-    camera.position.set(0, 10, 20);
-
-    // Renderer setup
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    rendererRef.current = renderer;
-    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    containerRef.current.appendChild(renderer.domElement);
-
-    // Controls setup
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controlsRef.current = controls;
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.maxPolarAngle = Math.PI / 2 - 0.1; // Prevent going below terrain
-    controls.minDistance = 5;
-    controls.maxDistance = 50;
-
-    // Lighting setup
-    updateLighting(scene, isNightMode);
-
-    // Terrain creation
-    createTerrain(scene);
-
-    // Fog for atmosphere
-    scene.fog = new THREE.FogExp2(isNightMode ? 0x0a0a20 : 0xd7e5f7, 0.002);
-
-    // Animation loop
-    const animate = () => {
-      requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
-    };
-    animate();
-
-    // Handle window resize
-    const handleResize = () => {
-      if (!containerRef.current || !camera || !renderer) return;
-      
-      camera.aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-    };
-    window.addEventListener('resize', handleResize);
-
-    // Cleanup
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      if (containerRef.current && renderer) {
-        containerRef.current.removeChild(renderer.domElement);
-      }
-      renderer.dispose();
-      // Dispose of geometries, materials, textures
-      scene.traverse((object) => {
-        if (object instanceof THREE.Mesh) {
-          object.geometry.dispose();
-          if (Array.isArray(object.material)) {
-            object.material.forEach((material) => material.dispose());
-          } else {
-            object.material.dispose();
-          }
-        }
-      });
-    };
-  }, []);
-
-  // Update lighting when night mode changes
-  useEffect(() => {
-    if (!sceneRef.current) return;
-    updateLighting(sceneRef.current, isNightMode);
-    if (sceneRef.current.fog) {
-      sceneRef.current.fog = new THREE.FogExp2(isNightMode ? 0x0a0a20 : 0xd7e5f7, 0.002);
-    }
-    if (sceneRef.current.background) {
-      sceneRef.current.background = new THREE.Color(isNightMode ? 0x0a0a20 : 0x87ceeb);
-    }
-  }, [isNightMode]);
-
-  // Update camera and controls when view mode changes
-  useEffect(() => {
-    if (!cameraRef.current || !controlsRef.current || !terrainRef.current) return;
-
-    const camera = cameraRef.current;
-    const controls = controlsRef.current;
-
-    switch (viewMode) {
-      case 'orbit':
-        camera.position.set(0, 10, 20);
-        controls.enableRotate = true;
-        controls.maxPolarAngle = Math.PI / 2 - 0.1;
-        break;
-      case 'firstPerson':
-        camera.position.set(0, 2, 0); // Position just above terrain
-        controls.enableRotate = true;
-        controls.maxPolarAngle = Math.PI; // Allow looking down
-        break;
-      case 'top':
-        camera.position.set(0, 30, 0);
-        camera.lookAt(0, 0, 0);
-        controls.enableRotate = false;
-        break;
-    }
-
-    controls.update();
-  }, [viewMode]);
-
   // Helper function to create terrain
   const createTerrain = (scene: THREE.Scene) => {
     // Use a plane geometry with heightmap for the terrain
@@ -246,6 +123,117 @@ const TerrainVisualization = () => {
     // Simple approximation for demo purposes
     return Math.sin(x) * Math.cos(y) + Math.sin(x * 2) * Math.cos(y * 3) * 0.5;
   };
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    // Scene setup
+    const scene = new THREE.Scene();
+    sceneRef.current = scene;
+    scene.background = new THREE.Color(isNightMode ? 0x0a0a20 : 0x87ceeb);
+
+    // Camera setup
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      containerRef.current.clientWidth / containerRef.current.clientHeight,
+      0.1,
+      1000
+    );
+    cameraRef.current = camera;
+    camera.position.set(0, 10, 20);
+
+    // Renderer setup
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    rendererRef.current = renderer;
+    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    containerRef.current.appendChild(renderer.domElement);
+
+    // Controls setup
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controlsRef.current = controls;
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2 - 0.1; // Prevent going below terrain
+    controls.minDistance = 5;
+    controls.maxDistance = 50;
+
+    // Lighting setup
+    updateLighting(scene, isNightMode);
+
+    // Terrain creation
+    createTerrain(scene);
+
+    // Fog for atmosphere
+    scene.fog = new THREE.FogExp2(isNightMode ? 0x0a0a20 : 0xd7e5f7, 0.002);
+
+    // Animation loop
+    const animate = () => {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    // Handle window resize
+    const handleResize = () => {
+      if (!containerRef.current || !camera || !renderer) return;
+      
+      camera.aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    };
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (containerRef.current && renderer) {
+        containerRef.current.removeChild(renderer.domElement);
+      }
+      renderer.dispose();
+      // Dispose of geometries, materials, textures
+      scene.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          object.geometry.dispose();
+          if (Array.isArray(object.material)) {
+            object.material.forEach((material) => material.dispose());
+          } else {
+            object.material.dispose();
+          }
+        }
+      });
+    };
+  }, [isNightMode]); // Added isNightMode as a dependency
+
+  // Update camera and controls when view mode changes
+  useEffect(() => {
+    if (!cameraRef.current || !controlsRef.current || !terrainRef.current) return;
+
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+
+    switch (viewMode) {
+      case 'orbit':
+        camera.position.set(0, 10, 20);
+        controls.enableRotate = true;
+        controls.maxPolarAngle = Math.PI / 2 - 0.1;
+        break;
+      case 'firstPerson':
+        camera.position.set(0, 2, 0); // Position just above terrain
+        controls.enableRotate = true;
+        controls.maxPolarAngle = Math.PI; // Allow looking down
+        break;
+      case 'top':
+        camera.position.set(0, 30, 0);
+        camera.lookAt(0, 0, 0);
+        controls.enableRotate = false;
+        break;
+    }
+
+    controls.update();
+  }, [viewMode]);
 
   // Handler for exporting the model
   const handleExport = (format: 'glb' | 'fbx' | 'usdz') => {

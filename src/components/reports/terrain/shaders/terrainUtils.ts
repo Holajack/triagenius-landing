@@ -1,173 +1,101 @@
 
-// Utility functions for terrain shader
-export const noiseUtils = `
-// Noise generator functions
-float hash(vec2 p) {
-  return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
-}
+// Utility functions for terrain shader operations
 
-// Simple 2D noise
-float noise(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
-  
-  // Cubic Hermite curve
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  
-  // Sample the four corners
-  float a = hash(i);
-  float b = hash(i + vec2(1.0, 0.0));
-  float c = hash(i + vec2(0.0, 1.0));
-  float d = hash(i + vec2(1.0, 1.0));
-  
-  // Bilinear interpolation
-  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
-}
+/**
+ * Generates a height value using a modified simplex noise algorithm
+ * @param x - X coordinate
+ * @param y - Y coordinate 
+ * @param scale - Scale factor for the noise
+ * @returns A height value between -1 and 1
+ */
+export const generateHeight = (x: number, y: number, scale: number = 1): number => {
+  // Simplified version for demonstration
+  return (Math.sin(x * scale) * Math.cos(y * scale) + 
+         Math.sin(x * scale * 2) * Math.cos(y * scale * 3) * 0.5) * 0.5;
+};
 
-// Fractal Brownian Motion (FBM)
-float fbm(vec2 p) {
-  float value = 0.0;
-  float amplitude = 0.5;
-  float frequency = 1.0;
+/**
+ * Calculates a normal vector for a height map at the given position
+ * @param heightMap - 2D array of height values
+ * @param x - X index in the height map
+ * @param y - Y index in the height map
+ * @returns A normalized vector {x, y, z}
+ */
+export const calculateNormal = (
+  heightMap: number[][], 
+  x: number, 
+  y: number
+): { x: number; y: number; z: number } => {
+  const width = heightMap[0].length;
+  const height = heightMap.length;
   
-  // Add 5 octaves of noise
-  for (int i = 0; i < 5; i++) {
-    value += amplitude * noise(p * frequency);
-    amplitude *= 0.5;
-    frequency *= 2.0;
-  }
+  // Get neighboring heights, handling edges
+  const left = x > 0 ? heightMap[y][x-1] : heightMap[y][x];
+  const right = x < width - 1 ? heightMap[y][x+1] : heightMap[y][x];
+  const top = y > 0 ? heightMap[y-1][x] : heightMap[y][x];
+  const bottom = y < height - 1 ? heightMap[y+1][x] : heightMap[y][x];
   
-  return value;
-}
+  // Calculate normal using central differences
+  const nx = left - right;
+  const ny = 2.0; // Fixed Y component for normalization
+  const nz = top - bottom;
+  
+  // Normalize the vector
+  const length = Math.sqrt(nx * nx + ny * ny + nz * nz);
+  return {
+    x: nx / length,
+    y: ny / length,
+    z: nz / length
+  };
+};
 
-// Terrain height calculation using multiple FBM layers
-float terrainHeight(vec2 p) {
-  // Large features
-  float mountains = fbm(p * 0.3) * 0.5;
-  
-  // Medium features
-  float hills = fbm(p * 0.7) * 0.25;
-  
-  // Small features
-  float rocks = fbm(p * 2.0) * 0.125;
-  
-  // Combine all features
-  return mountains + hills + rocks;
-}
+/**
+ * Linear interpolation between two values
+ * @param a - First value
+ * @param b - Second value
+ * @param t - Interpolation factor (0-1)
+ * @returns Interpolated value
+ */
+export const lerp = (a: number, b: number, t: number): number => {
+  return a + (b - a) * t;
+};
 
-// PBR material utility functions
-vec3 calculateNormal(vec2 p, float height, float epsilon) {
-  // Sample heights at neighboring points
-  float hL = terrainHeight(p - vec2(epsilon, 0.0));
-  float hR = terrainHeight(p + vec2(epsilon, 0.0));
-  float hD = terrainHeight(p - vec2(0.0, epsilon));
-  float hU = terrainHeight(p + vec2(0.0, epsilon));
+/**
+ * Bilinear interpolation for a 2D height map
+ * @param heightMap - 2D array of height values
+ * @param x - Normalized X coordinate (0-1)
+ * @param y - Normalized Y coordinate (0-1)
+ * @returns Interpolated height value
+ */
+export const bilinearSample = (heightMap: number[][], x: number, y: number): number => {
+  const width = heightMap[0].length;
+  const height = heightMap.length;
   
-  // Calculate the normal using central differences
-  vec3 normal = normalize(vec3(
-    hL - hR,
-    2.0 * epsilon,
-    hD - hU
-  ));
+  // Convert to heightmap coordinates
+  const gx = x * (width - 1);
+  const gy = y * (height - 1);
   
-  return normal;
-}
-
-// Environment mapping
-vec3 getSkyColor(vec3 rayDir, vec3 sunDir) {
-  // Sky gradient
-  float sunDot = max(0.0, dot(rayDir, sunDir));
-  float skyY = max(0.0, rayDir.y);
+  // Calculate grid cell indices
+  const gxi = Math.floor(gx);
+  const gyi = Math.floor(gy);
   
-  // Sky colors
-  vec3 zenithColor = vec3(0.3, 0.5, 0.9);  // Blue at top
-  vec3 horizonColor = vec3(0.7, 0.75, 0.8); // Lighter at horizon
-  vec3 sunColor = vec3(1.0, 0.9, 0.7);      // Yellowish sun
+  // Calculate fractional parts
+  const gxf = gx - gxi;
+  const gyf = gy - gyi;
   
-  // Mix sky gradient
-  vec3 skyColor = mix(horizonColor, zenithColor, pow(skyY, 0.5));
+  // Handle edge cases
+  const gxi1 = Math.min(gxi + 1, width - 1);
+  const gyi1 = Math.min(gyi + 1, height - 1);
   
-  // Add sun
-  float sun = pow(sunDot, 64.0);
-  skyColor = mix(skyColor, sunColor, sun);
+  // Get the four corner values
+  const v00 = heightMap[gyi][gxi];
+  const v10 = heightMap[gyi][gxi1];
+  const v01 = heightMap[gyi1][gxi];
+  const v11 = heightMap[gyi1][gxi1];
   
-  // Add atmosphere when looking towards the horizon
-  float atmosphere = 1.0 - pow(skyY, 0.5);
-  skyColor = mix(skyColor, horizonColor * 0.8, atmosphere * 0.5);
+  // Interpolate first horizontally, then vertically
+  const vt0 = lerp(v00, v10, gxf);
+  const vt1 = lerp(v01, v11, gxf);
   
-  return skyColor;
-}
-
-// Dust particle generation
-vec3 generateDustParticle(vec2 uv, float time) {
-  vec2 p = uv * 10.0;
-  float noise = fbm(p + time * 0.1);
-  
-  // Only show particles above a threshold
-  float threshold = 0.75;
-  float particle = smoothstep(threshold, threshold + 0.1, noise);
-  
-  // Color and opacity
-  vec3 dustColor = vec3(0.8, 0.7, 0.5);
-  return dustColor * particle * 0.2;
-}
-
-// Procedural sand texture
-vec3 sandTexture(vec2 p) {
-  // Base sand color
-  vec3 sandColor = vec3(0.76, 0.70, 0.50);
-  
-  // Add small noise for sand grains
-  float grainNoise = fbm(p * 20.0) * 0.1;
-  
-  // Add medium noise for small dunes
-  float smallDunes = fbm(p * 5.0) * 0.2;
-  
-  // Combine effects
-  vec3 finalColor = sandColor;
-  finalColor *= 1.0 - grainNoise * 0.5;
-  finalColor *= 1.0 - smallDunes * 0.2;
-  
-  return finalColor;
-}
-
-// Rock texture
-vec3 rockTexture(vec2 p, vec3 normal) {
-  // Base rock color
-  vec3 rockColor = vec3(0.5, 0.45, 0.40);
-  
-  // Add noise for rock texture
-  float rockNoise = fbm(p * 10.0) * 0.2;
-  
-  // Darken crevices based on normal
-  float crevice = 1.0 - pow(max(0.0, normal.y), 2.0);
-  
-  // Combine effects
-  vec3 finalColor = rockColor;
-  finalColor *= 1.0 - rockNoise * 0.5;
-  finalColor *= 1.0 - crevice * 0.3;
-  
-  return finalColor;
-}
-
-// Blend between rock and sand based on slope
-vec3 terrainColor(vec2 p, vec3 normal, float height) {
-  // Calculate slope (dot product with up vector)
-  float slope = 1.0 - normal.y; // 0 = flat, 1 = vertical
-  
-  // Get base textures
-  vec3 sand = sandTexture(p);
-  vec3 rock = rockTexture(p, normal);
-  
-  // Blend based on slope (more rock on steep slopes)
-  float rockThreshold = 0.3; // Slope threshold for rock
-  float rockBlend = smoothstep(rockThreshold - 0.1, rockThreshold + 0.1, slope);
-  
-  // Also add more rock at higher elevations
-  float heightFactor = smoothstep(0.2, 0.5, height);
-  rockBlend = max(rockBlend, heightFactor);
-  
-  // Return blended color
-  return mix(sand, rock, rockBlend);
-}
-`;
+  return lerp(vt0, vt1, gyf);
+};
