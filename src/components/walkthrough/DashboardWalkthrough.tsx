@@ -47,14 +47,14 @@ const DashboardWalkthrough = () => {
         title: 'Start a Focus Session',
         description: "When you're ready to focus, use this timer to start a new session. You can customize the duration and track your progress.",
         targetSelector: '[data-walkthrough="quick-start"]',
-        placement: isMobile ? 'top' as const : 'left' as const,
+        placement: isMobile ? 'bottom' as const : 'left' as const,
       },
       {
         id: 'weekly-tracker',
         title: 'Weekly Progress',
         description: 'Track your focus sessions over time. Switch between different chart types to visualize your data.',
         targetSelector: '[data-walkthrough="weekly-tracker"]',
-        placement: 'top' as const,
+        placement: 'top' as const, // Changed to top for better visibility with charts
       },
       {
         id: 'ai-insights',
