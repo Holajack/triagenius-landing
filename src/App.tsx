@@ -19,6 +19,7 @@ import Reports from "./pages/Reports";
 import Profile from "./pages/Profile";
 import Bonuses from "./pages/Bonuses";
 import Nora from "./pages/Nora";
+import Leaderboard from "./pages/Leaderboard";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ const App = () => (
               <Route path="/profile" element={<Profile />} />
               <Route path="/bonuses" element={<Bonuses />} />
               <Route path="/nora" element={<Nora />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
