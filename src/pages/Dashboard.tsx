@@ -9,6 +9,7 @@ import AIInsights from "@/components/dashboard/AIInsights";
 import Leaderboard from "@/components/dashboard/Leaderboard";
 import MotivationalTip from "@/components/dashboard/MotivationalTip";
 import NavigationBar from "@/components/dashboard/NavigationBar";
+import TaskList from "@/components/tasks/TaskList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PieChartIcon, BarChart4, LineChart, Clock } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -88,6 +89,12 @@ const Dashboard = () => {
                   <WeeklyTracker chartType="time" />
                 </TabsContent>
               </Tabs>
+            </div>
+            
+            {/* Task List Component */}
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold mb-4">Your Subjects & Tasks</h2>
+              <TaskList />
             </div>
             
             <div data-walkthrough="ai-insights">
