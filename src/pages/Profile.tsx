@@ -7,6 +7,7 @@ import { UserCircle2, Settings, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import PageHeader from "@/components/common/PageHeader";
 
 const Profile = () => {
   const { theme, toggleTheme } = useTheme();
@@ -14,10 +15,7 @@ const Profile = () => {
 
   return (
     <div className="container max-w-md mx-auto px-4 pb-20">
-      <div className="py-8">
-        <h1 className="text-2xl font-bold mb-2">Your Profile</h1>
-        <p className="text-muted-foreground">Manage your account settings</p>
-      </div>
+      <PageHeader title="Your Profile" subtitle="Manage your account settings" />
 
       <Card className="mb-6">
         <CardHeader className="pb-2">

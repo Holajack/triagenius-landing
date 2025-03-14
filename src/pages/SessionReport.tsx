@@ -6,6 +6,7 @@ import { ArrowLeft, Clock, Target, Trophy } from 'lucide-react';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
+import PageHeader from '@/components/common/PageHeader';
 
 const SessionReport = () => {
   const { state } = useOnboarding();
@@ -26,6 +27,8 @@ const SessionReport = () => {
       `theme-${state.environment || 'default'} ${theme}`
     )}>
       <div className="w-full max-w-2xl space-y-6">
+        <PageHeader title="Session Complete!" />
+        
         <Button 
           variant="ghost" 
           onClick={() => navigate('/dashboard')}
@@ -34,10 +37,6 @@ const SessionReport = () => {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Dashboard
         </Button>
-
-        <h1 className="text-2xl font-bold text-center mb-6">
-          Session Complete!
-        </h1>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="p-6 flex flex-col items-center">
@@ -74,4 +73,3 @@ const SessionReport = () => {
 };
 
 export default SessionReport;
-
