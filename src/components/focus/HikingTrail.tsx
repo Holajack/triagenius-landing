@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { StudyEnvironment } from "@/types/onboarding";
 import { Navigation, Flag, Mountain, Trees } from "lucide-react";
@@ -53,23 +52,15 @@ const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true }
 
   return (
     <div className={`relative ${className} ${facingRight ? '' : 'scale-x-[-1]'}`}>
-      {/* Explorer's Hat with subtle shading */}
-      <div className="w-5 h-2 bg-[#f1f0fb] absolute left-1/2 -translate-x-1/2 -top-11 rounded-sm">
-        {/* Hat brim */}
-        <div className="absolute w-6 h-0.5 bg-[#d8d7e3] bottom-0 left-1/2 -translate-x-1/2 rounded-sm"></div>
-        {/* Hat shading */}
-        <div className="absolute w-4 h-1 bg-[#e5e4ec] top-0.5 left-1/2 -translate-x-1/2 rounded-t-sm"></div>
-      </div>
-      
-      {/* Head - slightly smaller with pixel art details */}
-      <div className="w-4 h-4.5 rounded-t-full bg-[#e8b89b] absolute left-1/2 -translate-x-1/2 -top-9.5">
+      {/* Head - smaller and closer to body */}
+      <div className="w-3.5 h-3.5 rounded-full bg-[#e8b89b] absolute left-1/2 -translate-x-1/2 -top-8">
         {/* Face details - pixel art style */}
-        <div className="absolute w-2 h-0.5 bg-[#d37c59] bottom-1.5 left-1/2 -translate-x-1/2 rounded-none"></div>
-        <div className="absolute w-1 h-1 bg-[#362617] bottom-2.5 left-1 rounded-none"></div>
+        <div className="absolute w-1.5 h-0.5 bg-[#d37c59] bottom-1 left-1/2 -translate-x-1/2 rounded-none"></div>
+        <div className="absolute w-0.5 h-0.5 bg-[#362617] bottom-2 left-1 rounded-none"></div>
       </div>
 
-      {/* Neck - connecting head and body */}
-      <div className="w-2 h-1.5 bg-[#d8a991] absolute left-1/2 -translate-x-1/2 -top-5 rounded-none"></div>
+      {/* Neck - shorter to bring head closer to body */}
+      <div className="w-1.5 h-1 bg-[#d8a991] absolute left-1/2 -translate-x-1/2 -top-5 rounded-none"></div>
       
       {/* Body - Slim pixel art proportions with hiking shirt */}
       <div 
