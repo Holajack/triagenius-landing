@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,15 +12,21 @@ interface FocusTimerProps {
   onPause: () => void;
   onResume: () => void;
   onComplete: () => void;
+  onMilestoneReached?: (milestone: number) => void;
   isPaused: boolean;
   autoStart?: boolean;
   showControls?: boolean;
 }
 
+// Full session is 3 hours = 180 minutes
+const TOTAL_SESSION_TIME = 180 * 60; // 3 hours in seconds
+const MILESTONE_TIME = 45 * 60; // 45 minutes in seconds
+
 export const FocusTimer = ({ 
   onPause, 
   onResume, 
-  onComplete, 
+  onComplete,
+  onMilestoneReached,
   isPaused,
   autoStart = false,
   showControls = true
@@ -30,11 +37,27 @@ export const FocusTimer = ({
   const [time, setTime] = useState(minutes * 60 + seconds);
   const [progress, setProgress] = useState(100);
   const [isActive, setIsActive] = useState(false);
+  const [milestoneReached, setMilestoneReached] = useState(0);
   const timerRef = useRef<number>();
   const notificationShownRef = useRef(false);
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
+  const lastMilestoneTimeRef = useRef(0);
+  
+  // Calculate elapsed time based on the original time and current time
+  // This is used for milestone tracking
+  const initialTimeRef = useRef(0);
+  const elapsedTimeRef = useRef(0);
   
   useEffect(() => {
+    // Initialize with 45 minutes if auto-starting (default session segment)
+    if (autoStart) {
+      const initialMinutes = 45;
+      setMinutes(initialMinutes);
+      setSeconds(0);
+      setTime(initialMinutes * 60);
+      initialTimeRef.current = initialMinutes * 60;
+    }
+    
     const savedDuration = localStorage.getItem('focusTimerDuration');
     if (savedDuration) {
       try {
@@ -42,6 +65,7 @@ export const FocusTimer = ({
         setMinutes(savedMinutes);
         setSeconds(savedSeconds);
         setTime(savedMinutes * 60 + savedSeconds);
+        initialTimeRef.current = savedMinutes * 60 + savedSeconds;
         localStorage.removeItem('focusTimerDuration');
       } catch (e) {
         console.error('Error parsing saved duration', e);
@@ -83,10 +107,81 @@ export const FocusTimer = ({
         setTime((prevTime) => {
           if (prevTime <= 1) {
             clearInterval(timerRef.current);
-            setIsActive(false);
-            onComplete();
-            return 0;
+            elapsedTimeRef.current += initialTimeRef.current - 1;
+            
+            // Check if we've completed a milestone but not the full session
+            const totalElapsedSeconds = elapsedTimeRef.current;
+            const milestonesCompleted = Math.floor(totalElapsedSeconds / MILESTONE_TIME);
+            
+            if (milestonesCompleted < 4) { // Less than full session (3 hours = 4 milestones)
+              // Start next milestone segment
+              const newMilestone = milestonesCompleted;
+              setMilestoneReached(newMilestone);
+              
+              if (newMilestone > 0 && onMilestoneReached) {
+                onMilestoneReached(newMilestone);
+                
+                // Show milestone celebration
+                const milestoneMessages = [
+                  "Great job! You've made it to the first checkpoint—keep going!",
+                  "You're halfway up the mountain—stay focused!",
+                  "Final push! Reach the peak and complete today's session!"
+                ];
+                
+                if (newMilestone <= milestoneMessages.length) {
+                  toast.success(milestoneMessages[newMilestone - 1], {
+                    duration: 5000,
+                  });
+                }
+              }
+              
+              // If we've completed all milestones (3 hours)
+              if (milestonesCompleted >= 3) {
+                toast.success("Congratulations! You've completed your 3-hour focus session!", {
+                  duration: 5000,
+                });
+                onComplete();
+                return 0;
+              }
+              
+              // Start a new 45-minute segment
+              const nextSegmentTime = 45 * 60;
+              initialTimeRef.current = nextSegmentTime;
+              return nextSegmentTime;
+            } else {
+              // Full session completed
+              clearInterval(timerRef.current);
+              setIsActive(false);
+              onComplete();
+              return 0;
+            }
           }
+          
+          // Check for milestones during the timer countdown
+          const currentElapsedTime = elapsedTimeRef.current + (initialTimeRef.current - prevTime);
+          const currentMilestone = Math.floor(currentElapsedTime / MILESTONE_TIME);
+          
+          if (currentMilestone > milestoneReached && currentMilestone <= 3) {
+            setMilestoneReached(currentMilestone);
+            
+            if (onMilestoneReached) {
+              onMilestoneReached(currentMilestone);
+              
+              // Show milestone celebration
+              const milestoneMessages = [
+                "Great job! You've made it to the first checkpoint—keep going!",
+                "You're halfway up the mountain—stay focused!",
+                "Final push! Reach the peak and complete today's session!"
+              ];
+              
+              if (currentMilestone <= milestoneMessages.length) {
+                toast.success(milestoneMessages[currentMilestone - 1], {
+                  duration: 5000,
+                });
+              }
+            }
+          }
+          
           return prevTime - 1;
         });
       }, 1000);
@@ -95,7 +190,7 @@ export const FocusTimer = ({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isActive, isPaused, onComplete]);
+  }, [isActive, isPaused, onComplete, onMilestoneReached, milestoneReached]);
   
   useEffect(() => {
     const totalTime = minutes * 60 + seconds;
@@ -111,6 +206,7 @@ export const FocusTimer = ({
   const handleStart = () => {
     if (time === 0) return;
     setIsActive(true);
+    initialTimeRef.current = time;
     if (!notificationShownRef.current) {
       toast.success("Focus session started!");
       notificationShownRef.current = true;
@@ -133,6 +229,12 @@ export const FocusTimer = ({
     } else {
       onComplete();
     }
+  };
+
+  // Calculate the overall session progress (out of 3 hours)
+  const calculateOverallProgress = () => {
+    const completedTime = elapsedTimeRef.current + (initialTimeRef.current - time);
+    return Math.min((completedTime / TOTAL_SESSION_TIME) * 100, 100);
   };
   
   return (
@@ -190,7 +292,26 @@ export const FocusTimer = ({
           </div>
         )}
         
+        {/* Current segment progress */}
         <Progress value={progress} className="w-full" />
+        
+        {/* Overall session progress (3 hours) */}
+        <div className="w-full flex flex-col gap-1">
+          <div className="flex justify-between text-xs text-muted-foreground mb-1">
+            <span>0h</span>
+            <span>1h</span>
+            <span>2h</span>
+            <span>3h</span>
+          </div>
+          <Progress 
+            value={calculateOverallProgress()} 
+            className="w-full h-2" 
+            indicatorClassName="bg-amber-500"
+          />
+          <div className="text-xs text-muted-foreground mt-1">
+            Session Progress: {Math.floor(calculateOverallProgress())}%
+          </div>
+        </div>
         
         <div className="flex gap-4">
           {!isActive ? (
