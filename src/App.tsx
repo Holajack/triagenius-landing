@@ -5,6 +5,7 @@ import { TaskProvider } from "./contexts/TaskContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { Toaster } from "./components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 import Index from "./pages/Index";
 import Onboarding from "./pages/Onboarding";
@@ -23,32 +24,34 @@ import NotFound from "./pages/NotFound";
 
 function App() {
   return (
-    <BrowserRouter>
-      <ThemeProvider>
+    <ErrorBoundary>
+      <BrowserRouter>
         <OnboardingProvider>
-          <TaskProvider>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/onboarding" element={<Onboarding />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/focus-session" element={<FocusSession />} />
-              <Route path="/session-report" element={<SessionReport />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/community" element={<Community />} />
-              <Route path="/study-room/:id?" element={<StudyRoom />} />
-              <Route path="/chat" element={<Chat />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/leaderboard" element={<Leaderboard />} />
-              <Route path="/bonuses" element={<Bonuses />} />
-              <Route path="/nora" element={<Nora />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </TaskProvider>
+          <ThemeProvider>
+            <TaskProvider>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/onboarding" element={<Onboarding />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/focus-session" element={<FocusSession />} />
+                <Route path="/session-report" element={<SessionReport />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/community" element={<Community />} />
+                <Route path="/study-room/:id?" element={<StudyRoom />} />
+                <Route path="/chat" element={<Chat />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/leaderboard" element={<Leaderboard />} />
+                <Route path="/bonuses" element={<Bonuses />} />
+                <Route path="/nora" element={<Nora />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </TaskProvider>
+          </ThemeProvider>
         </OnboardingProvider>
-      </ThemeProvider>
-      <Toaster />
-      <SonnerToaster position="top-right" closeButton richColors />
-    </BrowserRouter>
+        <Toaster />
+        <SonnerToaster position="top-right" closeButton richColors />
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 
