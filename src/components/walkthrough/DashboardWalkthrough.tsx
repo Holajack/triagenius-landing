@@ -29,7 +29,7 @@ const DashboardWalkthrough = () => {
       {
         id: 'welcome',
         title: 'Welcome to Your Dashboard',
-        description: 'Let's take a quick tour of your personalized focus dashboard. You can always skip or restart this tutorial later.',
+        description: "Let's take a quick tour of your personalized focus dashboard. You can always skip or restart this tutorial later.",
         targetSelector: '[data-walkthrough="dashboard-header"]',
         placement: 'bottom' as const,
       },
@@ -43,7 +43,7 @@ const DashboardWalkthrough = () => {
       {
         id: 'quick-start',
         title: 'Start a Focus Session',
-        description: 'When you're ready to focus, use this timer to start a new session. You can customize the duration and track your progress.',
+        description: "When you're ready to focus, use this timer to start a new session. You can customize the duration and track your progress.",
         targetSelector: '[data-walkthrough="quick-start"]',
         placement: 'left' as const,
       },
@@ -70,7 +70,7 @@ const DashboardWalkthrough = () => {
       },
       {
         id: 'complete',
-        title: 'You're All Set!',
+        title: "You're All Set!",
         description: 'You can now start using the app. If you need help, look for this button to restart the tutorial.',
         targetSelector: '[data-walkthrough="help-button"]',
         placement: 'left' as const,
