@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,9 +12,16 @@ interface FocusTimerProps {
   onResume: () => void;
   onComplete: () => void;
   isPaused: boolean;
+  autoStart?: boolean;
 }
 
-export const FocusTimer = ({ onPause, onResume, onComplete, isPaused }: FocusTimerProps) => {
+export const FocusTimer = ({ 
+  onPause, 
+  onResume, 
+  onComplete, 
+  isPaused,
+  autoStart = false
+}: FocusTimerProps) => {
   const { state } = useOnboarding();
   const [minutes, setMinutes] = useState(25);
   const [seconds, setSeconds] = useState(0);
@@ -35,7 +43,15 @@ export const FocusTimer = ({ onPause, onResume, onComplete, isPaused }: FocusTim
         console.error('Error parsing saved duration', e);
       }
     }
-  }, []);
+    
+    // Auto-start timer if specified
+    if (autoStart) {
+      setTimeout(() => {
+        setIsActive(true);
+        toast.success("Focus session started!");
+      }, 500);
+    }
+  }, [autoStart]);
   
   const adjustTime = (type: 'minutes' | 'seconds', increment: boolean) => {
     if (isActive) return; // Don't allow changes while timer is running
