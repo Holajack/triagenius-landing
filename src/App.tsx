@@ -17,6 +17,7 @@ import Chat from "./pages/Chat";
 import StudyRoom from "./pages/StudyRoom";
 import Reports from "./pages/Reports";
 import Profile from "./pages/Profile";
+import Bonuses from "./pages/Bonuses";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
               <Route path="/study-room/:id" element={<StudyRoom />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/bonuses" element={<Bonuses />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
