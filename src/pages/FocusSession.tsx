@@ -11,7 +11,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import PageHeader from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Battery, BatteryOff } from "lucide-react";
+import { Battery, BatteryLow } from "lucide-react";
 
 const FocusSession = () => {
   const navigate = useNavigate();
@@ -96,7 +96,7 @@ const FocusSession = () => {
             onClick={toggleLowPowerMode}
             title={lowPowerMode ? "Switch to enhanced mode" : "Switch to low power mode"}
           >
-            {lowPowerMode ? <Battery className="h-5 w-5" /> : <BatteryOff className="h-5 w-5" />}
+            {lowPowerMode ? <Battery className="h-5 w-5" /> : <BatteryLow className="h-5 w-5" />}
           </Button>
         </div>
         
