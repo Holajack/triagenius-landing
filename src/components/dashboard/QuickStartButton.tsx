@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -113,13 +114,7 @@ const QuickStartButton = () => {
         <p className="text-sm text-gray-600">Start a quick session based on your preferences</p>
         
         <div className="mt-4 flex justify-between items-center">
-          <div className="flex flex-col items-center cursor-pointer" onClick={toggleAdjust}>
-            <div className={cn("p-2 rounded-full", getAccentColor())}>
-              <Settings className="w-5 h-5" />
-            </div>
-            <span className="text-xs mt-1">Settings</span>
-          </div>
-          
+          {/* Task Selection Button - Moved to first position */}
           <div className="flex flex-col items-center cursor-pointer" onClick={() => setShowTaskSelection(true)}>
             <div className={cn("p-2 rounded-full", getAccentColor())}>
               <BookOpen className="w-5 h-5" />
@@ -129,6 +124,14 @@ const QuickStartButton = () => {
                 ? `${selectedTasks.tasks.length} Task${selectedTasks.tasks.length > 1 ? 's' : ''}` 
                 : "Select Tasks"}
             </span>
+          </div>
+          
+          {/* Settings Button - Moved to second position */}
+          <div className="flex flex-col items-center cursor-pointer" onClick={toggleAdjust}>
+            <div className={cn("p-2 rounded-full", getAccentColor())}>
+              <Settings className="w-5 h-5" />
+            </div>
+            <span className="text-xs mt-1">Settings</span>
           </div>
           
           {showAdjust ? (
