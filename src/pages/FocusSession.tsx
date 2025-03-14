@@ -10,13 +10,12 @@ import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
 import PageHeader from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun } from "lucide-react";
 import { toast } from "sonner";
 
 const FocusSession = () => {
   const navigate = useNavigate();
   const { state } = useOnboarding();
-  const { theme, setTheme } = useTheme();
+  const { theme } = useTheme();
   const [isPaused, setIsPaused] = useState(false);
   const [showMotivation, setShowMotivation] = useState(false);
   const [currentMilestone, setCurrentMilestone] = useState(0);
@@ -54,11 +53,6 @@ const FocusSession = () => {
       setIsCelebrating(false);
     }, 3000);
   };
-  
-  const togglePowerMode = () => {
-    setLowPowerMode(!lowPowerMode);
-    toast.success(`${!lowPowerMode ? "Low power mode" : "Standard mode"} activated`);
-  };
 
   return (
     <div className={cn(
@@ -68,25 +62,6 @@ const FocusSession = () => {
       <div className="w-full max-w-4xl">
         <div className="flex justify-between items-center">
           <PageHeader title="Focus Session" subtitle="Stay focused and achieve your goals" />
-          
-          <div className="flex space-x-2">
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={togglePowerMode}
-              title={lowPowerMode ? "Enable animations" : "Disable animations (low-power mode)"}
-            >
-              {lowPowerMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            >
-              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-          </div>
         </div>
         
         <div className="flex flex-col items-center space-y-8 mt-4">
