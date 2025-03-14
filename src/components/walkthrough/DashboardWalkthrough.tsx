@@ -54,21 +54,21 @@ const DashboardWalkthrough = () => {
         title: 'Weekly Progress',
         description: 'Track your focus sessions over time. Switch between different chart types to visualize your data.',
         targetSelector: '[data-walkthrough="weekly-tracker"]',
-        placement: 'top' as const, // Changed to top for better visibility with charts
+        placement: 'top' as const,
       },
       {
         id: 'ai-insights',
         title: 'AI-Powered Insights',
         description: 'Get personalized recommendations based on your focus patterns and habits.',
         targetSelector: '[data-walkthrough="ai-insights"]',
-        placement: 'top' as const,
+        placement: 'right' as const,
       },
       {
         id: 'menu',
         title: 'Additional Options',
         description: 'Click the three dots menu to access more features like Nora AI assistant, Leaderboard, and Profile settings.',
         targetSelector: 'button[aria-label="Menu"]',
-        placement: isMobile ? 'bottom' as const : 'left' as const,
+        placement: isMobile ? 'top' as const : 'left' as const,
       },
       {
         id: 'navigation',
@@ -110,7 +110,7 @@ const DashboardWalkthrough = () => {
         title: "You're All Set!",
         description: 'You can now start using the app. If you need help, look for this button to restart the tutorial.',
         targetSelector: '[data-walkthrough="help-button"]',
-        placement: isMobile ? 'top' as const : 'left' as const,
+        placement: isMobile ? 'left' as const : 'right' as const,
       },
     ];
     

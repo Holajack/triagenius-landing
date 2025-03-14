@@ -67,6 +67,25 @@ const WalkthroughStep = () => {
   const currentStep = state.steps[state.currentStepIndex];
   
   useEffect(() => {
+    if (state.isActive) {
+      const scrollY = window.scrollY;
+      
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      
+      return () => {
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [state.isActive]);
+  
+  useEffect(() => {
     if (!state.isActive || !currentStep?.targetSelector) return;
     
     const element = document.querySelector(currentStep.targetSelector) as HTMLElement;
@@ -87,30 +106,35 @@ const WalkthroughStep = () => {
         const elementRect = element.getBoundingClientRect();
         const viewportHeight = window.innerHeight;
         
+        const elementTop = elementRect.top;
+        const elementBottom = elementRect.bottom;
+        const elementHeight = elementRect.height;
+        
         const isInViewport = 
-          elementRect.top >= 80 &&
-          elementRect.bottom <= viewportHeight - 150;
+          elementTop >= 120 &&
+          elementBottom <= viewportHeight - 180;
         
         if (!isInViewport) {
           let scrollPosition;
-          const buffer = isMobile ? 100 : 150;
           
-          if (elementRect.height > viewportHeight / 2) {
-            scrollPosition = window.scrollY + elementRect.top - 100;
+          if (elementHeight > viewportHeight / 2) {
+            scrollPosition = window.scrollY + elementTop - 120;
           } else {
             switch (currentStep.placement) {
               case 'top':
-                scrollPosition = window.scrollY + elementRect.top - (viewportHeight / 3);
+                scrollPosition = window.scrollY + elementTop - (viewportHeight * 0.6);
                 break;
               case 'bottom':
-                scrollPosition = window.scrollY + elementRect.top - (viewportHeight / 3);
+                scrollPosition = window.scrollY + elementTop - (viewportHeight * 0.3);
                 break;
               case 'left':
+                scrollPosition = window.scrollY + elementTop - (viewportHeight / 2);
+                break;
               case 'right':
-                scrollPosition = window.scrollY + elementRect.top - (viewportHeight / 2) + (elementRect.height / 2);
+                scrollPosition = window.scrollY + elementTop - (viewportHeight / 2);
                 break;
               default:
-                scrollPosition = window.scrollY + elementRect.top - (viewportHeight / 2) + (elementRect.height / 2);
+                scrollPosition = window.scrollY + elementTop - (viewportHeight * 0.4);
             }
           }
           
@@ -153,13 +177,11 @@ const WalkthroughStep = () => {
     };
     
     window.addEventListener('resize', handleUpdate);
-    window.addEventListener('scroll', handleUpdate);
     
     const updateInterval = setInterval(handleUpdate, 100);
     
     return () => {
       window.removeEventListener('resize', handleUpdate);
-      window.removeEventListener('scroll', handleUpdate);
       clearInterval(updateInterval);
       if (element) {
         element.classList.remove('ring-2', 'ring-triage-purple', 'ring-offset-2');
@@ -199,65 +221,63 @@ const WalkthroughStep = () => {
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
     
-    const visibleTop = window.scrollY;
-    const visibleBottom = window.scrollY + viewportHeight;
-    
     let position = {
       top: targetRect.top + targetRect.height / 2,
       left: targetRect.left + targetRect.width / 2,
     };
     
-    const mobileTopOffset = isMobile ? 10 : 0;
-    const mobileLeftOffset = isMobile ? 0 : 0;
+    const popoverHeight = isMobile ? 180 : 200;
+    const popoverWidth = isMobile ? 250 : 320;
+    const buffer = 20;
     
     switch (currentStep.placement) {
       case 'top':
-        position.top = targetRect.top - 10 - mobileTopOffset;
-        position.left = targetRect.left + targetRect.width / 2 + mobileLeftOffset;
+        position.top = targetRect.top - popoverHeight - buffer;
+        position.left = targetRect.left + targetRect.width / 2;
         
-        if (position.top < visibleTop + 70) {
-          position.top = targetRect.bottom + 10;
+        if (position.top < 70) {
+          position.top = targetRect.bottom + buffer;
         }
         break;
         
       case 'bottom':
-        position.top = targetRect.bottom + 10;
-        position.left = targetRect.left + targetRect.width / 2 + mobileLeftOffset;
+        position.top = targetRect.bottom + buffer;
+        position.left = targetRect.left + targetRect.width / 2;
         
-        if (position.top > visibleBottom - 150) {
-          position.top = targetRect.top - 10 - mobileTopOffset;
+        if (position.top + popoverHeight > viewportHeight - 20) {
+          position.top = targetRect.top - popoverHeight - buffer;
         }
         break;
         
       case 'left':
         position.top = targetRect.top + targetRect.height / 2;
-        position.left = targetRect.left - 10;
+        position.left = targetRect.left - popoverWidth / 2 - buffer;
         
-        if (position.left < 150) {
-          position.left = targetRect.right + 10;
+        if (position.left < 20) {
+          position.left = targetRect.right + popoverWidth / 2 + buffer;
         }
         break;
         
       case 'right':
         position.top = targetRect.top + targetRect.height / 2;
-        position.left = targetRect.right + 10;
+        position.left = targetRect.right + popoverWidth / 2 + buffer;
         
-        if (position.left > viewportWidth - 150) {
-          position.left = targetRect.left - 10;
+        if (position.left + popoverWidth > viewportWidth - 20) {
+          position.left = targetRect.left - popoverWidth / 2 - buffer;
         }
         break;
         
       default:
-        position.top = targetRect.bottom + 10;
-        position.left = targetRect.left + targetRect.width / 2 + mobileLeftOffset;
+        position.top = targetRect.bottom + buffer;
+        position.left = targetRect.left + targetRect.width / 2;
         
-        if (position.top > visibleBottom - 150) {
-          position.top = targetRect.top - 10 - mobileTopOffset;
+        if (position.top + popoverHeight > viewportHeight - 20) {
+          position.top = targetRect.top - popoverHeight - buffer;
         }
     }
     
-    position.top = Math.max(visibleTop + 50, Math.min(visibleBottom - 50, position.top));
-    position.left = Math.max(50, Math.min(viewportWidth - 50, position.left));
+    position.top = Math.max(70, Math.min(viewportHeight - 70, position.top));
+    position.left = Math.max(20, Math.min(viewportWidth - 20, position.left));
     
     return position;
   };
@@ -317,7 +337,7 @@ const WalkthroughStep = () => {
         <PopoverContent 
           className="p-0 border-triage-purple shadow-lg z-50"
           style={{ width: getPopoverWidth() }}
-          sideOffset={5}
+          sideOffset={20}
           align={getPopoverAlign() as "start" | "center" | "end"}
           side={getPopoverSide() as "top" | "right" | "bottom" | "left"}
         >
