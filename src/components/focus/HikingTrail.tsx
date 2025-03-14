@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { StudyEnvironment } from "@/types/onboarding";
 import { Navigation, Flag, Mountain, Trees } from "lucide-react";
@@ -9,28 +10,31 @@ interface HikingTrailProps {
   isCelebrating?: boolean;
 }
 
-// 2D Animated Person Component
+// 2D Animated Hiker Component
 const AnimatedPerson = ({ className = "", isWalking = true }: { className?: string; isWalking?: boolean }) => {
   return (
     <div className={`relative ${className}`}>
       {/* Head */}
-      <div className="w-4 h-4 rounded-full bg-blue-500 absolute left-1/2 -translate-x-1/2 -top-6 shadow-md" 
-        style={{ background: "linear-gradient(135deg, #33C3F0 10%, #0FA0CE 90%)" }}>
-        {/* Eyes */}
-        <div className="absolute w-0.5 h-0.5 rounded-full bg-white top-1.5 left-1"></div>
-        <div className="absolute w-0.5 h-0.5 rounded-full bg-white top-1.5 right-1"></div>
-        {/* Smile */}
-        <div className="absolute w-1.5 h-0.5 border-b border-white rounded-full bottom-1 left-1/2 -translate-x-1/2"></div>
+      <div className="w-4 h-5 rounded-t-full bg-[#e8b89b] absolute left-1/2 -translate-x-1/2 -top-7">
+        {/* Hair */}
+        <div className="absolute w-4 h-2 bg-[#3a3a3a] top-0 left-0 rounded-t-full"></div>
       </div>
       
-      {/* Body */}
-      <div className="w-3 h-6 bg-blue-600 absolute left-1/2 -translate-x-1/2 -top-3 rounded-t-sm" 
-        style={{ background: "linear-gradient(to bottom, #33C3F0 0%, #1EAEDB 100%)" }}>
-      </div>
+      {/* Body - Yellow/Tan Shirt */}
+      <div className="w-5 h-5 bg-[#d3a05d] absolute left-1/2 -translate-x-1/2 -top-3 rounded-sm"></div>
+      
+      {/* Backpack */}
+      <div className="w-4 h-6 bg-[#5f8d4e] absolute left-1/2 translate-x-0 -top-4 rounded-md"></div>
+      <div className="w-1 h-3 bg-[#4a6d3b] absolute left-1/2 translate-x-1 -top-3"></div>
+      {/* Backpack strap */}
+      <div className="w-1 h-3 bg-[#6b4219] absolute left-1/2 -translate-x-2 -top-2 rounded-sm"></div>
+      
+      {/* Hiking Stick */}
+      <div className="w-0.5 h-8 bg-[#8E9196] absolute -right-2 -top-2 origin-top rounded-full"></div>
       
       {/* Arms */}
       <motion.div 
-        className="w-1.5 h-4 bg-blue-500 absolute -left-1 -top-2 origin-top rounded-full"
+        className="w-1.5 h-3 bg-[#d3a05d] absolute -left-1 -top-2 origin-top rounded-full"
         animate={isWalking ? { 
           rotate: [-15, 15, -15] 
         } : {}}
@@ -42,7 +46,7 @@ const AnimatedPerson = ({ className = "", isWalking = true }: { className?: stri
       ></motion.div>
       
       <motion.div 
-        className="w-1.5 h-4 bg-blue-500 absolute -right-1 -top-2 origin-top rounded-full"
+        className="w-1.5 h-3 bg-[#d3a05d] absolute -right-1 -top-2 origin-top rounded-full"
         animate={isWalking ? { 
           rotate: [15, -15, 15] 
         } : {}}
@@ -53,9 +57,9 @@ const AnimatedPerson = ({ className = "", isWalking = true }: { className?: stri
         }}
       ></motion.div>
       
-      {/* Legs */}
+      {/* Legs - Blue Jeans */}
       <motion.div 
-        className="w-1.5 h-4 bg-blue-600 absolute left-0 top-2.5 origin-top rounded-full"
+        className="w-1.5 h-4 bg-[#5d81b0] absolute left-0 top-2 origin-top rounded-full"
         animate={isWalking ? { 
           rotate: [15, -15, 15] 
         } : {}}
@@ -67,7 +71,32 @@ const AnimatedPerson = ({ className = "", isWalking = true }: { className?: stri
       ></motion.div>
       
       <motion.div 
-        className="w-1.5 h-4 bg-blue-600 absolute right-0 top-2.5 origin-top rounded-full"
+        className="w-1.5 h-4 bg-[#5d81b0] absolute right-0 top-2 origin-top rounded-full"
+        animate={isWalking ? { 
+          rotate: [-15, 15, -15] 
+        } : {}}
+        transition={{ 
+          repeat: Infinity, 
+          duration: 1.2,
+          ease: "linear"
+        }}
+      ></motion.div>
+      
+      {/* Shoes */}
+      <motion.div 
+        className="w-1.5 h-1 bg-black absolute left-0 top-6 origin-top rounded-sm"
+        animate={isWalking ? { 
+          rotate: [15, -15, 15] 
+        } : {}}
+        transition={{ 
+          repeat: Infinity, 
+          duration: 1.2,
+          ease: "linear"
+        }}
+      ></motion.div>
+      
+      <motion.div 
+        className="w-1.5 h-1 bg-black absolute right-0 top-6 origin-top rounded-sm"
         animate={isWalking ? { 
           rotate: [-15, 15, -15] 
         } : {}}
