@@ -3,13 +3,13 @@ import { Menu, Book, Brain, BadgePercent, LayoutDashboard, Users, Bot, BarChart3
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
-  Drawer, 
-  DrawerContent, 
-  DrawerHeader, 
-  DrawerTitle, 
-  DrawerTrigger,
-  DrawerFooter
-} from "@/components/ui/drawer";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+  SheetTrigger
+} from "@/components/ui/sheet";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
@@ -69,17 +69,17 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
   ];
 
   return (
-    <Drawer>
-      <DrawerTrigger asChild>
+    <Sheet>
+      <SheetTrigger asChild>
         {children}
-      </DrawerTrigger>
-      <DrawerContent className="h-[85%]">
-        <DrawerHeader>
-          <DrawerTitle className="text-center text-xl text-triage-purple">
+      </SheetTrigger>
+      <SheetContent side="right" className="w-[270px] sm:w-[300px]">
+        <SheetHeader className="text-left">
+          <SheetTitle className="text-center text-xl text-triage-purple">
             The Triage System
-          </DrawerTitle>
-        </DrawerHeader>
-        <div className="flex flex-col gap-2 p-4">
+          </SheetTitle>
+        </SheetHeader>
+        <div className="flex flex-col gap-2 p-4 mt-4">
           {navItems.map((item) => (
             <Button
               key={item.label}
@@ -96,13 +96,13 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
             </Button>
           ))}
         </div>
-        <DrawerFooter>
-          <p className="text-center text-sm text-muted-foreground">
+        <SheetFooter className="absolute bottom-4 left-0 right-0">
+          <p className="text-center text-sm text-muted-foreground w-full">
             © {new Date().getFullYear()} The Triage System
           </p>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 };
 
