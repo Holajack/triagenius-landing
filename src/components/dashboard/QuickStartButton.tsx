@@ -1,12 +1,12 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PauseCircle, PlayCircle, Settings, TimerReset, ChevronUp, ChevronDown } from "lucide-react";
+import { PauseCircle, PlayCircle, Settings, TimerReset, ChevronUp, ChevronDown, BookOpen } from "lucide-react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import TaskSelectionDialog, { SelectedTaskData } from "@/components/focus/TaskSelectionDialog";
 
 const QuickStartButton = () => {
   const { state } = useOnboarding();
@@ -15,6 +15,8 @@ const QuickStartButton = () => {
   const [seconds, setSeconds] = useState(0);
   const [timer, setTimer] = useState(minutes * 60 + seconds);
   const [showAdjust, setShowAdjust] = useState(false);
+  const [showTaskSelection, setShowTaskSelection] = useState(false);
+  const [selectedTasks, setSelectedTasks] = useState<SelectedTaskData | null>(null);
   
   const navigate = useNavigate();
   
@@ -47,7 +49,6 @@ const QuickStartButton = () => {
   };
   
   const startSession = () => {
-    // Pass the selected time through localStorage
     localStorage.setItem('focusTimerDuration', JSON.stringify({ minutes, seconds }));
     
     setIsActive(true);
@@ -79,8 +80,8 @@ const QuickStartButton = () => {
   };
   
   const adjustTime = (type: 'minutes' | 'seconds', increment: boolean) => {
-    if (isActive) return; // Don't allow changes while timer is running
-
+    if (isActive) return;
+    
     if (type === 'minutes') {
       const newMinutes = increment ? minutes + 1 : minutes - 1;
       if (newMinutes >= 0 && newMinutes <= 45) {
@@ -96,6 +97,15 @@ const QuickStartButton = () => {
     }
   };
   
+  const handleTaskSelectionConfirm = (data: SelectedTaskData) => {
+    setSelectedTasks(data);
+    toast.success(
+      data.tasks.length > 0 
+        ? `Selected ${data.tasks.length} task(s) for your focus session` 
+        : "No tasks selected for this session"
+    );
+  };
+  
   return (
     <Card className={cn("overflow-hidden", isActive ? "border-triage-purple shadow-md" : "")}>
       <div className={cn("bg-gradient-to-r p-6", getGradientClass())}>
@@ -108,6 +118,17 @@ const QuickStartButton = () => {
               <Settings className="w-5 h-5" />
             </div>
             <span className="text-xs mt-1">Settings</span>
+          </div>
+          
+          <div className="flex flex-col items-center cursor-pointer" onClick={() => setShowTaskSelection(true)}>
+            <div className={cn("p-2 rounded-full", getAccentColor())}>
+              <BookOpen className="w-5 h-5" />
+            </div>
+            <span className="text-xs mt-1">
+              {selectedTasks && selectedTasks.tasks.length > 0 
+                ? `${selectedTasks.tasks.length} Task${selectedTasks.tasks.length > 1 ? 's' : ''}` 
+                : "Select Tasks"}
+            </span>
           </div>
           
           {showAdjust ? (
@@ -199,6 +220,12 @@ const QuickStartButton = () => {
           </Button>
         )}
       </CardContent>
+
+      <TaskSelectionDialog 
+        open={showTaskSelection} 
+        onOpenChange={setShowTaskSelection}
+        onConfirm={handleTaskSelectionConfirm}
+      />
     </Card>
   );
 };

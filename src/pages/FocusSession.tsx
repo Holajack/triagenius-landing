@@ -5,7 +5,7 @@ import { useOnboarding } from "@/contexts/OnboardingContext";
 import { TaskProvider } from "@/contexts/TaskContext";
 import { HikingTrail } from "@/components/focus/HikingTrail";
 import { FocusTimer } from "@/components/focus/FocusTimer";
-import { SessionGoals } from "@/components/focus/SessionGoals";
+import SessionGoals from "@/components/focus/SessionGoals";
 import { MotivationalDialog } from "@/components/focus/MotivationalDialog";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
