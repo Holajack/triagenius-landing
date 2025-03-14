@@ -1,9 +1,9 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Button } from '@/components/ui/button';
-import { Sun, Moon, Download, Compass, Map, Person, ChevronsUp } from 'lucide-react';
+import { Sun, Moon, Download, Compass, Map, User, ChevronsUp } from 'lucide-react';
 
 const TerrainVisualization = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -272,7 +272,7 @@ const TerrainVisualization = () => {
             onClick={() => setViewMode('firstPerson')}
             className={viewMode === 'firstPerson' ? 'bg-primary text-primary-foreground' : ''}
           >
-            <Person className="h-4 w-4 mr-1" /> First Person
+            <User className="h-4 w-4 mr-1" /> First Person
           </Button>
           <Button
             variant="outline"
