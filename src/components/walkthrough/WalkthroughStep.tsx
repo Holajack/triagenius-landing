@@ -15,23 +15,46 @@ type HighlightOverlayProps = {
 const HighlightOverlay = ({ targetRect }: HighlightOverlayProps) => {
   if (!targetRect) return null;
 
+  // Add 8px padding around the element for better visibility
+  const padding = 8;
+  const highlightRect = {
+    left: targetRect.left - padding,
+    top: targetRect.top - padding,
+    width: targetRect.width + (padding * 2),
+    height: targetRect.height + (padding * 2),
+    right: targetRect.right + padding,
+    bottom: targetRect.bottom + padding,
+  };
+
   return createPortal(
-    <div 
-      className="fixed inset-0 z-40 bg-black/50 pointer-events-none"
-      style={{
-        clipPath: targetRect 
-          ? `path('M 0,0 L 0,100% L 100%,100% L 100%,0 Z M ${targetRect.left},${targetRect.top} L ${targetRect.left},${targetRect.bottom} L ${targetRect.right},${targetRect.bottom} L ${targetRect.right},${targetRect.top} Z')`
-          : undefined
-      }}
-    >
-      <div
+    <div className="fixed inset-0 z-40 pointer-events-none">
+      {/* Semi-transparent overlay */}
+      <div className="absolute inset-0 bg-black/60 transition-opacity duration-300" />
+      
+      {/* Cutout for the target element */}
+      <div 
+        className="absolute bg-transparent"
+        style={{
+          left: highlightRect.left,
+          top: highlightRect.top,
+          width: highlightRect.width,
+          height: highlightRect.height,
+          boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.6)',
+          borderRadius: '4px',
+        }}
+      />
+      
+      {/* Animated border around the target */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
         className="absolute border-2 border-triage-purple rounded-md"
         style={{
-          left: targetRect.left - 4,
-          top: targetRect.top - 4,
-          width: targetRect.width + 8,
-          height: targetRect.height + 8,
-          boxShadow: '0 0 0 4px rgba(139, 92, 246, 0.3)'
+          left: highlightRect.left,
+          top: highlightRect.top,
+          width: highlightRect.width,
+          height: highlightRect.height,
+          boxShadow: '0 0 0 4px rgba(139, 92, 246, 0.3)',
         }}
       />
     </div>,
@@ -77,17 +100,24 @@ const WalkthroughStep = () => {
       }, 400);
     }
     
-    // Update rect on window resize
-    const handleResize = () => {
+    // Update rect on window resize and scroll
+    const handleUpdate = () => {
       if (element) {
         setTargetRect(element.getBoundingClientRect());
       }
     };
     
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleUpdate);
+    window.addEventListener('scroll', handleUpdate);
+    
+    // Set up an interval to periodically update the rect
+    // This helps when elements move due to animations or other dynamic changes
+    const updateInterval = setInterval(handleUpdate, 100);
     
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', handleUpdate);
+      window.removeEventListener('scroll', handleUpdate);
+      clearInterval(updateInterval);
       if (element) {
         element.classList.remove('ring-2', 'ring-triage-purple', 'ring-offset-2');
       }
@@ -97,16 +127,19 @@ const WalkthroughStep = () => {
   const handleNext = () => {
     dispatch({ type: 'NEXT_STEP' });
     setIsOpen(false);
+    setTargetRect(null);
   };
   
   const handlePrevious = () => {
     dispatch({ type: 'PREVIOUS_STEP' });
     setIsOpen(false);
+    setTargetRect(null);
   };
   
   const handleSkip = () => {
     dispatch({ type: 'COMPLETE_WALKTHROUGH' });
     setIsOpen(false);
+    setTargetRect(null);
   };
   
   const isFirstStep = state.currentStepIndex === 0;
@@ -163,7 +196,7 @@ const WalkthroughStep = () => {
         </PopoverTrigger>
         
         <PopoverContent 
-          className="w-72 p-0 border-triage-purple shadow-lg"
+          className="w-72 p-0 border-triage-purple shadow-lg z-50"
           sideOffset={5}
         >
           <motion.div
