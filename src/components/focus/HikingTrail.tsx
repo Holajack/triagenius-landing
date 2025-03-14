@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+
+import { motion, useAnimation } from "framer-motion";
 import { StudyEnvironment } from "@/types/onboarding";
 import { useState, useEffect, useRef } from "react";
 
@@ -279,11 +280,38 @@ export const HikingTrail = ({
   const [showCheckMap, setShowCheckMap] = useState(false);
   const [showDrink, setShowDrink] = useState(false);
   const [backgroundPosition, setBackgroundPosition] = useState(0);
-  const [terrain, setTerrain] = useState<'flat' | 'uphill' | 'downhill'>('flat');
+  const [terrain, setTerrain] = useState<'flat' | 'uphill' | 'downhill' | 'rocky'>('flat');
   const [envEffects, setEnvEffects] = useState<{ birds: boolean; wind: boolean }>({ birds: false, wind: false });
   const [timeOfDay, setTimeOfDay] = useState<'morning' | 'day' | 'evening'>('day');
   const terrainTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const effectsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scrollControlsRef = useRef({ x: 0 });
+  const groundControls = useAnimation();
+  
+  // Set up continuous scrolling animation
+  useEffect(() => {
+    const startContinuousScrolling = async () => {
+      while (true) {
+        await groundControls.start({
+          x: [0, -100], // Scroll from 0% to -100%
+          transition: {
+            x: {
+              repeat: Infinity,
+              repeatType: "loop",
+              duration: 12, // Controls speed of scrolling (lower = faster)
+              ease: "linear"
+            }
+          }
+        });
+      }
+    };
+    
+    startContinuousScrolling();
+    
+    return () => {
+      groundControls.stop();
+    };
+  }, []);
   
   // Handle milestone celebrations
   useEffect(() => {
@@ -309,7 +337,8 @@ export const HikingTrail = ({
   
   // Update background position based on progress - modified to be more continuous
   useEffect(() => {
-    // Calculate smooth background position that moves continuously as progress increases
+    // Calculate position for checkpoints/milestones only
+    // This no longer affects the continuous ground scrolling
     setBackgroundPosition(milestone * 25 + (progress / 4));
   }, [milestone, progress]);
   
@@ -328,7 +357,7 @@ export const HikingTrail = ({
       } else if (terrainType > 0.3) {
         setTerrain('downhill');
       } else {
-        setTerrain('rocky'); // New rocky terrain type for more variety
+        setTerrain('rocky'); // Rocky terrain type
       }
       
       // Schedule next terrain change
@@ -463,12 +492,8 @@ export const HikingTrail = ({
 
   return (
     <div className="w-full h-full relative overflow-hidden rounded-lg border">
-      {/* Parallax background that moves with character progress */}
-      <motion.div 
-        className="absolute inset-0"
-        animate={{ x: `-${backgroundPosition}%` }}
-        transition={{ type: "tween", ease: "linear", duration: 0.5 }}
-      >
+      {/* Sky and stationary background elements */}
+      <div className="absolute inset-0">
         {/* Dynamic Sky Background based on time of day */}
         <div className={`absolute inset-0 bg-gradient-to-b ${skyProps.skyGradient}`} style={{ backgroundSize: '32px 32px' }}></div>
         
@@ -497,7 +522,14 @@ export const HikingTrail = ({
             }}
           />
         ))}
-        
+      </div>
+      
+      {/* Parallax background with continuous scrolling animation */}
+      <motion.div 
+        className="absolute inset-0"
+        animate={groundControls}
+        initial={{ x: 0 }}
+      >
         {/* Mountain Ranges - extended for continuous parallax */}
         <div className="absolute bottom-[45%] left-0 w-[300%] h-[25%]">
           <svg viewBox="0 0 300 20" preserveAspectRatio="none" className="h-full w-full">
@@ -604,7 +636,7 @@ export const HikingTrail = ({
           </div>
         )}
         
-        {/* Trees & Scenery - extended and more varied for continuous experience */}
+        {/* Trees & Scenery - now part of the continuous scrolling */}
         {/* First section trees */}
         <div className="absolute bottom-[25%] left-[5%]">
           <div className="w-10 h-12 relative">
@@ -683,7 +715,7 @@ export const HikingTrail = ({
         </div>
       </motion.div>
       
-      {/* Pixel Art Trail Path (fixed position relative to viewport) */}
+      {/* Stationary trail path (fixed position relative to viewport) */}
       <div className="absolute bottom-[12.5%] left-0 right-0 h-[2.5%]">
         <svg viewBox="0 0 100 10" preserveAspectRatio="none" className="h-full w-full">
           <path 
@@ -888,4 +920,3 @@ export const HikingTrail = ({
     </div>
   );
 };
-
