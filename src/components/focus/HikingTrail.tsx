@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { StudyEnvironment } from "@/types/onboarding";
 import { Navigation, Flag, Mountain, Trees } from "lucide-react";
@@ -51,28 +52,28 @@ const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true }
   const breathingOffset = isWalking ? 0 : Math.sin(Date.now() / 1000) * 0.3;
 
   return (
-    <div className={`relative ${className} ${facingRight ? '' : 'scale-x-[-1]'}`} style={{ height: '48px' }}>
-      {/* Explorer's Hat with subtle shading - Positioned higher to be visible */}
-      <div className="w-5 h-2 bg-[#f1f0fb] absolute left-1/2 -translate-x-1/2 top-1 rounded-sm">
+    <div className={`relative ${className} ${facingRight ? '' : 'scale-x-[-1]'}`}>
+      {/* Explorer's Hat with subtle shading */}
+      <div className="w-5 h-2 bg-[#f1f0fb] absolute left-1/2 -translate-x-1/2 -top-11 rounded-sm">
         {/* Hat brim */}
         <div className="absolute w-6 h-0.5 bg-[#d8d7e3] bottom-0 left-1/2 -translate-x-1/2 rounded-sm"></div>
         {/* Hat shading */}
         <div className="absolute w-4 h-1 bg-[#e5e4ec] top-0.5 left-1/2 -translate-x-1/2 rounded-t-sm"></div>
       </div>
       
-      {/* Head - Positioned below hat to be visible */}
-      <div className="w-4 h-4.5 rounded-full bg-[#e8b89b] absolute left-1/2 -translate-x-1/2 top-3">
+      {/* Head - slightly smaller with pixel art details */}
+      <div className="w-4 h-4.5 rounded-t-full bg-[#e8b89b] absolute left-1/2 -translate-x-1/2 -top-9.5">
         {/* Face details - pixel art style */}
         <div className="absolute w-2 h-0.5 bg-[#d37c59] bottom-1.5 left-1/2 -translate-x-1/2 rounded-none"></div>
         <div className="absolute w-1 h-1 bg-[#362617] bottom-2.5 left-1 rounded-none"></div>
       </div>
 
       {/* Neck - connecting head and body */}
-      <div className="w-2 h-1.5 bg-[#d8a991] absolute left-1/2 -translate-x-1/2 top-7.5 rounded-none"></div>
+      <div className="w-2 h-1.5 bg-[#d8a991] absolute left-1/2 -translate-x-1/2 -top-5 rounded-none"></div>
       
       {/* Body - Slim pixel art proportions with hiking shirt */}
       <div 
-        className="w-4 h-5 bg-[#d3a05d] absolute left-1/2 -translate-x-1/2 top-9 rounded-none"
+        className="w-4 h-5 bg-[#d3a05d] absolute left-1/2 -translate-x-1/2 -top-3.5 rounded-none"
         style={{ transform: `translateY(${breathingOffset}px)` }}
       >
         {/* Shirt details */}
@@ -81,7 +82,7 @@ const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true }
       
       {/* Detailed Backpack with rolled sleeping bag */}
       <div 
-        className="w-3.5 h-6 bg-[#4a6d3b] absolute -left-1.5 top-9 rounded-none"
+        className="w-3.5 h-6 bg-[#4a6d3b] absolute -left-1.5 -top-3.5 rounded-none"
         style={{ transform: `translateY(${getFrameOffset('backpack')}px)` }}
       >
         {/* Backpack straps - pixel art style */}
@@ -99,7 +100,7 @@ const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true }
       
       {/* Arms with pixel art styling and frame-based animation */}
       <div 
-        className="w-1.5 h-4 bg-[#d3a05d] absolute -left-0.5 top-11 origin-top"
+        className="w-1.5 h-4 bg-[#d3a05d] absolute -left-0.5 -top-1.5 origin-top"
         style={{ transform: `rotate(${15 + getFrameOffset('arm') * 10}deg)` }}
       >
         {/* Arm details */}
@@ -108,7 +109,7 @@ const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true }
       
       {/* Right arm with hiking stick - animated together */}
       <div 
-        className="w-1.5 h-4 bg-[#d3a05d] absolute -right-0.5 top-11 origin-top"
+        className="w-1.5 h-4 bg-[#d3a05d] absolute -right-0.5 -top-1.5 origin-top"
         style={{ transform: `rotate(${-15 - getFrameOffset('arm') * 10}deg)` }}
       >
         {/* Arm details */}
@@ -128,7 +129,7 @@ const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true }
       
       {/* Legs with pixel art styling and alternating animation */}
       <div 
-        className="w-2 h-7 bg-[#5d81b0] absolute left-0 top-14 origin-top"
+        className="w-2 h-7 bg-[#5d81b0] absolute left-0 top-1.5 origin-top"
         style={{ transform: `rotate(${getFrameOffset('leg') * 15}deg)` }}
       >
         {/* Pants details */}
@@ -139,7 +140,7 @@ const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true }
       </div>
       
       <div 
-        className="w-2 h-7 bg-[#5d81b0] absolute right-0 top-14 origin-top"
+        className="w-2 h-7 bg-[#5d81b0] absolute right-0 top-1.5 origin-top"
         style={{ transform: `rotate(${-getFrameOffset('leg') * 15}deg)` }}
       >
         {/* Pants details */}
@@ -340,7 +341,7 @@ export const HikingTrail = ({
           } : {}
         }}
       >
-        <div className="relative" style={{ transform: 'scale(1.5)' }}>
+        <div className="relative">
           <AnimatedPerson isWalking={isWalking} facingRight={true} />
           
           {/* Milestone check map animation */}
@@ -351,7 +352,7 @@ export const HikingTrail = ({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0 }}
             >
-              <div className="w-8 h-6 bg-[#f1f0fb] rounded-sm border border-[#d0cfc9] p-0.5">
+              <div className="w-8 h-6 bg-[#f1f0eb] rounded-sm border border-[#d0cfc9] p-0.5">
                 <div className="w-full h-full bg-[#e5e4de] rounded-sm">
                   <div className="w-5 h-0.5 bg-[#a1a09c] rounded-full mx-auto mt-1"></div>
                   <div className="w-4 h-0.5 bg-[#a1a09c] rounded-full mx-auto mt-1"></div>
