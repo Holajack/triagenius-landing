@@ -1,6 +1,6 @@
 
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutDashboard, Bot, BarChart3, UserCircle2, Users, Trophy } from "lucide-react";
+import { LayoutDashboard, Bot, BarChart3, UserCircle2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -46,10 +46,10 @@ const NavigationBar = () => {
       active: location.pathname === "/nora",
     },
     {
-      label: "Leaderboard",
-      icon: <Trophy className="h-5 w-5" />,
-      onClick: () => navigate("/leaderboard"),
-      active: location.pathname === "/leaderboard",
+      label: "Results",
+      icon: <BarChart3 className="h-5 w-5" />,
+      onClick: () => navigate("/reports"),
+      active: location.pathname === "/reports",
     },
     // Only add the Profile button if not on mobile to avoid overcrowding
     ...(!isMobile ? [
