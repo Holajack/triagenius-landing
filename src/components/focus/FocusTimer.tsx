@@ -1,8 +1,9 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Play, Pause, StopCircle } from "lucide-react";
+import { Play, Pause, StopCircle, ChevronUp, ChevronDown } from "lucide-react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { toast } from "sonner";
 
