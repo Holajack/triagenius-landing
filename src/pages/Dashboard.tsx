@@ -14,12 +14,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PieChartIcon, BarChart4, LineChart, Clock } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import DashboardWalkthrough from "@/components/walkthrough/DashboardWalkthrough";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Dashboard = () => {
   const { state } = useOnboarding();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
+  const isMobile = useIsMobile();
 
   // Redirect to onboarding if not completed
   useEffect(() => {
@@ -45,6 +47,13 @@ const Dashboard = () => {
       </div>
     );
   }
+
+  const renderTaskList = () => (
+    <div className="mb-6">
+      <h2 className="text-xl font-semibold mb-4">Your Subjects & Tasks</h2>
+      <TaskList />
+    </div>
+  );
 
   return (
     <div className={`min-h-screen bg-background text-foreground theme-${getEnvTheme()} ${theme}`}>
@@ -91,16 +100,16 @@ const Dashboard = () => {
               </Tabs>
             </div>
             
-            {/* Task List Component */}
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold mb-4">Your Subjects & Tasks</h2>
-              <TaskList />
-            </div>
+            {/* Display Task List on desktop view */}
+            {!isMobile && renderTaskList()}
             
             <div data-walkthrough="ai-insights">
               <AIInsights />
             </div>
             <Leaderboard />
+            
+            {/* Display Task List on mobile below Leaderboard */}
+            {isMobile && renderTaskList()}
           </div>
           
           {/* Right column - Quick actions & tips */}
