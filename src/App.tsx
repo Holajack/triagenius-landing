@@ -3,6 +3,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { OnboardingProvider } from "./contexts/OnboardingContext";
 import { TaskProvider } from "./contexts/TaskContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { WalkthroughProvider } from "./contexts/WalkthroughContext";
 import { Toaster } from "./components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -29,22 +30,24 @@ function App() {
         <OnboardingProvider>
           <ThemeProvider>
             <TaskProvider>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/onboarding" element={<Onboarding />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/focus-session" element={<FocusSession />} />
-                <Route path="/session-report" element={<SessionReport />} />
-                <Route path="/reports" element={<Reports />} />
-                <Route path="/community" element={<Community />} />
-                <Route path="/study-room/:id?" element={<StudyRoom />} />
-                <Route path="/chat" element={<Chat />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/leaderboard" element={<Leaderboard />} />
-                <Route path="/bonuses" element={<Bonuses />} />
-                <Route path="/nora" element={<Nora />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <WalkthroughProvider>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/onboarding" element={<Onboarding />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/focus-session" element={<FocusSession />} />
+                  <Route path="/session-report" element={<SessionReport />} />
+                  <Route path="/reports" element={<Reports />} />
+                  <Route path="/community" element={<Community />} />
+                  <Route path="/study-room/:id?" element={<StudyRoom />} />
+                  <Route path="/chat" element={<Chat />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/leaderboard" element={<Leaderboard />} />
+                  <Route path="/bonuses" element={<Bonuses />} />
+                  <Route path="/nora" element={<Nora />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </WalkthroughProvider>
             </TaskProvider>
           </ThemeProvider>
         </OnboardingProvider>
