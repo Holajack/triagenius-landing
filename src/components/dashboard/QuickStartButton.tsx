@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -53,9 +52,6 @@ const QuickStartButton = () => {
     localStorage.setItem('focusTimerDuration', JSON.stringify({ minutes, seconds }));
     
     setIsActive(true);
-    toast.success("Focus session started!", {
-      description: `Your ${state.workStyle === 'pomodoro' ? 'Pomodoro' : 'Focus'} timer has begun.`,
-    });
     navigate("/focus-session");
   };
   
@@ -114,7 +110,6 @@ const QuickStartButton = () => {
         <p className="text-sm text-gray-600">Start a quick session based on your preferences</p>
         
         <div className="mt-4 flex justify-between items-center">
-          {/* Task Selection Button - Moved to first position */}
           <div className="flex flex-col items-center cursor-pointer" onClick={() => setShowTaskSelection(true)}>
             <div className={cn("p-2 rounded-full", getAccentColor())}>
               <BookOpen className="w-5 h-5" />
@@ -126,7 +121,6 @@ const QuickStartButton = () => {
             </span>
           </div>
           
-          {/* Settings Button - Moved to second position */}
           <div className="flex flex-col items-center cursor-pointer" onClick={toggleAdjust}>
             <div className={cn("p-2 rounded-full", getAccentColor())}>
               <Settings className="w-5 h-5" />
