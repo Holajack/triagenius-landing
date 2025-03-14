@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -191,35 +192,76 @@ const WalkthroughStep = () => {
   
   if (!state.isActive || !currentStep) return null;
 
+  // Improved popover position calculation based on the element's position and placement
   const getPopoverPosition = () => {
     if (!targetRect) return { top: 0, left: 0 };
     
     const padding = isMobile ? 20 : 12;
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
     
+    // Base position in the center of the target
     let position = {
       top: targetRect.top + targetRect.height / 2,
       left: targetRect.left + targetRect.width / 2,
     };
     
-    const viewportHeight = window.innerHeight;
-    const viewportWidth = window.innerWidth;
-    
+    // Adjust position based on placement
     switch (currentStep.placement) {
       case 'top':
-        position.top = Math.max(padding, targetRect.top - padding);
+        position.top = targetRect.top - padding;
+        position.left = targetRect.left + targetRect.width / 2;
+        
+        // Ensure it doesn't go off the top of the screen
+        if (position.top < padding) {
+          position.top = targetRect.bottom + padding; // Flip to bottom if not enough space
+        }
         break;
+        
       case 'bottom':
-        position.top = Math.min(viewportHeight - padding, targetRect.bottom + padding);
+        position.top = targetRect.bottom + padding;
+        position.left = targetRect.left + targetRect.width / 2;
+        
+        // Ensure it doesn't go off the bottom of the screen
+        if (position.top > viewportHeight - 200) { // 200px is an estimate of popover height
+          position.top = Math.max(padding, targetRect.top - padding - 150); // Flip to top
+        }
         break;
+        
       case 'left':
-        position.left = Math.max(padding, targetRect.left - padding);
+        position.top = targetRect.top + targetRect.height / 2;
+        position.left = targetRect.left - padding;
+        
+        // Ensure it doesn't go off the left of the screen
+        if (position.left < 150) { // 150px is an estimate of half the popover width
+          position.left = targetRect.right + padding; // Flip to right
+        }
         break;
+        
       case 'right':
-        position.left = Math.min(viewportWidth - padding, targetRect.right + padding);
+        position.top = targetRect.top + targetRect.height / 2;
+        position.left = targetRect.right + padding;
+        
+        // Ensure it doesn't go off the right of the screen
+        if (position.left > viewportWidth - 150) { // 150px is an estimate of half the popover width
+          position.left = Math.max(padding, targetRect.left - padding); // Flip to left
+        }
         break;
+        
       default:
-        position.top = Math.min(viewportHeight - padding, targetRect.bottom + padding);
+        // Default to bottom placement with optimized positioning
+        position.top = targetRect.bottom + padding;
+        position.left = targetRect.left + targetRect.width / 2;
+        
+        // Ensure it's visible
+        if (position.top > viewportHeight - 100) {
+          position.top = Math.max(padding, targetRect.top - padding - 100);
+        }
     }
+    
+    // Final boundary checks
+    position.top = Math.max(padding, Math.min(viewportHeight - padding, position.top));
+    position.left = Math.max(padding, Math.min(viewportWidth - padding, position.left));
     
     return position;
   };
@@ -233,6 +275,39 @@ const WalkthroughStep = () => {
     }
     if (window.innerWidth < 768) return '320px';
     return '360px';
+  };
+  
+  // Calculate the optimal align and side for the popover based on the element position
+  const getPopoverAlign = () => {
+    if (!targetRect) return "center";
+    
+    const viewportWidth = window.innerWidth;
+    const elementCenterX = targetRect.left + (targetRect.width / 2);
+    
+    // Calculate which third of the screen the element is in
+    if (elementCenterX < viewportWidth / 3) return "start";
+    if (elementCenterX > (viewportWidth * 2) / 3) return "end";
+    return "center";
+  };
+  
+  // Calculate the optimal side for the popover
+  const getPopoverSide = () => {
+    if (!targetRect) return "bottom";
+    
+    const viewportHeight = window.innerHeight;
+    const elementCenterY = targetRect.top + (targetRect.height / 2);
+    
+    // For top/bottom placement
+    if (currentStep.placement === 'top') return "top";
+    if (currentStep.placement === 'bottom') return "bottom";
+    
+    // For left/right placement
+    if (currentStep.placement === 'left') return "left";
+    if (currentStep.placement === 'right') return "right";
+    
+    // Default logic based on position in viewport
+    if (elementCenterY < viewportHeight / 2) return "bottom";
+    return "top";
   };
   
   return (
@@ -253,7 +328,8 @@ const WalkthroughStep = () => {
           className="p-0 border-triage-purple shadow-lg z-50"
           style={{ width: getPopoverWidth() }}
           sideOffset={5}
-          align={isMobile ? "center" : "start"}
+          align={getPopoverAlign() as "start" | "center" | "end"}
+          side={getPopoverSide() as "top" | "right" | "bottom" | "left"}
         >
           <motion.div
             initial={{ opacity: 0, y: 10 }}

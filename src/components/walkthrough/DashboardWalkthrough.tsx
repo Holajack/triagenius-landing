@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useWalkthrough } from '@/contexts/WalkthroughContext';
 import { useOnboarding } from '@/contexts/OnboardingContext';
@@ -32,14 +33,14 @@ const DashboardWalkthrough = () => {
         title: 'Welcome to Your Dashboard',
         description: "Let's take a quick tour of your personalized focus dashboard. You can always skip or restart this tutorial later.",
         targetSelector: '[data-walkthrough="dashboard-header"]',
-        placement: 'bottom' as const,
+        placement: isMobile ? 'bottom' as const : 'bottom' as const,
       },
       {
         id: 'environment',
         title: 'Your Environment',
         description: `You've selected the ${onboardingState.environment || 'default'} environment. This customizes the look and feel of your experience.`,
         targetSelector: '[data-walkthrough="environment-badge"]',
-        placement: 'bottom' as const,
+        placement: isMobile ? 'bottom' as const : 'bottom' as const,
       },
       {
         id: 'quick-start',
@@ -53,14 +54,14 @@ const DashboardWalkthrough = () => {
         title: 'Weekly Progress',
         description: 'Track your focus sessions over time. Switch between different chart types to visualize your data.',
         targetSelector: '[data-walkthrough="weekly-tracker"]',
-        placement: 'bottom' as const,
+        placement: isMobile ? 'top' as const : 'bottom' as const,
       },
       {
         id: 'ai-insights',
         title: 'AI-Powered Insights',
         description: 'Get personalized recommendations based on your focus patterns and habits.',
         targetSelector: '[data-walkthrough="ai-insights"]',
-        placement: 'top' as const,
+        placement: isMobile ? 'bottom' as const : 'top' as const,
       },
       {
         id: 'menu',
@@ -109,7 +110,7 @@ const DashboardWalkthrough = () => {
         title: "You're All Set!",
         description: 'You can now start using the app. If you need help, look for this button to restart the tutorial.',
         targetSelector: '[data-walkthrough="help-button"]',
-        placement: isMobile ? 'bottom' as const : 'left' as const,
+        placement: isMobile ? 'top' as const : 'left' as const,
       },
     ];
     
