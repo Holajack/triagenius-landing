@@ -27,9 +27,9 @@ const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true }
       {/* Body - Yellow/Tan Shirt */}
       <div className="w-5 h-5 bg-[#d3a05d] absolute left-1/2 -translate-x-1/2 -top-3 rounded-sm"></div>
       
-      {/* Backpack */}
-      <div className="w-4 h-6 bg-[#5f8d4e] absolute left-1/2 translate-x-0 -top-4 rounded-md"></div>
-      <div className="w-1 h-3 bg-[#4a6d3b] absolute left-1/2 translate-x-1 -top-3"></div>
+      {/* Backpack - moved to the left side */}
+      <div className="w-4 h-6 bg-[#5f8d4e] absolute left-1/2 -translate-x-4 -top-4 rounded-md"></div>
+      <div className="w-1 h-3 bg-[#4a6d3b] absolute left-1/2 -translate-x-3 -top-3"></div>
       {/* Backpack strap */}
       <div className="w-1 h-3 bg-[#6b4219] absolute left-1/2 -translate-x-2 -top-2 rounded-sm"></div>
       
