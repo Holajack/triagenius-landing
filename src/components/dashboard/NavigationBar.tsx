@@ -42,8 +42,8 @@ const NavigationBar = () => {
     {
       label: "Nora",
       icon: <Bot className="h-5 w-5" />,
-      onClick: () => navigate("/dashboard"),
-      active: false,
+      onClick: () => navigate("/nora"),
+      active: location.pathname === "/nora",
     },
     {
       label: "Reports",
