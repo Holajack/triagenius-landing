@@ -10,119 +10,171 @@ interface HikingTrailProps {
   isCelebrating?: boolean;
 }
 
-// 2D Animated Hiker Component with refined appearance
+// Pixel Art Hiker Component with detailed animations
 const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true }: { 
   className?: string; 
   isWalking?: boolean;
   facingRight?: boolean;
 }) => {
+  const [frame, setFrame] = useState(0);
+  const totalFrames = 8; // 8 frames for smooth pixel art animation
+  
+  // Animate through frames for smooth walking
+  useEffect(() => {
+    if (!isWalking) return;
+    
+    const frameInterval = setInterval(() => {
+      setFrame(prev => (prev + 1) % totalFrames);
+    }, 125); // ~8 FPS for pixel art style
+    
+    return () => clearInterval(frameInterval);
+  }, [isWalking]);
+
+  // Calculate frame-based offsets for animation
+  const getFrameOffset = (part: 'leg' | 'arm' | 'stick' | 'backpack') => {
+    const phase = frame / totalFrames;
+    
+    switch(part) {
+      case 'leg':
+        return Math.sin(phase * Math.PI * 2) * 2;
+      case 'arm':
+        return Math.sin(phase * Math.PI * 2) * 1.5;
+      case 'stick':
+        return Math.sin(phase * Math.PI * 2 + Math.PI/4) * 1;
+      case 'backpack':
+        return Math.sin(phase * Math.PI * 2) * 0.5;
+      default:
+        return 0;
+    }
+  };
+  
+  // Breathing animation for idle stance
+  const breathingOffset = isWalking ? 0 : Math.sin(Date.now() / 1000) * 0.3;
+
   return (
     <div className={`relative ${className} ${facingRight ? '' : 'scale-x-[-1]'}`}>
-      {/* Head - slightly smaller for thinner appearance */}
-      <div className="w-4 h-5 rounded-t-full bg-[#e8b89b] absolute left-1/2 -translate-x-1/2 -top-10">
-        {/* Hair */}
-        <div className="absolute w-4 h-1.5 bg-[#3a3a3a] top-0 left-0 rounded-t-full"></div>
-        {/* Face details */}
-        <div className="absolute w-2.5 h-0.8 bg-[#d37c59] bottom-1 left-1/2 -translate-x-1/2 rounded-sm"></div>
+      {/* Explorer's Hat with subtle shading */}
+      <div className="w-5 h-2 bg-[#f1f0fb] absolute left-1/2 -translate-x-1/2 -top-11 rounded-sm">
+        {/* Hat brim */}
+        <div className="absolute w-6 h-0.5 bg-[#d8d7e3] bottom-0 left-1/2 -translate-x-1/2 rounded-sm"></div>
+        {/* Hat shading */}
+        <div className="absolute w-4 h-1 bg-[#e5e4ec] top-0.5 left-1/2 -translate-x-1/2 rounded-t-sm"></div>
+      </div>
+      
+      {/* Head - slightly smaller with pixel art details */}
+      <div className="w-4 h-4.5 rounded-t-full bg-[#e8b89b] absolute left-1/2 -translate-x-1/2 -top-9.5">
+        {/* Face details - pixel art style */}
+        <div className="absolute w-2 h-0.5 bg-[#d37c59] bottom-1.5 left-1/2 -translate-x-1/2 rounded-none"></div>
+        <div className="absolute w-1 h-1 bg-[#362617] bottom-2.5 left-1 rounded-none"></div>
       </div>
 
-      {/* Neck - new detail connecting head and body */}
-      <div className="w-1.5 h-2 bg-[#e8b89b] absolute left-1/2 -translate-x-1/2 -top-5.5 rounded-md"></div>
+      {/* Neck - connecting head and body */}
+      <div className="w-2 h-1.5 bg-[#d8a991] absolute left-1/2 -translate-x-1/2 -top-5 rounded-none"></div>
       
-      {/* Body - Thinner proportions */}
-      <div className="w-4 h-5 bg-[#d3a05d] absolute left-1/2 -translate-x-1/2 -top-4 rounded-sm"></div>
+      {/* Body - Slim pixel art proportions with hiking shirt */}
+      <div 
+        className="w-4 h-5 bg-[#d3a05d] absolute left-1/2 -translate-x-1/2 -top-3.5 rounded-none"
+        style={{ transform: `translateY(${breathingOffset}px)` }}
+      >
+        {/* Shirt details */}
+        <div className="w-4 h-3 bg-[#a17a45] absolute top-2 left-0 rounded-none"></div>
+      </div>
       
-      {/* Backpack - more detailed with straps and compartments */}
-      <div className="w-3.5 h-5 bg-[#5f8d4e] absolute left-1/2 -translate-x-4 -top-4 rounded-md"></div>
-      {/* Backpack top pocket */}
-      <div className="w-2.5 h-1.5 bg-[#4a6d3b] absolute left-1/2 -translate-x-3.8 -top-4 rounded-t-md"></div>
-      {/* Backpack bottom pocket */}
-      <div className="w-2.5 h-1.5 bg-[#4a6d3b] absolute left-1/2 -translate-x-3.8 -top-1.5 rounded-b-md"></div>
-      {/* Backpack straps */}
-      <div className="w-0.8 h-3 bg-[#6b4219] absolute left-1/2 -translate-x-1 -top-3 rounded-sm"></div>
-      <div className="w-0.8 h-3 bg-[#6b4219] absolute left-1/2 -translate-x-2.5 -top-3 rounded-sm"></div>
+      {/* Detailed Backpack with rolled sleeping bag */}
+      <div 
+        className="w-3.5 h-6 bg-[#4a6d3b] absolute -left-1.5 -top-3.5 rounded-none"
+        style={{ transform: `translateY(${getFrameOffset('backpack')}px)` }}
+      >
+        {/* Backpack straps - pixel art style */}
+        <div className="w-1 h-3 bg-[#3e5c32] absolute right-0 top-0"></div>
+        <div className="w-1 h-3 bg-[#3e5c32] absolute right-1.5 top-0"></div>
+        
+        {/* Rolled sleeping bag on top */}
+        <div className="w-3 h-1.5 bg-[#6b4219] absolute top-0 left-0 rounded-none"></div>
+        <div className="w-3 h-0.5 bg-[#59371a] absolute top-1 left-0 rounded-none"></div>
+        
+        {/* Backpack pockets and details */}
+        <div className="w-2.5 h-1 bg-[#3e5c32] absolute left-0.5 top-3 rounded-none"></div>
+        <div className="w-2.5 h-1 bg-[#3e5c32] absolute left-0.5 bottom-1 rounded-none"></div>
+      </div>
       
-      {/* Arms - thinner with enhanced movement */}
-      <motion.div 
-        className="w-1.5 h-4.5 bg-[#d3a05d] absolute -left-1 -top-2 origin-top rounded-full"
-        animate={isWalking ? { 
-          rotate: [-25, 25, -25]  // Greater range of motion
-        } : {}}
-        transition={{ 
-          repeat: Infinity, 
-          duration: 1.2,
-          ease: "linear"
-        }}
-      ></motion.div>
+      {/* Arms with pixel art styling and frame-based animation */}
+      <div 
+        className="w-1.5 h-4 bg-[#d3a05d] absolute -left-0.5 -top-1.5 origin-top"
+        style={{ transform: `rotate(${15 + getFrameOffset('arm') * 10}deg)` }}
+      >
+        {/* Arm details */}
+        <div className="w-1.5 h-2 bg-[#a17a45] absolute bottom-0 left-0 rounded-none"></div>
+      </div>
       
-      {/* Right arm with hiking stick */}
-      <motion.div className="relative">
-        <motion.div 
-          className="w-1.5 h-4.5 bg-[#d3a05d] absolute -right-1 -top-2 origin-top rounded-full"
-          animate={isWalking ? { 
-            rotate: [25, -25, 25]  // Coordinated with left arm but opposite
-          } : {}}
-          transition={{ 
-            repeat: Infinity, 
-            duration: 1.2,
-            ease: "linear"
-          }}
-        >
-          {/* Hiking stick attached to the hand/arm */}
-          <div className="w-1 h-10 bg-[#8E9196] absolute right-0 top-4 origin-top rounded-full"></div>
-          <div className="w-2 h-1 bg-[#765c48] absolute right-0 top-4 -translate-x-0.5 rounded-full"></div> {/* Handle */}
-        </motion.div>
-      </motion.div>
+      {/* Right arm with hiking stick - animated together */}
+      <div 
+        className="w-1.5 h-4 bg-[#d3a05d] absolute -right-0.5 -top-1.5 origin-top"
+        style={{ transform: `rotate(${-15 - getFrameOffset('arm') * 10}deg)` }}
+      >
+        {/* Arm details */}
+        <div className="w-1.5 h-2 bg-[#a17a45] absolute bottom-0 left-0 rounded-none"></div>
+        
+        {/* Hiking stick attached to hand */}
+        <div className="relative">
+          <div 
+            className="w-1 h-9 bg-[#8E9196] absolute left-0 top-3 origin-top"
+            style={{ transform: `rotate(${getFrameOffset('stick') * 5}deg)` }}
+          ></div>
+          
+          {/* Hiking stick handle detail */}
+          <div className="w-2 h-1 bg-[#765c48] absolute left-0 top-3 -translate-x-0.5 rounded-none"></div>
+        </div>
+      </div>
       
-      {/* Legs - longer and thinner */}
-      <motion.div 
-        className="w-1.5 h-6 bg-[#5d81b0] absolute left-0.5 top-1 origin-top rounded-full"
-        animate={isWalking ? { 
-          rotate: [25, -25, 25]  // Enhanced range for more pronounced walking
-        } : {}}
-        transition={{ 
-          repeat: Infinity, 
-          duration: 1.2,
-          ease: "linear"
-        }}
-      ></motion.div>
+      {/* Legs with pixel art styling and alternating animation */}
+      <div 
+        className="w-2 h-7 bg-[#5d81b0] absolute left-0 top-1.5 origin-top"
+        style={{ transform: `rotate(${getFrameOffset('leg') * 15}deg)` }}
+      >
+        {/* Pants details */}
+        <div className="w-2 h-3 bg-[#4b6a91] absolute bottom-0 left-0 rounded-none"></div>
+        
+        {/* Boot that lifts with each step */}
+        <div className="w-2.5 h-1.5 bg-[#403E43] absolute bottom-0 left-0 -translate-x-0.25 rounded-none"></div>
+      </div>
       
-      <motion.div 
-        className="w-1.5 h-6 bg-[#5d81b0] absolute right-0.5 top-1 origin-top rounded-full"
-        animate={isWalking ? { 
-          rotate: [-25, 25, -25]  // Coordinated with left leg but opposite
-        } : {}}
-        transition={{ 
-          repeat: Infinity, 
-          duration: 1.2,
-          ease: "linear"
-        }}
-      ></motion.div>
+      <div 
+        className="w-2 h-7 bg-[#5d81b0] absolute right-0 top-1.5 origin-top"
+        style={{ transform: `rotate(${-getFrameOffset('leg') * 15}deg)` }}
+      >
+        {/* Pants details */}
+        <div className="w-2 h-3 bg-[#4b6a91] absolute bottom-0 left-0 rounded-none"></div>
+        
+        {/* Boot that lifts with each step */}
+        <div className="w-2.5 h-1.5 bg-[#403E43] absolute bottom-0 left-0 -translate-x-0.25 rounded-none"></div>
+      </div>
       
-      {/* Shoes */}
-      <motion.div 
-        className="w-2 h-1.2 bg-[#36342e] absolute left-0 top-7 origin-top rounded-sm"
-        animate={isWalking ? { 
-          rotate: [25, -25, 25]  // Match leg movement
-        } : {}}
-        transition={{ 
-          repeat: Infinity, 
-          duration: 1.2,
-          ease: "linear"
-        }}
-      ></motion.div>
-      
-      <motion.div 
-        className="w-2 h-1.2 bg-[#36342e] absolute right-0 top-7 origin-top rounded-sm"
-        animate={isWalking ? { 
-          rotate: [-25, 25, -25]  // Match leg movement
-        } : {}}
-        transition={{ 
-          repeat: Infinity, 
-          duration: 1.2,
-          ease: "linear"
-        }}
-      ></motion.div>
+      {/* Environmental interaction - Dust particles when walking */}
+      {isWalking && (
+        <>
+          {[...Array(3)].map((_, i) => (
+            <motion.div 
+              key={i}
+              className="absolute w-1 h-1 bg-[#fec6a1] rounded-full opacity-40"
+              style={{ 
+                left: `-${(i+1) * 3 + frame}px`, 
+                bottom: `${i % 2 === 0 ? 0 : 2}px` 
+              }}
+              animate={{
+                opacity: [0.4, 0],
+                y: [0, -3],
+                x: [0, -5]
+              }}
+              transition={{
+                repeat: Infinity,
+                duration: 1,
+                delay: i * 0.2
+              }}
+            />
+          ))}
+        </>
+      )}
     </div>
   );
 };
@@ -134,26 +186,38 @@ export const HikingTrail = ({
 }: HikingTrailProps) => {
   const [animate, setAnimate] = useState(false);
   const [isWalking, setIsWalking] = useState(true);
+  const [showCheckMap, setShowCheckMap] = useState(false);
+  const [showDrink, setShowDrink] = useState(false);
   
+  // Handle milestone celebrations
   useEffect(() => {
     if (isCelebrating) {
       setAnimate(true);
       setIsWalking(false);
+      
+      // Randomly choose between milestone animations
+      const randomAnim = Math.random() > 0.5;
+      setShowCheckMap(randomAnim);
+      setShowDrink(!randomAnim);
+      
       const timer = setTimeout(() => {
         setAnimate(false);
         setIsWalking(true);
+        setShowCheckMap(false);
+        setShowDrink(false);
       }, 3000);
+      
       return () => clearTimeout(timer);
     }
   }, [isCelebrating]);
   
   const getMilestonePosition = (mile: number) => {
     switch (mile) {
-      case 0: return "25%"; // Adjusted from 15% to 25% to make character more forward on the trail
+      case 0: return "25%";
       case 1: return "50%";
       case 2: return "75%";
       case 3: return "95%";
-      default: return "25%"; // Default position is now also 25%
+      default: return "25%";
     }
   };
   
@@ -259,13 +323,13 @@ export const HikingTrail = ({
         <Flag className="h-6 w-6 text-red-500" />
       </div>
       
-      {/* Hiker Character - positioned with improved visibility from the start */}
+      {/* Hiker Character - with improved pixel art visuals */}
       <motion.div
         className="absolute bottom-[18%]"
-        initial={{ x: "25%" }} // Changed initial position to 25% to position character more forward
+        initial={{ x: "25%" }}
         animate={{ 
           x: getMilestonePosition(milestone),
-          y: animate ? -10 : 0
+          y: animate ? -3 : 0
         }}
         transition={{ 
           x: { duration: 1, ease: "easeInOut" },
@@ -280,14 +344,47 @@ export const HikingTrail = ({
         <div className="relative">
           <AnimatedPerson isWalking={isWalking} facingRight={true} />
           
-          {isCelebrating && (
+          {/* Milestone check map animation */}
+          {showCheckMap && (
+            <motion.div 
+              className="absolute -top-10 left-4"
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0 }}
+            >
+              <div className="w-8 h-6 bg-[#f1f0eb] rounded-sm border border-[#d0cfc9] p-0.5">
+                <div className="w-full h-full bg-[#e5e4de] rounded-sm">
+                  <div className="w-5 h-0.5 bg-[#a1a09c] rounded-full mx-auto mt-1"></div>
+                  <div className="w-4 h-0.5 bg-[#a1a09c] rounded-full mx-auto mt-1"></div>
+                  <div className="w-5 h-0.5 bg-[#a1a09c] rounded-full mx-auto mt-1"></div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+          
+          {/* Milestone drink water animation */}
+          {showDrink && (
+            <motion.div 
+              className="absolute -top-9 left-2"
+              initial={{ opacity: 0, rotate: -45 }}
+              animate={{ opacity: 1, rotate: 45 }}
+              exit={{ opacity: 0, rotate: -45 }}
+            >
+              <div className="w-2 h-4 bg-[#add8e6] rounded-sm border border-[#5d81b0]">
+                <div className="w-1 h-1 bg-[#5d81b0] rounded-full mx-auto mt-2"></div>
+              </div>
+            </motion.div>
+          )}
+          
+          {/* Celebration speech bubble */}
+          {isCelebrating && !showCheckMap && !showDrink && (
             <motion.div 
               className="absolute -top-8 -left-6 right-0"
               initial={{ opacity: 0, scale: 0.5 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.5 }}
             >
-              <div className="text-xs font-semibold text-primary bg-white rounded-full px-2 py-1 shadow-sm">
+              <div className="text-xs font-pixel bg-white rounded-sm px-2 py-1 shadow-sm border border-gray-200">
                 Yay!
               </div>
             </motion.div>
