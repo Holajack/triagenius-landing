@@ -1,12 +1,11 @@
 
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutDashboard, Bot, BarChart3, UserCircle2, Users, MoreVertical } from "lucide-react";
+import { LayoutDashboard, Bot, BarChart3, UserCircle2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import SideNavDrawer from "./SideNavDrawer";
 
 const NavigationBar = () => {
   const navigate = useNavigate();
@@ -27,32 +26,7 @@ const NavigationBar = () => {
     }
   };
   
-  const navItems = isMobile ? [
-    {
-      label: "Home",
-      icon: <LayoutDashboard className="h-5 w-5" />,
-      onClick: () => navigate("/dashboard"),
-      active: location.pathname === "/dashboard",
-    },
-    {
-      label: "Community",
-      icon: <Users className="h-5 w-5" />,
-      onClick: () => navigate("/community"),
-      active: location.pathname === "/community" || location.pathname.startsWith("/community/"),
-    },
-    {
-      label: "Nora",
-      icon: <Bot className="h-5 w-5" />,
-      onClick: () => navigate("/dashboard"),
-      active: false,
-    },
-    {
-      label: "Reports",
-      icon: <BarChart3 className="h-5 w-5" />,
-      onClick: () => navigate("/reports"),
-      active: location.pathname === "/reports",
-    }
-  ] : [
+  const navItems = [
     {
       label: "Home",
       icon: <LayoutDashboard className="h-5 w-5" />,
@@ -77,12 +51,15 @@ const NavigationBar = () => {
       onClick: () => navigate("/reports"),
       active: location.pathname === "/reports",
     },
-    {
-      label: "Profile",
-      icon: <UserCircle2 className="h-5 w-5" />,
-      onClick: () => navigate("/profile"),
-      active: location.pathname === "/profile",
-    },
+    // Only add the Profile button if not on mobile to avoid overcrowding
+    ...(!isMobile ? [
+      {
+        label: "Profile",
+        icon: <UserCircle2 className="h-5 w-5" />,
+        onClick: () => navigate("/profile"),
+        active: location.pathname === "/profile",
+      }
+    ] : [])
   ];
   
   return (
@@ -110,22 +87,6 @@ const NavigationBar = () => {
               </span>
             </Button>
           ))}
-          
-          {isMobile && (
-            <SideNavDrawer>
-              <Button
-                variant="ghost"
-                className="flex flex-col h-16 rounded-none px-2"
-              >
-                <div className="text-muted-foreground">
-                  <MoreVertical className="h-5 w-5" />
-                </div>
-                <span className="text-xs mt-1 text-muted-foreground">
-                  More
-                </span>
-              </Button>
-            </SideNavDrawer>
-          )}
         </div>
       </div>
     </div>
