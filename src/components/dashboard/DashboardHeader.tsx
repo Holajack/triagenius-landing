@@ -3,8 +3,9 @@ import { useState } from "react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
-import { SunIcon, MoonIcon, Settings, Menu } from "lucide-react";
+import { SunIcon, MoonIcon, Settings, MoreVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import SideNavDrawer from "./SideNavDrawer";
 
 const DashboardHeader = () => {
   const { state } = useOnboarding();
@@ -61,9 +62,11 @@ const DashboardHeader = () => {
           <Button size="icon" variant="ghost" className="text-muted-foreground">
             <Settings className="h-5 w-5" />
           </Button>
-          <Button size="icon" variant="ghost" className="text-muted-foreground md:hidden">
-            <Menu className="h-5 w-5" />
-          </Button>
+          <SideNavDrawer>
+            <Button size="icon" variant="ghost" className="text-muted-foreground md:hidden">
+              <MoreVertical className="h-5 w-5" />
+            </Button>
+          </SideNavDrawer>
         </div>
       </div>
     </header>
