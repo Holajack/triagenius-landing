@@ -230,7 +230,7 @@ export const FocusTimer = ({
     }
   };
 
-  // Calculate the overall session progress (out of 3 hours) - MODIFIED to show progress increasing from 0 to 100%
+  // Calculate the overall session progress (out of 3 hours)
   const calculateOverallProgress = () => {
     const completedTime = elapsedTimeRef.current + (initialTimeRef.current - time);
     return Math.min((completedTime / TOTAL_SESSION_TIME) * 100, 100);
@@ -293,24 +293,6 @@ export const FocusTimer = ({
         
         {/* Current segment progress */}
         <Progress value={progress} className="w-full" />
-        
-        {/* Overall session progress (3 hours) - MODIFIED to show progress increasing from 0 to 3h */}
-        <div className="w-full flex flex-col gap-1">
-          <div className="flex justify-between text-xs text-muted-foreground mb-1">
-            <span>0h</span>
-            <span>1h</span>
-            <span>2h</span>
-            <span>3h</span>
-          </div>
-          <Progress 
-            value={calculateOverallProgress()} 
-            className="w-full h-2" 
-            indicatorClassName="bg-amber-500"
-          />
-          <div className="text-xs text-muted-foreground mt-1">
-            Session Progress: {Math.floor(calculateOverallProgress())}%
-          </div>
-        </div>
         
         <div className="flex gap-4">
           {!isActive ? (
