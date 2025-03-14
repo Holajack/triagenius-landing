@@ -79,6 +79,10 @@ const WalkthroughStep = () => {
     if (!state.isActive || !currentStep?.targetSelector) return;
     
     const element = document.querySelector(currentStep.targetSelector) as HTMLElement;
+    
+    console.log("Current step:", currentStep);
+    console.log("Target element found:", element ? "Yes" : "No");
+    
     if (element) {
       setTargetElement(element);
       setTargetRect(element.getBoundingClientRect());
@@ -115,6 +119,24 @@ const WalkthroughStep = () => {
       setTimeout(() => {
         setIsOpen(true);
       }, 400);
+    } else {
+      console.error("Element not found for selector:", currentStep.targetSelector);
+      
+      // If element is not found, try again after a short delay
+      const retryTimer = setTimeout(() => {
+        const retryElement = document.querySelector(currentStep.targetSelector) as HTMLElement;
+        if (retryElement) {
+          console.log("Element found on retry");
+          // Re-trigger the current step effect by forcing a re-render
+          setTargetElement(retryElement);
+        } else {
+          console.error("Element still not found after retry, moving to next step");
+          // Skip to the next step if element is still not found
+          dispatch({ type: 'NEXT_STEP' });
+        }
+      }, 1000);
+      
+      return () => clearTimeout(retryTimer);
     }
     
     // Update rect on window resize and scroll
@@ -142,7 +164,7 @@ const WalkthroughStep = () => {
         element.style.position = '';
       }
     };
-  }, [state.isActive, state.currentStepIndex, currentStep, isMobile]);
+  }, [state.isActive, state.currentStepIndex, currentStep, isMobile, dispatch]);
   
   const handleNext = () => {
     dispatch({ type: 'NEXT_STEP' });
