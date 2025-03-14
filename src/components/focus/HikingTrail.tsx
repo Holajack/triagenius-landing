@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { StudyEnvironment } from "@/types/onboarding";
 import { Navigation, Flag, Mountain, Trees } from "lucide-react";
@@ -9,7 +10,7 @@ interface HikingTrailProps {
   isCelebrating?: boolean;
 }
 
-// 2D Animated Hiker Component with updated appearance
+// 2D Animated Hiker Component with refined appearance
 const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true }: { 
   className?: string; 
   isWalking?: boolean;
@@ -17,32 +18,67 @@ const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true }
 }) => {
   return (
     <div className={`relative ${className} ${facingRight ? '' : 'scale-x-[-1]'}`}>
-      {/* Head - slightly larger for better proportions */}
-      <div className="w-5 h-6 rounded-t-full bg-[#e8b89b] absolute left-1/2 -translate-x-1/2 -top-8">
+      {/* Head - slightly smaller for thinner appearance */}
+      <div className="w-4 h-5 rounded-t-full bg-[#e8b89b] absolute left-1/2 -translate-x-1/2 -top-10">
         {/* Hair */}
-        <div className="absolute w-5 h-2 bg-[#3a3a3a] top-0 left-0 rounded-t-full"></div>
+        <div className="absolute w-4 h-1.5 bg-[#3a3a3a] top-0 left-0 rounded-t-full"></div>
         {/* Face details */}
-        <div className="absolute w-3 h-1 bg-[#d37c59] bottom-1 left-1/2 -translate-x-1/2 rounded-sm"></div>
+        <div className="absolute w-2.5 h-0.8 bg-[#d37c59] bottom-1 left-1/2 -translate-x-1/2 rounded-sm"></div>
       </div>
+
+      {/* Neck - new detail connecting head and body */}
+      <div className="w-1.5 h-2 bg-[#e8b89b] absolute left-1/2 -translate-x-1/2 -top-5.5 rounded-md"></div>
       
-      {/* Body - Tan/brownish shirt with better proportions */}
-      <div className="w-6 h-6 bg-[#d3a05d] absolute left-1/2 -translate-x-1/2 -top-3 rounded-sm"></div>
+      {/* Body - Thinner proportions */}
+      <div className="w-4 h-5 bg-[#d3a05d] absolute left-1/2 -translate-x-1/2 -top-4 rounded-sm"></div>
       
-      {/* Backpack - green, positioned on the left side when facing right */}
-      <div className="w-4 h-6 bg-[#5f8d4e] absolute left-1/2 -translate-x-4 -top-4 rounded-md"></div>
-      <div className="w-1 h-4 bg-[#4a6d3b] absolute left-1/2 -translate-x-3 -top-3"></div>
-      {/* Backpack strap */}
-      <div className="w-1 h-4 bg-[#6b4219] absolute left-1/2 -translate-x-0 -top-2 rounded-sm"></div>
+      {/* Backpack - more detailed with straps and compartments */}
+      <div className="w-3.5 h-5 bg-[#5f8d4e] absolute left-1/2 -translate-x-4 -top-4 rounded-md"></div>
+      {/* Backpack top pocket */}
+      <div className="w-2.5 h-1.5 bg-[#4a6d3b] absolute left-1/2 -translate-x-3.8 -top-4 rounded-t-md"></div>
+      {/* Backpack bottom pocket */}
+      <div className="w-2.5 h-1.5 bg-[#4a6d3b] absolute left-1/2 -translate-x-3.8 -top-1.5 rounded-b-md"></div>
+      {/* Backpack straps */}
+      <div className="w-0.8 h-3 bg-[#6b4219] absolute left-1/2 -translate-x-1 -top-3 rounded-sm"></div>
+      <div className="w-0.8 h-3 bg-[#6b4219] absolute left-1/2 -translate-x-2.5 -top-3 rounded-sm"></div>
       
-      {/* Hiking Stick - positioned on the right side when facing right */}
-      <div className="w-1 h-10 bg-[#8E9196] absolute -right-3 -top-2 origin-top rounded-full"></div>
-      <div className="w-2 h-1 bg-[#765c48] absolute -right-3.5 top-7 rounded-full"></div> {/* Handle */}
-      
-      {/* Arms - improved proportions and matching shirt color */}
+      {/* Arms - thinner with enhanced movement */}
       <motion.div 
-        className="w-2 h-4 bg-[#d3a05d] absolute -left-1 -top-2 origin-top rounded-full"
+        className="w-1.5 h-4.5 bg-[#d3a05d] absolute -left-1 -top-2 origin-top rounded-full"
         animate={isWalking ? { 
-          rotate: [-15, 15, -15] 
+          rotate: [-25, 25, -25]  // Greater range of motion
+        } : {}}
+        transition={{ 
+          repeat: Infinity, 
+          duration: 1.2,
+          ease: "linear"
+        }}
+      ></motion.div>
+      
+      {/* Right arm with hiking stick */}
+      <motion.div className="relative">
+        <motion.div 
+          className="w-1.5 h-4.5 bg-[#d3a05d] absolute -right-1 -top-2 origin-top rounded-full"
+          animate={isWalking ? { 
+            rotate: [25, -25, 25]  // Coordinated with left arm but opposite
+          } : {}}
+          transition={{ 
+            repeat: Infinity, 
+            duration: 1.2,
+            ease: "linear"
+          }}
+        >
+          {/* Hiking stick attached to the hand/arm */}
+          <div className="w-1 h-10 bg-[#8E9196] absolute right-0 top-4 origin-top rounded-full"></div>
+          <div className="w-2 h-1 bg-[#765c48] absolute right-0 top-4 -translate-x-0.5 rounded-full"></div> {/* Handle */}
+        </motion.div>
+      </motion.div>
+      
+      {/* Legs - longer and thinner */}
+      <motion.div 
+        className="w-1.5 h-6 bg-[#5d81b0] absolute left-0.5 top-1 origin-top rounded-full"
+        animate={isWalking ? { 
+          rotate: [25, -25, 25]  // Enhanced range for more pronounced walking
         } : {}}
         transition={{ 
           repeat: Infinity, 
@@ -52,9 +88,9 @@ const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true }
       ></motion.div>
       
       <motion.div 
-        className="w-2 h-4 bg-[#d3a05d] absolute -right-1 -top-2 origin-top rounded-full"
+        className="w-1.5 h-6 bg-[#5d81b0] absolute right-0.5 top-1 origin-top rounded-full"
         animate={isWalking ? { 
-          rotate: [15, -15, 15] 
+          rotate: [-25, 25, -25]  // Coordinated with left leg but opposite
         } : {}}
         transition={{ 
           repeat: Infinity, 
@@ -63,36 +99,11 @@ const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true }
         }}
       ></motion.div>
       
-      {/* Legs - Blue jeans with better proportions */}
+      {/* Shoes */}
       <motion.div 
-        className="w-2 h-4.5 bg-[#5d81b0] absolute left-0.5 top-2 origin-top rounded-full"
+        className="w-2 h-1.2 bg-[#36342e] absolute left-0 top-7 origin-top rounded-sm"
         animate={isWalking ? { 
-          rotate: [15, -15, 15] 
-        } : {}}
-        transition={{ 
-          repeat: Infinity, 
-          duration: 1.2,
-          ease: "linear"
-        }}
-      ></motion.div>
-      
-      <motion.div 
-        className="w-2 h-4.5 bg-[#5d81b0] absolute right-0.5 top-2 origin-top rounded-full"
-        animate={isWalking ? { 
-          rotate: [-15, 15, -15] 
-        } : {}}
-        transition={{ 
-          repeat: Infinity, 
-          duration: 1.2,
-          ease: "linear"
-        }}
-      ></motion.div>
-      
-      {/* Shoes - slightly larger for better look */}
-      <motion.div 
-        className="w-2.5 h-1.5 bg-[#36342e] absolute left-0 top-6 origin-top rounded-sm"
-        animate={isWalking ? { 
-          rotate: [15, -15, 15] 
+          rotate: [25, -25, 25]  // Match leg movement
         } : {}}
         transition={{ 
           repeat: Infinity, 
@@ -102,9 +113,9 @@ const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true }
       ></motion.div>
       
       <motion.div 
-        className="w-2.5 h-1.5 bg-[#36342e] absolute right-0 top-6 origin-top rounded-sm"
+        className="w-2 h-1.2 bg-[#36342e] absolute right-0 top-7 origin-top rounded-sm"
         animate={isWalking ? { 
-          rotate: [-15, 15, -15] 
+          rotate: [-25, 25, -25]  // Match leg movement
         } : {}}
         transition={{ 
           repeat: Infinity, 
