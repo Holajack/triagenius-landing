@@ -89,7 +89,7 @@ const BrainModel = ({
       </div>
       
       {/* The actual 3D scene */}
-      <div className="h-full w-full" style={{ position: 'relative' }}>
+      <div className="h-full w-full relative">
         <MountainTerrainScene 
           zoomLevel={zoomLevel}
           rotation={rotation}

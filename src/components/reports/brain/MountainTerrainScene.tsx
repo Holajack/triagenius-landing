@@ -1,7 +1,7 @@
 
 import { useRef, useEffect } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { OrbitControls, Environment, Sky } from '@react-three/drei';
+import { OrbitControls, Environment } from '@react-three/drei';
 import { MountainTerrain } from '../terrain/MountainTerrain';
 import * as THREE from 'three';
 
@@ -120,27 +120,16 @@ export const MountainTerrainScene = ({
         background: '#e0e8f5',
         height: '100%',
         width: '100%',
-        display: 'block',
         position: 'absolute',
         top: 0,
         left: 0
       }}
     >
-      {/* Sky and environment */}
-      <Sky
-        distance={450000}
-        sunPosition={[15, 20, 10]}
-        inclination={0.5}
-        azimuth={0.25}
-        turbidity={10}
-        rayleigh={2}
-        mieCoefficient={0.005}
-        mieDirectionalG={0.8}
-      />
-      
-      {/* Scene fog like in the distance */}
-      <fog attach="fog" args={['#e0e8f5', 60, 120]} />
+      {/* Sky background */}
       <color attach="background" args={['#e0e8f5']} />
+      
+      {/* Scene fog */}
+      <fog attach="fog" args={['#e0e8f5', 60, 120]} />
       
       <CameraController zoomLevel={zoomLevel} rotation={rotation} />
       <SceneLighting />
