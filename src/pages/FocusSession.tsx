@@ -46,6 +46,7 @@ const FocusSession = () => {
             onComplete={handleSessionEnd}
             isPaused={isPaused}
             autoStart={true}
+            showControls={false}
           />
           
           <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden">

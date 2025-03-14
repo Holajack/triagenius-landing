@@ -1,9 +1,8 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Play, Pause, StopCircle, ChevronUp, ChevronDown } from "lucide-react";
+import { Play, Pause, StopCircle } from "lucide-react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { toast } from "sonner";
 
@@ -13,6 +12,7 @@ interface FocusTimerProps {
   onComplete: () => void;
   isPaused: boolean;
   autoStart?: boolean;
+  showControls?: boolean;
 }
 
 export const FocusTimer = ({ 
@@ -20,7 +20,8 @@ export const FocusTimer = ({
   onResume, 
   onComplete, 
   isPaused,
-  autoStart = false
+  autoStart = false,
+  showControls = true
 }: FocusTimerProps) => {
   const { state } = useOnboarding();
   const [minutes, setMinutes] = useState(25);
@@ -29,6 +30,7 @@ export const FocusTimer = ({
   const [progress, setProgress] = useState(100);
   const [isActive, setIsActive] = useState(false);
   const timerRef = useRef<number>();
+  const notificationShownRef = useRef(false);
   
   useEffect(() => {
     const savedDuration = localStorage.getItem('focusTimerDuration');
@@ -48,7 +50,11 @@ export const FocusTimer = ({
     if (autoStart) {
       setTimeout(() => {
         setIsActive(true);
-        toast.success("Focus session started!");
+        // Only show notification if it hasn't been shown yet
+        if (!notificationShownRef.current) {
+          toast.success("Focus session started!");
+          notificationShownRef.current = true;
+        }
       }, 500);
     }
   }, [autoStart]);
@@ -105,7 +111,10 @@ export const FocusTimer = ({
   const handleStart = () => {
     if (time === 0) return;
     setIsActive(true);
-    toast.success("Focus session started!");
+    if (!notificationShownRef.current) {
+      toast.success("Focus session started!");
+      notificationShownRef.current = true;
+    }
   };
   
   const handlePause = () => {
@@ -121,51 +130,57 @@ export const FocusTimer = ({
   return (
     <Card className="p-6 w-full max-w-md">
       <div className="flex flex-col items-center space-y-4">
-        <div className="flex items-center gap-4">
-          <div className="flex flex-col items-center">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => adjustTime('minutes', true)}
-              disabled={isActive || minutes >= 45}
-            >
-              <ChevronUp className="h-4 w-4" />
-            </Button>
-            <div className="text-4xl font-mono tabular-nums w-20 text-center">
-              {minutes.toString().padStart(2, '0')}
+        {showControls ? (
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col items-center">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => adjustTime('minutes', true)}
+                disabled={isActive || minutes >= 45}
+              >
+                <ChevronUp className="h-4 w-4" />
+              </Button>
+              <div className="text-4xl font-mono tabular-nums w-20 text-center">
+                {minutes.toString().padStart(2, '0')}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => adjustTime('minutes', false)}
+                disabled={isActive || minutes <= 0}
+              >
+                <ChevronDown className="h-4 w-4" />
+              </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => adjustTime('minutes', false)}
-              disabled={isActive || minutes <= 0}
-            >
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </div>
-          <span className="text-4xl">:</span>
-          <div className="flex flex-col items-center">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => adjustTime('seconds', true)}
-              disabled={isActive || seconds >= 45}
-            >
-              <ChevronUp className="h-4 w-4" />
-            </Button>
-            <div className="text-4xl font-mono tabular-nums w-20 text-center">
-              {seconds.toString().padStart(2, '0')}
+            <span className="text-4xl">:</span>
+            <div className="flex flex-col items-center">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => adjustTime('seconds', true)}
+                disabled={isActive || seconds >= 45}
+              >
+                <ChevronUp className="h-4 w-4" />
+              </Button>
+              <div className="text-4xl font-mono tabular-nums w-20 text-center">
+                {seconds.toString().padStart(2, '0')}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => adjustTime('seconds', false)}
+                disabled={isActive || seconds <= 0}
+              >
+                <ChevronDown className="h-4 w-4" />
+              </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => adjustTime('seconds', false)}
-              disabled={isActive || seconds <= 0}
-            >
-              <ChevronDown className="h-4 w-4" />
-            </Button>
           </div>
-        </div>
+        ) : (
+          <div className="text-4xl font-mono tabular-nums">
+            {formatTime(time)}
+          </div>
+        )}
         
         <Progress value={progress} className="w-full" />
         
