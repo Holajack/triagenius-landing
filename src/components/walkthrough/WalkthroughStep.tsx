@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -63,16 +64,44 @@ const WalkthroughStep = () => {
   const popoverTriggerRef = useRef<HTMLButtonElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const isMobile = useIsMobile();
+  const [prevScrollY, setPrevScrollY] = useState(0);
+  const [scrollLocked, setScrollLocked] = useState(false);
 
   const currentStep = state.steps[state.currentStepIndex];
+  
+  // Prevent scrolling during walkthrough
+  useEffect(() => {
+    if (state.isActive) {
+      // Store current scroll position
+      setPrevScrollY(window.scrollY);
+      setScrollLocked(true);
+      
+      // Apply the scroll lock class to body
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      document.body.style.top = `-${prevScrollY}px`;
+      
+      return () => {
+        // Remove scroll lock when component unmounts
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.top = '';
+        
+        // Restore scroll position
+        if (scrollLocked) {
+          window.scrollTo(0, prevScrollY);
+        }
+        setScrollLocked(false);
+      };
+    }
+  }, [state.isActive]);
   
   useEffect(() => {
     if (!state.isActive || !currentStep?.targetSelector) return;
     
     const element = document.querySelector(currentStep.targetSelector) as HTMLElement;
-    
-    console.log("Current step:", currentStep);
-    console.log("Target element found:", element ? "Yes" : "No");
     
     if (element) {
       setTargetElement(element);
@@ -84,91 +113,89 @@ const WalkthroughStep = () => {
       element.style.position = 'relative';
       
       const scrollToElement = () => {
+        // First, unlock scrolling temporarily to allow programmatic scrolling
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
+        document.body.style.top = '';
+        
         const elementRect = element.getBoundingClientRect();
         const viewportHeight = window.innerHeight;
         
-        const isInViewport = 
-          elementRect.top >= 80 &&
-          elementRect.bottom <= viewportHeight - 150;
+        // Calculate optimal scroll position
+        let scrollPosition;
         
-        if (!isInViewport) {
-          let scrollPosition;
-          const buffer = isMobile ? 100 : 150;
-          
-          if (elementRect.height > viewportHeight / 2) {
-            scrollPosition = window.scrollY + elementRect.top - 100;
-          } else {
-            switch (currentStep.placement) {
-              case 'top':
-                scrollPosition = window.scrollY + elementRect.top - (viewportHeight / 3);
-                break;
-              case 'bottom':
-                scrollPosition = window.scrollY + elementRect.top - (viewportHeight / 3);
-                break;
-              case 'left':
-              case 'right':
-                scrollPosition = window.scrollY + elementRect.top - (viewportHeight / 2) + (elementRect.height / 2);
-                break;
-              default:
-                scrollPosition = window.scrollY + elementRect.top - (viewportHeight / 2) + (elementRect.height / 2);
-            }
-          }
-          
-          scrollPosition = Math.max(0, scrollPosition);
-          
-          window.scrollTo({
-            top: scrollPosition,
-            behavior: 'smooth'
-          });
+        // Calculate position that ensures the element is in optimal viewing position
+        // and won't be covered by the popover
+        const popoverHeight = 180; // Approximate height of the popover
+        const buffer = isMobile ? 20 : 40;
+        
+        switch (currentStep.placement) {
+          case 'top':
+            // If placed on top, ensure element is in lower half of screen
+            scrollPosition = window.scrollY + elementRect.top - (viewportHeight * 0.6);
+            break;
+          case 'bottom':
+            // If placed on bottom, ensure element is in upper half of screen
+            scrollPosition = window.scrollY + elementRect.top - (viewportHeight * 0.3);
+            break;
+          case 'left':
+          case 'right':
+            // For side placements, center the element vertically
+            scrollPosition = window.scrollY + elementRect.top - (viewportHeight / 2) + (elementRect.height / 2);
+            break;
+          default:
+            scrollPosition = window.scrollY + elementRect.top - (viewportHeight / 2);
         }
+        
+        // Apply scrolling
+        window.scrollTo({
+          top: Math.max(0, scrollPosition),
+          behavior: 'smooth'
+        });
+        
+        // After scrolling, update the rect position
+        setTimeout(() => {
+          setTargetRect(element.getBoundingClientRect());
+          
+          // Reapply scroll lock after a small delay
+          setTimeout(() => {
+            setPrevScrollY(window.scrollY);
+            document.body.style.overflow = 'hidden';
+            document.body.style.position = 'fixed';
+            document.body.style.width = '100%';
+            document.body.style.top = `-${window.scrollY}px`;
+          }, 100);
+        }, 400);
       };
       
       scrollToElement();
       
       setTimeout(() => {
         setIsOpen(true);
-        setTimeout(scrollToElement, 100);
-      }, 400);
-    } else {
-      console.error("Element not found for selector:", currentStep.targetSelector);
+      }, 500);
       
-      const retryTimer = setTimeout(() => {
-        const retryElement = document.querySelector(currentStep.targetSelector) as HTMLElement;
-        if (retryElement) {
-          console.log("Element found on retry");
-          setTargetElement(retryElement);
-        } else {
-          console.error("Element still not found after retry, moving to next step");
-          dispatch({ type: 'NEXT_STEP' });
+      const handleUpdate = () => {
+        if (element) {
+          setTargetRect(element.getBoundingClientRect());
         }
-      }, 1000);
+      };
       
-      return () => clearTimeout(retryTimer);
+      window.addEventListener('resize', handleUpdate);
+      
+      // No need for scroll event listener as we're preventing scrolling
+      
+      return () => {
+        window.removeEventListener('resize', handleUpdate);
+        if (element) {
+          element.classList.remove('ring-2', 'ring-triage-purple', 'ring-offset-2');
+          element.style.pointerEvents = '';
+          element.style.zIndex = '';
+          element.style.position = '';
+        }
+      };
     }
-    
-    const handleUpdate = () => {
-      if (element) {
-        setTargetRect(element.getBoundingClientRect());
-      }
-    };
-    
-    window.addEventListener('resize', handleUpdate);
-    window.addEventListener('scroll', handleUpdate);
-    
-    const updateInterval = setInterval(handleUpdate, 100);
-    
-    return () => {
-      window.removeEventListener('resize', handleUpdate);
-      window.removeEventListener('scroll', handleUpdate);
-      clearInterval(updateInterval);
-      if (element) {
-        element.classList.remove('ring-2', 'ring-triage-purple', 'ring-offset-2');
-        element.style.pointerEvents = '';
-        element.style.zIndex = '';
-        element.style.position = '';
-      }
-    };
-  }, [state.isActive, state.currentStepIndex, currentStep, isMobile, dispatch]);
+  }, [state.isActive, state.currentStepIndex, currentStep, isMobile, dispatch, prevScrollY, scrollLocked]);
   
   const handleNext = () => {
     dispatch({ type: 'NEXT_STEP' });
@@ -183,6 +210,14 @@ const WalkthroughStep = () => {
   };
   
   const handleSkip = () => {
+    // Restore normal scrolling before completing
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+    document.body.style.top = '';
+    window.scrollTo(0, prevScrollY);
+    setScrollLocked(false);
+    
     dispatch({ type: 'COMPLETE_WALKTHROUGH' });
     setIsOpen(false);
     setTargetRect(null);
@@ -199,72 +234,81 @@ const WalkthroughStep = () => {
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
     
-    const visibleTop = window.scrollY;
-    const visibleBottom = window.scrollY + viewportHeight;
-    
     let position = {
       top: targetRect.top + targetRect.height / 2,
       left: targetRect.left + targetRect.width / 2,
     };
     
-    const mobileTopOffset = isMobile ? 10 : 0;
-    const mobileLeftOffset = isMobile ? 0 : 0;
+    // Calculate popover placement to avoid covering the highlighted element
+    const popoverHeight = 180; // Approximate height of the popover
+    const popoverWidth = isMobile ? 280 : 360; // Approximate width
+    const buffer = 20; // Space between element and popover
     
     switch (currentStep.placement) {
       case 'top':
-        position.top = targetRect.top - 10 - mobileTopOffset;
-        position.left = targetRect.left + targetRect.width / 2 + mobileLeftOffset;
+        // Place above the element with enough distance
+        position.top = targetRect.top - popoverHeight - buffer;
+        position.left = targetRect.left + targetRect.width / 2;
         
-        if (position.top < visibleTop + 70) {
-          position.top = targetRect.bottom + 10;
+        // If there's not enough space above, place it below
+        if (position.top < 70) {
+          position.top = targetRect.bottom + buffer;
         }
         break;
         
       case 'bottom':
-        position.top = targetRect.bottom + 10;
-        position.left = targetRect.left + targetRect.width / 2 + mobileLeftOffset;
+        // Place below the element with enough distance
+        position.top = targetRect.bottom + buffer;
+        position.left = targetRect.left + targetRect.width / 2;
         
-        if (position.top > visibleBottom - 150) {
-          position.top = targetRect.top - 10 - mobileTopOffset;
+        // If there's not enough space below, place it above
+        if (position.top + popoverHeight > viewportHeight - 20) {
+          position.top = targetRect.top - popoverHeight - buffer;
         }
         break;
         
       case 'left':
-        position.top = targetRect.top + targetRect.height / 2;
-        position.left = targetRect.left - 10;
+        // Place to the left of the element
+        position.top = targetRect.top + targetRect.height / 2 - popoverHeight / 2;
+        position.left = targetRect.left - popoverWidth - buffer;
         
-        if (position.left < 150) {
-          position.left = targetRect.right + 10;
+        // If there's not enough space to the left, place it to the right
+        if (position.left < 20) {
+          position.left = targetRect.right + buffer;
         }
         break;
         
       case 'right':
-        position.top = targetRect.top + targetRect.height / 2;
-        position.left = targetRect.right + 10;
+        // Place to the right of the element
+        position.top = targetRect.top + targetRect.height / 2 - popoverHeight / 2;
+        position.left = targetRect.right + buffer;
         
-        if (position.left > viewportWidth - 150) {
-          position.left = targetRect.left - 10;
+        // If there's not enough space to the right, place it to the left
+        if (position.left + popoverWidth > viewportWidth - 20) {
+          position.left = targetRect.left - popoverWidth - buffer;
         }
         break;
         
       default:
-        position.top = targetRect.bottom + 10;
-        position.left = targetRect.left + targetRect.width / 2 + mobileLeftOffset;
+        // Default placement below the element
+        position.top = targetRect.bottom + buffer;
+        position.left = targetRect.left + targetRect.width / 2;
         
-        if (position.top > visibleBottom - 150) {
-          position.top = targetRect.top - 10 - mobileTopOffset;
+        if (position.top + popoverHeight > viewportHeight - 20) {
+          position.top = targetRect.top - popoverHeight - buffer;
         }
     }
     
-    position.top = Math.max(visibleTop + 50, Math.min(visibleBottom - 50, position.top));
-    position.left = Math.max(50, Math.min(viewportWidth - 50, position.left));
+    // Ensure popover is within viewport bounds
+    position.top = Math.max(70, Math.min(viewportHeight - 20 - popoverHeight, position.top));
+    position.left = Math.max(20, Math.min(viewportWidth - 20 - popoverWidth/2, position.left));
     
     return position;
   };
   
   const getPopoverWidth = () => {
     if (isMobile) {
-      if (window.innerWidth < 320) return 'calc(100vw - 32px)';
+      if (window.innerWidth < 320) return 'calc(100vw - 40px)';
       if (window.innerWidth < 375) return 'calc(90vw - 20px)';
       if (window.innerWidth < 480) return 'calc(85vw - 16px)';
       return 'calc(80vw - 16px)';
