@@ -1,19 +1,21 @@
+
 import { motion } from "framer-motion";
 import { StudyEnvironment } from "@/types/onboarding";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface HikingTrailProps {
   environment?: StudyEnvironment;
   milestone: number;
   isCelebrating?: boolean;
-  progress?: number; // Added progress prop to represent minute-by-minute progress
+  progress?: number; // Progress value (0-100) representing time progress within a segment
 }
 
 // Pixel Art Hiker Component with detailed animations (20% smaller)
-const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true }: { 
+const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true, isGoingUphill = false }: { 
   className?: string; 
   isWalking?: boolean;
   facingRight?: boolean;
+  isGoingUphill?: boolean;
 }) => {
   const [frame, setFrame] = useState(0);
   const totalFrames = 8; // 8 frames for smooth pixel art animation
@@ -49,9 +51,15 @@ const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true }
   
   // Breathing animation for idle stance
   const breathingOffset = isWalking ? 0 : Math.sin(Date.now() / 1000) * 0.3;
+  
+  // Calculate uphill angle offset
+  const uphillAngle = isGoingUphill ? 10 : 0;
 
   return (
-    <div className={`relative ${className} ${facingRight ? '' : 'scale-x-[-1]'} scale-[0.8]`}>
+    <div 
+      className={`relative ${className} ${facingRight ? '' : 'scale-x-[-1]'} scale-[0.8]`}
+      style={{ transform: isGoingUphill ? `rotate(${uphillAngle}deg)` : undefined }}
+    >
       {/* Head - smaller and closer to body */}
       <div className="w-3 h-3 rounded-full bg-[#e8b89b] absolute left-1/2 -translate-x-1/2 -top-7">
         {/* Face details - pixel art style */}
@@ -181,6 +189,11 @@ export const HikingTrail = ({
   const [showCheckMap, setShowCheckMap] = useState(false);
   const [showDrink, setShowDrink] = useState(false);
   const [backgroundPosition, setBackgroundPosition] = useState(0);
+  const [terrain, setTerrain] = useState<'flat' | 'uphill' | 'downhill'>('flat');
+  const [envEffects, setEnvEffects] = useState<{ birds: boolean; wind: boolean }>({ birds: false, wind: false });
+  const [timeOfDay, setTimeOfDay] = useState<'morning' | 'day' | 'evening'>('day');
+  const terrainTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const effectsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Handle milestone celebrations
   useEffect(() => {
@@ -210,6 +223,72 @@ export const HikingTrail = ({
     setBackgroundPosition(milestone * 25 + (progress / 4));
   }, [milestone, progress]);
   
+  // Dynamic terrain changes
+  useEffect(() => {
+    if (terrainTimeoutRef.current) {
+      clearTimeout(terrainTimeoutRef.current);
+    }
+    
+    const randomTerrain = () => {
+      const terrainType = Math.random();
+      if (terrainType > 0.7) {
+        setTerrain('uphill');
+      } else if (terrainType > 0.4) {
+        setTerrain('flat');
+      } else {
+        setTerrain('downhill');
+      }
+      
+      // Schedule next terrain change
+      terrainTimeoutRef.current = setTimeout(randomTerrain, 10000 + Math.random() * 20000); // 10-30 seconds
+    };
+    
+    randomTerrain();
+    
+    return () => {
+      if (terrainTimeoutRef.current) {
+        clearTimeout(terrainTimeoutRef.current);
+      }
+    };
+  }, []);
+  
+  // Dynamic environmental effects
+  useEffect(() => {
+    if (effectsTimeoutRef.current) {
+      clearTimeout(effectsTimeoutRef.current);
+    }
+    
+    const randomEffects = () => {
+      // Occasional environmental effects
+      setEnvEffects({
+        birds: Math.random() > 0.7,
+        wind: Math.random() > 0.6
+      });
+      
+      // Schedule next effect change
+      effectsTimeoutRef.current = setTimeout(randomEffects, 5000 + Math.random() * 15000); // 5-20 seconds
+    };
+    
+    randomEffects();
+    
+    return () => {
+      if (effectsTimeoutRef.current) {
+        clearTimeout(effectsTimeoutRef.current);
+      }
+    };
+  }, []);
+  
+  // Time of day changes based on session duration
+  useEffect(() => {
+    if (milestone === 0) {
+      setTimeOfDay('morning');
+    } else if (milestone === 1 || milestone === 2) {
+      setTimeOfDay('day');
+    } else {
+      setTimeOfDay('evening');
+    }
+  }, [milestone]);
+  
   // Determine checkpoint visibility based on progress and milestone
   const isCheckpointVisible = (checkpointIndex: number) => {
     // Current checkpoint is always visible
@@ -219,7 +298,7 @@ export const HikingTrail = ({
     
     // Next checkpoint becomes visible as we get closer to it
     if (checkpointIndex === milestone + 1) {
-      return progress > 65; // Only show next checkpoint when we're 65% through the current segment
+      return progress > 75; // Only show next checkpoint when we're 75% through the current segment
     }
     
     // Previous checkpoints are always visible
@@ -235,7 +314,7 @@ export const HikingTrail = ({
   const getCheckpointOpacity = (checkpointIndex: number) => {
     if (checkpointIndex === milestone + 1) {
       // Gradually fade in the next checkpoint
-      return Math.max(0, (progress - 65) / 35);
+      return Math.max(0, (progress - 75) / 25);
     }
     
     return isCheckpointVisible(checkpointIndex) ? 1 : 0;
@@ -247,6 +326,35 @@ export const HikingTrail = ({
     return "20%";
   };
   
+  // Calculate the sun/moon position and color based on time of day
+  const getSkyProps = () => {
+    switch (timeOfDay) {
+      case 'morning':
+        return {
+          skyGradient: 'from-[#f8b195] via-[#f67280] to-[#355c7d]',
+          lightColor: '#f9d71c',
+          lightPosition: 'top-[25%] left-[25%]',
+          lightSize: 'w-10 h-10'
+        };
+      case 'day':
+        return {
+          skyGradient: 'from-[#5d94fb] via-[#5d94fb] to-[#78a9ff]',
+          lightColor: '#f9d71c',
+          lightPosition: 'top-[15%] left-[60%]',
+          lightSize: 'w-12 h-12'
+        };
+      case 'evening':
+        return {
+          skyGradient: 'from-[#2c3e50] via-[#4ca1af] to-[#c779d0]',
+          lightColor: '#f4f1de',
+          lightPosition: 'top-[20%] right-[20%]',
+          lightSize: 'w-8 h-8'
+        };
+    }
+  };
+  
+  const skyProps = getSkyProps();
+
   return (
     <div className="w-full h-full relative overflow-hidden rounded-lg border">
       {/* Parallax background that moves with character progress */}
@@ -255,23 +363,34 @@ export const HikingTrail = ({
         animate={{ x: `-${backgroundPosition}%` }}
         transition={{ type: "tween", ease: "linear", duration: 0.5 }}
       >
-        {/* Pixel Art Sky Background - with color banding for 16-bit look */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#5d94fb] via-[#5d94fb] to-[#78a9ff]" style={{ backgroundSize: '32px 32px' }}></div>
+        {/* Dynamic Sky Background based on time of day */}
+        <div className={`absolute inset-0 bg-gradient-to-b ${skyProps.skyGradient}`} style={{ backgroundSize: '32px 32px' }}></div>
         
-        {/* Pixelated Clouds - repeated for parallax effect */}
-        <div className="absolute top-[10%] left-[15%] w-14 h-5 bg-white opacity-90 rounded-full"></div>
-        <div className="absolute top-[15%] left-[45%] w-20 h-6 bg-white opacity-80 rounded-full"></div>
-        <div className="absolute top-[8%] left-[75%] w-12 h-4 bg-white opacity-85 rounded-full"></div>
+        {/* Sun/Moon based on time of day */}
+        <div className={`absolute ${skyProps.lightPosition} ${skyProps.lightSize} rounded-full bg-[${skyProps.lightColor}] opacity-90`}></div>
         
-        {/* Duplicated clouds for continuous parallax effect */}
-        <div className="absolute top-[12%] left-[115%] w-14 h-5 bg-white opacity-90 rounded-full"></div>
-        <div className="absolute top-[17%] left-[145%] w-20 h-6 bg-white opacity-80 rounded-full"></div>
-        <div className="absolute top-[9%] left-[175%] w-12 h-4 bg-white opacity-85 rounded-full"></div>
-        
-        {/* Even more duplicated clouds for continuous experience */}
-        <div className="absolute top-[11%] left-[215%] w-16 h-5 bg-white opacity-90 rounded-full"></div>
-        <div className="absolute top-[16%] left-[245%] w-18 h-6 bg-white opacity-85 rounded-full"></div>
-        <div className="absolute top-[7%] left-[275%] w-14 h-4 bg-white opacity-80 rounded-full"></div>
+        {/* Pixelated Clouds - with animation */}
+        {[...Array(10)].map((_, index) => (
+          <motion.div 
+            key={index}
+            className="absolute bg-white opacity-80 rounded-full"
+            style={{ 
+              top: `${5 + Math.random() * 15}%`, 
+              left: `${(index * 15) + Math.random() * 10}%`,
+              width: `${8 + Math.random() * 12}rem`,
+              height: `${1 + Math.random() * 1.5}rem`,
+            }}
+            animate={{ 
+              x: [0, 10, 20, 10, 0],
+              opacity: [0.8, 0.85, 0.9, 0.85, 0.8]
+            }}
+            transition={{ 
+              repeat: Infinity, 
+              duration: 20 + Math.random() * 10,
+              ease: "linear" 
+            }}
+          />
+        ))}
         
         {/* Mountain Ranges - extended for continuous parallax */}
         <div className="absolute bottom-[45%] left-0 w-[300%] h-[25%]">
@@ -303,7 +422,81 @@ export const HikingTrail = ({
                 backgroundSize: '8px 8px' 
               }}>
           </div>
+          
+          {/* Wind effect animation */}
+          {envEffects.wind && (
+            <div className="absolute inset-0">
+              {[...Array(10)].map((_, i) => (
+                <motion.div 
+                  key={i}
+                  className="absolute h-8 w-1 bg-white opacity-10"
+                  style={{ 
+                    top: `${20 + Math.random() * 60}%`, 
+                    left: `${Math.random() * 100}%`,
+                    rotate: `${75 + Math.random() * 15}deg`
+                  }}
+                  animate={{ 
+                    x: [0, 100], 
+                    opacity: [0, 0.1, 0]
+                  }}
+                  transition={{ 
+                    repeat: Infinity, 
+                    duration: 1 + Math.random() * 2,
+                    delay: Math.random() * 2,
+                    ease: "linear" 
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </div>
+        
+        {/* Birds flying animation */}
+        {envEffects.birds && (
+          <div className="absolute top-[10%] left-0 w-full">
+            {[...Array(3)].map((_, i) => (
+              <motion.div 
+                key={i}
+                className="absolute"
+                style={{ 
+                  top: `${Math.random() * 20}%`, 
+                  left: `${Math.random() * 20}%`
+                }}
+                animate={{ 
+                  x: [0, 100, 200, 300, 400], 
+                  y: [0, 10, -10, 20, 0] 
+                }}
+                transition={{ 
+                  repeat: Infinity, 
+                  duration: 20 + Math.random() * 10,
+                  delay: Math.random() * 5,
+                  ease: "linear" 
+                }}
+              >
+                <svg width="20" height="10" viewBox="0 0 20 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <motion.path 
+                    d="M1,5 Q5,1 10,5 T19,5" 
+                    stroke="black" 
+                    strokeWidth="1.5"
+                    fill="none"
+                    animate={{ 
+                      d: [
+                        "M1,5 Q5,1 10,5 T19,5", 
+                        "M1,5 Q5,8 10,5 T19,5",
+                        "M1,5 Q5,1 10,5 T19,5"
+                      ]
+                    }}
+                    transition={{ 
+                      repeat: Infinity, 
+                      duration: 1.5,
+                      ease: "easeInOut" 
+                    }}
+                  />
+                </svg>
+              </motion.div>
+            ))}
+          </div>
+        )}
         
         {/* Trees & Scenery - extended and more varied for continuous experience */}
         {/* First section trees */}
@@ -459,7 +652,11 @@ export const HikingTrail = ({
         }}
       >
         <div className="relative">
-          <AnimatedPerson isWalking={isWalking} facingRight={true} />
+          <AnimatedPerson 
+            isWalking={isWalking} 
+            facingRight={true}
+            isGoingUphill={terrain === 'uphill'} 
+          />
           
           {/* Milestone check map animation */}
           {showCheckMap && (
@@ -502,7 +699,7 @@ export const HikingTrail = ({
               exit={{ opacity: 0, scale: 0.5 }}
             >
               <div className="text-xs font-pixel bg-white rounded-none px-2 py-1 shadow-sm border border-gray-200">
-                Yay!
+                Checkpoint!
               </div>
             </motion.div>
           )}
@@ -554,7 +751,22 @@ export const HikingTrail = ({
           </div>
         </motion.div>
       )}
+      
+      {/* Camera shake effect during significant events */}
+      {(isCelebrating || terrain === 'uphill') && (
+        <motion.div 
+          className="absolute inset-0 pointer-events-none"
+          animate={{ 
+            x: terrain === 'uphill' ? [-1, 1, -1] : [-2, 2, -2, 2, 0],
+            y: terrain === 'uphill' ? [-1, 1, -1] : [-2, 2, -1, 1, 0]
+          }}
+          transition={{ 
+            repeat: terrain === 'uphill' ? Infinity : 1,
+            duration: terrain === 'uphill' ? 0.5 : 0.3,
+            ease: "easeInOut"
+          }}
+        />
+      )}
     </div>
   );
 };
-

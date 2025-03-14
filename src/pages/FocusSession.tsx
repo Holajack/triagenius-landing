@@ -11,6 +11,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import PageHeader from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { Battery, BatteryOff } from "lucide-react";
 
 const FocusSession = () => {
   const navigate = useNavigate();
@@ -22,6 +23,16 @@ const FocusSession = () => {
   const [isCelebrating, setIsCelebrating] = useState(false);
   const [lowPowerMode, setLowPowerMode] = useState(false);
   const [segmentProgress, setSegmentProgress] = useState(0); // Progress within the current segment (0-100)
+  
+  useEffect(() => {
+    // Disable scrolling when the focus session is active
+    document.body.style.overflow = 'hidden';
+    
+    return () => {
+      // Re-enable scrolling when leaving the page
+      document.body.style.overflow = 'auto';
+    };
+  }, []);
   
   const handlePause = () => {
     setIsPaused(true);
@@ -60,15 +71,33 @@ const FocusSession = () => {
   const handleProgressUpdate = (progress: number) => {
     setSegmentProgress(progress);
   };
+  
+  // Toggle low power mode
+  const toggleLowPowerMode = () => {
+    setLowPowerMode(!lowPowerMode);
+    toast.info(lowPowerMode ? 
+      "Enhanced visual mode activated" : 
+      "Low power mode activated - reduced animations",
+      { duration: 3000 }
+    );
+  };
 
   return (
     <div className={cn(
-      "min-h-screen bg-background text-foreground flex flex-col items-center p-4",
+      "min-h-screen bg-background text-foreground flex flex-col items-center p-4 overflow-hidden",
       `theme-${state.environment || 'default'} ${theme}`
     )}>
       <div className="w-full max-w-4xl">
         <div className="flex justify-between items-center">
           <PageHeader title="Focus Session" subtitle="Stay focused and achieve your goals" />
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggleLowPowerMode}
+            title={lowPowerMode ? "Switch to enhanced mode" : "Switch to low power mode"}
+          >
+            {lowPowerMode ? <Battery className="h-5 w-5" /> : <BatteryOff className="h-5 w-5" />}
+          </Button>
         </div>
         
         <div className="flex flex-col items-center space-y-8 mt-4">
