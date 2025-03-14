@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { OnboardingProvider } from "@/contexts/OnboardingContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { WalkthroughProvider } from "@/contexts/WalkthroughContext";
 import Index from "./pages/Index";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
@@ -27,28 +28,30 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <OnboardingProvider>
       <ThemeProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/onboarding" element={<Onboarding />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/focus-session" element={<FocusSession />} />
-              <Route path="/session-report" element={<SessionReport />} />
-              <Route path="/community" element={<Community />} />
-              <Route path="/community/chat/:id" element={<Chat />} />
-              <Route path="/study-room/:id" element={<StudyRoom />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/bonuses" element={<Bonuses />} />
-              <Route path="/nora" element={<Nora />} />
-              <Route path="/leaderboard" element={<Leaderboard />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+        <WalkthroughProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/onboarding" element={<Onboarding />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/focus-session" element={<FocusSession />} />
+                <Route path="/session-report" element={<SessionReport />} />
+                <Route path="/community" element={<Community />} />
+                <Route path="/community/chat/:id" element={<Chat />} />
+                <Route path="/study-room/:id" element={<StudyRoom />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/bonuses" element={<Bonuses />} />
+                <Route path="/nora" element={<Nora />} />
+                <Route path="/leaderboard" element={<Leaderboard />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </WalkthroughProvider>
       </ThemeProvider>
     </OnboardingProvider>
   </QueryClientProvider>

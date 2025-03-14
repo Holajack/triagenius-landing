@@ -36,7 +36,11 @@ const DashboardHeader = () => {
         subtitle={formatDate()}
       />
       <div className="mt-2">
-        <Badge variant="outline" className="text-xs font-normal">
+        <Badge 
+          variant="outline" 
+          className="text-xs font-normal"
+          data-walkthrough="environment-badge"
+        >
           {getEnvironmentName()} Environment
         </Badge>
       </div>
