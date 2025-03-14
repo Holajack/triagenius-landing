@@ -1,5 +1,5 @@
 
-import { useState, Suspense } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import NavigationBar from "@/components/dashboard/NavigationBar";
@@ -16,35 +16,19 @@ import {
   Book, 
   ArrowLeft, 
   Activity,
-  Search,
-  RotateCw,
-  ZoomIn,
-  ZoomOut,
-  Mountain,
-  Tablet,
-  Monitor
+  Search
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
-import TerrainModel from "@/components/reports/BrainModel";
 import CognitiveMetrics from "@/components/reports/CognitiveMetrics";
 import FocusBreakdown from "@/components/reports/FocusBreakdown";
 import RecommendationsCard from "@/components/reports/RecommendationsCard";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 const Reports = () => {
   const { state } = useOnboarding();
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const [activeSubject, setActiveSubject] = useState<string | null>(null);
-  const [zoomLevel, setZoomLevel] = useState(1);
-  const [rotation, setRotation] = useState(0);
-  const isMobile = useIsMobile();
-
-  const increaseZoom = () => setZoomLevel(prev => Math.min(prev + 0.1, 1.5));
-  const decreaseZoom = () => setZoomLevel(prev => Math.max(prev - 0.1, 0.5));
-  const rotateModel = () => setRotation(prev => (prev + 45) % 360);
 
   return (
     <div className={cn(
@@ -62,8 +46,8 @@ const Reports = () => {
             Back
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">Terrain Visualization</h1>
-            <p className="text-muted-foreground">Explore high-definition 3D mountainous terrain models</p>
+            <h1 className="text-2xl font-bold">Learning Reports</h1>
+            <p className="text-muted-foreground">View your learning progress and insights</p>
           </div>
         </div>
 
@@ -71,69 +55,25 @@ const Reports = () => {
           <div className="md:col-span-2">
             <Card className="shadow-sm">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xl flex items-center justify-between">
-                  <div className="flex items-center">
-                    <Mountain className="h-5 w-5 mr-2 text-primary" />
-                    3D Mountain Terrain
-                  </div>
-                  <div className="flex items-center text-sm font-normal">
-                    {isMobile ? 
-                      <><Tablet className="h-4 w-4 mr-1" /> Mobile-optimized</> : 
-                      <><Monitor className="h-4 w-4 mr-1" /> High-resolution</>
-                    }
-                  </div>
+                <CardTitle className="text-xl flex items-center">
+                  <Activity className="h-5 w-5 mr-2 text-primary" />
+                  Learning Progress
                 </CardTitle>
                 <CardDescription>
-                  {isMobile ? 
-                    "Optimized 3D terrain with ~30,000 vertices for mobile devices" : 
-                    "High-resolution 3D terrain with ~90,000 vertices and realistic texturing"
-                  }
+                  Your learning progress and activity overview
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-col">
-                  <div className="flex justify-end gap-2 mb-4">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={decreaseZoom}
-                      className="h-8 w-8 p-0"
-                    >
-                      <ZoomOut className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={increaseZoom}
-                      className="h-8 w-8 p-0"
-                    >
-                      <ZoomIn className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={rotateModel}
-                      className="h-8 w-8 p-0"
-                    >
-                      <RotateCw className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
                   <div className="relative h-[400px] bg-black/5 rounded-md overflow-hidden border border-gray-200">
-                    <ErrorBoundary fallback={<div className="flex items-center justify-center h-full">Error loading 3D visualization</div>}>
-                      <Suspense fallback={<div className="flex items-center justify-center h-full bg-gray-50">
-                        <div className="flex flex-col items-center">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
-                          <p>Loading terrain...</p>
+                    <ErrorBoundary fallback={<div className="flex items-center justify-center h-full">Error loading visualization</div>}>
+                      <div className="flex items-center justify-center h-full bg-gray-50">
+                        <div className="text-center p-6">
+                          <Activity className="h-12 w-12 text-primary mx-auto mb-4" />
+                          <h3 className="font-medium text-lg mb-2">Activity Dashboard</h3>
+                          <p className="text-muted-foreground">Track your learning progress over time</p>
                         </div>
-                      </div>}>
-                        <TerrainModel 
-                          activeSubject={activeSubject} 
-                          setActiveSubject={setActiveSubject}
-                          zoomLevel={zoomLevel}
-                          rotation={rotation}
-                        />
-                      </Suspense>
+                      </div>
                     </ErrorBoundary>
                   </div>
                 </div>
