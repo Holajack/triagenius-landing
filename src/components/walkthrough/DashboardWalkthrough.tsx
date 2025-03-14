@@ -6,11 +6,13 @@ import { useNavigate } from 'react-router-dom';
 import WalkthroughStep from './WalkthroughStep';
 import { Button } from '@/components/ui/button';
 import { Info } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const DashboardWalkthrough = () => {
   const { state, dispatch } = useWalkthrough();
   const { state: onboardingState } = useOnboarding();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     // Only start the walkthrough if onboarding is complete and user hasn't done the tutorial
@@ -45,7 +47,7 @@ const DashboardWalkthrough = () => {
         title: 'Start a Focus Session',
         description: "When you're ready to focus, use this timer to start a new session. You can customize the duration and track your progress.",
         targetSelector: '[data-walkthrough="quick-start"]',
-        placement: 'left' as const,
+        placement: isMobile ? 'bottom' : 'left' as const,
       },
       {
         id: 'weekly-tracker',
@@ -66,7 +68,7 @@ const DashboardWalkthrough = () => {
         title: 'Additional Options',
         description: 'Click the three dots menu to access more features like Nora AI assistant, Leaderboard, and Profile settings.',
         targetSelector: '.text-muted-foreground svg[data-lucide="more-vertical"]',
-        placement: 'left' as const,
+        placement: isMobile ? 'bottom' : 'left' as const,
       },
       {
         id: 'navigation',
@@ -108,7 +110,7 @@ const DashboardWalkthrough = () => {
         title: "You're All Set!",
         description: 'You can now start using the app. If you need help, look for this button to restart the tutorial.',
         targetSelector: '[data-walkthrough="help-button"]',
-        placement: 'left' as const,
+        placement: isMobile ? 'bottom' : 'left' as const,
       },
     ];
     

@@ -6,6 +6,7 @@ import { useWalkthrough } from '@/contexts/WalkthroughContext';
 import { ArrowLeft, ArrowRight, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type HighlightOverlayProps = {
   targetRect: DOMRect | null;
@@ -15,7 +16,7 @@ type HighlightOverlayProps = {
 const HighlightOverlay = ({ targetRect }: HighlightOverlayProps) => {
   if (!targetRect) return null;
 
-  // Add 8px padding around the element for better visibility
+  // Add padding around the element for better visibility
   const padding = 8;
   const highlightRect = {
     left: targetRect.left - padding,
@@ -31,7 +32,7 @@ const HighlightOverlay = ({ targetRect }: HighlightOverlayProps) => {
       {/* Semi-transparent overlay */}
       <div className="absolute inset-0 bg-black/60 transition-opacity duration-300" />
       
-      {/* Cutout for the target element */}
+      {/* Cutout for the target element - transparent area */}
       <div 
         className="absolute bg-transparent"
         style={{
@@ -41,6 +42,8 @@ const HighlightOverlay = ({ targetRect }: HighlightOverlayProps) => {
           height: highlightRect.height,
           boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.6)',
           borderRadius: '4px',
+          // Remove pointer-events none to allow interaction with the highlighted element
+          pointerEvents: 'none',
         }}
       />
       
@@ -48,7 +51,7 @@ const HighlightOverlay = ({ targetRect }: HighlightOverlayProps) => {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="absolute border-2 border-triage-purple rounded-md"
+        className="absolute border-2 border-triage-purple rounded-md pointer-events-none"
         style={{
           left: highlightRect.left,
           top: highlightRect.top,
@@ -68,6 +71,7 @@ const WalkthroughStep = () => {
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const popoverTriggerRef = useRef<HTMLButtonElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const currentStep = state.steps[state.currentStepIndex];
   
@@ -82,7 +86,12 @@ const WalkthroughStep = () => {
       // Add highlight effect to the element
       element.classList.add('ring-2', 'ring-triage-purple', 'ring-offset-2', 'transition-all');
       
-      // Scroll element into view if needed
+      // Make the element interactive by removing pointer-events-none
+      element.style.pointerEvents = 'auto';
+      element.style.zIndex = '50';
+      element.style.position = 'relative';
+      
+      // Scroll element into view with proper positioning based on device
       const elementRect = element.getBoundingClientRect();
       const isInViewport = 
         elementRect.top >= 0 &&
@@ -91,7 +100,15 @@ const WalkthroughStep = () => {
         elementRect.right <= window.innerWidth;
         
       if (!isInViewport) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const block = isMobile ? 'center' : 
+          (currentStep.placement === 'top' ? 'end' : 
+           currentStep.placement === 'bottom' ? 'start' : 'center');
+        
+        element.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: block as ScrollLogicalPosition,
+          inline: 'nearest'
+        });
       }
       
       // Open popover after a short delay
@@ -120,9 +137,12 @@ const WalkthroughStep = () => {
       clearInterval(updateInterval);
       if (element) {
         element.classList.remove('ring-2', 'ring-triage-purple', 'ring-offset-2');
+        element.style.pointerEvents = '';
+        element.style.zIndex = '';
+        element.style.position = '';
       }
     };
-  }, [state.isActive, state.currentStepIndex, currentStep]);
+  }, [state.isActive, state.currentStepIndex, currentStep, isMobile]);
   
   const handleNext = () => {
     dispatch({ type: 'NEXT_STEP' });
@@ -147,11 +167,11 @@ const WalkthroughStep = () => {
   
   if (!state.isActive || !currentStep) return null;
 
-  // Determine popover position
+  // Determine popover position with better mobile handling
   const getPopoverPosition = () => {
     if (!targetRect) return { top: 0, left: 0 };
     
-    const padding = 10;
+    const padding = isMobile ? 16 : 10;
     
     // Base position at center of element
     let position = {
@@ -181,6 +201,22 @@ const WalkthroughStep = () => {
     return position;
   };
   
+  // Determine optimal width based on screen size
+  const getPopoverWidth = () => {
+    if (isMobile) {
+      // For very small screens, use almost full width
+      if (window.innerWidth < 320) return 'calc(100vw - 40px)';
+      // For small mobile screens
+      if (window.innerWidth < 375) return '85vw';
+      // For medium mobile screens
+      if (window.innerWidth < 480) return '80vw';
+      // For larger mobile screens
+      return '75vw';
+    }
+    // Default width for tablets and desktops
+    return '20rem';
+  };
+  
   return (
     <>
       <HighlightOverlay targetRect={targetRect} />
@@ -196,8 +232,10 @@ const WalkthroughStep = () => {
         </PopoverTrigger>
         
         <PopoverContent 
-          className="w-72 p-0 border-triage-purple shadow-lg z-50"
+          className="p-0 border-triage-purple shadow-lg z-50"
+          style={{ width: getPopoverWidth() }}
           sideOffset={5}
+          align={isMobile ? "center" : "start"}
         >
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -220,7 +258,7 @@ const WalkthroughStep = () => {
                   {state.steps.map((_, index) => (
                     <div
                       key={index}
-                      className={`h-1.5 w-3 rounded-full transition-colors ${
+                      className={`h-1.5 w-${isMobile ? '1.5' : '3'} rounded-full transition-colors ${
                         index <= state.currentStepIndex ? 'bg-triage-purple' : 'bg-gray-200'
                       }`}
                     />
@@ -233,7 +271,7 @@ const WalkthroughStep = () => {
                       variant="ghost" 
                       size="sm" 
                       onClick={handlePrevious}
-                      className="h-8 px-2 text-xs"
+                      className={`h-8 ${isMobile ? 'px-1.5' : 'px-2'} text-xs`}
                     >
                       <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Back
                     </Button>
@@ -243,7 +281,7 @@ const WalkthroughStep = () => {
                     <Button 
                       size="sm" 
                       onClick={handleNext}
-                      className="h-8 px-3 text-xs bg-triage-purple hover:bg-triage-purple/90"
+                      className={`h-8 ${isMobile ? 'px-2' : 'px-3'} text-xs bg-triage-purple hover:bg-triage-purple/90`}
                     >
                       Finish
                     </Button>
@@ -251,7 +289,7 @@ const WalkthroughStep = () => {
                     <Button 
                       size="sm" 
                       onClick={handleNext}
-                      className="h-8 px-3 text-xs bg-triage-purple hover:bg-triage-purple/90"
+                      className={`h-8 ${isMobile ? 'px-2' : 'px-3'} text-xs bg-triage-purple hover:bg-triage-purple/90`}
                     >
                       Next <ArrowRight className="h-3.5 w-3.5 ml-1" />
                     </Button>
