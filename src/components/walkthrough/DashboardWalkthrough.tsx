@@ -33,14 +33,14 @@ const DashboardWalkthrough = () => {
         title: 'Welcome to Your Dashboard',
         description: "Let's take a quick tour of your personalized focus dashboard. You can always skip or restart this tutorial later.",
         targetSelector: '[data-walkthrough="dashboard-header"]',
-        placement: isMobile ? 'bottom' as const : 'bottom' as const,
+        placement: 'bottom' as const,
       },
       {
         id: 'environment',
         title: 'Your Environment',
         description: `You've selected the ${onboardingState.environment || 'default'} environment. This customizes the look and feel of your experience.`,
         targetSelector: '[data-walkthrough="environment-badge"]',
-        placement: isMobile ? 'bottom' as const : 'bottom' as const,
+        placement: 'bottom' as const,
       },
       {
         id: 'quick-start',
@@ -54,14 +54,14 @@ const DashboardWalkthrough = () => {
         title: 'Weekly Progress',
         description: 'Track your focus sessions over time. Switch between different chart types to visualize your data.',
         targetSelector: '[data-walkthrough="weekly-tracker"]',
-        placement: isMobile ? 'top' as const : 'bottom' as const,
+        placement: 'top' as const, // Changed to top for better visibility with charts
       },
       {
         id: 'ai-insights',
         title: 'AI-Powered Insights',
         description: 'Get personalized recommendations based on your focus patterns and habits.',
         targetSelector: '[data-walkthrough="ai-insights"]',
-        placement: isMobile ? 'bottom' as const : 'top' as const,
+        placement: 'top' as const,
       },
       {
         id: 'menu',

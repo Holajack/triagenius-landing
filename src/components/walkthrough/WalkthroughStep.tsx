@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -87,39 +86,40 @@ const WalkthroughStep = () => {
       const scrollToElement = () => {
         const elementRect = element.getBoundingClientRect();
         const viewportHeight = window.innerHeight;
+        
         const isInViewport = 
-          elementRect.top >= 0 &&
-          elementRect.bottom <= viewportHeight;
+          elementRect.top >= 80 &&
+          elementRect.bottom <= viewportHeight - 150;
         
         if (!isInViewport) {
-          const isNearTop = elementRect.top < viewportHeight * 0.2;
-          const isNearBottom = elementRect.bottom > viewportHeight * 0.8;
+          let scrollPosition;
+          const buffer = isMobile ? 100 : 150;
           
-          let block: ScrollLogicalPosition = 'center';
-          
-          if (isNearTop) {
-            block = 'start';
-          } else if (isNearBottom) {
-            block = 'end';
-          }
-          
-          if (isMobile) {
-            if (currentStep.placement === 'top') {
-              block = 'end';
-            } else if (currentStep.placement === 'bottom') {
-              block = 'start';
-            } else {
-              block = 'center';
+          if (elementRect.height > viewportHeight / 2) {
+            scrollPosition = window.scrollY + elementRect.top - 100;
+          } else {
+            switch (currentStep.placement) {
+              case 'top':
+                scrollPosition = window.scrollY + elementRect.top - (viewportHeight / 3);
+                break;
+              case 'bottom':
+                scrollPosition = window.scrollY + elementRect.top - (viewportHeight / 3);
+                break;
+              case 'left':
+              case 'right':
+                scrollPosition = window.scrollY + elementRect.top - (viewportHeight / 2) + (elementRect.height / 2);
+                break;
+              default:
+                scrollPosition = window.scrollY + elementRect.top - (viewportHeight / 2) + (elementRect.height / 2);
             }
           }
           
-          setTimeout(() => {
-            element.scrollIntoView({
-              behavior: 'smooth',
-              block,
-              inline: 'nearest'
-            });
-          }, 100);
+          scrollPosition = Math.max(0, scrollPosition);
+          
+          window.scrollTo({
+            top: scrollPosition,
+            behavior: 'smooth'
+          });
         }
       };
       
@@ -127,7 +127,8 @@ const WalkthroughStep = () => {
       
       setTimeout(() => {
         setIsOpen(true);
-      }, 500);
+        setTimeout(scrollToElement, 100);
+      }, 400);
     } else {
       console.error("Element not found for selector:", currentStep.targetSelector);
       
@@ -192,76 +193,71 @@ const WalkthroughStep = () => {
   
   if (!state.isActive || !currentStep) return null;
 
-  // Improved popover position calculation based on the element's position and placement
   const getPopoverPosition = () => {
     if (!targetRect) return { top: 0, left: 0 };
     
-    const padding = isMobile ? 20 : 12;
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
     
-    // Base position in the center of the target
+    const visibleTop = window.scrollY;
+    const visibleBottom = window.scrollY + viewportHeight;
+    
     let position = {
       top: targetRect.top + targetRect.height / 2,
       left: targetRect.left + targetRect.width / 2,
     };
     
-    // Adjust position based on placement
+    const mobileTopOffset = isMobile ? 10 : 0;
+    const mobileLeftOffset = isMobile ? 0 : 0;
+    
     switch (currentStep.placement) {
       case 'top':
-        position.top = targetRect.top - padding;
-        position.left = targetRect.left + targetRect.width / 2;
+        position.top = targetRect.top - 10 - mobileTopOffset;
+        position.left = targetRect.left + targetRect.width / 2 + mobileLeftOffset;
         
-        // Ensure it doesn't go off the top of the screen
-        if (position.top < padding) {
-          position.top = targetRect.bottom + padding; // Flip to bottom if not enough space
+        if (position.top < visibleTop + 70) {
+          position.top = targetRect.bottom + 10;
         }
         break;
         
       case 'bottom':
-        position.top = targetRect.bottom + padding;
-        position.left = targetRect.left + targetRect.width / 2;
+        position.top = targetRect.bottom + 10;
+        position.left = targetRect.left + targetRect.width / 2 + mobileLeftOffset;
         
-        // Ensure it doesn't go off the bottom of the screen
-        if (position.top > viewportHeight - 200) { // 200px is an estimate of popover height
-          position.top = Math.max(padding, targetRect.top - padding - 150); // Flip to top
+        if (position.top > visibleBottom - 150) {
+          position.top = targetRect.top - 10 - mobileTopOffset;
         }
         break;
         
       case 'left':
         position.top = targetRect.top + targetRect.height / 2;
-        position.left = targetRect.left - padding;
+        position.left = targetRect.left - 10;
         
-        // Ensure it doesn't go off the left of the screen
-        if (position.left < 150) { // 150px is an estimate of half the popover width
-          position.left = targetRect.right + padding; // Flip to right
+        if (position.left < 150) {
+          position.left = targetRect.right + 10;
         }
         break;
         
       case 'right':
         position.top = targetRect.top + targetRect.height / 2;
-        position.left = targetRect.right + padding;
+        position.left = targetRect.right + 10;
         
-        // Ensure it doesn't go off the right of the screen
-        if (position.left > viewportWidth - 150) { // 150px is an estimate of half the popover width
-          position.left = Math.max(padding, targetRect.left - padding); // Flip to left
+        if (position.left > viewportWidth - 150) {
+          position.left = targetRect.left - 10;
         }
         break;
         
       default:
-        // Default to bottom placement with optimized positioning
-        position.top = targetRect.bottom + padding;
-        position.left = targetRect.left + targetRect.width / 2;
+        position.top = targetRect.bottom + 10;
+        position.left = targetRect.left + targetRect.width / 2 + mobileLeftOffset;
         
-        // Ensure it's visible
-        if (position.top > viewportHeight - 100) {
-          position.top = Math.max(padding, targetRect.top - padding - 100);
+        if (position.top > visibleBottom - 150) {
+          position.top = targetRect.top - 10 - mobileTopOffset;
         }
     }
     
-    // Final boundary checks
-    position.top = Math.max(padding, Math.min(viewportHeight - padding, position.top));
-    position.left = Math.max(padding, Math.min(viewportWidth - padding, position.left));
+    position.top = Math.max(visibleTop + 50, Math.min(visibleBottom - 50, position.top));
+    position.left = Math.max(50, Math.min(viewportWidth - 50, position.left));
     
     return position;
   };
@@ -277,35 +273,29 @@ const WalkthroughStep = () => {
     return '360px';
   };
   
-  // Calculate the optimal align and side for the popover based on the element position
   const getPopoverAlign = () => {
     if (!targetRect) return "center";
     
     const viewportWidth = window.innerWidth;
     const elementCenterX = targetRect.left + (targetRect.width / 2);
     
-    // Calculate which third of the screen the element is in
     if (elementCenterX < viewportWidth / 3) return "start";
     if (elementCenterX > (viewportWidth * 2) / 3) return "end";
     return "center";
   };
   
-  // Calculate the optimal side for the popover
   const getPopoverSide = () => {
     if (!targetRect) return "bottom";
     
     const viewportHeight = window.innerHeight;
     const elementCenterY = targetRect.top + (targetRect.height / 2);
     
-    // For top/bottom placement
     if (currentStep.placement === 'top') return "top";
     if (currentStep.placement === 'bottom') return "bottom";
     
-    // For left/right placement
     if (currentStep.placement === 'left') return "left";
     if (currentStep.placement === 'right') return "right";
     
-    // Default logic based on position in viewport
     if (elementCenterY < viewportHeight / 2) return "bottom";
     return "top";
   };
