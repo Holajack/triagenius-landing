@@ -1,7 +1,7 @@
 
 import { useRef, useEffect } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
-import { OrbitControls, Environment } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import { MountainTerrain } from '../terrain/MountainTerrain';
 import * as THREE from 'three';
 
@@ -112,17 +112,17 @@ export const MountainTerrainScene = ({
       camera={{ position: [0, 20, 20], fov: 60 }}
       gl={{ 
         antialias: true,
-        alpha: false,
+        alpha: true,
         logarithmicDepthBuffer: true, // Better depth perception
         preserveDrawingBuffer: true // Important for screenshots
       }}
       style={{ 
         background: '#e0e8f5',
-        height: '100%',
-        width: '100%',
         position: 'absolute',
         top: 0,
-        left: 0
+        left: 0,
+        width: '100%',
+        height: '100%'
       }}
     >
       {/* Sky background */}

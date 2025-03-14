@@ -26,19 +26,19 @@ const BrainModel = ({
     // Mark the component as loaded after a short delay to ensure proper initialization
     const timer = setTimeout(() => {
       setIsLoaded(true);
-    }, 500); // Increased to give more time for the WebGL context to initialize
+    }, 800); // Increased to give more time for the WebGL context to initialize
     
-    console.log("MountainTerrain component initialized", { zoomLevel, rotation, biomeType });
+    console.log("BrainModel component initialized", { zoomLevel, rotation, biomeType });
     
     return () => {
       clearTimeout(timer);
-      console.log("MountainTerrain component unmounted");
+      console.log("BrainModel component unmounted");
     };
   }, [zoomLevel, rotation, biomeType]);
 
   // Handle errors during rendering
   const handleError = (error: Error) => {
-    console.error("Error in MountainTerrain:", error);
+    console.error("Error in BrainModel:", error);
     setHasError(true);
   };
 
@@ -88,8 +88,8 @@ const BrainModel = ({
         {isMobile ? "~30k vertices (mobile)" : "~90k vertices (desktop)"}
       </div>
       
-      {/* The actual 3D scene */}
-      <div className="h-full w-full relative">
+      {/* The actual 3D scene - ensuring it has proper dimensions */}
+      <div className="h-full w-full absolute inset-0">
         <MountainTerrainScene 
           zoomLevel={zoomLevel}
           rotation={rotation}
