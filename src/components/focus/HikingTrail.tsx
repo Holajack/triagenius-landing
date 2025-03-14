@@ -10,21 +10,74 @@ interface HikingTrailProps {
   isCelebrating?: boolean;
 }
 
-// 3D Person Icon Component
-const Person3DIcon = ({ className = "" }: { className?: string }) => {
+// 2D Animated Person Component
+const AnimatedPerson = ({ className = "", isWalking = true }: { className?: string; isWalking?: boolean }) => {
   return (
     <div className={`relative ${className}`}>
       {/* Head */}
-      <div className="w-6 h-6 rounded-full bg-blue-500 absolute left-1/2 -translate-x-1/2 -top-6 shadow-md" style={{ 
-        background: "linear-gradient(135deg, #33C3F0 10%, #0FA0CE 90%)" 
-      }}></div>
+      <div className="w-6 h-6 rounded-full bg-blue-500 absolute left-1/2 -translate-x-1/2 -top-8 shadow-md" 
+        style={{ background: "linear-gradient(135deg, #33C3F0 10%, #0FA0CE 90%)" }}>
+        {/* Eyes */}
+        <div className="absolute w-1 h-1 rounded-full bg-white top-2 left-1.5"></div>
+        <div className="absolute w-1 h-1 rounded-full bg-white top-2 right-1.5"></div>
+        {/* Smile */}
+        <div className="absolute w-2 h-1 border-b border-white rounded-full bottom-1.5 left-1/2 -translate-x-1/2"></div>
+      </div>
       
       {/* Body */}
-      <div className="w-10 h-5 rounded-tl-full rounded-tr-full bg-blue-600 absolute left-1/2 -translate-x-1/2 -top-3" style={{ 
-        background: "linear-gradient(to bottom, #33C3F0 0%, #1EAEDB 100%)",
-        transformOrigin: "top",
-        transform: "perspective(40px) rotateX(5deg)"
-      }}></div>
+      <div className="w-4 h-8 bg-blue-600 absolute left-1/2 -translate-x-1/2 -top-4 rounded-t-sm" 
+        style={{ background: "linear-gradient(to bottom, #33C3F0 0%, #1EAEDB 100%)" }}>
+      </div>
+      
+      {/* Arms */}
+      <motion.div 
+        className="w-2 h-5 bg-blue-500 absolute -left-1 -top-3 origin-top rounded-full"
+        animate={isWalking ? { 
+          rotate: [-15, 15, -15] 
+        } : {}}
+        transition={{ 
+          repeat: Infinity, 
+          duration: 1.2,
+          ease: "linear"
+        }}
+      ></motion.div>
+      
+      <motion.div 
+        className="w-2 h-5 bg-blue-500 absolute -right-1 -top-3 origin-top rounded-full"
+        animate={isWalking ? { 
+          rotate: [15, -15, 15] 
+        } : {}}
+        transition={{ 
+          repeat: Infinity, 
+          duration: 1.2,
+          ease: "linear"
+        }}
+      ></motion.div>
+      
+      {/* Legs */}
+      <motion.div 
+        className="w-2 h-5 bg-blue-600 absolute left-0 top-3.5 origin-top rounded-full"
+        animate={isWalking ? { 
+          rotate: [15, -15, 15] 
+        } : {}}
+        transition={{ 
+          repeat: Infinity, 
+          duration: 1.2,
+          ease: "linear"
+        }}
+      ></motion.div>
+      
+      <motion.div 
+        className="w-2 h-5 bg-blue-600 absolute right-0 top-3.5 origin-top rounded-full"
+        animate={isWalking ? { 
+          rotate: [-15, 15, -15] 
+        } : {}}
+        transition={{ 
+          repeat: Infinity, 
+          duration: 1.2,
+          ease: "linear"
+        }}
+      ></motion.div>
     </div>
   );
 };
@@ -35,11 +88,16 @@ export const HikingTrail = ({
   isCelebrating = false
 }: HikingTrailProps) => {
   const [animate, setAnimate] = useState(false);
+  const [isWalking, setIsWalking] = useState(true);
   
   useEffect(() => {
     if (isCelebrating) {
       setAnimate(true);
-      const timer = setTimeout(() => setAnimate(false), 3000);
+      setIsWalking(false);
+      const timer = setTimeout(() => {
+        setAnimate(false);
+        setIsWalking(true);
+      }, 3000);
       return () => clearTimeout(timer);
     }
   }, [isCelebrating]);
@@ -175,11 +233,11 @@ export const HikingTrail = ({
         }}
       >
         <div className="relative">
-          <Person3DIcon />
+          <AnimatedPerson isWalking={isWalking} />
           
           {isCelebrating && (
             <motion.div 
-              className="absolute -top-8 -left-8 right-0"
+              className="absolute -top-10 -left-8 right-0"
               initial={{ opacity: 0, scale: 0.5 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.5 }}
