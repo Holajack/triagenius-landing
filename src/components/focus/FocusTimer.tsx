@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -231,7 +230,7 @@ export const FocusTimer = ({
     }
   };
 
-  // Calculate the overall session progress (out of 3 hours)
+  // Calculate the overall session progress (out of 3 hours) - MODIFIED to show progress increasing from 0 to 100%
   const calculateOverallProgress = () => {
     const completedTime = elapsedTimeRef.current + (initialTimeRef.current - time);
     return Math.min((completedTime / TOTAL_SESSION_TIME) * 100, 100);
@@ -295,7 +294,7 @@ export const FocusTimer = ({
         {/* Current segment progress */}
         <Progress value={progress} className="w-full" />
         
-        {/* Overall session progress (3 hours) */}
+        {/* Overall session progress (3 hours) - MODIFIED to show progress increasing from 0 to 3h */}
         <div className="w-full flex flex-col gap-1">
           <div className="flex justify-between text-xs text-muted-foreground mb-1">
             <span>0h</span>

@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { StudyEnvironment } from "@/types/onboarding";
 import { Navigation, Flag, Mountain, Trees } from "lucide-react";
@@ -15,23 +14,23 @@ const AnimatedPerson = ({ className = "", isWalking = true }: { className?: stri
   return (
     <div className={`relative ${className}`}>
       {/* Head */}
-      <div className="w-6 h-6 rounded-full bg-blue-500 absolute left-1/2 -translate-x-1/2 -top-8 shadow-md" 
+      <div className="w-4 h-4 rounded-full bg-blue-500 absolute left-1/2 -translate-x-1/2 -top-6 shadow-md" 
         style={{ background: "linear-gradient(135deg, #33C3F0 10%, #0FA0CE 90%)" }}>
         {/* Eyes */}
-        <div className="absolute w-1 h-1 rounded-full bg-white top-2 left-1.5"></div>
-        <div className="absolute w-1 h-1 rounded-full bg-white top-2 right-1.5"></div>
+        <div className="absolute w-0.5 h-0.5 rounded-full bg-white top-1.5 left-1"></div>
+        <div className="absolute w-0.5 h-0.5 rounded-full bg-white top-1.5 right-1"></div>
         {/* Smile */}
-        <div className="absolute w-2 h-1 border-b border-white rounded-full bottom-1.5 left-1/2 -translate-x-1/2"></div>
+        <div className="absolute w-1.5 h-0.5 border-b border-white rounded-full bottom-1 left-1/2 -translate-x-1/2"></div>
       </div>
       
       {/* Body */}
-      <div className="w-4 h-8 bg-blue-600 absolute left-1/2 -translate-x-1/2 -top-4 rounded-t-sm" 
+      <div className="w-3 h-6 bg-blue-600 absolute left-1/2 -translate-x-1/2 -top-3 rounded-t-sm" 
         style={{ background: "linear-gradient(to bottom, #33C3F0 0%, #1EAEDB 100%)" }}>
       </div>
       
       {/* Arms */}
       <motion.div 
-        className="w-2 h-5 bg-blue-500 absolute -left-1 -top-3 origin-top rounded-full"
+        className="w-1.5 h-4 bg-blue-500 absolute -left-1 -top-2 origin-top rounded-full"
         animate={isWalking ? { 
           rotate: [-15, 15, -15] 
         } : {}}
@@ -43,7 +42,7 @@ const AnimatedPerson = ({ className = "", isWalking = true }: { className?: stri
       ></motion.div>
       
       <motion.div 
-        className="w-2 h-5 bg-blue-500 absolute -right-1 -top-3 origin-top rounded-full"
+        className="w-1.5 h-4 bg-blue-500 absolute -right-1 -top-2 origin-top rounded-full"
         animate={isWalking ? { 
           rotate: [15, -15, 15] 
         } : {}}
@@ -56,7 +55,7 @@ const AnimatedPerson = ({ className = "", isWalking = true }: { className?: stri
       
       {/* Legs */}
       <motion.div 
-        className="w-2 h-5 bg-blue-600 absolute left-0 top-3.5 origin-top rounded-full"
+        className="w-1.5 h-4 bg-blue-600 absolute left-0 top-2.5 origin-top rounded-full"
         animate={isWalking ? { 
           rotate: [15, -15, 15] 
         } : {}}
@@ -68,7 +67,7 @@ const AnimatedPerson = ({ className = "", isWalking = true }: { className?: stri
       ></motion.div>
       
       <motion.div 
-        className="w-2 h-5 bg-blue-600 absolute right-0 top-3.5 origin-top rounded-full"
+        className="w-1.5 h-4 bg-blue-600 absolute right-0 top-2.5 origin-top rounded-full"
         animate={isWalking ? { 
           rotate: [-15, 15, -15] 
         } : {}}
@@ -108,7 +107,7 @@ export const HikingTrail = ({
       case 1: return "50%";
       case 2: return "75%";
       case 3: return "95%";
-      default: return "10%";
+      default: return "15%";
     }
   };
   
@@ -214,13 +213,13 @@ export const HikingTrail = ({
         <Flag className="h-6 w-6 text-red-500" />
       </div>
       
-      {/* Hiker Character */}
+      {/* Hiker Character - positioned DIRECTLY on the path with smaller size */}
       <motion.div
-        className="absolute bottom-[19%]"
-        initial={{ x: "10%" }}
+        className="absolute bottom-[18%]"
+        initial={{ x: "15%" }}
         animate={{ 
           x: getMilestonePosition(milestone),
-          y: animate ? -15 : 0
+          y: animate ? -10 : 0
         }}
         transition={{ 
           x: { duration: 1, ease: "easeInOut" },
@@ -237,7 +236,7 @@ export const HikingTrail = ({
           
           {isCelebrating && (
             <motion.div 
-              className="absolute -top-10 -left-8 right-0"
+              className="absolute -top-8 -left-6 right-0"
               initial={{ opacity: 0, scale: 0.5 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.5 }}
