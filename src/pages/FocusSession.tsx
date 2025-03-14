@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -25,11 +24,9 @@ const FocusSession = () => {
   const [segmentProgress, setSegmentProgress] = useState(0); // Progress within the current segment (0-100)
   
   useEffect(() => {
-    // Disable scrolling when the focus session is active
     document.body.style.overflow = 'hidden';
     
     return () => {
-      // Re-enable scrolling when leaving the page
       document.body.style.overflow = 'auto';
     };
   }, []);
@@ -45,7 +42,6 @@ const FocusSession = () => {
   };
   
   const handleSessionEnd = () => {
-    // Save session data to localStorage for the report page
     localStorage.setItem('sessionData', JSON.stringify({
       milestone: currentMilestone,
       duration: currentMilestone * 45, // Minutes based on milestone
@@ -61,18 +57,16 @@ const FocusSession = () => {
     setIsCelebrating(true);
     setSegmentProgress(0); // Reset segment progress when milestone is reached
     
-    // Reset celebrating state after animation plays
     setTimeout(() => {
       setIsCelebrating(false);
     }, 3000);
   };
   
-  // Handle progress update from timer
   const handleProgressUpdate = (progress: number) => {
-    setSegmentProgress(progress);
+    const easedProgress = Math.pow(progress / 100, 0.85) * 100;
+    setSegmentProgress(easedProgress);
   };
   
-  // Toggle low power mode
   const toggleLowPowerMode = () => {
     setLowPowerMode(!lowPowerMode);
     toast.info(lowPowerMode ? 

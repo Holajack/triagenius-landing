@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { StudyEnvironment } from "@/types/onboarding";
 import { useState, useEffect, useRef } from "react";
@@ -11,39 +10,75 @@ interface HikingTrailProps {
 }
 
 // Pixel Art Hiker Component with detailed animations (20% smaller)
-const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true, isGoingUphill = false }: { 
+const AnimatedPerson = ({ 
+  className = "", 
+  isWalking = true, 
+  facingRight = true, 
+  isGoingUphill = false,
+  terrain = 'flat',
+  walkingSpeed = 1
+}: { 
   className?: string; 
   isWalking?: boolean;
   facingRight?: boolean;
   isGoingUphill?: boolean;
+  terrain?: 'flat' | 'uphill' | 'downhill' | 'rocky';
+  walkingSpeed?: number; 
 }) => {
   const [frame, setFrame] = useState(0);
   const totalFrames = 8; // 8 frames for smooth pixel art animation
   
-  // Animate through frames for smooth walking
+  // Adjust animation speed based on terrain and walking speed
+  const getFrameInterval = () => {
+    let baseInterval = 125; // Base interval (ms) ~8 FPS for pixel art style
+    
+    // Adjust based on terrain
+    switch(terrain) {
+      case 'uphill':
+        baseInterval *= 1.3; // Slower on uphill
+        break;
+      case 'downhill':
+        baseInterval *= 0.85; // Faster on downhill
+        break;
+      case 'rocky':
+        baseInterval *= 1.2; // Slightly slower on rocky terrain
+        break;
+      default:
+        break;
+    }
+    
+    // Apply user-defined walking speed modifier
+    return baseInterval / walkingSpeed;
+  };
+  
+  // Animate through frames for smooth walking with terrain-appropriate timing
   useEffect(() => {
     if (!isWalking) return;
     
     const frameInterval = setInterval(() => {
       setFrame(prev => (prev + 1) % totalFrames);
-    }, 125); // ~8 FPS for pixel art style
+    }, getFrameInterval());
     
     return () => clearInterval(frameInterval);
-  }, [isWalking]);
+  }, [isWalking, terrain, walkingSpeed]);
 
-  // Calculate frame-based offsets for animation
-  const getFrameOffset = (part: 'leg' | 'arm' | 'stick' | 'backpack') => {
+  // Calculate frame-based offsets for animation with improved terrain response
+  const getFrameOffset = (part: 'leg' | 'arm' | 'stick' | 'backpack' | 'body') => {
     const phase = frame / totalFrames;
+    const terrainMultiplier = terrain === 'rocky' ? 1.3 : 1.0; // More exaggerated movements on rocky terrain
     
     switch(part) {
       case 'leg':
-        return Math.sin(phase * Math.PI * 2) * 2;
+        return Math.sin(phase * Math.PI * 2) * 2 * terrainMultiplier;
       case 'arm':
-        return Math.sin(phase * Math.PI * 2) * 1.5;
+        return Math.sin(phase * Math.PI * 2) * 1.5 * terrainMultiplier;
       case 'stick':
-        return Math.sin(phase * Math.PI * 2 + Math.PI/4) * 1;
+        return Math.sin(phase * Math.PI * 2 + Math.PI/4) * 1 * terrainMultiplier;
       case 'backpack':
         return Math.sin(phase * Math.PI * 2) * 0.5;
+      case 'body':
+        // Body has subtle up/down motion while walking
+        return Math.sin(phase * Math.PI * 4) * 0.3; // Doubled frequency for more natural bounce
       default:
         return 0;
     }
@@ -52,19 +87,50 @@ const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true, 
   // Breathing animation for idle stance
   const breathingOffset = isWalking ? 0 : Math.sin(Date.now() / 1000) * 0.3;
   
-  // Calculate uphill angle offset
-  const uphillAngle = isGoingUphill ? 10 : 0;
+  // Calculate terrain angle offset
+  const getTerrainAngle = () => {
+    switch(terrain) {
+      case 'uphill':
+        return 10;
+      case 'downhill':
+        return -8;
+      default:
+        return 0;
+    }
+  };
+  
+  const terrainAngle = getTerrainAngle();
+
+  // Enhanced step effect that varies by terrain
+  const getStepStyle = () => {
+    if (!isWalking) return {};
+    
+    // Different step styles for different terrains
+    const stepHeight = terrain === 'rocky' ? 
+      getFrameOffset('body') * 1.5 : // More pronounced steps on rocky terrain
+      getFrameOffset('body');
+    
+    return { transform: `translateY(${stepHeight}px)` };
+  };
 
   return (
     <div 
       className={`relative ${className} ${facingRight ? '' : 'scale-x-[-1]'} scale-[0.8]`}
-      style={{ transform: isGoingUphill ? `rotate(${uphillAngle}deg)` : undefined }}
+      style={{ 
+        transform: terrainAngle !== 0 ? `rotate(${terrainAngle}deg)` : undefined,
+        ...getStepStyle()
+      }}
     >
       {/* Head - smaller and closer to body */}
       <div className="w-3 h-3 rounded-full bg-[#e8b89b] absolute left-1/2 -translate-x-1/2 -top-7">
         {/* Face details - pixel art style */}
         <div className="absolute w-1.5 h-0.5 bg-[#d37c59] bottom-1 left-1/2 -translate-x-1/2 rounded-none"></div>
         <div className="absolute w-0.5 h-0.5 bg-[#362617] bottom-2 left-1 rounded-none"></div>
+        
+        {/* Blinking effect */}
+        {frame % 8 === 0 && (
+          <div className="absolute w-0.5 h-0.1 bg-[#362617] bottom-2 left-1 rounded-none"></div>
+        )}
       </div>
 
       {/* Neck - shorter to bring head closer to body */}
@@ -73,7 +139,7 @@ const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true, 
       {/* Body - Slim pixel art proportions with hiking shirt */}
       <div 
         className="w-4 h-5 bg-[#d3a05d] absolute left-1/2 -translate-x-1/2 -top-3.5 rounded-none"
-        style={{ transform: `translateY(${breathingOffset}px)` }}
+        style={{ transform: `translateY(${breathingOffset + getFrameOffset('body')}px)` }}
       >
         {/* Shirt details */}
         <div className="w-4 h-3 bg-[#a17a45] absolute top-2 left-0 rounded-none"></div>
@@ -172,6 +238,30 @@ const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true, 
               }}
             />
           ))}
+          
+          {/* Add more pronounced dust clouds for rocky terrain */}
+          {terrain === 'rocky' && (
+            [...Array(2)].map((_, i) => (
+              <motion.div 
+                key={`rocky-${i}`}
+                className="absolute w-1.5 h-1.5 bg-[#e5e2dd] rounded-full opacity-50"
+                style={{ 
+                  left: `-${(i+1) * 4 + frame}px`, 
+                  bottom: `${i % 2 === 0 ? -1 : 1}px` 
+                }}
+                animate={{
+                  opacity: [0.5, 0],
+                  y: [0, -4],
+                  x: [0, -6]
+                }}
+                transition={{
+                  repeat: Infinity,
+                  duration: 0.8,
+                  delay: i * 0.3
+                }}
+              />
+            ))
+          )}
         </>
       )}
     </div>
@@ -223,7 +313,7 @@ export const HikingTrail = ({
     setBackgroundPosition(milestone * 25 + (progress / 4));
   }, [milestone, progress]);
   
-  // Dynamic terrain changes
+  // Enhanced terrain system with more terrain types
   useEffect(() => {
     if (terrainTimeoutRef.current) {
       clearTimeout(terrainTimeoutRef.current);
@@ -233,10 +323,12 @@ export const HikingTrail = ({
       const terrainType = Math.random();
       if (terrainType > 0.7) {
         setTerrain('uphill');
-      } else if (terrainType > 0.4) {
+      } else if (terrainType > 0.5) {
         setTerrain('flat');
-      } else {
+      } else if (terrainType > 0.3) {
         setTerrain('downhill');
+      } else {
+        setTerrain('rocky'); // New rocky terrain type for more variety
       }
       
       // Schedule next terrain change
@@ -251,6 +343,20 @@ export const HikingTrail = ({
       }
     };
   }, []);
+  
+  // Calculate walking speed based on terrain
+  const getWalkingSpeed = () => {
+    switch(terrain) {
+      case 'uphill':
+        return 0.8; // 20% slower on uphill
+      case 'downhill':
+        return 1.2; // 20% faster on downhill
+      case 'rocky':
+        return 0.85; // 15% slower on rocky terrain
+      default:
+        return 1.0; // Normal speed on flat terrain
+    }
+  };
   
   // Dynamic environmental effects
   useEffect(() => {
@@ -656,6 +762,8 @@ export const HikingTrail = ({
             isWalking={isWalking} 
             facingRight={true}
             isGoingUphill={terrain === 'uphill'} 
+            terrain={terrain}
+            walkingSpeed={getWalkingSpeed()}
           />
           
           {/* Milestone check map animation */}
@@ -690,7 +798,7 @@ export const HikingTrail = ({
             </motion.div>
           )}
           
-          {/* Celebration speech bubble */}
+          {/* Celebration speech bubble with dynamic messages */}
           {isCelebrating && !showCheckMap && !showDrink && (
             <motion.div 
               className="absolute -top-8 -left-6 right-0"
@@ -699,7 +807,10 @@ export const HikingTrail = ({
               exit={{ opacity: 0, scale: 0.5 }}
             >
               <div className="text-xs font-pixel bg-white rounded-none px-2 py-1 shadow-sm border border-gray-200">
-                Checkpoint!
+                {milestone === 0 ? "First milestone!" : 
+                 milestone === 1 ? "Halfway there!" :
+                 milestone === 2 ? "Almost done!" :
+                 "Summit reached!"}
               </div>
             </motion.div>
           )}
@@ -752,17 +863,24 @@ export const HikingTrail = ({
         </motion.div>
       )}
       
-      {/* Camera shake effect during significant events */}
-      {(isCelebrating || terrain === 'uphill') && (
+      {/* Camera shake effect with enhanced terrain-specific shaking */}
+      {(isCelebrating || terrain !== 'flat') && (
         <motion.div 
           className="absolute inset-0 pointer-events-none"
           animate={{ 
-            x: terrain === 'uphill' ? [-1, 1, -1] : [-2, 2, -2, 2, 0],
-            y: terrain === 'uphill' ? [-1, 1, -1] : [-2, 2, -1, 1, 0]
+            x: terrain === 'uphill' ? [-1, 1, -1] : 
+               terrain === 'rocky' ? [-2, 1, -1.5, 0.5, -1] :
+               isCelebrating ? [-2, 2, -2, 2, 0] : 
+               [-1, 0, -1],
+            y: terrain === 'uphill' ? [-1, 1, -1] : 
+               terrain === 'rocky' ? [-1.5, 1, -0.5, 0.8, -0.2] :
+               isCelebrating ? [-2, 2, -1, 1, 0] : 
+               [-0.5, 0.5, -0.5]
           }}
           transition={{ 
-            repeat: terrain === 'uphill' ? Infinity : 1,
-            duration: terrain === 'uphill' ? 0.5 : 0.3,
+            repeat: terrain !== 'flat' ? Infinity : 1,
+            duration: terrain === 'rocky' ? 0.3 : 
+                      terrain === 'uphill' ? 0.5 : 0.3,
             ease: "easeInOut"
           }}
         />
@@ -770,3 +888,4 @@ export const HikingTrail = ({
     </div>
   );
 };
+
