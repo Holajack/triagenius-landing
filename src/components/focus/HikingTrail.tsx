@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { StudyEnvironment } from "@/types/onboarding";
 import { useState, useEffect } from "react";
@@ -52,7 +51,7 @@ const AnimatedPerson = ({ className = "", isWalking = true, facingRight = true }
   const breathingOffset = isWalking ? 0 : Math.sin(Date.now() / 1000) * 0.3;
 
   return (
-    <div className={`relative ${className} ${facingRight ? '' : 'scale-x-[-1]'} scale-[0.8]`}> {/* Added scale-[0.8] to make character 20% smaller */}
+    <div className={`relative ${className} ${facingRight ? '' : 'scale-x-[-1]'} scale-[0.8]`}>
       {/* Head - smaller and closer to body */}
       <div className="w-3 h-3 rounded-full bg-[#e8b89b] absolute left-1/2 -translate-x-1/2 -top-7">
         {/* Face details - pixel art style */}
@@ -205,32 +204,47 @@ export const HikingTrail = ({
     }
   }, [isCelebrating]);
   
-  // Update background position based on progress
+  // Update background position based on progress - modified to be more continuous
   useEffect(() => {
+    // Calculate smooth background position that moves continuously as progress increases
     setBackgroundPosition(milestone * 25 + (progress / 4));
   }, [milestone, progress]);
   
+  // Determine checkpoint visibility based on progress and milestone
+  const isCheckpointVisible = (checkpointIndex: number) => {
+    // Current checkpoint is always visible
+    if (checkpointIndex === milestone) {
+      return true;
+    }
+    
+    // Next checkpoint becomes visible as we get closer to it
+    if (checkpointIndex === milestone + 1) {
+      return progress > 65; // Only show next checkpoint when we're 65% through the current segment
+    }
+    
+    // Previous checkpoints are always visible
+    if (checkpointIndex < milestone) {
+      return true;
+    }
+    
+    // Future checkpoints (beyond next) are not visible
+    return false;
+  };
+  
+  // Calculate checkpoint entrance animation based on progress
+  const getCheckpointOpacity = (checkpointIndex: number) => {
+    if (checkpointIndex === milestone + 1) {
+      // Gradually fade in the next checkpoint
+      return Math.max(0, (progress - 65) / 35);
+    }
+    
+    return isCheckpointVisible(checkpointIndex) ? 1 : 0;
+  };
+  
   // Get position between checkpoints based on progress
   const getProgressPosition = () => {
-    // Calculate the starting position based on milestone
-    const startPos = {
-      0: 10,
-      1: 35,
-      2: 60,
-      3: 85
-    }[milestone] || 10;
-    
-    // Calculate the ending position of the next milestone
-    const endPos = {
-      0: 35,
-      1: 60,
-      2: 85,
-      3: 95
-    }[milestone] || 35;
-    
-    // Calculate position based on progress
-    const position = startPos + ((endPos - startPos) * (progress / 100));
-    return `${position}%`;
+    // Fixed position for the character, we'll move the background instead
+    return "20%";
   };
   
   return (
@@ -244,45 +258,128 @@ export const HikingTrail = ({
         {/* Pixel Art Sky Background - with color banding for 16-bit look */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#5d94fb] via-[#5d94fb] to-[#78a9ff]" style={{ backgroundSize: '32px 32px' }}></div>
         
-        {/* Pixelated Clouds - repeated 3 times across width */}
+        {/* Pixelated Clouds - repeated for parallax effect */}
         <div className="absolute top-[10%] left-[15%] w-14 h-5 bg-white opacity-90 rounded-full"></div>
         <div className="absolute top-[15%] left-[45%] w-20 h-6 bg-white opacity-80 rounded-full"></div>
         <div className="absolute top-[8%] left-[75%] w-12 h-4 bg-white opacity-85 rounded-full"></div>
         
-        {/* Duplicated clouds for parallax effect */}
+        {/* Duplicated clouds for continuous parallax effect */}
         <div className="absolute top-[12%] left-[115%] w-14 h-5 bg-white opacity-90 rounded-full"></div>
         <div className="absolute top-[17%] left-[145%] w-20 h-6 bg-white opacity-80 rounded-full"></div>
         <div className="absolute top-[9%] left-[175%] w-12 h-4 bg-white opacity-85 rounded-full"></div>
         
-        {/* 16-bit Style Mountain Range Background (angular, with color banding) - extended for parallax */}
-        <div className="absolute bottom-[45%] left-0 w-[200%] h-[25%]">
-          <svg viewBox="0 0 200 20" preserveAspectRatio="none" className="h-full w-full">
-            <path d="M0,0 L5,2 L10,0 L15,3 L20,0 L25,4 L30,1 L35,5 L40,2 L45,6 L50,3 L55,5 L60,2 L65,4 L70,0 L75,3 L80,1 L85,4 L90,2 L95,3 L100,0 L105,2 L110,0 L115,3 L120,0 L125,4 L130,1 L135,5 L140,2 L145,6 L150,3 L155,5 L160,2 L165,4 L170,0 L175,3 L180,1 L185,4 L190,2 L195,3 L200,0 L200,20 L0,20 Z" fill="#4a5fd0" />
+        {/* Even more duplicated clouds for continuous experience */}
+        <div className="absolute top-[11%] left-[215%] w-16 h-5 bg-white opacity-90 rounded-full"></div>
+        <div className="absolute top-[16%] left-[245%] w-18 h-6 bg-white opacity-85 rounded-full"></div>
+        <div className="absolute top-[7%] left-[275%] w-14 h-4 bg-white opacity-80 rounded-full"></div>
+        
+        {/* Mountain Ranges - extended for continuous parallax */}
+        <div className="absolute bottom-[45%] left-0 w-[300%] h-[25%]">
+          <svg viewBox="0 0 300 20" preserveAspectRatio="none" className="h-full w-full">
+            <path d="M0,0 L5,2 L10,0 L15,3 L20,0 L25,4 L30,1 L35,5 L40,2 L45,6 L50,3 L55,5 L60,2 L65,4 L70,0 L75,3 L80,1 L85,4 L90,2 L95,3 L100,0 L105,2 L110,0 L115,3 L120,0 L125,4 L130,1 L135,5 L140,2 L145,6 L150,3 L155,5 L160,2 L165,4 L170,0 L175,3 L180,1 L185,4 L190,2 L195,3 L200,0 L205,2 L210,0 L215,3 L220,0 L225,4 L230,1 L235,5 L240,2 L245,6 L250,3 L255,5 L260,2 L265,4 L270,0 L275,3 L280,1 L285,4 L290,2 L295,3 L300,0 L300,20 L0,20 Z" fill="#4a5fd0" />
           </svg>
         </div>
         
-        {/* Closer Mountain Range - extended for parallax */}
-        <div className="absolute bottom-[35%] left-0 w-[200%] h-[20%]">
-          <svg viewBox="0 0 200 20" preserveAspectRatio="none" className="h-full w-full">
-            <path d="M0,3 L8,1 L16,5 L24,2 L32,6 L40,3 L48,7 L56,4 L64,6 L72,3 L80,5 L88,2 L96,4 L104,3 L112,1 L120,5 L128,2 L136,6 L144,3 L152,7 L160,4 L168,6 L176,3 L184,5 L192,2 L200,3 L200,20 L0,20 Z" fill="#5870d6" />
+        {/* Closer Mountain Range - extended for continuous parallax */}
+        <div className="absolute bottom-[35%] left-0 w-[300%] h-[20%]">
+          <svg viewBox="0 0 300 20" preserveAspectRatio="none" className="h-full w-full">
+            <path d="M0,3 L8,1 L16,5 L24,2 L32,6 L40,3 L48,7 L56,4 L64,6 L72,3 L80,5 L88,2 L96,4 L104,3 L112,1 L120,5 L128,2 L136,6 L144,3 L152,7 L160,4 L168,6 L176,3 L184,5 L192,2 L200,3 L208,1 L216,5 L224,2 L232,6 L240,3 L248,7 L256,4 L264,6 L272,3 L280,5 L288,2 L296,4 L300,3 L300,20 L0,20 Z" fill="#5870d6" />
           </svg>
         </div>
         
-        {/* Pixel Art Hills - more angular for 16-bit look - extended for parallax */}
-        <div className="absolute bottom-[25%] left-0 w-[200%] h-[15%]">
-          <svg viewBox="0 0 200 20" preserveAspectRatio="none" className="h-full w-full">
-            <path d="M0,8 L12,4 L24,9 L36,5 L48,10 L60,6 L72,9 L84,5 L96,8 L108,6 L120,8 L132,4 L144,9 L156,5 L168,10 L180,6 L192,9 L200,7 L200,20 L0,20 Z" fill="#38a169" />
+        {/* Pixel Art Hills - extended for continuous parallax */}
+        <div className="absolute bottom-[25%] left-0 w-[300%] h-[15%]">
+          <svg viewBox="0 0 300 20" preserveAspectRatio="none" className="h-full w-full">
+            <path d="M0,8 L12,4 L24,9 L36,5 L48,10 L60,6 L72,9 L84,5 L96,8 L108,6 L120,8 L132,4 L144,9 L156,5 L168,10 L180,6 L192,9 L204,7 L216,4 L228,9 L240,5 L252,10 L264,6 L276,9 L288,5 L300,8 L300,20 L0,20 Z" fill="#38a169" />
           </svg>
         </div>
         
-        {/* Pixelated Ground - extended for parallax */}
-        <div className="absolute bottom-0 left-0 w-[200%] h-[25%] bg-[#4ade80]">
+        {/* Pixelated Ground - extended for continuous parallax */}
+        <div className="absolute bottom-0 left-0 w-[300%] h-[25%] bg-[#4ade80]">
           {/* Grid Pattern for 16-bit look */}
           <div className="absolute inset-0 opacity-10" 
               style={{ 
                 backgroundImage: 'linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)', 
                 backgroundSize: '8px 8px' 
               }}>
+          </div>
+        </div>
+        
+        {/* Trees & Scenery - extended and more varied for continuous experience */}
+        {/* First section trees */}
+        <div className="absolute bottom-[25%] left-[5%]">
+          <div className="w-10 h-12 relative">
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-4 bg-[#7d5a33] rounded-none"></div>
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-8 h-6 bg-[#2f855a] rounded-none"></div>
+            <div className="absolute bottom-7 left-1/2 -translate-x-1/2 w-6 h-5 bg-[#2f855a] rounded-none"></div>
+          </div>
+        </div>
+        
+        <div className="absolute bottom-[25%] left-[20%]">
+          <div className="w-8 h-10 relative">
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-3 bg-[#7d5a33] rounded-none"></div>
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-6 h-5 bg-[#2f855a] rounded-none"></div>
+            <div className="absolute bottom-5 left-1/2 -translate-x-1/2 w-4 h-4 bg-[#2f855a] rounded-none"></div>
+          </div>
+        </div>
+        
+        {/* Second section trees */}
+        <div className="absolute bottom-[25%] left-[45%]">
+          <div className="w-12 h-14 relative">
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-5 bg-[#7d5a33] rounded-none"></div>
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-10 h-7 bg-[#38a169] rounded-none"></div>
+            <div className="absolute bottom-9 left-1/2 -translate-x-1/2 w-8 h-6 bg-[#38a169] rounded-none"></div>
+          </div>
+        </div>
+        
+        <div className="absolute bottom-[25%] left-[60%]">
+          <div className="w-10 h-12 relative">
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-4 bg-[#7d5a33] rounded-none"></div>
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-8 h-6 bg-[#2f855a] rounded-none"></div>
+            <div className="absolute bottom-7 left-1/2 -translate-x-1/2 w-6 h-5 bg-[#2f855a] rounded-none"></div>
+          </div>
+        </div>
+        
+        {/* Third section - autumn trees */}
+        <div className="absolute bottom-[25%] left-[85%]">
+          <div className="w-10 h-12 relative">
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-4 bg-[#7d5a33] rounded-none"></div>
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-8 h-6 bg-[#f6ad55] rounded-none"></div>
+            <div className="absolute bottom-7 left-1/2 -translate-x-1/2 w-6 h-5 bg-[#f6ad55] rounded-none"></div>
+          </div>
+        </div>
+        
+        <div className="absolute bottom-[25%] left-[95%]">
+          <div className="w-14 h-16 relative">
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-6 bg-[#7d5a33] rounded-none"></div>
+            <div className="absolute bottom-5 left-1/2 -translate-x-1/2 w-12 h-8 bg-[#ed8936] rounded-none"></div>
+            <div className="absolute bottom-11 left-1/2 -translate-x-1/2 w-10 h-6 bg-[#ed8936] rounded-none"></div>
+          </div>
+        </div>
+        
+        {/* Fourth section - more varied trees */}
+        <div className="absolute bottom-[25%] left-[120%]">
+          <div className="w-8 h-10 relative">
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-3 bg-[#7d5a33] rounded-none"></div>
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-6 h-5 bg-[#48bb78] rounded-none"></div>
+            <div className="absolute bottom-5 left-1/2 -translate-x-1/2 w-4 h-4 bg-[#48bb78] rounded-none"></div>
+          </div>
+        </div>
+        
+        <div className="absolute bottom-[25%] left-[135%]">
+          <div className="w-12 h-14 relative">
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-5 bg-[#7d5a33] rounded-none"></div>
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-10 h-7 bg-[#2c7a7b] rounded-none"></div>
+            <div className="absolute bottom-9 left-1/2 -translate-x-1/2 w-8 h-6 bg-[#2c7a7b] rounded-none"></div>
+          </div>
+        </div>
+        
+        {/* Final area - mountain cabin */}
+        <div className="absolute bottom-[28%] right-[50%]">
+          <div className="w-16 h-20 relative">
+            <div className="absolute bottom-0 left-0 w-16 h-12 bg-[#718096] rounded-none"></div>
+            <div className="absolute bottom-8 left-3 w-10 h-12 bg-[#4a5568] rounded-none"></div>
+            <div className="absolute top-0 left-6 w-4 h-4 bg-white rounded-none"></div>
           </div>
         </div>
       </motion.div>
@@ -299,74 +396,60 @@ export const HikingTrail = ({
           />
         </svg>
         
-        {/* Checkpoint Markers - pixel art style */}
-        <div className="absolute top-0 left-[10%] -translate-x-1/2 -translate-y-1/2">
-          <div className="h-4 w-4 rounded-none bg-white border-2 border-[#2f855a]"></div>
-        </div>
+        {/* Checkpoint Markers with visibility and animation based on progress */}
+        {[0, 1, 2, 3].map((checkpointIndex) => (
+          <motion.div 
+            key={checkpointIndex}
+            className="absolute top-0"
+            style={{ 
+              left: `${10 + checkpointIndex * 25}%`,
+              opacity: getCheckpointOpacity(checkpointIndex),
+              visibility: isCheckpointVisible(checkpointIndex) ? 'visible' : 'hidden'
+            }}
+            animate={{
+              y: isCheckpointVisible(checkpointIndex) ? 0 : 10,
+              scale: isCheckpointVisible(checkpointIndex) ? 1 : 0.5,
+            }}
+            transition={{
+              duration: 0.5,
+              ease: "easeOut"
+            }}
+          >
+            <div className="h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-none bg-white border-2 border-[#2f855a]"></div>
+          </motion.div>
+        ))}
         
-        <div className="absolute top-0 left-[35%] -translate-x-1/2 -translate-y-1/2">
-          <div className="h-4 w-4 rounded-none bg-white border-2 border-[#2f855a]"></div>
-        </div>
-        
-        <div className="absolute top-0 left-[60%] -translate-x-1/2 -translate-y-1/2">
-          <div className="h-4 w-4 rounded-none bg-white border-2 border-[#2f855a]"></div>
-        </div>
-        
-        <div className="absolute top-0 left-[85%] -translate-x-1/2 -translate-y-1/2">
-          <div className="h-4 w-4 rounded-none bg-white border-2 border-[#e53e3e]"></div>
-        </div>
+        {/* Goal Flag - only appears when approaching last checkpoint */}
+        <motion.div 
+          className="absolute top-0 left-[85%] -translate-x-1/2 -translate-y-1/2"
+          style={{ 
+            opacity: getCheckpointOpacity(3),
+            visibility: isCheckpointVisible(3) ? 'visible' : 'hidden'
+          }}
+          animate={{
+            y: isCheckpointVisible(3) ? 0 : 10,
+            scale: isCheckpointVisible(3) ? 1 : 0.5,
+          }}
+          transition={{
+            duration: 0.5,
+            ease: "easeOut"
+          }}
+        >
+          <div className="relative w-6 h-12">
+            <div className="absolute bottom-0 w-1 h-8 bg-[#7d5a33] rounded-none"></div>
+            <div className="absolute top-0 left-1 w-4 h-3 bg-[#e53e3e] rounded-none"></div>
+          </div>
+        </motion.div>
       </div>
       
-      {/* Pixel Art Trees & Scenery - fixed position */}
-      <div className="absolute bottom-[15%] left-[5%]">
-        <div className="w-10 h-12 relative">
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-4 bg-[#7d5a33] rounded-none"></div>
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-8 h-6 bg-[#2f855a] rounded-none"></div>
-          <div className="absolute bottom-7 left-1/2 -translate-x-1/2 w-6 h-5 bg-[#2f855a] rounded-none"></div>
-        </div>
-      </div>
-      
-      <div className="absolute bottom-[15%] left-[20%]">
-        <div className="w-8 h-10 relative">
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-3 bg-[#7d5a33] rounded-none"></div>
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-6 h-5 bg-[#2f855a] rounded-none"></div>
-          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 w-4 h-4 bg-[#2f855a] rounded-none"></div>
-        </div>
-      </div>
-      
-      <div className="absolute bottom-[15%] left-[45%]">
-        <div className="w-12 h-14 relative">
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-5 bg-[#7d5a33] rounded-none"></div>
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-10 h-7 bg-[#38a169] rounded-none"></div>
-          <div className="absolute bottom-9 left-1/2 -translate-x-1/2 w-8 h-6 bg-[#38a169] rounded-none"></div>
-        </div>
-      </div>
-      
-      <div className="absolute bottom-[15%] left-[70%]">
-        <div className="w-10 h-12 relative">
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-4 bg-[#7d5a33] rounded-none"></div>
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-8 h-6 bg-[#f6ad55] rounded-none"></div>
-          <div className="absolute bottom-7 left-1/2 -translate-x-1/2 w-6 h-5 bg-[#f6ad55] rounded-none"></div>
-        </div>
-      </div>
-      
-      {/* Goal Flag - pixel art style */}
-      <div className="absolute bottom-[17%] left-[85%]">
-        <div className="relative w-6 h-12">
-          <div className="absolute bottom-0 w-1 h-8 bg-[#7d5a33] rounded-none"></div>
-          <div className="absolute top-0 left-1 w-4 h-3 bg-[#e53e3e] rounded-none"></div>
-        </div>
-      </div>
-      
-      {/* The Animated Hiker - Moves along the path based on progress */}
+      {/* The Animated Hiker - Fixed position, we move the background instead */}
       <motion.div
         className="absolute bottom-[15%]"
+        style={{ left: getProgressPosition() }}
         animate={{ 
-          x: getProgressPosition(),
           y: animate ? -5 : 0
         }}
         transition={{ 
-          x: { duration: 0.5, ease: "linear" },
           y: animate ? { 
             duration: 0.5, 
             repeat: 3, 
@@ -426,7 +509,7 @@ export const HikingTrail = ({
         </div>
       </motion.div>
       
-      {/* Environmental Elements based on milestone progress */}
+      {/* Environmental Elements with visibility based on milestone progress */}
       {milestone >= 1 && (
         <motion.div 
           className="absolute bottom-[15%] left-[30%]"
@@ -474,3 +557,4 @@ export const HikingTrail = ({
     </div>
   );
 };
+
