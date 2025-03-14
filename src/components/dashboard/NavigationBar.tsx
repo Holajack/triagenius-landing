@@ -1,16 +1,19 @@
 
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutDashboard, Bot, BarChart3, UserCircle2, Users } from "lucide-react";
+import { LayoutDashboard, Bot, BarChart3, UserCircle2, Users, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import SideNavDrawer from "./SideNavDrawer";
 
 const NavigationBar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { state } = useOnboarding();
   const { theme } = useTheme();
+  const isMobile = useIsMobile();
   
   // Get accent color based on environment
   const getAccentColor = () => {
@@ -24,7 +27,32 @@ const NavigationBar = () => {
     }
   };
   
-  const navItems = [
+  const navItems = isMobile ? [
+    {
+      label: "Home",
+      icon: <LayoutDashboard className="h-5 w-5" />,
+      onClick: () => navigate("/dashboard"),
+      active: location.pathname === "/dashboard",
+    },
+    {
+      label: "Community",
+      icon: <Users className="h-5 w-5" />,
+      onClick: () => navigate("/community"),
+      active: location.pathname === "/community" || location.pathname.startsWith("/community/"),
+    },
+    {
+      label: "Nora",
+      icon: <Bot className="h-5 w-5" />,
+      onClick: () => navigate("/dashboard"),
+      active: false,
+    },
+    {
+      label: "Reports",
+      icon: <BarChart3 className="h-5 w-5" />,
+      onClick: () => navigate("/reports"),
+      active: location.pathname === "/reports",
+    }
+  ] : [
     {
       label: "Home",
       icon: <LayoutDashboard className="h-5 w-5" />,
@@ -82,6 +110,22 @@ const NavigationBar = () => {
               </span>
             </Button>
           ))}
+          
+          {isMobile && (
+            <SideNavDrawer>
+              <Button
+                variant="ghost"
+                className="flex flex-col h-16 rounded-none px-2"
+              >
+                <div className="text-muted-foreground">
+                  <MoreVertical className="h-5 w-5" />
+                </div>
+                <span className="text-xs mt-1 text-muted-foreground">
+                  More
+                </span>
+              </Button>
+            </SideNavDrawer>
+          )}
         </div>
       </div>
     </div>
