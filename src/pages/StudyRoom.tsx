@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
@@ -18,7 +17,6 @@ import { HikingTrail } from "@/components/focus/HikingTrail";
 import { FocusTimer } from "@/components/focus/FocusTimer";
 import { toast } from "sonner";
 
-// Mock study room data
 const getMockRoom = (roomId: string) => {
   const rooms = {
     "1": {
@@ -37,7 +35,7 @@ const getMockRoom = (roomId: string) => {
       duration: "2 hours",
       messages: [
         { id: 1, sender: "Sarah Johnson", content: "Welcome everyone to our study session!", timestamp: "10:30 AM", avatar: "/placeholder.svg" },
-        { id: 2, sender: "Michael Chen", content: "Has everyone reviewed the materials for today?", timestamp: "10:32 AM", avatar: "/placeholder.svg" },
+        { id: 2, name: "Michael Chen", content: "Has everyone reviewed the materials for today?", timestamp: "10:32 AM", avatar: "/placeholder.svg" },
         { id: 3, sender: "Emily Wilson", content: "Yes, I've gone through the reading list!", timestamp: "10:34 AM", avatar: "/placeholder.svg" }
       ],
       resources: [
@@ -97,7 +95,6 @@ const StudyRoom = () => {
   const handleSendMessage = () => {
     if (!message.trim()) return;
     
-    // Add new message to the chat
     const newMessage = {
       id: room.messages.length + 1,
       sender: "You",
@@ -118,13 +115,11 @@ const StudyRoom = () => {
     setShowFocusDialog(false);
     setInFocusSession(true);
     
-    // Update room state to indicate active session
     setRoom({
       ...room,
       activeSession: true
     });
     
-    // Notify members
     toast("Focus session started! The team is now focused.", {
       description: `${duration} minute session has begun`,
       position: "top-center"
@@ -142,7 +137,6 @@ const StudyRoom = () => {
   const handleSessionEnd = () => {
     setInFocusSession(false);
     
-    // Update room state
     setRoom({
       ...room,
       activeSession: false
@@ -164,7 +158,6 @@ const StudyRoom = () => {
 
   return (
     <div className="container max-w-6xl mx-auto p-4 pb-24 min-h-screen bg-background">
-      {/* Header with back button */}
       <div className="flex items-center gap-2 mb-4">
         <Button variant="ghost" size="icon" onClick={() => navigate('/community')}>
           <ArrowLeft className="h-5 w-5" />
@@ -172,7 +165,6 @@ const StudyRoom = () => {
         <h1 className="text-2xl font-bold truncate">{room.name}</h1>
       </div>
 
-      {/* Room info card */}
       <Card className="p-4 mb-6">
         <div className="flex flex-col gap-2">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -219,7 +211,6 @@ const StudyRoom = () => {
         </div>
       </Card>
 
-      {/* Focus session UI */}
       {inFocusSession ? (
         <div className="mb-6 space-y-6">
           <div className="text-center">
@@ -235,7 +226,7 @@ const StudyRoom = () => {
           />
           
           <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden">
-            <HikingTrail environment={state.environment} />
+            <HikingTrail environment={state.environment} milestone={0} />
           </div>
           
           <div className="text-center">

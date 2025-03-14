@@ -1,7 +1,7 @@
 
 import { motion } from "framer-motion";
 import { StudyEnvironment } from "@/types/onboarding";
-import { User, Navigation, Flag, Mountain, Tree } from "lucide-react";
+import { User, Navigation, Flag, Mountain, Trees } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface HikingTrailProps {
@@ -71,13 +71,13 @@ export const HikingTrail = ({
           {/* First Checkpoint */}
           <div className="absolute top-1/2 -translate-y-1/2 left-[25%]">
             <div className="h-4 w-4 rounded-full bg-amber-200 border border-amber-300 -mt-1.5"></div>
-            <Tree className="h-6 w-6 text-green-600 absolute -top-8 left-1/2 -translate-x-1/2" />
+            <Trees className="h-6 w-6 text-green-600 absolute -top-8 left-1/2 -translate-x-1/2" />
           </div>
           
           {/* Second Checkpoint */}
           <div className="absolute top-1/2 -translate-y-1/2 left-[50%]">
             <div className="h-4 w-4 rounded-full bg-amber-200 border border-amber-300 -mt-1.5"></div>
-            <Tree className="h-6 w-6 text-green-700 absolute -top-8 left-1/2 -translate-x-1/2" />
+            <Trees className="h-6 w-6 text-green-700 absolute -top-8 left-1/2 -translate-x-1/2" />
           </div>
           
           {/* Third Checkpoint */}
@@ -137,7 +137,7 @@ export const HikingTrail = ({
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}
         >
-          <Tree className="h-5 w-5 text-green-600" />
+          <Trees className="h-5 w-5 text-green-600" />
         </motion.div>
       )}
       
@@ -148,7 +148,7 @@ export const HikingTrail = ({
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5 }}
         >
-          <Tree className="h-6 w-6 text-green-700" />
+          <Trees className="h-6 w-6 text-green-700" />
         </motion.div>
       )}
       
