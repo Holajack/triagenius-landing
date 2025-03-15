@@ -6,7 +6,6 @@ import { Progress } from "@/components/ui/progress";
 import { Play, Pause, StopCircle, ChevronUp, ChevronDown } from "lucide-react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { toast } from "sonner";
-import { ConfirmEndDialog } from "./ConfirmEndDialog";
 
 interface FocusTimerProps {
   onPause: () => void;
@@ -44,7 +43,6 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
   const [milestoneReached, setMilestoneReached] = useState(0);
   const timerRef = useRef<number>();
   const notificationShownRef = useRef(false);
-  const [showEndConfirmation, setShowEndConfirmation] = useState(false);
   const lastMilestoneTimeRef = useRef(0);
   
   // Calculate elapsed time based on the original time and current time
@@ -249,7 +247,13 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
       if (onEndSessionClick) {
         onEndSessionClick();
       } else {
-        setShowEndConfirmation(true);
+        // In case there's no external handler, directly call onComplete
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = undefined;
+        }
+        setIsActive(false);
+        onComplete();
       }
     } else {
       onComplete();
@@ -350,20 +354,6 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
           )}
         </div>
       </div>
-
-      {!onEndSessionClick && (
-        <ConfirmEndDialog
-          open={showEndConfirmation}
-          onOpenChange={setShowEndConfirmation}
-          onConfirm={() => {
-            setShowEndConfirmation(false);
-            onComplete();
-          }}
-          onCancel={() => {
-            setShowEndConfirmation(false);
-          }}
-        />
-      )}
     </Card>
   );
 });
