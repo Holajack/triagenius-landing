@@ -31,6 +31,184 @@ const createTerrainGeometry = (width: number, height: number, resolution: number
   return geometry;
 };
 
+const createHikingPaths = (scene: THREE.Scene, terrain: THREE.Mesh) => {
+  // Get terrain vertices for path height mapping
+  const terrainGeometry = terrain.geometry;
+  const terrainPositions = terrainGeometry.attributes.position.array;
+  
+  // Define several hiking paths
+  const pathsData = [
+    {
+      name: "Main Trail",
+      color: 0xd2b48c, // Sandy trail color
+      width: 0.3,
+      points: [
+        new THREE.Vector3(-20, 0, -20),
+        new THREE.Vector3(-15, 0, -10),
+        new THREE.Vector3(-8, 0, -5),
+        new THREE.Vector3(-3, 0, 0),
+        new THREE.Vector3(5, 0, 5),
+        new THREE.Vector3(10, 0, 12),
+        new THREE.Vector3(15, 0, 15),
+      ]
+    },
+    {
+      name: "Ridge Trail",
+      color: 0xc19a6b, // Lighter trail color
+      width: 0.25,
+      points: [
+        new THREE.Vector3(-10, 0, 15),
+        new THREE.Vector3(-5, 0, 10),
+        new THREE.Vector3(0, 0, 8),
+        new THREE.Vector3(5, 0, 5),
+        new THREE.Vector3(10, 0, 0),
+        new THREE.Vector3(15, 0, -5),
+      ]
+    },
+    {
+      name: "Valley Path",
+      color: 0xbdb76b, // Dark khaki
+      width: 0.2,
+      points: [
+        new THREE.Vector3(-15, 0, 10),
+        new THREE.Vector3(-10, 0, 5),
+        new THREE.Vector3(-5, 0, 0),
+        new THREE.Vector3(0, 0, -5),
+        new THREE.Vector3(5, 0, -10),
+        new THREE.Vector3(12, 0, -15),
+      ]
+    }
+  ];
+
+  // Helper function to find terrain height at a given x,z position
+  const getTerrainHeight = (x: number, z: number): number => {
+    // Convert world coords to terrain local space
+    const localX = x + 25; // Assuming terrain is 50x50 centered at origin
+    const localZ = z + 25;
+    
+    // Convert to 0-1 range
+    const normalizedX = localX / 50;
+    const normalizedZ = localZ / 50;
+    
+    // Get terrain resolution
+    const width = Math.sqrt(terrainPositions.length / 3) - 1;
+    
+    // Calculate grid indices
+    const xIndex = Math.floor(normalizedX * width);
+    const zIndex = Math.floor(normalizedZ * width);
+    
+    // Bounds checking
+    if (xIndex < 0 || xIndex >= width || zIndex < 0 || zIndex >= width) {
+      return 0;
+    }
+    
+    // Get vertex index
+    const index = (zIndex * (width + 1) + xIndex) * 3 + 1; // +1 for y component
+    
+    return terrainPositions[index];
+  };
+
+  // Create all paths
+  pathsData.forEach(pathData => {
+    // Map path points to terrain height
+    pathData.points.forEach(point => {
+      point.y = getTerrainHeight(point.x, point.z) + 0.2; // Slightly above terrain
+    });
+    
+    // Create smooth curves for the paths
+    const curve = new THREE.CatmullRomCurve3(pathData.points);
+    const points = curve.getPoints(50);
+    
+    // Create tube geometry along the curve
+    const tubeGeometry = new THREE.TubeGeometry(
+      curve,
+      64,      // Path segments
+      pathData.width, // Tube radius
+      8,       // Tube segments
+      false    // Closed path?
+    );
+    
+    const tubeMaterial = new THREE.MeshStandardMaterial({
+      color: pathData.color,
+      roughness: 0.8,
+      metalness: 0.1,
+    });
+    
+    const tube = new THREE.Mesh(tubeGeometry, tubeMaterial);
+    tube.castShadow = true;
+    tube.receiveShadow = true;
+    scene.add(tube);
+    
+    // Add trail markers (small posts) along the path
+    for (let i = 0; i < points.length; i += 10) {
+      const point = points[i];
+      
+      // Create a marker post
+      const markerGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.8, 6);
+      const markerMaterial = new THREE.MeshStandardMaterial({
+        color: 0x8B4513, // Brown color for wooden post
+        roughness: 0.9
+      });
+      
+      const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+      marker.position.set(point.x, point.y + 0.4, point.z);
+      scene.add(marker);
+    }
+  });
+  
+  // Add a few landmark features
+  
+  // Mountain cabin at a scenic viewpoint
+  const cabinPosition = new THREE.Vector3(12, 0, 12);
+  cabinPosition.y = getTerrainHeight(cabinPosition.x, cabinPosition.z) + 0.5;
+  
+  const cabin = new THREE.Group();
+  
+  // Cabin base
+  const cabinBase = new THREE.Mesh(
+    new THREE.BoxGeometry(1.5, 1, 1.2),
+    new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.8 })
+  );
+  cabinBase.position.y = 0.5;
+  cabin.add(cabinBase);
+  
+  // Cabin roof
+  const cabinRoof = new THREE.Mesh(
+    new THREE.ConeGeometry(1.2, 0.8, 4),
+    new THREE.MeshStandardMaterial({ color: 0x5C4033, roughness: 0.7 })
+  );
+  cabinRoof.position.y = 1.4;
+  cabinRoof.rotation.y = Math.PI / 4;
+  cabin.add(cabinRoof);
+  
+  cabin.position.copy(cabinPosition);
+  scene.add(cabin);
+  
+  // Add a mountain peak flag at the highest point
+  const flagPosition = new THREE.Vector3(-10, 0, -10);
+  flagPosition.y = getTerrainHeight(flagPosition.x, flagPosition.z) + 0.5;
+  
+  const flagPole = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.05, 0.05, 2, 8),
+    new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.6 })
+  );
+  flagPole.position.copy(flagPosition);
+  flagPole.position.y += 1;
+  scene.add(flagPole);
+  
+  // Flag
+  const flagGeometry = new THREE.PlaneGeometry(0.6, 0.4);
+  const flagMaterial = new THREE.MeshBasicMaterial({ 
+    color: 0xff3333,
+    side: THREE.DoubleSide
+  });
+  const flag = new THREE.Mesh(flagGeometry, flagMaterial);
+  flag.position.y = 1.7;
+  flag.position.x = 0.3;
+  flag.rotation.y = Math.PI / 2;
+  flagPole.add(flag);
+};
+
 const simplex2 = (x: number, y: number): number => {
   return Math.sin(x) * Math.cos(y) + 
          Math.sin(x * 2) * Math.cos(y * 3) * 0.5 + 
@@ -91,6 +269,9 @@ const TerrainVisualization = () => {
     terrainRef.current = terrain;
     
     scene.add(terrain);
+    
+    // Add hiking paths after terrain is created
+    createHikingPaths(scene, terrain);
     
     // Add a grid helper for scale reference
     const gridHelper = new THREE.GridHelper(50, 50);
