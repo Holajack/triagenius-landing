@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Button } from '@/components/ui/button';
 import { Sun, Moon, Download, Compass, Map, User, ChevronsUp } from 'lucide-react';
-import { generateHeight } from './shaders/terrainUtils';
+import { generateHeight, getTerrainColor } from './shaders/terrainUtils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const createTerrainGeometry = (width: number, height: number, resolution: number) => {
   const geometry = new THREE.PlaneGeometry(width, height, resolution, resolution);
@@ -45,62 +46,41 @@ const TerrainVisualization = () => {
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const terrainRef = useRef<THREE.Mesh | null>(null);
+  const isMobile = useIsMobile();
 
   const createTerrain = (scene: THREE.Scene) => {
-    // Use a higher resolution plane geometry for the terrain
+    // Adjust resolution based on device capability
     const width = 50;
     const height = 50;
-    const resolution = 250; // Increased from 128 to ~30,000 vertices (251x251 = 63,001 vertices)
+    const resolution = isMobile ? 150 : 250; // Lower resolution for mobile
     
     const geometry = createTerrainGeometry(width, height, resolution);
     
-    // Create detailed material with textures for realistic terrain
-    const loader = new THREE.TextureLoader();
-    
-    // Use multiple textures for better detail
-    const rockTexture = loader.load('/lovable-uploads/64b4ec86-d70b-462a-8142-1147f9990104.png');
-    const grassTexture = loader.load('/lovable-uploads/64b4ec86-d70b-462a-8142-1147f9990104.png');
-    
-    rockTexture.wrapS = rockTexture.wrapT = THREE.RepeatWrapping;
-    grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
-    
-    rockTexture.repeat.set(8, 8);
-    grassTexture.repeat.set(8, 8);
-
-    // Create custom material for blending textures based on height and slope
+    // Create custom material for colored terrain
     const material = new THREE.MeshStandardMaterial({
-      map: rockTexture,
-      displacementScale: 0, // We manually displaced vertices
+      vertexColors: true,
       roughness: 0.8,
       metalness: 0.1,
-      side: THREE.DoubleSide,
-      vertexColors: true
+      side: THREE.DoubleSide
     });
 
     // Add vertex colors to represent different terrain types
     const colors = [];
     const positions = geometry.attributes.position.array;
+    const normals = geometry.attributes.normal.array;
     
     for (let i = 0; i < positions.length; i += 3) {
-      const y = positions[i + 1];
+      const y = positions[i + 1]; // height
       
-      // Color based on height
-      if (y > 4) {
-        // Snow peaks (white)
-        colors.push(0.95, 0.95, 0.97);
-      } else if (y > 2) {
-        // Rocky mountains (gray/brown)
-        colors.push(0.5, 0.4, 0.35);
-      } else if (y > 0.5) {
-        // Highlands (green-brown)
-        colors.push(0.45, 0.55, 0.3);
-      } else if (y > -0.2) {
-        // Lowlands (green)
-        colors.push(0.25, 0.6, 0.3);
-      } else {
-        // Water (blue)
-        colors.push(0.2, 0.4, 0.7);
-      }
+      // Calculate slope from normal (y component closer to 1 means flatter)
+      const nx = normals[i];
+      const ny = normals[i + 1];
+      const nz = normals[i + 2];
+      const slope = 1 - ny; // 0 is flat, 1 is vertical
+      
+      // Get terrain color based on height and slope
+      const [r, g, b] = getTerrainColor(y, slope);
+      colors.push(r, g, b);
     }
     
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
@@ -174,36 +154,48 @@ const TerrainVisualization = () => {
     sceneRef.current = scene;
     scene.background = new THREE.Color(isNightMode ? 0x0a0a20 : 0x87ceeb);
 
-    // Camera setup
+    // Camera setup - adjust FOV for mobile
     const camera = new THREE.PerspectiveCamera(
-      75,
+      isMobile ? 85 : 75, // Wider FOV on mobile for better visibility
       containerRef.current.clientWidth / containerRef.current.clientHeight,
       0.1,
       1000
     );
     cameraRef.current = camera;
-    camera.position.set(0, 12, 20);
+    
+    // Adjust initial position for mobile
+    if (isMobile) {
+      camera.position.set(0, 15, 25); // Higher and further back on mobile
+    } else {
+      camera.position.set(0, 12, 20);
+    }
 
     // Renderer setup
     const renderer = new THREE.WebGLRenderer({ 
-      antialias: true,
+      antialias: !isMobile, // Disable antialiasing on mobile for performance
       powerPreference: "high-performance"
     });
     rendererRef.current = renderer;
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(isMobile ? 1 : window.devicePixelRatio); // Lower pixel ratio for mobile
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     containerRef.current.appendChild(renderer.domElement);
 
-    // Controls setup
+    // Controls setup - adjust for mobile
     const controls = new OrbitControls(camera, renderer.domElement);
     controlsRef.current = controls;
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.maxPolarAngle = Math.PI / 2 - 0.1;
-    controls.minDistance = 5;
+    controls.minDistance = isMobile ? 10 : 5; // Prevent zooming in too close on mobile
     controls.maxDistance = 50;
+    
+    // Enable touch rotation for mobile
+    if (isMobile) {
+      controls.rotateSpeed = 0.7; // Slower rotation on mobile for better control
+      controls.zoomSpeed = 0.7; // Slower zoom on mobile
+    }
 
     // Lighting setup
     updateLighting(scene, isNightMode);
@@ -250,7 +242,7 @@ const TerrainVisualization = () => {
         }
       });
     };
-  }, [isNightMode]);
+  }, [isNightMode, isMobile]);
 
   useEffect(() => {
     if (!cameraRef.current || !controlsRef.current || !terrainRef.current) return;
@@ -286,40 +278,47 @@ const TerrainVisualization = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex justify-between items-center mb-4 px-2">
-        <div className="flex space-x-2">
+      <div className="flex flex-wrap justify-between items-center mb-4 px-2 gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
-            size="sm"
+            size={isMobile ? "sm" : "default"}
             onClick={() => setViewMode('orbit')}
-            className={viewMode === 'orbit' ? 'bg-primary text-primary-foreground' : ''}
+            className={`${viewMode === 'orbit' ? 'bg-primary text-primary-foreground' : ''} ${isMobile ? 'px-2 py-1 text-xs' : ''}`}
           >
-            <Compass className="h-4 w-4 mr-1" /> Orbit
+            <Compass className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} /> 
+            {isMobile ? '' : 'Orbit'}
           </Button>
           <Button
             variant="outline"
-            size="sm"
+            size={isMobile ? "sm" : "default"}
             onClick={() => setViewMode('firstPerson')}
-            className={viewMode === 'firstPerson' ? 'bg-primary text-primary-foreground' : ''}
+            className={`${viewMode === 'firstPerson' ? 'bg-primary text-primary-foreground' : ''} ${isMobile ? 'px-2 py-1 text-xs' : ''}`}
           >
-            <User className="h-4 w-4 mr-1" /> First Person
+            <User className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} /> 
+            {isMobile ? '' : 'First Person'}
           </Button>
           <Button
             variant="outline"
-            size="sm"
+            size={isMobile ? "sm" : "default"}
             onClick={() => setViewMode('top')}
-            className={viewMode === 'top' ? 'bg-primary text-primary-foreground' : ''}
+            className={`${viewMode === 'top' ? 'bg-primary text-primary-foreground' : ''} ${isMobile ? 'px-2 py-1 text-xs' : ''}`}
           >
-            <Map className="h-4 w-4 mr-1" /> Top View
+            <Map className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} /> 
+            {isMobile ? '' : 'Top View'}
           </Button>
         </div>
         <Button
           variant="outline"
-          size="sm"
+          size={isMobile ? "sm" : "default"}
           onClick={() => setIsNightMode(!isNightMode)}
+          className={isMobile ? 'px-2 py-1 text-xs' : ''}
         >
-          {isNightMode ? <Sun className="h-4 w-4 mr-1" /> : <Moon className="h-4 w-4 mr-1" />}
-          {isNightMode ? 'Day Mode' : 'Night Mode'}
+          {isNightMode ? 
+            <Sun className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} /> : 
+            <Moon className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} />
+          }
+          {isMobile ? '' : (isNightMode ? 'Day Mode' : 'Night Mode')}
         </Button>
       </div>
       
@@ -327,25 +326,43 @@ const TerrainVisualization = () => {
         {/* Three.js canvas will be appended here */}
       </div>
       
-      <div className="mt-4 flex justify-between items-center">
-        <div className="text-sm text-muted-foreground">
-          <span className="flex items-center">
-            <ChevronsUp className="h-4 w-4 mr-1" />
-            Elevation: 1,250 - 3,400 m
-          </span>
+      {!isMobile && (
+        <div className="mt-4 flex justify-between items-center">
+          <div className="text-sm text-muted-foreground">
+            <span className="flex items-center">
+              <ChevronsUp className="h-4 w-4 mr-1" />
+              Elevation: 1,250 - 3,400 m
+            </span>
+          </div>
+          <div className="flex space-x-2">
+            <Button size="sm" variant="outline" onClick={() => handleExport('glb')}>
+              <Download className="h-4 w-4 mr-1" /> GLB
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => handleExport('fbx')}>
+              <Download className="h-4 w-4 mr-1" /> FBX
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => handleExport('usdz')}>
+              <Download className="h-4 w-4 mr-1" /> USDZ
+            </Button>
+          </div>
         </div>
-        <div className="flex space-x-2">
-          <Button size="sm" variant="outline" onClick={() => handleExport('glb')}>
-            <Download className="h-4 w-4 mr-1" /> GLB
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => handleExport('fbx')}>
-            <Download className="h-4 w-4 mr-1" /> FBX
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => handleExport('usdz')}>
-            <Download className="h-4 w-4 mr-1" /> USDZ
-          </Button>
+      )}
+      
+      {isMobile && (
+        <div className="mt-2 flex justify-center">
+          <div className="flex space-x-1">
+            <Button size="sm" variant="outline" className="px-2 py-1 text-xs" onClick={() => handleExport('glb')}>
+              <Download className="h-3 w-3 mr-1" /> GLB
+            </Button>
+            <Button size="sm" variant="outline" className="px-2 py-1 text-xs" onClick={() => handleExport('fbx')}>
+              <Download className="h-3 w-3 mr-1" /> FBX
+            </Button>
+            <Button size="sm" variant="outline" className="px-2 py-1 text-xs" onClick={() => handleExport('usdz')}>
+              <Download className="h-3 w-3 mr-1" /> USDZ
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

@@ -2,11 +2,13 @@
 import React from 'react';
 import TerrainVisualization from './TerrainVisualization';
 import TerrainControls from './TerrainControls';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const TerrainMapping = () => {
-  // For responsiveness, we'll use a different layout for smaller screens
+  const isMobile = useIsMobile();
+  
   return (
-    <div className="h-full">
+    <div className={`h-full ${isMobile ? 'px-1' : 'px-4'}`}>
       <TerrainVisualization />
     </div>
   );
