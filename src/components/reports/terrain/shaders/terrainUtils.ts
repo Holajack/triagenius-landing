@@ -1,4 +1,3 @@
-
 // Utility functions for terrain shader operations
 
 /**
@@ -9,9 +8,13 @@
  * @returns A height value between -1 and 1
  */
 export const generateHeight = (x: number, y: number, scale: number = 1): number => {
-  // Simplified version for demonstration
-  return (Math.sin(x * scale) * Math.cos(y * scale) + 
-         Math.sin(x * scale * 2) * Math.cos(y * scale * 3) * 0.5) * 0.5;
+  // More complex noise function for realistic terrain
+  return scale * (
+    Math.sin(x * 0.5) * Math.cos(y * 0.5) + 
+    Math.sin(x * 1.0) * Math.cos(y * 1.5) * 0.5 + 
+    Math.sin(x * 2.0) * Math.cos(y * 3.0) * 0.25 + 
+    Math.sin(x * 4.0) * Math.cos(y * 6.0) * 0.125
+  );
 };
 
 /**
@@ -98,4 +101,35 @@ export const bilinearSample = (heightMap: number[][], x: number, y: number): num
   const vt1 = lerp(v01, v11, gxf);
   
   return lerp(vt0, vt1, gyf);
+};
+
+/**
+ * Generates a terrain color based on height and slope
+ * @param height - The terrain height
+ * @param slope - The terrain slope (0-1)
+ * @returns RGB color array [r, g, b]
+ */
+export const getTerrainColor = (height: number, slope: number): [number, number, number] => {
+  // Snow peaks
+  if (height > 4.0) {
+    return [0.95, 0.95, 0.97];
+  }
+  
+  // Rocky mountains with steep slopes
+  if (height > 2.5 || slope > 0.7) {
+    return [0.5, 0.4, 0.35];
+  }
+  
+  // Highland areas
+  if (height > 1.0) {
+    return [0.45, 0.55, 0.3];
+  }
+  
+  // Grasslands/lowlands
+  if (height > 0.0) {
+    return [0.25, 0.6, 0.3];
+  }
+  
+  // Water areas (below sea level)
+  return [0.2, 0.4, 0.7];
 };

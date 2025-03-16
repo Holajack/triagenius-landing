@@ -1,9 +1,40 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Button } from '@/components/ui/button';
 import { Sun, Moon, Download, Compass, Map, User, ChevronsUp } from 'lucide-react';
+import { generateHeight } from './shaders/terrainUtils';
+
+const createTerrainGeometry = (width: number, height: number, resolution: number) => {
+  const geometry = new THREE.PlaneGeometry(width, height, resolution, resolution);
+  geometry.rotateX(-Math.PI / 2); // Rotate to be horizontal
+  
+  // Apply height displacement
+  const vertices = geometry.attributes.position.array;
+  
+  // Generate terrain with multiple frequency noise for more realism
+  for (let i = 0; i < vertices.length; i += 3) {
+    const x = vertices[i];
+    const z = vertices[i + 2];
+    
+    // Multi-octave noise for more realistic terrain
+    const height = 
+      generateHeight(x * 0.05, z * 0.05, 1.0) * 6.0 + // Base mountains
+      generateHeight(x * 0.15, z * 0.15, 0.8) * 2.0 + // Medium details
+      generateHeight(x * 0.4, z * 0.4, 0.2) * 0.5;    // Small details
+    
+    vertices[i + 1] = height;
+  }
+  
+  geometry.computeVertexNormals();
+  return geometry;
+};
+
+const simplex2 = (x: number, y: number): number => {
+  return Math.sin(x) * Math.cos(y) + 
+         Math.sin(x * 2) * Math.cos(y * 3) * 0.5 + 
+         Math.sin(x * 4) * Math.cos(y * 7) * 0.25;
+};
 
 const TerrainVisualization = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -15,47 +46,64 @@ const TerrainVisualization = () => {
   const controlsRef = useRef<OrbitControls | null>(null);
   const terrainRef = useRef<THREE.Mesh | null>(null);
 
-  // Helper function to create terrain
   const createTerrain = (scene: THREE.Scene) => {
-    // Use a plane geometry with heightmap for the terrain
+    // Use a higher resolution plane geometry for the terrain
     const width = 50;
     const height = 50;
-    const resolution = 128;
+    const resolution = 250; // Increased from 128 to ~30,000 vertices (251x251 = 63,001 vertices)
     
-    const geometry = new THREE.PlaneGeometry(width, height, resolution, resolution);
-    geometry.rotateX(-Math.PI / 2); // Rotate to be horizontal
+    const geometry = createTerrainGeometry(width, height, resolution);
     
-    // Apply height displacement
-    const vertices = geometry.attributes.position.array;
+    // Create detailed material with textures for realistic terrain
+    const loader = new THREE.TextureLoader();
     
-    // Generate height map (this would be based on your image data)
-    for (let i = 0; i < vertices.length; i += 3) {
-      const x = vertices[i];
-      const z = vertices[i + 2];
-      
-      // Sample height from perlin noise or your height map
-      // Here we're using a simple function for demo
-      const height = simplex2(x * 0.1, z * 0.1) * 5; // Scale for more dramatic terrain
-      
-      vertices[i + 1] = height; // Apply to Y coordinate
-    }
+    // Use multiple textures for better detail
+    const rockTexture = loader.load('/lovable-uploads/64b4ec86-d70b-462a-8142-1147f9990104.png');
+    const grassTexture = loader.load('/lovable-uploads/64b4ec86-d70b-462a-8142-1147f9990104.png');
     
-    geometry.computeVertexNormals(); // Important for lighting
+    rockTexture.wrapS = rockTexture.wrapT = THREE.RepeatWrapping;
+    grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
     
-    // Create material with texture
-    const texturePath = '/lovable-uploads/64b4ec86-d70b-462a-8142-1147f9990104.png';
-    const texture = new THREE.TextureLoader().load(texturePath);
-    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(1, 1);
-    
+    rockTexture.repeat.set(8, 8);
+    grassTexture.repeat.set(8, 8);
+
+    // Create custom material for blending textures based on height and slope
     const material = new THREE.MeshStandardMaterial({
-      map: texture,
-      displacementMap: texture,
-      displacementScale: 2,
+      map: rockTexture,
+      displacementScale: 0, // We manually displaced vertices
       roughness: 0.8,
       metalness: 0.1,
       side: THREE.DoubleSide,
+      vertexColors: true
     });
+
+    // Add vertex colors to represent different terrain types
+    const colors = [];
+    const positions = geometry.attributes.position.array;
+    
+    for (let i = 0; i < positions.length; i += 3) {
+      const y = positions[i + 1];
+      
+      // Color based on height
+      if (y > 4) {
+        // Snow peaks (white)
+        colors.push(0.95, 0.95, 0.97);
+      } else if (y > 2) {
+        // Rocky mountains (gray/brown)
+        colors.push(0.5, 0.4, 0.35);
+      } else if (y > 0.5) {
+        // Highlands (green-brown)
+        colors.push(0.45, 0.55, 0.3);
+      } else if (y > -0.2) {
+        // Lowlands (green)
+        colors.push(0.25, 0.6, 0.3);
+      } else {
+        // Water (blue)
+        colors.push(0.2, 0.4, 0.7);
+      }
+    }
+    
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
     
     const terrain = new THREE.Mesh(geometry, material);
     terrain.receiveShadow = true;
@@ -64,12 +112,12 @@ const TerrainVisualization = () => {
     
     scene.add(terrain);
     
-    // Add a simple grid helper for scale reference
+    // Add a grid helper for scale reference
     const gridHelper = new THREE.GridHelper(50, 50);
+    gridHelper.position.y = -0.1; // Just below the terrain
     scene.add(gridHelper);
   };
 
-  // Helper function to update lighting
   const updateLighting = (scene: THREE.Scene, isNight: boolean) => {
     // Remove existing lights
     scene.children = scene.children.filter(child => !(child instanceof THREE.Light));
@@ -118,12 +166,6 @@ const TerrainVisualization = () => {
     scene.add(hemisphereLight);
   };
 
-  // Simplex noise function for terrain generation
-  const simplex2 = (x: number, y: number): number => {
-    // Simple approximation for demo purposes
-    return Math.sin(x) * Math.cos(y) + Math.sin(x * 2) * Math.cos(y * 3) * 0.5;
-  };
-
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -140,12 +182,16 @@ const TerrainVisualization = () => {
       1000
     );
     cameraRef.current = camera;
-    camera.position.set(0, 10, 20);
+    camera.position.set(0, 12, 20);
 
     // Renderer setup
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true,
+      powerPreference: "high-performance"
+    });
     rendererRef.current = renderer;
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     containerRef.current.appendChild(renderer.domElement);
@@ -155,7 +201,7 @@ const TerrainVisualization = () => {
     controlsRef.current = controls;
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
-    controls.maxPolarAngle = Math.PI / 2 - 0.1; // Prevent going below terrain
+    controls.maxPolarAngle = Math.PI / 2 - 0.1;
     controls.minDistance = 5;
     controls.maxDistance = 50;
 
@@ -193,7 +239,6 @@ const TerrainVisualization = () => {
         containerRef.current.removeChild(renderer.domElement);
       }
       renderer.dispose();
-      // Dispose of geometries, materials, textures
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) {
           object.geometry.dispose();
@@ -205,9 +250,8 @@ const TerrainVisualization = () => {
         }
       });
     };
-  }, [isNightMode]); // Added isNightMode as a dependency
+  }, [isNightMode]);
 
-  // Update camera and controls when view mode changes
   useEffect(() => {
     if (!cameraRef.current || !controlsRef.current || !terrainRef.current) return;
 
@@ -216,14 +260,14 @@ const TerrainVisualization = () => {
 
     switch (viewMode) {
       case 'orbit':
-        camera.position.set(0, 10, 20);
+        camera.position.set(0, 12, 20);
         controls.enableRotate = true;
         controls.maxPolarAngle = Math.PI / 2 - 0.1;
         break;
       case 'firstPerson':
-        camera.position.set(0, 2, 0); // Position just above terrain
+        camera.position.set(0, 3, 0);
         controls.enableRotate = true;
-        controls.maxPolarAngle = Math.PI; // Allow looking down
+        controls.maxPolarAngle = Math.PI;
         break;
       case 'top':
         camera.position.set(0, 30, 0);
@@ -235,10 +279,8 @@ const TerrainVisualization = () => {
     controls.update();
   }, [viewMode]);
 
-  // Handler for exporting the model
   const handleExport = (format: 'glb' | 'fbx' | 'usdz') => {
     console.log(`Exporting in ${format} format...`);
-    // This would connect to a real exporter in a full implementation
     alert(`Export in ${format.toUpperCase()} format coming soon!`);
   };
 
