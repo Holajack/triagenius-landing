@@ -3,10 +3,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { PathwaySystem } from './PathwaySystem';
-import { Map, Mountain, ExternalLink } from 'lucide-react';
+import { Map, Mountain, ExternalLink, Globe } from 'lucide-react';
+import Terrain3D from './Terrain3D';
 
 // Define the path points for the brain regions
-const pathPoints = [
+export const pathPoints = [
   { 
     position: [0, 0, 0] as [number, number, number], 
     type: 'basecamp' as const, 
@@ -39,9 +40,54 @@ const pathPoints = [
   }
 ];
 
+// Terrain data for Colorado Rocky Mountains
+const terrainData = {
+  "bounds": {
+    "ne": [
+      -105.11492,
+      40.54043
+    ],
+    "sw": [
+      -106.21862,
+      39.56597
+    ]
+  },
+  "resolution": {
+    "elevation": {
+      "tileSize": 256,
+      "zoom": 9
+    },
+    "texture": {
+      "tileSize": 512,
+      "zoom": 12
+    }
+  },
+  "altitudeBoundsinMeters": {
+    "max": 4309,
+    "min": 544,
+    "base": -1713
+  },
+  "modelCoordinatesAltitudeBounds": {
+    "max": 8.339242935180664,
+    "min": 0,
+    "base": -5
+  },
+  "elevationCanvas": {
+    "width": 402,
+    "height": 464
+  },
+  "groundParams": {
+    "width": 69.46004319654428,
+    "height": 80.17278617710582,
+    "subdivisionsX": 401,
+    "subdivisionsY": 463
+  }
+};
+
 const TerrainMapping = () => {
   const isMobile = useIsMobile();
   const [showPathwaySystem, setShowPathwaySystem] = useState(false);
+  const [showTerrainView, setShowTerrainView] = useState(false);
   
   // Handler for when a path point is clicked
   const handlePathClick = (point: any) => {
@@ -63,15 +109,33 @@ const TerrainMapping = () => {
           </div>
         )}
         
-        <Button
-          variant="outline"
-          size={isMobile ? "sm" : "default"}
-          onClick={() => setShowPathwaySystem(!showPathwaySystem)}
-          className={isMobile ? 'px-2 py-1 text-xs' : ''}
-        >
-          <Map className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} />
-          {isMobile ? '' : (showPathwaySystem ? 'Hide Pathways' : 'Show Pathways')}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size={isMobile ? "sm" : "default"}
+            onClick={() => {
+              setShowPathwaySystem(!showPathwaySystem);
+              setShowTerrainView(false);
+            }}
+            className={isMobile ? 'px-2 py-1 text-xs' : ''}
+          >
+            <Map className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} />
+            {isMobile ? '' : (showPathwaySystem ? 'Hide Pathways' : 'Show Pathways')}
+          </Button>
+          
+          <Button
+            variant="outline"
+            size={isMobile ? "sm" : "default"}
+            onClick={() => {
+              setShowTerrainView(!showTerrainView);
+              setShowPathwaySystem(false);
+            }}
+            className={isMobile ? 'px-2 py-1 text-xs' : ''}
+          >
+            <Globe className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} />
+            {isMobile ? '' : (showTerrainView ? 'Hide 3D Terrain' : 'Show 3D Terrain')}
+          </Button>
+        </div>
       </div>
       
       {showPathwaySystem ? (
@@ -79,6 +143,26 @@ const TerrainMapping = () => {
           paths={pathPoints} 
           onPathClick={handlePathClick}
         />
+      ) : showTerrainView ? (
+        <div className="relative w-full h-full min-h-[400px] border rounded-md p-4 overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 z-10 flex justify-between items-center p-4 bg-background/80 backdrop-blur-sm">
+            <h4 className="text-base font-medium">3D Terrain Map - Colorado Rockies</h4>
+            <div className="text-primary text-sm">
+              <span>Interactive 3D View</span>
+            </div>
+          </div>
+          
+          <div className="w-full h-full pt-12 pb-8">
+            <Terrain3D 
+              textureUrl="/lovable-uploads/7d1d245b-23a7-4cff-9ad4-c2ea099f286a.png" 
+              terrainData={terrainData} 
+            />
+          </div>
+          
+          <div className="absolute bottom-0 left-0 right-0 p-2 text-xs text-center text-muted-foreground bg-background/80 backdrop-blur-sm">
+            Colorado Rocky Mountains terrain - drag to rotate, scroll to zoom
+          </div>
+        </div>
       ) : (
         <div className="relative w-full h-full min-h-[400px] border rounded-md p-4 overflow-hidden">
           <div className="absolute top-0 left-0 right-0 z-10 flex justify-between items-center p-4 bg-background/80 backdrop-blur-sm">
