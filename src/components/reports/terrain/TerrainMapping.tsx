@@ -46,11 +46,11 @@ const terrainData = {
     "ne": [
       -105.11492,
       40.54043
-    ],
+    ] as [number, number],  // Explicitly type as tuple
     "sw": [
       -106.21862,
       39.56597
-    ]
+    ] as [number, number]   // Explicitly type as tuple
   },
   "resolution": {
     "elevation": {
