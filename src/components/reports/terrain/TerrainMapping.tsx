@@ -42,28 +42,6 @@ const pathPoints = [
 const TerrainMapping = () => {
   const isMobile = useIsMobile();
   const [showPathwaySystem, setShowPathwaySystem] = useState(false);
-  const modelViewerRef = useRef<HTMLDivElement>(null);
-  
-  useEffect(() => {
-    // This effect handles dynamically inserting the model-viewer script
-    if (!showPathwaySystem && modelViewerRef.current) {
-      const scriptModule = document.createElement('script');
-      scriptModule.type = 'module';
-      scriptModule.src = 'https://unpkg.com/@google/model-viewer/dist/model-viewer.js';
-      
-      const scriptNoModule = document.createElement('script');
-      scriptNoModule.noModule = true;
-      scriptNoModule.src = 'https://unpkg.com/@google/model-viewer/dist/model-viewer-legacy.js';
-      
-      document.head.appendChild(scriptModule);
-      document.head.appendChild(scriptNoModule);
-      
-      return () => {
-        document.head.removeChild(scriptModule);
-        document.head.removeChild(scriptNoModule);
-      };
-    }
-  }, [showPathwaySystem]);
   
   // Handler for when a path point is clicked
   const handlePathClick = (point: any) => {
@@ -102,40 +80,52 @@ const TerrainMapping = () => {
           onPathClick={handlePathClick}
         />
       ) : (
-        <div ref={modelViewerRef} className="relative w-full h-full min-h-[400px] border rounded-md p-0 overflow-hidden">
+        <div className="relative w-full h-full min-h-[400px] border rounded-md p-4 overflow-hidden">
           <div className="absolute top-0 left-0 right-0 z-10 flex justify-between items-center p-4 bg-background/80 backdrop-blur-sm">
-            <h4 className="text-base font-medium">3D Learning Terrain</h4>
-            <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-              <span>Full Screen</span>
+            <h4 className="text-base font-medium">Sentinel-2 Terrain Map</h4>
+            <a 
+              href="https://s2maps.eu" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-primary hover:text-primary/80 text-sm flex items-center"
+            >
+              <span>View Full Map</span>
               <ExternalLink className="ml-1 h-3 w-3" />
-            </Button>
+            </a>
           </div>
           
-          <div 
-            className="w-full h-full" 
-            dangerouslySetInnerHTML={{ 
-              __html: `
-                <style>
-                  model-viewer {
-                    width: 100%;
-                    height: 100%;
-                    background-color: #455A64;
-                  }
-                </style>
-                <model-viewer 
-                  src="maps3d-2025-03-16_16-43-43.glb" 
-                  alt="3D Learning Terrain Model" 
-                  auto-rotate 
-                  camera-controls 
-                  background-color="#455A64"
+          <div className="w-full h-full pt-12">
+            <div className="w-full h-full flex flex-col items-center justify-center">
+              <div className="mb-4 p-4 bg-background/90 rounded-md border">
+                <a 
+                  xmlns:dct="http://purl.org/dc/terms/" 
+                  href="https://s2maps.eu" 
+                  property="dct:title"
+                  className="text-primary hover:underline"
                 >
-                </model-viewer>
-              `
-            }}
-          />
+                  Sentinel-2 cloudless (2016)
+                </a> by <a 
+                  xmlns:cc="http://creativecommons.org/ns#" 
+                  href="https://eox.at" 
+                  property="cc:attributionName" 
+                  rel="cc:attributionURL"
+                  className="text-primary hover:underline"
+                >
+                  EOX IT
+                </a>
+              </div>
+              
+              <iframe 
+                src="https://s2maps.eu" 
+                title="Sentinel-2 cloudless (2016) by EOX IT" 
+                className="w-full h-full border-0"
+                style={{ minHeight: '300px' }}
+              ></iframe>
+            </div>
+          </div>
           
           <div className="absolute bottom-0 left-0 right-0 p-2 text-xs text-center text-muted-foreground bg-background/80 backdrop-blur-sm">
-            Interactive 3D Learning Terrain Map
+            Satellite imagery of Earth's terrain - Sentinel-2 cloudless (2016)
           </div>
         </div>
       )}
