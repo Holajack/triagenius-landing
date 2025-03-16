@@ -4,7 +4,7 @@ import TerrainVisualization from './TerrainVisualization';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { PathwaySystem } from './PathwaySystem';
-import { Map, Mountain } from 'lucide-react';
+import { Map, Mountain, ExternalLink } from 'lucide-react';
 
 // Define the path points for the brain regions
 const pathPoints = [
@@ -81,7 +81,33 @@ const TerrainMapping = () => {
           onPathClick={handlePathClick}
         />
       ) : (
-        <TerrainVisualization />
+        <div className="relative w-full h-full min-h-[400px] border rounded-md p-4 flex flex-col">
+          <div className="flex justify-between items-center mb-4">
+            <h4 className="text-base font-medium">Satlas Learning Visualization</h4>
+            <a 
+              href="https://satlas.allen.ai/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center text-primary hover:underline text-sm"
+            >
+              <span>Open in Satlas</span>
+              <ExternalLink className="ml-1 h-3 w-3" />
+            </a>
+          </div>
+          
+          <div className="flex-1 overflow-hidden">
+            <iframe
+              src="https://satlas.allen.ai/"
+              title="Satlas Allen Institute for AI"
+              className="w-full h-full border-0 rounded"
+              allowFullScreen
+            ></iframe>
+          </div>
+          
+          <div className="mt-2 text-xs text-muted-foreground">
+            Powered by Satlas Allen Institute for AI
+          </div>
+        </div>
       )}
     </div>
   );
