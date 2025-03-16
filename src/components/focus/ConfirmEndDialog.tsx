@@ -25,6 +25,12 @@ export function ConfirmEndDialog({
   onConfirm,
   onCancel,
 }: ConfirmEndDialogProps) {
+  // Handle confirm action
+  const handleConfirm = () => {
+    // Call the onConfirm callback
+    onConfirm();
+  };
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="max-w-md">
@@ -52,7 +58,7 @@ export function ConfirmEndDialog({
           <AlertDialogCancel onClick={onCancel} className="w-full sm:w-auto">
             Continue Focusing
           </AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} className="w-full sm:w-auto">
+          <AlertDialogAction onClick={handleConfirm} className="w-full sm:w-auto">
             End Session Now
           </AlertDialogAction>
         </AlertDialogFooter>

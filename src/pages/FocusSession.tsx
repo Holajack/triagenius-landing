@@ -47,6 +47,7 @@ const FocusSession = () => {
   };
   
   const handleSessionEnd = () => {
+    // Save session data to localStorage before navigation
     localStorage.setItem('sessionData', JSON.stringify({
       milestone: currentMilestone,
       duration: currentMilestone * 45, // Minutes based on milestone
@@ -54,6 +55,7 @@ const FocusSession = () => {
       environment: state.environment,
     }));
     
+    // Navigate to the session report page
     navigate("/session-report");
   };
 
@@ -64,6 +66,8 @@ const FocusSession = () => {
     }
     
     setShowEndConfirmation(false);
+    
+    // Directly navigate to the session report page
     handleSessionEnd();
   };
   
