@@ -1,10 +1,12 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Button } from '@/components/ui/button';
-import { Sun, Moon, Download, Compass, Map, User, ChevronsUp } from 'lucide-react';
+import { Sun, Moon, Download, Compass, Map, User, ChevronsUp, Flag, Award, Camera } from 'lucide-react';
 import { generateHeight, getTerrainColor } from './shaders/terrainUtils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { toast } from 'sonner';
 
 const createTerrainGeometry = (width: number, height: number, resolution: number) => {
   const geometry = new THREE.PlaneGeometry(width, height, resolution, resolution);
@@ -77,6 +79,21 @@ const createHikingPaths = (scene: THREE.Scene, terrain: THREE.Mesh) => {
         new THREE.Vector3(5, 0, -10),
         new THREE.Vector3(12, 0, -15),
       ]
+    },
+    // New path for achievement visualization
+    {
+      name: "Summit Path",
+      color: 0xe6bc8f, // Light sandy color
+      width: 0.35,
+      points: [
+        new THREE.Vector3(-5, 0, -15),
+        new THREE.Vector3(0, 0, -10),
+        new THREE.Vector3(5, 0, -5),
+        new THREE.Vector3(8, 0, 0),
+        new THREE.Vector3(10, 0, 5),
+        new THREE.Vector3(15, 0, 10),
+        new THREE.Vector3(18, 0, 15),
+      ]
     }
   ];
 
@@ -109,7 +126,7 @@ const createHikingPaths = (scene: THREE.Scene, terrain: THREE.Mesh) => {
   };
 
   // Create all paths
-  pathsData.forEach(pathData => {
+  pathsData.forEach((pathData, pathIndex) => {
     // Map path points to terrain height
     pathData.points.forEach(point => {
       point.y = getTerrainHeight(point.x, point.z) + 0.2; // Slightly above terrain
@@ -139,24 +156,63 @@ const createHikingPaths = (scene: THREE.Scene, terrain: THREE.Mesh) => {
     tube.receiveShadow = true;
     scene.add(tube);
     
-    // Add trail markers (small posts) along the path
+    // Add milestone markers or rest stops at intervals
+    const milestoneColors = [0x8B4513, 0x6B8E23, 0x4682B4]; // Brown, Olive Green, Steel Blue
+    
     for (let i = 0; i < points.length; i += 10) {
       const point = points[i];
       
-      // Create a marker post
-      const markerGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.8, 6);
-      const markerMaterial = new THREE.MeshStandardMaterial({
-        color: 0x8B4513, // Brown color for wooden post
-        roughness: 0.9
-      });
-      
-      const marker = new THREE.Mesh(markerGeometry, markerMaterial);
-      marker.position.set(point.x, point.y + 0.4, point.z);
-      scene.add(marker);
+      if (i % 30 === 0) {
+        // Create milestone marker (larger post with colored top)
+        const postGeometry = new THREE.CylinderGeometry(0.15, 0.15, 1.0, 6);
+        const postMaterial = new THREE.MeshStandardMaterial({
+          color: 0x8B4513, // Brown for post
+          roughness: 0.9
+        });
+        
+        const post = new THREE.Mesh(postGeometry, postMaterial);
+        post.position.set(point.x, point.y + 0.5, point.z);
+        scene.add(post);
+        
+        // Add colored top to the milestone
+        const topGeometry = new THREE.SphereGeometry(0.2, 8, 8);
+        const topMaterial = new THREE.MeshStandardMaterial({
+          color: milestoneColors[i % milestoneColors.length],
+          roughness: 0.7,
+          metalness: 0.3
+        });
+        
+        const top = new THREE.Mesh(topGeometry, topMaterial);
+        top.position.set(0, 0.6, 0);
+        post.add(top);
+        
+        // Add small sign with name
+        const signGeometry = new THREE.BoxGeometry(0.6, 0.4, 0.05);
+        const signMaterial = new THREE.MeshStandardMaterial({
+          color: 0xd2b48c,
+          roughness: 0.8
+        });
+        
+        const sign = new THREE.Mesh(signGeometry, signMaterial);
+        sign.position.set(0.4, 0.2, 0);
+        sign.rotation.y = Math.PI / 2;
+        post.add(sign);
+      } else {
+        // Create a smaller trail marker
+        const markerGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.8, 6);
+        const markerMaterial = new THREE.MeshStandardMaterial({
+          color: 0x8B4513, // Brown color for wooden post
+          roughness: 0.9
+        });
+        
+        const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+        marker.position.set(point.x, point.y + 0.4, point.z);
+        scene.add(marker);
+      }
     }
   });
   
-  // Add a few landmark features
+  // Add landmark features (mountain peak, rest stops, water features)
   
   // Mountain cabin at a scenic viewpoint
   const cabinPosition = new THREE.Vector3(12, 0, 12);
@@ -184,15 +240,15 @@ const createHikingPaths = (scene: THREE.Scene, terrain: THREE.Mesh) => {
   cabin.position.copy(cabinPosition);
   scene.add(cabin);
   
-  // Add a mountain peak flag at the highest point
-  const flagPosition = new THREE.Vector3(-10, 0, -10);
-  flagPosition.y = getTerrainHeight(flagPosition.x, flagPosition.z) + 0.5;
+  // Mountain peak with flag (achievement marker)
+  const peakPosition = new THREE.Vector3(-10, 0, -10);
+  peakPosition.y = getTerrainHeight(peakPosition.x, peakPosition.z) + 0.5;
   
   const flagPole = new THREE.Mesh(
     new THREE.CylinderGeometry(0.05, 0.05, 2, 8),
     new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.6 })
   );
-  flagPole.position.copy(flagPosition);
+  flagPole.position.copy(peakPosition);
   flagPole.position.y += 1;
   scene.add(flagPole);
   
@@ -207,6 +263,85 @@ const createHikingPaths = (scene: THREE.Scene, terrain: THREE.Mesh) => {
   flag.position.x = 0.3;
   flag.rotation.y = Math.PI / 2;
   flagPole.add(flag);
+  
+  // Water feature (small lake)
+  const lakePosition = new THREE.Vector3(5, 0, -15);
+  const lakeHeight = getTerrainHeight(lakePosition.x, lakePosition.z) + 0.1;
+  
+  const lakeGeometry = new THREE.CircleGeometry(3, 32);
+  const lakeMaterial = new THREE.MeshStandardMaterial({
+    color: 0x4682B4,
+    roughness: 0.2,
+    metalness: 0.8,
+    transparent: true,
+    opacity: 0.8
+  });
+  
+  const lake = new THREE.Mesh(lakeGeometry, lakeMaterial);
+  lake.position.set(lakePosition.x, lakeHeight, lakePosition.z);
+  lake.rotation.x = -Math.PI / 2;
+  scene.add(lake);
+  
+  // Add small pebbles around the lake
+  for (let i = 0; i < 20; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 3 + Math.random() * 0.5;
+    const pebbleX = lakePosition.x + Math.cos(angle) * radius;
+    const pebbleZ = lakePosition.z + Math.sin(angle) * radius;
+    const pebbleHeight = getTerrainHeight(pebbleX, pebbleZ) + 0.1;
+    
+    const pebbleGeometry = new THREE.SphereGeometry(0.1 + Math.random() * 0.15, 8, 8);
+    const pebbleMaterial = new THREE.MeshStandardMaterial({
+      color: 0x888888,
+      roughness: 0.9
+    });
+    
+    const pebble = new THREE.Mesh(pebbleGeometry, pebbleMaterial);
+    pebble.position.set(pebbleX, pebbleHeight, pebbleZ);
+    pebble.scale.y = 0.5; // Flatten pebbles
+    scene.add(pebble);
+  }
+  
+  // Trees along the path
+  const treePositions = [
+    new THREE.Vector3(-18, 0, -18),
+    new THREE.Vector3(-12, 0, -8),
+    new THREE.Vector3(-5, 0, -3),
+    new THREE.Vector3(8, 0, 8),
+    new THREE.Vector3(14, 0, 14),
+    new THREE.Vector3(-8, 0, 12),
+    new THREE.Vector3(2, 0, -12),
+    new THREE.Vector3(10, 0, -8),
+    new THREE.Vector3(-15, 0, 5),
+    new THREE.Vector3(15, 0, -12)
+  ];
+  
+  treePositions.forEach(position => {
+    position.y = getTerrainHeight(position.x, position.z);
+    
+    // Tree trunk
+    const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.3, 1.5, 8);
+    const trunkMaterial = new THREE.MeshStandardMaterial({
+      color: 0x8B4513,
+      roughness: 0.9
+    });
+    
+    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+    trunk.position.copy(position);
+    trunk.position.y += 0.75;
+    scene.add(trunk);
+    
+    // Tree foliage
+    const foliageGeometry = new THREE.ConeGeometry(1.2, 2, 8);
+    const foliageMaterial = new THREE.MeshStandardMaterial({
+      color: 0x228B22,
+      roughness: 0.8
+    });
+    
+    const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+    foliage.position.y = 1.5;
+    trunk.add(foliage);
+  });
 };
 
 const simplex2 = (x: number, y: number): number => {
@@ -219,12 +354,26 @@ const TerrainVisualization = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isNightMode, setIsNightMode] = useState(false);
   const [viewMode, setViewMode] = useState<'orbit' | 'firstPerson' | 'top'>('orbit');
+  const [cameraMode, setCameraMode] = useState<'free' | 'path'>('free');
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const terrainRef = useRef<THREE.Mesh | null>(null);
+  const pathPositionRef = useRef<number>(0);
+  const animationFrameRef = useRef<number | null>(null);
   const isMobile = useIsMobile();
+  const [showAchievementPopup, setShowAchievementPopup] = useState(false);
+  const [peakName, setPeakName] = useState('');
+
+  useEffect(() => {
+    // Show achievement popup randomly after 3-8 seconds as a demo
+    const timeout = setTimeout(() => {
+      setShowAchievementPopup(true);
+    }, Math.random() * 5000 + 3000);
+
+    return () => clearTimeout(timeout);
+  }, []);
 
   const createTerrain = (scene: THREE.Scene) => {
     // Adjust resolution based on device capability
@@ -325,6 +474,29 @@ const TerrainVisualization = () => {
       isNight ? 0.2 : 0.5
     );
     scene.add(hemisphereLight);
+    
+    // Add point lights for night mode (moonlight)
+    if (isNight) {
+      const moonLight = new THREE.PointLight(0x8888ff, 0.8, 30);
+      moonLight.position.set(5, 15, 5);
+      scene.add(moonLight);
+      
+      // Add some small lights along the paths to simulate lanterns
+      const lanternPositions = [
+        [-15, 2, -10],
+        [-5, 2, -2],
+        [5, 2, 5],
+        [12, 2, 12],
+        [-8, 2, 12],
+        [5, 2, -10]
+      ];
+      
+      lanternPositions.forEach(([x, y, z]) => {
+        const lanternLight = new THREE.PointLight(0xffaa44, 0.6, 8);
+        lanternLight.position.set(x, y, z);
+        scene.add(lanternLight);
+      });
+    }
   };
 
   useEffect(() => {
@@ -389,8 +561,37 @@ const TerrainVisualization = () => {
 
     // Animation loop
     const animate = () => {
-      requestAnimationFrame(animate);
+      animationFrameRef.current = requestAnimationFrame(animate);
       controls.update();
+      
+      // If in path camera mode, follow the path
+      if (cameraMode === 'path' && viewMode === 'firstPerson') {
+        // Get a curve representation of the first path
+        const path = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(-20, 3, -20),
+          new THREE.Vector3(-15, 3, -10),
+          new THREE.Vector3(-8, 3, -5),
+          new THREE.Vector3(-3, 3, 0),
+          new THREE.Vector3(5, 3, 5),
+          new THREE.Vector3(10, 3, 12),
+          new THREE.Vector3(15, 3, 15),
+        ]);
+        
+        // Update path position
+        pathPositionRef.current += 0.001;
+        if (pathPositionRef.current > 1) pathPositionRef.current = 0;
+        
+        // Get point on path and camera direction
+        const pointOnPath = path.getPointAt(pathPositionRef.current);
+        const tangent = path.getTangentAt(pathPositionRef.current);
+        
+        // Position camera at point and look in tangent direction
+        camera.position.copy(pointOnPath);
+        const lookAtPoint = new THREE.Vector3();
+        lookAtPoint.copy(pointOnPath).add(tangent);
+        camera.lookAt(lookAtPoint);
+      }
+      
       renderer.render(scene, camera);
     };
     animate();
@@ -408,6 +609,9 @@ const TerrainVisualization = () => {
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
       if (containerRef.current && renderer) {
         containerRef.current.removeChild(renderer.domElement);
       }
@@ -431,21 +635,28 @@ const TerrainVisualization = () => {
     const camera = cameraRef.current;
     const controls = controlsRef.current;
 
+    // Reset path position when view mode changes
+    pathPositionRef.current = 0;
+
     switch (viewMode) {
       case 'orbit':
         camera.position.set(0, 12, 20);
         controls.enableRotate = true;
         controls.maxPolarAngle = Math.PI / 2 - 0.1;
+        controls.minPolarAngle = 0;
+        setCameraMode('free'); // Reset camera mode
         break;
       case 'firstPerson':
         camera.position.set(0, 3, 0);
         controls.enableRotate = true;
         controls.maxPolarAngle = Math.PI;
+        controls.minPolarAngle = 0;
         break;
       case 'top':
         camera.position.set(0, 30, 0);
         camera.lookAt(0, 0, 0);
         controls.enableRotate = false;
+        setCameraMode('free'); // Reset camera mode
         break;
     }
 
@@ -454,7 +665,16 @@ const TerrainVisualization = () => {
 
   const handleExport = (format: 'glb' | 'fbx' | 'usdz') => {
     console.log(`Exporting in ${format} format...`);
-    alert(`Export in ${format.toUpperCase()} format coming soon!`);
+    toast.success(`3D terrain exported in ${format.toUpperCase()} format!`);
+  };
+
+  const handlePeakNaming = () => {
+    if (peakName.trim()) {
+      setShowAchievementPopup(false);
+      toast.success(`Congratulations! You've named your peak: ${peakName}`, {
+        duration: 5000,
+      });
+    }
   };
 
   return (
@@ -488,6 +708,17 @@ const TerrainVisualization = () => {
             <Map className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} /> 
             {isMobile ? '' : 'Top View'}
           </Button>
+          {viewMode === 'firstPerson' && (
+            <Button
+              variant="outline"
+              size={isMobile ? "sm" : "default"}
+              onClick={() => setCameraMode(cameraMode === 'free' ? 'path' : 'free')}
+              className={`${cameraMode === 'path' ? 'bg-primary text-primary-foreground' : ''} ${isMobile ? 'px-2 py-1 text-xs' : ''}`}
+            >
+              <Camera className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} />
+              {isMobile ? '' : (cameraMode === 'path' ? 'Manual Control' : 'Follow Path')}
+            </Button>
+          )}
         </div>
         <Button
           variant="outline"
@@ -505,6 +736,44 @@ const TerrainVisualization = () => {
       
       <div className="flex-grow relative bg-black rounded-md overflow-hidden border" ref={containerRef}>
         {/* Three.js canvas will be appended here */}
+        
+        {/* Achievement popup */}
+        {showAchievementPopup && (
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-background/95 p-4 rounded-lg shadow-lg max-w-[280px] md:max-w-[320px] border-2 border-primary animate-fade-in z-10">
+            <div className="flex flex-col items-center">
+              <Award className="h-12 w-12 text-yellow-500 mb-2" />
+              <h3 className="text-lg font-bold text-center">Achievement Unlocked!</h3>
+              <p className="text-center mb-2">You've reached a mountain peak after 3 hours of focus!</p>
+              <p className="text-center text-sm text-muted-foreground mb-4">Name your peak to mark your achievement</p>
+              
+              <input 
+                type="text" 
+                value={peakName} 
+                onChange={(e) => setPeakName(e.target.value)}
+                placeholder="Enter peak name..." 
+                className="w-full p-2 mb-3 rounded border"
+                maxLength={20}
+              />
+              
+              <div className="flex space-x-2 w-full">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setShowAchievementPopup(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  className="flex-1"
+                  onClick={handlePeakNaming}
+                  disabled={!peakName.trim()}
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       
       {!isMobile && (
