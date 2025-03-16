@@ -9,33 +9,33 @@ import { Map, Mountain } from 'lucide-react';
 // Define the path points for the brain regions
 const pathPoints = [
   { 
-    position: [0, 0, 0], 
-    type: 'basecamp', 
+    position: [0, 0, 0] as [number, number, number], 
+    type: 'basecamp' as const, 
     label: 'Learning Basecamp' 
   },
   { 
-    position: [3, 1, 2], 
-    type: 'prefrontal', 
+    position: [3, 1, 2] as [number, number, number], 
+    type: 'prefrontal' as const, 
     label: 'Critical Thinking Zone' 
   },
   { 
-    position: [-2, 0.5, 3], 
-    type: 'hippocampus', 
+    position: [-2, 0.5, 3] as [number, number, number], 
+    type: 'hippocampus' as const, 
     label: 'Memory Formation Trail' 
   },
   { 
-    position: [0, 2, -3], 
-    type: 'amygdala', 
+    position: [0, 2, -3] as [number, number, number], 
+    type: 'amygdala' as const, 
     label: 'Emotional Regulation Peak' 
   },
   { 
-    position: [2.5, 0, -2], 
-    type: 'cerebellum', 
+    position: [2.5, 0, -2] as [number, number, number], 
+    type: 'cerebellum' as const, 
     label: 'Skill Building Pathway' 
   },
   { 
-    position: [-3, 1, -1.5], 
-    type: 'parietal', 
+    position: [-3, 1, -1.5] as [number, number, number], 
+    type: 'parietal' as const, 
     label: 'Problem Solving Ridge' 
   }
 ];
