@@ -98,21 +98,20 @@ const TerrainMapping = () => {
             <div className="w-full h-full flex flex-col items-center justify-center">
               <div className="mb-4 p-4 bg-background/90 rounded-md border">
                 <a 
-                  xmlns:dct="http://purl.org/dc/terms/" 
                   href="https://s2maps.eu" 
-                  property="dct:title"
                   className="text-primary hover:underline"
                 >
                   Sentinel-2 cloudless (2016)
                 </a> by <a 
-                  xmlns:cc="http://creativecommons.org/ns#" 
                   href="https://eox.at" 
-                  property="cc:attributionName" 
-                  rel="cc:attributionURL"
+                  rel="noopener noreferrer"
                   className="text-primary hover:underline"
                 >
                   EOX IT
                 </a>
+                <div className="text-xs text-muted-foreground mt-1">
+                  DCT terms: https://purl.org/dc/terms/ | CC: http://creativecommons.org/ns#
+                </div>
               </div>
               
               <iframe 
