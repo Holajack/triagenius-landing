@@ -1,14 +1,54 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import TerrainVisualization from './TerrainVisualization';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { PathwaySystem } from './PathwaySystem';
 import { Map, Mountain } from 'lucide-react';
 
+// Define the path points for the brain regions
+const pathPoints = [
+  { 
+    position: [0, 0, 0], 
+    type: 'basecamp', 
+    label: 'Learning Basecamp' 
+  },
+  { 
+    position: [3, 1, 2], 
+    type: 'prefrontal', 
+    label: 'Critical Thinking Zone' 
+  },
+  { 
+    position: [-2, 0.5, 3], 
+    type: 'hippocampus', 
+    label: 'Memory Formation Trail' 
+  },
+  { 
+    position: [0, 2, -3], 
+    type: 'amygdala', 
+    label: 'Emotional Regulation Peak' 
+  },
+  { 
+    position: [2.5, 0, -2], 
+    type: 'cerebellum', 
+    label: 'Skill Building Pathway' 
+  },
+  { 
+    position: [-3, 1, -1.5], 
+    type: 'parietal', 
+    label: 'Problem Solving Ridge' 
+  }
+];
+
 const TerrainMapping = () => {
   const isMobile = useIsMobile();
   const [showPathwaySystem, setShowPathwaySystem] = useState(false);
+  
+  // Handler for when a path point is clicked
+  const handlePathClick = (point: any) => {
+    console.log('Path clicked:', point.label);
+    // You can add more functionality here like showing details about the path
+  };
   
   return (
     <div className={`h-full ${isMobile ? 'px-1' : 'px-4'}`}>
@@ -36,7 +76,10 @@ const TerrainMapping = () => {
       </div>
       
       {showPathwaySystem ? (
-        <PathwaySystem />
+        <PathwaySystem 
+          paths={pathPoints} 
+          onPathClick={handlePathClick}
+        />
       ) : (
         <TerrainVisualization />
       )}
