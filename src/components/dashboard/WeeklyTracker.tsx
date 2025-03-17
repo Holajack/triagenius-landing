@@ -84,7 +84,7 @@ const WeeklyTracker = ({ chartType }: { chartType: ChartType }) => {
     switch (state.environment) {
       case 'office':
         return ['#4f46e5', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'];
-      case 'nature':
+      case 'park':
         return ['#10b981', '#34d399', '#6ee7b7', '#a7f3d0', '#d1fae5'];
       case 'home':
         return ['#f97316', '#fb923c', '#fdba74', '#fed7aa', '#ffedd5'];
