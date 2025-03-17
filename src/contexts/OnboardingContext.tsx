@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { OnboardingState, UserGoal, WorkStyle, StudyEnvironment, SoundPreference } from '@/types/onboarding';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 
 type OnboardingAction = 
   | { type: 'SET_STEP'; payload: number }
@@ -63,11 +63,7 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        toast({
-          title: "Error",
-          description: "You must be logged in to save preferences",
-          variant: "destructive",
-        });
+        toast.error("You must be logged in to save preferences");
         return;
       }
       
@@ -81,28 +77,19 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
           sound_preference: state.soundPreference,
           weekly_focus_goal: state.weeklyFocusGoal,
           is_onboarding_complete: state.isComplete,
-        }, { onConflict: 'user_id' });
+        }, { 
+          onConflict: 'user_id',  // This will now work with our new constraint
+        });
         
       if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to save preferences",
-          variant: "destructive",
-        });
+        toast.error("Failed to save preferences");
         console.error('Error saving onboarding state:', error);
         return;
       }
       
-      toast({
-        title: "Success",
-        description: "Preferences saved successfully",
-      });
+      toast.success("Preferences saved successfully");
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "An error occurred while saving preferences",
-        variant: "destructive",
-      });
+      toast.error("An error occurred while saving preferences");
       console.error('Error in saveOnboardingState:', error);
     }
   };
