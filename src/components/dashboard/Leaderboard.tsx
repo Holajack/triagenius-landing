@@ -37,7 +37,9 @@ const Leaderboard = () => {
   
   // Get users from the shared data source
   const leaderboardData = getFriendsLeaderboardData();
+  
   // Use the user's weekly focus goal for progress calculations
+  // Make sure to provide a fallback value if it's not set
   const weeklyGoal = state.weeklyFocusGoal || 10;
   
   // Get badge based on rank

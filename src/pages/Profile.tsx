@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -11,10 +10,9 @@ import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
-import PageHeader from "@/components/common/PageHeader";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import PageHeader from "@/components/common/PageHeader";
 
 const Profile = () => {
   const { theme, toggleTheme } = useTheme();
@@ -110,7 +108,7 @@ const Profile = () => {
                   <div className="space-y-6 py-4">
                     <div className="space-y-4">
                       <div>
-                        <FormLabel>Hours per week</FormLabel>
+                        <label className="text-sm font-medium">Hours per week</label>
                         <div className="flex items-center gap-4 mt-2">
                           <Slider
                             value={[tempFocusGoal]}
