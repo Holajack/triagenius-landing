@@ -3,7 +3,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Button } from '@/components/ui/button';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Orbit, User, Layout } from 'lucide-react';
 import { generateHeight, getTerrainColor } from './shaders/terrainUtils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -98,19 +98,6 @@ const updateLighting = (scene: THREE.Scene, isNight: boolean) => {
   );
   
   directionalLight.castShadow = true;
-  
-  // Configure shadow properties
-  directionalLight.shadow.mapSize.width = 2048;
-  directionalLight.shadow.mapSize.height = 2048;
-  directionalLight.shadow.camera.near = 0.5;
-  directionalLight.shadow.camera.far = 50;
-  
-  const shadowSize = 20;
-  directionalLight.shadow.camera.left = -shadowSize;
-  directionalLight.shadow.camera.right = shadowSize;
-  directionalLight.shadow.camera.top = shadowSize;
-  directionalLight.shadow.camera.bottom = -shadowSize;
-  
   scene.add(directionalLight);
   
   // Add hemisphere light for more natural lighting
@@ -129,11 +116,16 @@ const updateLighting = (scene: THREE.Scene, isNight: boolean) => {
   }
 };
 
+type ViewMode = 'orbit' | 'first-person' | 'top';
+
 const TerrainVisualization = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isNightMode, setIsNightMode] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('orbit');
   const isMobile = useIsMobile();
   const sceneRef = useRef<THREE.Scene | null>(null);
+  const controlsRef = useRef<OrbitControls | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -174,6 +166,7 @@ const TerrainVisualization = () => {
       0.1,
       2000
     );
+    cameraRef.current = camera;
     camera.position.set(0, 50, 90);
     
     // Renderer
@@ -189,6 +182,7 @@ const TerrainVisualization = () => {
     
     // Controls
     const controls = new OrbitControls(camera, renderer.domElement);
+    controlsRef.current = controls;
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.maxPolarAngle = Math.PI / 2 - 0.1;
@@ -234,7 +228,36 @@ const TerrainVisualization = () => {
         }
       });
     };
-  }, [isNightMode, isMobile]);
+  }, [isNightMode, isMobile, viewMode]);
+
+  // Update camera position based on view mode
+  useEffect(() => {
+    if (!cameraRef.current || !controlsRef.current) return;
+    
+    const camera = cameraRef.current;
+    const controls = controlsRef.current;
+    
+    switch (viewMode) {
+      case 'orbit':
+        camera.position.set(0, 50, 90);
+        controls.enableDamping = true;
+        controls.enabled = true;
+        break;
+      case 'first-person':
+        camera.position.set(0, 10, 0);
+        controls.enableDamping = true;
+        controls.enabled = true;
+        break;
+      case 'top':
+        camera.position.set(0, 120, 0);
+        camera.lookAt(0, 0, 0);
+        controls.enableDamping = false;
+        controls.enabled = false;
+        break;
+    }
+    
+    camera.updateProjectionMatrix();
+  }, [viewMode]);
 
   // Update lighting when night mode changes
   useEffect(() => {
@@ -247,18 +270,49 @@ const TerrainVisualization = () => {
 
   return (
     <div className="h-full w-full relative">
-      <Button
-        variant="outline"
-        size={isMobile ? "sm" : "default"}
-        onClick={() => setIsNightMode(!isNightMode)}
-        className="absolute top-4 left-4 z-10"
-      >
-        {isNightMode ? 
-          <Sun className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} /> : 
-          <Moon className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} />
-        }
-        {isMobile ? '' : (isNightMode ? 'Day Mode' : 'Night Mode')}
-      </Button>
+      <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-2">
+        <Button
+          variant="default"
+          size={isMobile ? "sm" : "default"}
+          onClick={() => setViewMode('orbit')}
+          className={`${viewMode === 'orbit' ? 'bg-primary' : 'bg-secondary'}`}
+        >
+          <Orbit className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} />
+          {isMobile ? '' : 'Orbit'}
+        </Button>
+        
+        <Button
+          variant="default"
+          size={isMobile ? "sm" : "default"}
+          onClick={() => setViewMode('first-person')}
+          className={`${viewMode === 'first-person' ? 'bg-primary' : 'bg-secondary'}`}
+        >
+          <User className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} />
+          {isMobile ? '' : 'First Person'}
+        </Button>
+        
+        <Button
+          variant="default"
+          size={isMobile ? "sm" : "default"}
+          onClick={() => setViewMode('top')}
+          className={`${viewMode === 'top' ? 'bg-primary' : 'bg-secondary'}`}
+        >
+          <Layout className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} />
+          {isMobile ? '' : 'Top View'}
+        </Button>
+        
+        <Button
+          variant="outline"
+          size={isMobile ? "sm" : "default"}
+          onClick={() => setIsNightMode(!isNightMode)}
+        >
+          {isNightMode ? 
+            <Sun className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} /> : 
+            <Moon className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} />
+          }
+          {isMobile ? '' : (isNightMode ? 'Day Mode' : 'Night Mode')}
+        </Button>
+      </div>
       <div ref={containerRef} className="h-full w-full" />
     </div>
   );
