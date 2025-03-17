@@ -1,3 +1,4 @@
+
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { OnboardingProvider } from "./contexts/OnboardingContext";
 import { TaskProvider } from "./contexts/TaskContext";
@@ -21,7 +22,6 @@ import Reports from "./pages/Reports";
 import Community from "./pages/Community";
 import StudyRoom from "./pages/StudyRoom";
 import Chat from "./pages/Chat";
-import Profile from "./pages/Profile";
 import Leaderboard from "./pages/Leaderboard";
 import Bonuses from "./pages/Bonuses";
 import Nora from "./pages/Nora";
