@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,13 +9,16 @@ import { toast } from "sonner";
 
 type AuthMode = "login" | "signup";
 
-const AuthForm = () => {
+interface AuthFormProps {
+  mode: AuthMode;
+  source?: string;
+}
+
+const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const initialMode = location.state?.mode === "signup" ? "signup" : "login";
-  const isFromStartFocusing = location.state?.source === "start-focusing";
+  const isFromStartFocusing = source === "start-focusing";
   
-  const [mode, setMode] = useState<AuthMode>(initialMode);
+  const [mode] = useState<AuthMode>(initialMode);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
@@ -25,22 +28,7 @@ const AuthForm = () => {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [error, setError] = useState("");
-  
-  // Clear error when switching modes
-  useEffect(() => {
-    setError("");
-  }, [mode]);
 
-  const toggleMode = () => {
-    setMode(mode === "login" ? "signup" : "login");
-    // Clear form fields and errors when switching modes
-    setEmail("");
-    setPassword("");
-    setName("");
-    setUsername("");
-    setError("");
-  };
-  
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -96,11 +84,7 @@ const AuthForm = () => {
   };
   
   return (
-    <div className="w-full max-w-md mx-auto p-6 bg-white rounded-xl shadow-sm border">
-      <h2 className="text-2xl font-bold text-center mb-6">
-        {mode === "login" ? "Welcome Back" : "Create Your Account"}
-      </h2>
-      
+    <div className="w-full bg-white rounded-xl shadow-sm border p-6">
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">
           {error}
@@ -192,21 +176,6 @@ const AuthForm = () => {
           )}
         </Button>
       </form>
-      
-      <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600">
-          {mode === "login"
-            ? "Don't have an account?"
-            : "Already have an account?"}
-          <button
-            type="button"
-            onClick={toggleMode}
-            className="ml-1 text-triage-purple hover:underline font-medium"
-          >
-            {mode === "login" ? "Sign Up" : "Sign In"}
-          </button>
-        </p>
-      </div>
     </div>
   );
 };

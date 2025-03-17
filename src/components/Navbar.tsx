@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
@@ -47,6 +46,14 @@ const Navbar = () => {
     }
   };
 
+  const handleStartFocusingClick = () => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    } else {
+      navigate('/auth', { state: { mode: 'signup', source: 'start-focusing' } });
+    }
+  };
+
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 py-4 px-4 ${
@@ -55,7 +62,10 @@ const Navbar = () => {
     >
       <div className="container mx-auto flex items-center justify-between">
         <div className="flex items-center">
-          <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-triage-indigo to-triage-purple">
+          <span 
+            className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-triage-indigo to-triage-purple cursor-pointer"
+            onClick={() => navigate('/')}
+          >
             The Triage System
           </span>
         </div>
@@ -64,6 +74,7 @@ const Navbar = () => {
           <Button 
             variant="ghost" 
             className="text-gray-600 hover:text-gray-900 bg-transparent hover:bg-white/50 rounded-xl"
+            onClick={() => navigate('/')}
           >
             Features
           </Button>
@@ -105,7 +116,10 @@ const Navbar = () => {
           <Button 
             variant="ghost" 
             className="text-gray-600 hover:text-gray-900 bg-transparent hover:bg-gray-100 w-full justify-start"
-            onClick={() => setMobileMenuOpen(false)}
+            onClick={() => {
+              setMobileMenuOpen(false);
+              navigate('/');
+            }}
           >
             Features
           </Button>

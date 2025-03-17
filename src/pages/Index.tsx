@@ -76,11 +76,7 @@ const Index = () => {
   };
 
   const handleLogin = () => {
-    if (isAuthenticated) {
-      supabase.auth.signOut().then(() => navigate('/'));
-    } else {
-      navigate('/auth', { state: { mode: 'login' } });
-    }
+    navigate('/auth', { state: { mode: isAuthenticated ? 'logout' : 'login' } });
   };
 
   return (
