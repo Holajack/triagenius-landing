@@ -1,3 +1,4 @@
+
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -95,8 +96,7 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
   };
   
   const handleCreateRoom = () => {
-    toast({
-      title: "Creating new study room",
+    toast("Creating new study room", {
       description: "Feature coming soon: you'll be able to create your own study rooms."
     });
   };

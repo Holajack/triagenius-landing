@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import TerrainVisualization from './TerrainVisualization';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -56,8 +57,7 @@ const TerrainMapping = () => {
   }, [showAchievement]);
   
   const handlePathClick = (point: { label: string; type: string }) => {
-    toast({
-      title: `Achievement Unlocked: ${point.type}`,
+    toast(`Achievement Unlocked: ${point.type}`, {
       description: `You've discovered: ${point.label}`,
       duration: 5000,
     });

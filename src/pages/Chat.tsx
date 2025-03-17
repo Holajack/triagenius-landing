@@ -269,15 +269,13 @@ const Chat = () => {
         
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="rounded-full h-8 w-8"
-            onClick={() => toast({
-              title: "Feature coming soon",
+            onClick={() => toast("Feature coming soon", {
               description: "Audio calls will be available in a future update."
             })}>
             <Phone className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="icon" className="rounded-full h-8 w-8"
-            onClick={() => toast({
-              title: "Feature coming soon",
+            onClick={() => toast("Feature coming soon", {
               description: "Video calls will be available in a future update."
             })}>
             <Video className="h-4 w-4" />
@@ -326,8 +324,7 @@ const Chat = () => {
       <div className="border-t p-3 bg-card">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" className="rounded-full"
-            onClick={() => toast({
-              title: "Feature coming soon",
+            onClick={() => toast("Feature coming soon", {
               description: "File attachments will be available in a future update."
             })}>
             <Paperclip className="h-5 w-5 text-muted-foreground" />
@@ -346,8 +343,7 @@ const Chat = () => {
           />
           
           <Button variant="ghost" size="icon" className="rounded-full"
-            onClick={() => toast({
-              title: "Feature coming soon",
+            onClick={() => toast("Feature coming soon", {
               description: "Emoji picker will be available in a future update."
             })}>
             <Smile className="h-5 w-5 text-muted-foreground" />
@@ -367,3 +363,4 @@ const Chat = () => {
 };
 
 export default Chat;
+

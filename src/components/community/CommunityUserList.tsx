@@ -188,8 +188,7 @@ export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityU
                   size="sm"
                   className="text-xs"
                   onClick={() => {
-                    toast({
-                      title: "Feature coming soon",
+                    toast("Feature coming soon", {
                       description: "You'll be able to view detailed profiles in the future."
                     });
                   }}

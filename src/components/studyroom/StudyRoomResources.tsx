@@ -1,3 +1,4 @@
+
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Link, Upload, Plus } from "lucide-react";
@@ -17,8 +18,7 @@ interface StudyRoomResourcesProps {
 
 export const StudyRoomResources = ({ resources }: StudyRoomResourcesProps) => {
   const handleAddResource = () => {
-    toast({
-      title: "Feature coming soon",
+    toast("Feature coming soon", {
       description: "You'll be able to share resources with your study group soon."
     });
   };
