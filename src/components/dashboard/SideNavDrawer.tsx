@@ -1,5 +1,5 @@
 
-import { Menu, Book, Brain, BadgePercent, LayoutDashboard, Users, Bot, BarChart3, UserCircle2, Trophy } from "lucide-react";
+import { Menu, Book, Brain, BadgePercent, LayoutDashboard, Users, Bot, BarChart3, UserCircle2, Trophy, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
@@ -70,6 +70,11 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
       label: "Profile",
       icon: <UserCircle2 className="h-5 w-5" />,
       onClick: () => navigate("/profile"),
+    },
+    {
+      label: "Settings",
+      icon: <Settings className="h-5 w-5" />,
+      onClick: () => navigate("/settings"),
     },
   ];
 

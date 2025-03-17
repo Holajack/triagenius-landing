@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import PageHeader from "@/components/common/PageHeader";
+import { useNavigate } from "react-router-dom";
 
 const Profile = () => {
   const { theme, toggleTheme } = useTheme();
   const { state } = useOnboarding();
+  const navigate = useNavigate();
 
   return (
     <div className="container max-w-md mx-auto px-4 pb-20">
@@ -81,6 +83,18 @@ const Profile = () => {
               <div className="bg-muted px-3 py-2 rounded-md text-sm">
                 {state.workStyle ? state.workStyle.charAt(0).toUpperCase() + state.workStyle.slice(1).replace('-', ' ') : 'Not set'}
               </div>
+            </div>
+
+            <Separator />
+
+            <div>
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => navigate("/settings")}
+              >
+                Advanced Settings
+              </Button>
             </div>
           </div>
         </CardContent>

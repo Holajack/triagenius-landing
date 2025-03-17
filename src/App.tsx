@@ -22,6 +22,7 @@ import Leaderboard from "./pages/Leaderboard";
 import Bonuses from "./pages/Bonuses";
 import Nora from "./pages/Nora";
 import NotFound from "./pages/NotFound";
+import Settings from "./pages/Settings";
 
 function App() {
   return (
@@ -42,6 +43,7 @@ function App() {
                   <Route path="/study-room/:id?" element={<StudyRoom />} />
                   <Route path="/chat" element={<Chat />} />
                   <Route path="/profile" element={<Profile />} />
+                  <Route path="/settings" element={<Settings />} />
                   <Route path="/leaderboard" element={<Leaderboard />} />
                   <Route path="/bonuses" element={<Bonuses />} />
                   <Route path="/nora" element={<Nora />} />
