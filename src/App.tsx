@@ -1,5 +1,6 @@
 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import React from "react";
 import Index from "@/pages/Index";
 import Dashboard from "@/pages/Dashboard";
 import FocusSession from "@/pages/FocusSession";
@@ -29,8 +30,8 @@ import { WalkthroughProvider } from "@/contexts/WalkthroughContext";
 export default function App() {
   return (
     <ErrorBoundary>
-      <Router>
-        <ThemeProvider>
+      <ThemeProvider>
+        <Router>
           <OnboardingProvider>
             <TaskProvider>
               <WalkthroughProvider>
@@ -156,8 +157,8 @@ export default function App() {
               </WalkthroughProvider>
             </TaskProvider>
           </OnboardingProvider>
-        </ThemeProvider>
-      </Router>
+        </Router>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

@@ -1,5 +1,5 @@
 
-import { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 import { Task, SubTask, PriorityLevel } from '@/types/tasks';
 
 interface TaskState {
@@ -143,7 +143,7 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
 
 export const useTasks = () => {
   const context = useContext(TaskContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useTasks must be used within a TaskProvider');
   }
   return context;
