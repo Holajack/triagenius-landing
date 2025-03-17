@@ -10,11 +10,19 @@ import { register } from './components/pwa/ServiceWorker'
 // Register service worker with our enhanced implementation
 register();
 
+// Create a wrapper component to use our new provider format
+function ToastProviderWrapper({ children }: { children: React.ReactNode }) {
+  const { Provider, providerProps } = ToastProvider({ children });
+  return (
+    <Provider {...providerProps} />
+  );
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ToastProvider>
+    <ToastProviderWrapper>
       <App />
       <Toaster />
-    </ToastProvider>
+    </ToastProviderWrapper>
   </React.StrictMode>
 )

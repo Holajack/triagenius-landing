@@ -18,6 +18,7 @@ type ToastContextType = {
 
 const ToastContext = createContext<ToastContextType | null>(null);
 
+// Create provider component as a regular function component
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastProps[]>([]);
 
@@ -31,11 +32,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts((prevToasts) => prevToasts.filter((toast) => toast.id !== id));
   };
 
-  return (
-    <ToastContext.Provider value={{ toasts, addToast, dismissToast }}>
-      {children}
-    </ToastContext.Provider>
-  );
+  return {
+    Provider: ToastContext.Provider,
+    providerProps: {
+      value: { toasts, addToast, dismissToast },
+      children
+    }
+  };
 }
 
 export function useToast() {
