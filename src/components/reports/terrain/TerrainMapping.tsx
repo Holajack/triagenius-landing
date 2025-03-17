@@ -38,7 +38,9 @@ const TerrainMapping = () => {
   const [isNightMode, setIsNightMode] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
   
+  // Load the Clooned script
   useEffect(() => {
     // Check if Clooned script already exists
     const existingScript = document.querySelector('script[src*="clooned.js"]');
@@ -56,6 +58,7 @@ const TerrainMapping = () => {
       
       script.onerror = (error) => {
         console.error('Error loading Clooned script:', error);
+        setLoadingError('Failed to load 3D visualization script');
       };
       
       document.head.appendChild(script);
@@ -74,22 +77,51 @@ const TerrainMapping = () => {
   // Create clooned-object element manually after script loads
   useEffect(() => {
     if (scriptLoaded && containerRef.current) {
-      // Clear previous content
-      if (containerRef.current.firstChild) {
-        containerRef.current.innerHTML = '';
-      }
-      
-      // Create the clooned-object element
-      const cloonedObject = document.createElement('clooned-object');
-      cloonedObject.setAttribute('features', 'lsc;dt;fs');
-      cloonedObject.setAttribute('oid', 'a4ff2c22518f4b3aaac823e1fa5abbbc');
-      
-      // Add to container
-      containerRef.current.appendChild(cloonedObject);
-      
-      console.log('Clooned object element created and appended');
+      // Short delay to ensure the script is fully initialized
+      setTimeout(() => {
+        try {
+          // Clear previous content
+          if (containerRef.current) {
+            containerRef.current.innerHTML = '';
+          
+            // Create the clooned-object element
+            const cloonedObject = document.createElement('clooned-object');
+            cloonedObject.setAttribute('features', 'lsc;dt;fs');
+            cloonedObject.setAttribute('oid', 'a4ff2c22518f4b3aaac823e1fa5abbbc');
+            
+            // Apply styling to make it take the full container dimensions
+            cloonedObject.style.width = '100%';
+            cloonedObject.style.height = '100%';
+            cloonedObject.style.display = 'block';
+            
+            // Add to container
+            containerRef.current.appendChild(cloonedObject);
+            
+            console.log('Clooned object element created and appended');
+          }
+        } catch (error) {
+          console.error('Error creating Clooned object:', error);
+          setLoadingError('Failed to initialize 3D visualization');
+        }
+      }, 300); // Small delay to ensure script is ready
     }
   }, [scriptLoaded]);
+  
+  // Apply night mode effect when toggled
+  useEffect(() => {
+    // This would implement night/day mode if the Clooned API supports it
+    if (scriptLoaded && containerRef.current) {
+      const cloonedObject = containerRef.current.querySelector('clooned-object');
+      if (cloonedObject) {
+        // Add a class to the container instead for styling
+        if (isNightMode) {
+          containerRef.current.classList.add('night-mode');
+        } else {
+          containerRef.current.classList.remove('night-mode');
+        }
+      }
+    }
+  }, [isNightMode, scriptLoaded]);
   
   return (
     <div className={`h-full ${isMobile ? 'px-1' : 'px-4'}`}>
@@ -129,7 +161,30 @@ const TerrainMapping = () => {
           </div>
         </div>
         
-        <div className="w-full h-full pt-12 pb-8" ref={containerRef}>
+        <div className={`w-full h-full pt-12 pb-8 ${isNightMode ? 'night-mode' : ''}`} ref={containerRef}>
+          {!scriptLoaded && !loadingError && (
+            <div className="flex items-center justify-center h-full">
+              <div className="animate-pulse text-center">
+                <p>Loading 3D terrain...</p>
+                <div className="mt-2 w-12 h-1 bg-primary/50 mx-auto rounded-full"></div>
+              </div>
+            </div>
+          )}
+          
+          {loadingError && (
+            <div className="flex flex-col items-center justify-center h-full text-destructive">
+              <p>{loadingError}</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-2"
+                onClick={() => window.location.reload()}
+              >
+                Reload
+              </Button>
+            </div>
+          )}
+          
           {/* clooned-object will be inserted here programmatically */}
         </div>
         
