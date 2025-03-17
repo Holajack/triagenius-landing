@@ -31,21 +31,6 @@ const terrainData = {
     "max": 4309,
     "min": 544,
     "base": -1713
-  },
-  "modelCoordinatesAltitudeBounds": {
-    "max": 8.339,
-    "min": 0,
-    "base": -5
-  },
-  "elevationCanvas": {
-    "width": 402,
-    "height": 464
-  },
-  "groundParams": {
-    "width": 69.46,
-    "height": 80.173,
-    "subdivisionsX": 401,
-    "subdivisionsY": 463
   }
 };
 
