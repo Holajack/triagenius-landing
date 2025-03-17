@@ -1,11 +1,9 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Mountain, Sun, Moon } from 'lucide-react';
-import Terrain3D from './Terrain3D';
 
-// Define the terrain data
+// Define the terrain data - we'll keep this for reference even though we're using an embedded 3D object
 const terrainData = {
   "bounds": {
     "ne": [
@@ -37,6 +35,21 @@ const terrainData = {
 const TerrainMapping = () => {
   const isMobile = useIsMobile();
   const [isNightMode, setIsNightMode] = useState(false);
+  
+  useEffect(() => {
+    // Load the Clooned script
+    const script = document.createElement('script');
+    script.src = "https://clooned.com/wp-content/uploads/cloons/scripts/clooned.js";
+    script.async = true;
+    document.body.appendChild(script);
+    
+    // Clean up script on unmount
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
+  }, []);
   
   return (
     <div className={`h-full ${isMobile ? 'px-1' : 'px-4'}`}>
@@ -77,15 +90,11 @@ const TerrainMapping = () => {
         </div>
         
         <div className="w-full h-full pt-12 pb-8">
-          <Terrain3D 
-            textureUrl="/lovable-uploads/7b817dfc-7eaa-42d5-b84b-d935f7b996e4.png" 
-            terrainData={terrainData}
-            isNightMode={isNightMode}
-          />
+          <clooned-object features="lsc;dt;fs" oid="a4ff2c22518f4b3aaac823e1fa5abbbc"></clooned-object>
         </div>
         
         <div className="absolute bottom-0 left-0 right-0 p-2 text-xs text-center text-muted-foreground bg-background/80 backdrop-blur-sm">
-          Colorado Rockies terrain - drag to rotate, scroll to zoom
+          Colorado Rockies terrain - interactive 3D model by Clooned
         </div>
       </div>
     </div>
