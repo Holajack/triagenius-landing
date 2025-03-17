@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -67,8 +66,11 @@ const FocusSession = () => {
     
     setShowEndConfirmation(false);
     
-    // Directly navigate to the session report page
-    handleSessionEnd();
+    // Add a small delay to allow React to process state updates
+    // before navigation occurs, preventing the freeze
+    setTimeout(() => {
+      handleSessionEnd();
+    }, 100);
   };
   
   const handleMilestoneReached = (milestone: number) => {
