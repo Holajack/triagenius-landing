@@ -8,6 +8,7 @@ type ToastProps = {
   description?: string;
   action?: React.ReactNode;
   variant?: "default" | "destructive";
+  duration?: number; // Add duration property
 };
 
 type ToastContextType = {
@@ -48,7 +49,14 @@ export function useToast() {
     // Return a default implementation that uses sonner toast
     return {
       toasts: [],
-      toast: sonnerToast,
+      toast: (props: Omit<ToastProps, "id">) => {
+        // Pass through to sonner toast
+        sonnerToast(props.title || "", {
+          description: props.description,
+          duration: props.duration
+        });
+        return "";
+      },
       dismissToast: () => {}
     };
   }

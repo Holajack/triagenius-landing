@@ -140,7 +140,7 @@ const InstallPrompt = () => {
     toast({
       title: "Install this app",
       description: "To install: tap the share icon, then 'Add to Home Screen'",
-      duration: 10000,
+      duration: 10000 // Added as a valid property in our updated type
     });
     handleDismiss();
   };
