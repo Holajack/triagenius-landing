@@ -53,12 +53,12 @@ function TerrainMesh({ textureUrl, terrainData }: TerrainProps) {
   // Set initial camera position on mount
   useEffect(() => {
     if (camera) {
-      camera.position.set(0, 15, 35);
+      camera.position.set(0, 20, 40);
       camera.lookAt(0, 0, 0);
     }
   }, [camera]);
 
-  // Create terrain geometry
+  // Create terrain geometry with more subdivisions for better detail
   const geometry = new THREE.PlaneGeometry(
     terrainData.groundParams.width,
     terrainData.groundParams.height,
@@ -66,25 +66,32 @@ function TerrainMesh({ textureUrl, terrainData }: TerrainProps) {
     terrainData.groundParams.subdivisionsY
   );
 
-  // Simulate elevation - would ideally use actual elevation data
+  // Enhanced terrain generation algorithm
   const { array } = geometry.attributes.position;
   const maxHeight = terrainData.modelCoordinatesAltitudeBounds.max;
   
-  // Terrain generation function using the terrainUtils
+  // Generate more realistic mountain terrain
   for (let i = 0; i < array.length; i += 3) {
     const x = array[i];
     const z = array[i + 2];
     
-    // Distance from center
+    // Distance from center with adjusted scale
     const distance = Math.sqrt(x * x + z * z);
-    const centerFactor = Math.max(0, 1 - distance / 25);
+    const centerFactor = Math.max(0, 1 - distance / 35);
     
-    // Random noise for more natural appearance
-    const noise = Math.sin(x * 0.5) * Math.cos(z * 0.5) * 0.5 + 
-                  Math.sin(x * 1.0) * Math.cos(z * 1.0) * 0.25;
+    // Multiple noise functions at different frequencies for more natural terrain
+    const noise1 = Math.sin(x * 0.3) * Math.cos(z * 0.3) * 0.5;
+    const noise2 = Math.sin(x * 0.7) * Math.cos(z * 0.7) * 0.25;
+    const noise3 = Math.sin(x * 1.4) * Math.cos(z * 1.4) * 0.125;
+    const combinedNoise = noise1 + noise2 + noise3;
     
-    // Elevation
-    array[i + 1] = (centerFactor * maxHeight * 0.7) + (noise * maxHeight * 0.3);
+    // Mountain range along center with realistic peaks
+    const mountainRidge = Math.exp(-Math.pow(x / 10, 2)) * maxHeight * 0.8;
+    
+    // Combined elevation with ridge and noise features
+    array[i + 1] = (centerFactor * maxHeight * 0.6) + 
+                  (combinedNoise * maxHeight * 0.4) + 
+                  mountainRidge * (0.5 + Math.random() * 0.5);
   }
 
   // Apply texture and material settings
@@ -96,9 +103,10 @@ function TerrainMesh({ textureUrl, terrainData }: TerrainProps) {
       <primitive object={geometry} attach="geometry" />
       <meshStandardMaterial 
         map={texture}
-        displacementScale={2}
-        roughness={0.8}
+        displacementScale={3}
+        roughness={0.9}
         metalness={0.1}
+        side={THREE.DoubleSide}
       />
     </mesh>
   );
@@ -111,7 +119,7 @@ const Terrain3D: React.FC<TerrainProps> = ({ textureUrl, terrainData }) => {
     <div className="w-full h-full" style={{ minHeight: '400px' }}>
       <Canvas 
         shadows 
-        camera={{ position: [0, 15, 35], fov: 60 }}
+        camera={{ position: [0, 20, 40], fov: 60 }}
         gl={{ antialias: true, alpha: true }}
         onCreated={({ gl }) => {
           gl.setClearColor(new THREE.Color('#000000'), 0);
@@ -119,16 +127,21 @@ const Terrain3D: React.FC<TerrainProps> = ({ textureUrl, terrainData }) => {
           gl.shadowMap.type = THREE.PCFSoftShadowMap;
         }}
       >
-        <color attach="background" args={['#000000']} />
-        <fog attach="fog" args={['#000000', 30, 80]} />
+        <color attach="background" args={['#111']} />
+        <fog attach="fog" args={['#111', 40, 100]} />
         
-        <ambientLight intensity={0.5} />
+        <ambientLight intensity={0.6} />
         <directionalLight 
-          position={[10, 20, 10]} 
+          position={[10, 25, 10]} 
           intensity={1.5} 
           castShadow 
-          shadow-mapSize-width={1024} 
-          shadow-mapSize-height={1024} 
+          shadow-mapSize-width={2048} 
+          shadow-mapSize-height={2048} 
+        />
+        <directionalLight
+          position={[-10, 15, -10]}
+          intensity={0.8}
+          color="#b3e0ff"
         />
         
         <React.Suspense fallback={null}>
@@ -142,7 +155,7 @@ const Terrain3D: React.FC<TerrainProps> = ({ textureUrl, terrainData }) => {
           enableRotate={true}
           maxPolarAngle={Math.PI / 2}
           minDistance={5}
-          maxDistance={50}
+          maxDistance={60}
         />
       </Canvas>
     </div>

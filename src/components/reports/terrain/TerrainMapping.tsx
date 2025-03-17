@@ -146,7 +146,7 @@ const TerrainMapping = () => {
       ) : showTerrainView ? (
         <div className="relative w-full h-full min-h-[400px] border rounded-md p-4 overflow-hidden">
           <div className="absolute top-0 left-0 right-0 z-10 flex justify-between items-center p-4 bg-background/80 backdrop-blur-sm">
-            <h4 className="text-base font-medium">3D Terrain Map - Colorado Rockies</h4>
+            <h4 className="text-base font-medium">3D Terrain Map - Mountain Range</h4>
             <div className="text-primary text-sm">
               <span>Interactive 3D View</span>
             </div>
@@ -154,13 +154,13 @@ const TerrainMapping = () => {
           
           <div className="w-full h-full pt-12 pb-8">
             <Terrain3D 
-              textureUrl="/lovable-uploads/678940a1-a2bb-4813-8dc5-200f55976f4e.png" 
+              textureUrl="/lovable-uploads/862bad1f-1f97-45f5-add0-47b62a261576.png" 
               terrainData={terrainData} 
             />
           </div>
           
           <div className="absolute bottom-0 left-0 right-0 p-2 text-xs text-center text-muted-foreground bg-background/80 backdrop-blur-sm">
-            Colorado Rocky Mountains terrain - drag to rotate, scroll to zoom
+            Mountain terrain - drag to rotate, scroll to zoom
           </div>
         </div>
       ) : (
