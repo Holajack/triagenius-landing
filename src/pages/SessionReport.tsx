@@ -25,6 +25,7 @@ const SessionReport = () => {
   const navigate = useNavigate();
   const [sessionNotes, setSessionNotes] = useState('');
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
+  const [sessionId, setSessionId] = useState<string>('');
 
   useEffect(() => {
     // Retrieve session data from localStorage
@@ -33,6 +34,10 @@ const SessionReport = () => {
       try {
         const data = JSON.parse(storedData);
         setSessionData(data);
+        
+        // Generate a unique ID for this session
+        const id = `session_${Date.now()}`;
+        setSessionId(id);
       } catch (e) {
         console.error('Error parsing session data', e);
       }
@@ -62,12 +67,26 @@ const SessionReport = () => {
   };
   
   const handleSaveNotes = () => {
-    // In a real app, this would save to a database
-    console.log('Saving notes:', sessionNotes);
-    // Clear the session data from localStorage
-    localStorage.removeItem('sessionData');
-    // Force navigation directly to dashboard, bypassing any checks
-    navigate('/dashboard', { replace: true });
+    if (sessionData) {
+      // Save the session report to localStorage with a unique key
+      const reportKey = `sessionReport_${Date.now()}`;
+      const reportData = {
+        ...sessionData,
+        notes: sessionNotes,
+        savedAt: new Date().toISOString()
+      };
+      
+      localStorage.setItem(reportKey, JSON.stringify(reportData));
+      
+      // Clear the session data from localStorage
+      localStorage.removeItem('sessionData');
+      
+      // Navigate to reports page after saving
+      navigate('/reports', { replace: true });
+    } else {
+      // If no session data, just go back to dashboard
+      navigate('/dashboard', { replace: true });
+    }
   };
 
   const handleBackToDashboard = () => {

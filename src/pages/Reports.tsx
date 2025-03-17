@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import NavigationBar from "@/components/dashboard/NavigationBar";
@@ -18,7 +18,7 @@ import {
   Activity,
   Search,
   Brain,
-  Mountain
+  ScrollText
 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,7 @@ import FocusBreakdown from "@/components/reports/FocusBreakdown";
 import RecommendationsCard from "@/components/reports/RecommendationsCard";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import TerrainMapping from "@/components/reports/terrain/TerrainMapping";
+import SessionReportsList from "@/components/reports/SessionReportsList";
 
 const Reports = () => {
   const { state } = useOnboarding();
@@ -92,8 +93,8 @@ const Reports = () => {
             <TabsTrigger value="focus" className="flex items-center gap-1">
               <Activity className="h-4 w-4" /> Focus Metrics
             </TabsTrigger>
-            <TabsTrigger value="terrain" className="flex items-center gap-1">
-              <Mountain className="h-4 w-4" /> Terrain Explorer
+            <TabsTrigger value="sessionReports" className="flex items-center gap-1">
+              <ScrollText className="h-4 w-4" /> Session Reports
             </TabsTrigger>
           </TabsList>
           
@@ -105,23 +106,8 @@ const Reports = () => {
             <FocusBreakdown />
           </TabsContent>
           
-          <TabsContent value="terrain" className="space-y-4">
-            <Card className="shadow-sm mb-6">
-              <CardHeader>
-                <CardTitle className="text-xl flex items-center">
-                  <Mountain className="h-5 w-5 mr-2 text-primary" />
-                  Advanced Terrain Explorer
-                </CardTitle>
-                <CardDescription>
-                  Interactive 3D visualization of learning terrain and pathways
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[600px]">
-                  <TerrainMapping />
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="sessionReports" className="space-y-4">
+            <SessionReportsList />
           </TabsContent>
         </Tabs>
       </div>
