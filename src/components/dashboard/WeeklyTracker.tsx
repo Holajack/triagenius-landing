@@ -17,6 +17,8 @@ import {
   Cell,
   ReferenceLine,
 } from "recharts";
+import { supabase } from "@/integrations/supabase/client";
+import { useUser } from "@/hooks/use-user";
 
 type ChartType = "bar" | "pie" | "line" | "time";
 
@@ -45,62 +47,137 @@ const generateEmptyPieData = () => {
   }));
 };
 
-// Mock data for the weekly tracker
-const generateMockData = () => {
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const subjects = ["Math", "Physics", "History", "English", "Chemistry"];
-  
-  return days.map(day => {
-    // Generate between 2-6 hours of total study time per day (out of 24 hours)
-    const totalTime = Math.floor(Math.random() * 4) + 2;
-    const subjectData: Record<string, number> = {};
-    
-    // Distribute total hours across subjects (in minutes)
-    let remainingMinutes = totalTime * 60;
-    subjects.forEach((subject, index) => {
-      // Last subject gets all remaining time
-      if (index === subjects.length - 1) {
-        subjectData[subject] = remainingMinutes;
-      } else {
-        // Allocate a portion of the remaining time
-        const subjectMinutes = Math.floor(Math.random() * (remainingMinutes / 2)) + 10;
-        subjectData[subject] = subjectMinutes;
-        remainingMinutes -= subjectMinutes;
-      }
-    });
-    
-    return {
-      day,
-      total: totalTime,
-      ...subjectData,
-    };
-  });
-};
-
-// Mock data for the pie chart
-const generatePieData = () => {
-  const subjects = ["Math", "Physics", "History", "English", "Chemistry"];
-  const totalMinutes = 24 * 60 * 7 * 0.15; // 15% of total week time (24h * 7 days)
-  let remainingMinutes = totalMinutes;
-  
-  return subjects.map((name, index) => {
-    // Last subject gets all remaining time
-    if (index === subjects.length - 1) {
-      return { name, value: Math.round(remainingMinutes) };
-    }
-    
-    // Allocate a portion of the remaining time
-    const value = Math.floor(Math.random() * (remainingMinutes / 2)) + 30;
-    remainingMinutes -= value;
-    
-    return { name, value };
-  });
-};
-
 const WeeklyTracker = ({ chartType, hasData = true }: { chartType: ChartType, hasData?: boolean }) => {
   const { state } = useOnboarding();
-  const [data, setData] = useState(() => hasData ? generateMockData() : generateEmptyData());
-  const [pieData, setPieData] = useState(() => hasData ? generatePieData() : generateEmptyPieData());
+  const { user } = useUser();
+  const [data, setData] = useState(() => generateEmptyData());
+  const [pieData, setPieData] = useState(() => generateEmptyPieData());
+  const [isLoading, setIsLoading] = useState(true);
+  const [noDataAvailable, setNoDataAvailable] = useState(false);
+  
+  // Fetch real focus session data
+  useEffect(() => {
+    const fetchFocusData = async () => {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+      
+      setIsLoading(true);
+      
+      try {
+        // Get current week's start and end dates
+        const now = new Date();
+        const dayOfWeek = now.getDay(); // 0 for Sunday, 1 for Monday, etc.
+        const startOfWeek = new Date(now);
+        // Adjust to get Monday as start of week (if dayOfWeek is 0/Sunday, go back 6 days)
+        startOfWeek.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+        startOfWeek.setHours(0, 0, 0, 0);
+        
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+        
+        // Fetch focus sessions for the current week
+        const { data: focusSessions, error } = await supabase
+          .from('focus_sessions')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('start_time', startOfWeek.toISOString())
+          .lte('start_time', endOfWeek.toISOString());
+          
+        if (error) {
+          console.error('Error fetching focus sessions:', error);
+          setNoDataAvailable(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        // If no focus sessions yet, use empty data
+        if (!focusSessions || focusSessions.length === 0) {
+          setNoDataAvailable(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Process the data for charts
+        const processedData = processSessionData(focusSessions, startOfWeek);
+        setData(processedData.weeklyData);
+        setPieData(processedData.pieData);
+        setNoDataAvailable(false);
+      } catch (error) {
+        console.error('Error in fetchFocusData:', error);
+        setNoDataAvailable(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchFocusData();
+  }, [user]);
+  
+  // Process session data for charts
+  const processSessionData = (sessions: any[], startOfWeek: Date) => {
+    const daysMap: Record<string, number> = {
+      0: 6, // Sunday -> index 6
+      1: 0, // Monday -> index 0
+      2: 1, // Tuesday -> index 1
+      3: 2, // Wednesday -> index 2
+      4: 3, // Thursday -> index 3
+      5: 4, // Friday -> index 4
+      6: 5, // Saturday -> index 5
+    };
+    
+    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const subjects = ["Math", "Physics", "History", "English", "Chemistry"];
+    
+    // Initialize data structures
+    const weeklyData = generateEmptyData();
+    const subjectTotals: Record<string, number> = {};
+    subjects.forEach(subject => subjectTotals[subject] = 0);
+    
+    // Process each session
+    sessions.forEach(session => {
+      // Determine which day of the week this session belongs to
+      const sessionDate = new Date(session.start_time);
+      const dayIndex = daysMap[sessionDate.getDay()];
+      
+      // If duration is available, use it; otherwise calculate from times
+      let duration = session.duration || 0;
+      if (!duration && session.end_time) {
+        duration = (new Date(session.end_time).getTime() - new Date(session.start_time).getTime()) / (1000 * 60);
+      }
+      
+      // Convert duration from minutes to hours for the chart
+      const durationHours = duration / 60;
+      weeklyData[dayIndex].total += durationHours;
+      
+      // Random distribution of time across subjects (since we don't have real subject data)
+      // In a real app, you'd have a sessions_subjects table or similar
+      let remainingDuration = duration;
+      subjects.forEach((subject, index) => {
+        if (index === subjects.length - 1) {
+          // Last subject gets remaining time
+          weeklyData[dayIndex][subject] = remainingDuration / 60;
+          subjectTotals[subject] += remainingDuration;
+        } else {
+          // Random portion of time for each subject
+          const subjectMinutes = Math.floor(Math.random() * (remainingDuration / 2)) + 1;
+          weeklyData[dayIndex][subject] = subjectMinutes / 60;
+          subjectTotals[subject] += subjectMinutes;
+          remainingDuration -= subjectMinutes;
+        }
+      });
+    });
+    
+    // Create pie data
+    const pieData = subjects.map(name => ({
+      name,
+      value: subjectTotals[name]
+    }));
+    
+    return { weeklyData, pieData };
+  };
   
   // Calculate total weekly time (in hours)
   const totalWeeklyHours = data.reduce((total, day) => total + day.total, 0);
@@ -131,17 +208,38 @@ const WeeklyTracker = ({ chartType, hasData = true }: { chartType: ChartType, ha
 
   const colors = getColors();
   
+  // Show loading state
+  if (isLoading) {
+    return (
+      <Card className="shadow-sm">
+        <CardContent className="p-6 flex items-center justify-center min-h-[300px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-triage-purple"></div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // Use empty data for new users with no history
+  const chartData = noDataAvailable ? generateEmptyData() : data;
+  const chartPieData = noDataAvailable ? generateEmptyPieData() : pieData;
+  
   return (
     <Card className="shadow-sm">
       <CardContent className="p-6">
+        {noDataAvailable && (
+          <div className="text-center text-gray-500 mb-4 text-sm">
+            No focus sessions recorded yet. This chart will populate as you complete sessions.
+          </div>
+        )}
+        
         {chartType === "bar" && (
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+            <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="day" />
-              <YAxis unit="min" />
+              <YAxis unit="hr" />
               <Tooltip
-                formatter={(value: number) => [`${value} min`, "Focus Time"]}
+                formatter={(value: number) => [`${value.toFixed(2)} hr`, "Focus Time"]}
                 labelFormatter={(label) => `${label}`}
               />
               <Bar dataKey="Math" stackId="a" fill={colors[0]} />
@@ -157,32 +255,32 @@ const WeeklyTracker = ({ chartType, hasData = true }: { chartType: ChartType, ha
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={pieData}
+                data={chartPieData}
                 cx="50%"
                 cy="50%"
                 outerRadius={100}
                 innerRadius={60}
-                labelLine={hasData}
-                label={hasData ? ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%` : false}
+                labelLine={!noDataAvailable}
+                label={!noDataAvailable ? ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%` : false}
                 dataKey="value"
               >
-                {pieData.map((entry, index) => (
+                {chartPieData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value: number) => [`${value} min`, "Focus Time"]} />
+              <Tooltip formatter={(value: number) => [`${Math.round(value)} min`, "Focus Time"]} />
             </PieChart>
           </ResponsiveContainer>
         )}
 
         {chartType === "line" && (
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="day" />
               <YAxis unit="hr" />
               <Tooltip
-                formatter={(value: number) => [`${value} hr`, "Focus Time"]}
+                formatter={(value: number) => [`${value.toFixed(2)} hr`, "Focus Time"]}
               />
               <Line type="monotone" dataKey="total" stroke={colors[0]} strokeWidth={2} />
               <ReferenceLine y={weeklyFocusGoal / 7} stroke="#ff4081" strokeDasharray="3 3" label="Daily Goal" />
@@ -212,14 +310,14 @@ const WeeklyTracker = ({ chartType, hasData = true }: { chartType: ChartType, ha
             
             {["Math", "Physics", "History", "English", "Chemistry"].map((subject, index) => {
               // Calculate total minutes for this subject across the week
-              const subjectMinutes = data.reduce((total, day) => total + (day[subject] || 0), 0);
+              const subjectMinutes = chartData.reduce((total, day) => total + (day[subject] || 0) * 60, 0);
               const percentOfWeek = totalWeeklyHours > 0 ? (subjectMinutes / (totalWeeklyHours * 60)) * 100 : 0;
               
               return (
                 <div key={subject} className="space-y-1">
                   <div className="flex justify-between text-sm">
                     <span>{subject}</span>
-                    <span>{subjectMinutes} min</span>
+                    <span>{Math.round(subjectMinutes)} min</span>
                   </div>
                   <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                     <div
