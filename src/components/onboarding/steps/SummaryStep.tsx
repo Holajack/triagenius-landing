@@ -61,7 +61,7 @@ export const SummaryStep = () => {
       },
       environment: {
         "office": "Office Environment",
-        "park": "Nature/Park Setting",
+        "park": "Nature Environment",
         "home": "Home Environment",
         "coffee-shop": "Coffee Shop Atmosphere",
         "library": "Library Setting"

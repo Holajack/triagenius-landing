@@ -31,7 +31,7 @@ const environments: Array<{
   },
   {
     id: 'park',
-    title: 'Park',
+    title: 'Nature',
     description: 'Nature-inspired outdoor setting',
     icon: <TreeDeciduous className="w-6 h-6" />,
     colors: {
