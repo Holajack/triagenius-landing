@@ -1,9 +1,10 @@
+
 import { useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import NavigationBar from "@/components/dashboard/NavigationBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserCircle2, Settings, Moon, Sun, Clock } from "lucide-react";
+import { UserCircle2, Settings, Moon, Sun, Clock, Palette, Clock3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -13,12 +14,15 @@ import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import PageHeader from "@/components/common/PageHeader";
+import { StudyEnvironment, WorkStyle } from "@/types/onboarding";
 
 const Profile = () => {
   const { theme, toggleTheme } = useTheme();
   const { state, dispatch } = useOnboarding();
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEnvDialogOpen, setIsEnvDialogOpen] = useState(false);
+  const [isWorkStyleDialogOpen, setIsWorkStyleDialogOpen] = useState(false);
   const [tempFocusGoal, setTempFocusGoal] = useState(state.weeklyFocusGoal || 10);
 
   const handleSaveFocusGoal = () => {
@@ -36,6 +40,45 @@ const Profile = () => {
       setTempFocusGoal(newValue);
     }
   };
+
+  // Environment selection
+  const handleSelectEnvironment = (environment: StudyEnvironment) => {
+    dispatch({ type: 'SET_ENVIRONMENT', payload: environment });
+    setIsEnvDialogOpen(false);
+    toast.success("Environment updated successfully", {
+      description: `Your study environment has been updated to ${formatName(environment)}`
+    });
+  };
+
+  // Work style selection
+  const handleSelectWorkStyle = (workStyle: WorkStyle) => {
+    dispatch({ type: 'SET_WORK_STYLE', payload: workStyle });
+    setIsWorkStyleDialogOpen(false);
+    toast.success("Work style updated successfully", {
+      description: `Your work style has been updated to ${formatName(workStyle)}`
+    });
+  };
+
+  // Format the environment or work style name for display
+  const formatName = (name: string) => {
+    return name.charAt(0).toUpperCase() + name.slice(1).replace('-', ' ');
+  };
+
+  // Environment options
+  const environments: Array<{id: StudyEnvironment; title: string; icon: JSX.Element}> = [
+    { id: 'office', title: 'Office', icon: <Palette className="h-5 w-5 text-blue-600" /> },
+    { id: 'park', title: 'Nature', icon: <Palette className="h-5 w-5 text-green-600" /> },
+    { id: 'home', title: 'Home', icon: <Palette className="h-5 w-5 text-amber-600" /> },
+    { id: 'coffee-shop', title: 'Coffee Shop', icon: <Palette className="h-5 w-5 text-amber-500" /> },
+    { id: 'library', title: 'Library', icon: <Palette className="h-5 w-5 text-gray-600" /> },
+  ];
+
+  // Work style options
+  const workStyles: Array<{id: WorkStyle; title: string; icon: JSX.Element}> = [
+    { id: 'pomodoro', title: 'Sprints', icon: <Clock3 className="h-5 w-5 text-triage-purple" /> },
+    { id: 'balanced', title: 'Balanced', icon: <Clock3 className="h-5 w-5 rotate-90 text-triage-purple" /> },
+    { id: 'deep-work', title: 'Deep Work', icon: <Clock3 className="h-5 w-5 rotate-180 text-triage-purple" /> },
+  ];
 
   return (
     <div className="container max-w-md mx-auto px-4 pb-20">
@@ -169,22 +212,78 @@ const Profile = () => {
             
             <Separator />
             
-            <div>
-              <p className="font-medium">Study Environment</p>
-              <p className="text-sm text-muted-foreground mb-2">Your current environment</p>
-              <div className="bg-muted px-3 py-2 rounded-md text-sm">
-                {state.environment ? state.environment.charAt(0).toUpperCase() + state.environment.slice(1).replace('-', ' ') : 'Not set'}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Environment</p>
+                <p className="text-sm text-muted-foreground">Your study environment theme</p>
               </div>
+              <Dialog open={isEnvDialogOpen} onOpenChange={setIsEnvDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="h-9">
+                    <Palette className="h-4 w-4 mr-2" />
+                    {state.environment ? formatName(state.environment) : 'Not set'}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Choose Environment</DialogTitle>
+                  </DialogHeader>
+                  <div className="py-4">
+                    <div className="space-y-3">
+                      {environments.map((env) => (
+                        <div 
+                          key={env.id}
+                          className={`flex items-center p-3 rounded-md cursor-pointer hover:bg-muted transition-colors ${
+                            state.environment === env.id ? 'bg-muted' : ''
+                          }`}
+                          onClick={() => handleSelectEnvironment(env.id)}
+                        >
+                          <div className="mr-3">{env.icon}</div>
+                          <span className="font-medium">{env.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
             
             <Separator />
             
-            <div>
-              <p className="font-medium">Work Style</p>
-              <p className="text-sm text-muted-foreground mb-2">Your preferred work method</p>
-              <div className="bg-muted px-3 py-2 rounded-md text-sm">
-                {state.workStyle ? state.workStyle.charAt(0).toUpperCase() + state.workStyle.slice(1).replace('-', ' ') : 'Not set'}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Work Style</p>
+                <p className="text-sm text-muted-foreground">Your preferred work method</p>
               </div>
+              <Dialog open={isWorkStyleDialogOpen} onOpenChange={setIsWorkStyleDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="h-9">
+                    <Clock3 className="h-4 w-4 mr-2" />
+                    {state.workStyle ? formatName(state.workStyle) : 'Not set'}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Choose Work Style</DialogTitle>
+                  </DialogHeader>
+                  <div className="py-4">
+                    <div className="space-y-3">
+                      {workStyles.map((style) => (
+                        <div 
+                          key={style.id}
+                          className={`flex items-center p-3 rounded-md cursor-pointer hover:bg-muted transition-colors ${
+                            state.workStyle === style.id ? 'bg-muted' : ''
+                          }`}
+                          onClick={() => handleSelectWorkStyle(style.id)}
+                        >
+                          <div className="mr-3">{style.icon}</div>
+                          <span className="font-medium">{style.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
 
             <Separator />
