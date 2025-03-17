@@ -55,8 +55,21 @@ const FocusSession = () => {
       environment: state.environment,
     }));
     
-    // Navigate to the session reflection page instead of directly to report
+    // Navigate to the session reflection page
     navigate("/session-reflection");
+  };
+
+  const handleEndSessionEarly = () => {
+    // Save session data to localStorage before navigation
+    localStorage.setItem('sessionData', JSON.stringify({
+      milestone: currentMilestone,
+      duration: currentMilestone * 45, // Minutes based on milestone
+      timestamp: new Date().toISOString(),
+      environment: state.environment,
+    }));
+    
+    // Navigate directly to the session report page when ending early
+    navigate("/session-report");
   };
 
   const handleEndSessionConfirm = () => {
@@ -70,7 +83,7 @@ const FocusSession = () => {
     // Add a small delay to allow React to process state updates
     // before navigation occurs, preventing the freeze
     setTimeout(() => {
-      handleSessionEnd();
+      handleEndSessionEarly();
     }, 100);
   };
   
