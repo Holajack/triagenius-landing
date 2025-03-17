@@ -25,11 +25,22 @@ const generateMockData = () => {
   const subjects = ["Math", "Physics", "History", "English", "Chemistry"];
   
   return days.map(day => {
-    const totalTime = Math.floor(Math.random() * 5) + 1;
+    // Generate between 2-6 hours of total study time per day (out of 24 hours)
+    const totalTime = Math.floor(Math.random() * 4) + 2;
     const subjectData: Record<string, number> = {};
     
-    subjects.forEach(subject => {
-      subjectData[subject] = Math.floor(Math.random() * 120) + 10;
+    // Distribute total hours across subjects (in minutes)
+    let remainingMinutes = totalTime * 60;
+    subjects.forEach((subject, index) => {
+      // Last subject gets all remaining time
+      if (index === subjects.length - 1) {
+        subjectData[subject] = remainingMinutes;
+      } else {
+        // Allocate a portion of the remaining time
+        const subjectMinutes = Math.floor(Math.random() * (remainingMinutes / 2)) + 10;
+        subjectData[subject] = subjectMinutes;
+        remainingMinutes -= subjectMinutes;
+      }
     });
     
     return {
@@ -43,11 +54,21 @@ const generateMockData = () => {
 // Mock data for the pie chart
 const generatePieData = () => {
   const subjects = ["Math", "Physics", "History", "English", "Chemistry"];
+  const totalMinutes = 24 * 60 * 7 * 0.15; // 15% of total week time (24h * 7 days)
+  let remainingMinutes = totalMinutes;
   
-  return subjects.map(name => ({
-    name,
-    value: Math.floor(Math.random() * 600) + 100,
-  }));
+  return subjects.map((name, index) => {
+    // Last subject gets all remaining time
+    if (index === subjects.length - 1) {
+      return { name, value: Math.round(remainingMinutes) };
+    }
+    
+    // Allocate a portion of the remaining time
+    const value = Math.floor(Math.random() * (remainingMinutes / 2)) + 30;
+    remainingMinutes -= value;
+    
+    return { name, value };
+  });
 };
 
 const WeeklyTracker = ({ chartType }: { chartType: ChartType }) => {
@@ -55,12 +76,15 @@ const WeeklyTracker = ({ chartType }: { chartType: ChartType }) => {
   const [data, setData] = useState(() => generateMockData());
   const [pieData, setPieData] = useState(() => generatePieData());
   
+  // Calculate total weekly time (in hours)
+  const totalWeeklyHours = data.reduce((total, day) => total + day.total, 0);
+  
   // Environment-specific colors
   const getColors = () => {
     switch (state.environment) {
       case 'office':
         return ['#4f46e5', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'];
-      case 'park':
+      case 'nature':
         return ['#10b981', '#34d399', '#6ee7b7', '#a7f3d0', '#d1fae5'];
       case 'home':
         return ['#f97316', '#fb923c', '#fdba74', '#fed7aa', '#ffedd5'];
@@ -83,7 +107,7 @@ const WeeklyTracker = ({ chartType }: { chartType: ChartType }) => {
             <BarChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="day" />
-              <YAxis unit="h" />
+              <YAxis unit="min" />
               <Tooltip
                 formatter={(value: number) => [`${value} min`, "Focus Time"]}
                 labelFormatter={(label) => `${label}`}
@@ -124,7 +148,7 @@ const WeeklyTracker = ({ chartType }: { chartType: ChartType }) => {
             <LineChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="day" />
-              <YAxis unit="h" />
+              <YAxis unit="hr" />
               <Tooltip
                 formatter={(value: number) => [`${value} hr`, "Focus Time"]}
               />
@@ -137,26 +161,32 @@ const WeeklyTracker = ({ chartType }: { chartType: ChartType }) => {
           <div className="space-y-4 p-4">
             <div className="flex justify-between">
               <h3 className="text-sm font-medium">Focus Time Distribution</h3>
-              <p className="text-sm font-medium">14.5 hrs total</p>
+              <p className="text-sm font-medium">{totalWeeklyHours.toFixed(1)} hrs total</p>
             </div>
             
-            {["Math", "Physics", "History", "English", "Chemistry"].map((subject, index) => (
-              <div key={subject} className="space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span>{subject}</span>
-                  <span>{Math.floor(Math.random() * 300) + 30} min</span>
+            {["Math", "Physics", "History", "English", "Chemistry"].map((subject, index) => {
+              // Calculate total minutes for this subject across the week
+              const subjectMinutes = data.reduce((total, day) => total + (day[subject] || 0), 0);
+              const percentOfWeek = (subjectMinutes / (totalWeeklyHours * 60)) * 100;
+              
+              return (
+                <div key={subject} className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span>{subject}</span>
+                    <span>{subjectMinutes} min</span>
+                  </div>
+                  <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${percentOfWeek}%`,
+                        backgroundColor: colors[index % colors.length]
+                      }}
+                    ></div>
+                  </div>
                 </div>
-                <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${Math.floor(Math.random() * 100) + 10}%`,
-                      backgroundColor: colors[index % colors.length]
-                    }}
-                  ></div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>
