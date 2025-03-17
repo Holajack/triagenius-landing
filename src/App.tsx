@@ -29,137 +29,139 @@ import { UserProvider } from "@/hooks/use-user";
 
 export default function App() {
   return (
-    <ErrorBoundary>
-      <UserProvider>
-        <ThemeProvider>
-          <TaskProvider>
-            <WalkthroughProvider>
-              <Router>
-                <OnboardingProvider>
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/auth" element={<Auth />} />
-                    <Route path="/onboarding" element={<Onboarding />} />
-                    <Route 
-                      path="/dashboard" 
-                      element={
-                        <ProtectedRoute>
-                          <Dashboard />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/focus-session" 
-                      element={
-                        <ProtectedRoute>
-                          <FocusSession />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/break-timer" 
-                      element={
-                        <ProtectedRoute>
-                          <BreakTimer />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/session-reflection" 
-                      element={
-                        <ProtectedRoute>
-                          <SessionReflection />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/reports" 
-                      element={
-                        <ProtectedRoute>
-                          <Reports />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/session-report/:id" 
-                      element={
-                        <ProtectedRoute>
-                          <SessionReport />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/community" 
-                      element={
-                        <ProtectedRoute>
-                          <Community />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/study-room/:id" 
-                      element={
-                        <ProtectedRoute>
-                          <StudyRoom />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/chat" 
-                      element={
-                        <ProtectedRoute>
-                          <Chat />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/profile" 
-                      element={
-                        <ProtectedRoute>
-                          <Profile />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/settings" 
-                      element={
-                        <ProtectedRoute>
-                          <Settings />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/bonuses" 
-                      element={
-                        <ProtectedRoute>
-                          <Bonuses />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/leaderboard" 
-                      element={
-                        <ProtectedRoute>
-                          <Leaderboard />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/nora" 
-                      element={
-                        <ProtectedRoute>
-                          <Nora />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </OnboardingProvider>
-              </Router>
-            </WalkthroughProvider>
-          </TaskProvider>
-        </ThemeProvider>
-      </UserProvider>
-    </ErrorBoundary>
+    <React.StrictMode>
+      <ErrorBoundary>
+        <Router>
+          <UserProvider>
+            <ThemeProvider>
+              <OnboardingProvider>
+                <TaskProvider>
+                  <WalkthroughProvider>
+                    <Routes>
+                      <Route path="/" element={<Index />} />
+                      <Route path="/auth" element={<Auth />} />
+                      <Route path="/onboarding" element={<Onboarding />} />
+                      <Route 
+                        path="/dashboard" 
+                        element={
+                          <ProtectedRoute>
+                            <Dashboard />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/focus-session" 
+                        element={
+                          <ProtectedRoute>
+                            <FocusSession />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/break-timer" 
+                        element={
+                          <ProtectedRoute>
+                            <BreakTimer />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/session-reflection" 
+                        element={
+                          <ProtectedRoute>
+                            <SessionReflection />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/reports" 
+                        element={
+                          <ProtectedRoute>
+                            <Reports />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/session-report/:id" 
+                        element={
+                          <ProtectedRoute>
+                            <SessionReport />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/community" 
+                        element={
+                          <ProtectedRoute>
+                            <Community />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/study-room/:id" 
+                        element={
+                          <ProtectedRoute>
+                            <StudyRoom />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/chat" 
+                        element={
+                          <ProtectedRoute>
+                            <Chat />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/profile" 
+                        element={
+                          <ProtectedRoute>
+                            <Profile />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/settings" 
+                        element={
+                          <ProtectedRoute>
+                            <Settings />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/bonuses" 
+                        element={
+                          <ProtectedRoute>
+                            <Bonuses />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/leaderboard" 
+                        element={
+                          <ProtectedRoute>
+                            <Leaderboard />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/nora" 
+                        element={
+                          <ProtectedRoute>
+                            <Nora />
+                          </ProtectedRoute>
+                        } 
+                      />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </WalkthroughProvider>
+                </TaskProvider>
+              </OnboardingProvider>
+            </ThemeProvider>
+          </UserProvider>
+        </Router>
+      </ErrorBoundary>
+    </React.StrictMode>
   );
 }
