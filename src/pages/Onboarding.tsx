@@ -12,15 +12,28 @@ import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const Onboarding = () => {
-  const { state, dispatch } = useOnboarding();
+  const { state, dispatch, saveOnboardingState } = useOnboarding();
   const navigate = useNavigate();
 
-  // Reset onboarding state when component mounts
+  // Check authentication and reset onboarding state when component mounts
   useEffect(() => {
-    dispatch({ type: 'RESET_ONBOARDING' });
-  }, [dispatch]);
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      
+      if (!data.session) {
+        // Redirect unauthenticated users to auth page
+        navigate('/auth');
+        return;
+      }
+      
+      dispatch({ type: 'RESET_ONBOARDING' });
+    };
+    
+    checkAuth();
+  }, [dispatch, navigate]);
 
   const steps = [
     { component: UserGoalStep, title: "What's your main goal?" },
@@ -32,11 +45,14 @@ const Onboarding = () => {
 
   const CurrentStep = steps[state.step].component;
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (state.step < steps.length - 1) {
       dispatch({ type: 'SET_STEP', payload: state.step + 1 });
     } else {
       dispatch({ type: 'COMPLETE_ONBOARDING' });
+      
+      // Save onboarding state to Supabase
+      await saveOnboardingState();
       
       // Show success toast when onboarding is complete
       toast.success("Onboarding complete! Your preferences have been saved.", {

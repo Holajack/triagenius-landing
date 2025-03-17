@@ -1,70 +1,164 @@
 
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { OnboardingProvider } from "./contexts/OnboardingContext";
-import { TaskProvider } from "./contexts/TaskContext";
-import { ThemeProvider } from "./contexts/ThemeContext";
-import { WalkthroughProvider } from "./contexts/WalkthroughContext";
-import { Toaster } from "./components/ui/toaster";
-import { Toaster as SonnerToaster } from "sonner";
-import ErrorBoundary from "./components/ErrorBoundary";
+// Import the new Auth page and ProtectedRoute component
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Index from "@/pages/Index";
+import Dashboard from "@/pages/Dashboard";
+import FocusSession from "@/pages/FocusSession";
+import BreakTimer from "@/pages/BreakTimer";
+import SessionReflection from "@/pages/SessionReflection";
+import Reports from "@/pages/Reports";
+import SessionReport from "@/pages/SessionReport";
+import Community from "@/pages/Community";
+import StudyRoom from "@/pages/StudyRoom";
+import Chat from "@/pages/Chat";
+import Profile from "@/pages/Profile";
+import Settings from "@/pages/Settings";
+import Bonuses from "@/pages/Bonuses";
+import Leaderboard from "@/pages/Leaderboard";
+import Nora from "@/pages/Nora";
+import NotFound from "@/pages/NotFound";
+import Onboarding from "@/pages/Onboarding";
+import Auth from "@/pages/Auth";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { Toaster } from "@/components/ui/toaster";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { OnboardingProvider } from "@/contexts/OnboardingContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
+import { TaskProvider } from "@/contexts/TaskContext";
+import { WalkthroughProvider } from "@/contexts/WalkthroughContext";
 
-import Index from "./pages/Index";
-import Dashboard from "./pages/Dashboard";
-import Onboarding from "./pages/Onboarding";
-import NotFound from "./pages/NotFound";
-import FocusSession from "./pages/FocusSession";
-import BreakTimer from "./pages/BreakTimer";
-import SessionReflection from "./pages/SessionReflection";
-import SessionReport from "./pages/SessionReport";
-import Profile from "./pages/Profile";
-import Settings from "./pages/Settings";
-import Reports from "./pages/Reports";
-import Community from "./pages/Community";
-import StudyRoom from "./pages/StudyRoom";
-import Chat from "./pages/Chat";
-import Leaderboard from "./pages/Leaderboard";
-import Bonuses from "./pages/Bonuses";
-import Nora from "./pages/Nora";
-
-function App() {
+export default function App() {
   return (
-    <div className="h-[100dvh] w-full relative">
-      <ErrorBoundary>
-        <BrowserRouter>
-          <OnboardingProvider>
-            <ThemeProvider>
-              <TaskProvider>
-                <WalkthroughProvider>
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/onboarding" element={<Onboarding />} />
-                    <Route path="/focus-session" element={<FocusSession />} />
-                    <Route path="/session-reflection" element={<SessionReflection />} />
-                    <Route path="/session-report" element={<SessionReport />} />
-                    <Route path="/session-report/:id" element={<SessionReport />} />
-                    <Route path="/break-timer" element={<BreakTimer />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/reports" element={<Reports />} />
-                    <Route path="/chat" element={<Chat />} />
-                    <Route path="/nora" element={<Nora />} />
-                    <Route path="/community" element={<Community />} />
-                    <Route path="/study-room" element={<StudyRoom />} />
-                    <Route path="/leaderboard" element={<Leaderboard />} />
-                    <Route path="/bonuses" element={<Bonuses />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                  <Toaster />
-                  <SonnerToaster position="top-right" closeButton richColors />
-                </WalkthroughProvider>
-              </TaskProvider>
-            </ThemeProvider>
-          </OnboardingProvider>
-        </BrowserRouter>
-      </ErrorBoundary>
-    </div>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <OnboardingProvider>
+          <TaskProvider>
+            <WalkthroughProvider>
+              <Router>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/onboarding" element={<Onboarding />} />
+                  <Route 
+                    path="/dashboard" 
+                    element={
+                      <ProtectedRoute>
+                        <Dashboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/focus-session" 
+                    element={
+                      <ProtectedRoute>
+                        <FocusSession />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/break-timer" 
+                    element={
+                      <ProtectedRoute>
+                        <BreakTimer />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/session-reflection" 
+                    element={
+                      <ProtectedRoute>
+                        <SessionReflection />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/reports" 
+                    element={
+                      <ProtectedRoute>
+                        <Reports />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/session-report/:id" 
+                    element={
+                      <ProtectedRoute>
+                        <SessionReport />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/community" 
+                    element={
+                      <ProtectedRoute>
+                        <Community />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/study-room/:id" 
+                    element={
+                      <ProtectedRoute>
+                        <StudyRoom />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/chat" 
+                    element={
+                      <ProtectedRoute>
+                        <Chat />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/profile" 
+                    element={
+                      <ProtectedRoute>
+                        <Profile />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/settings" 
+                    element={
+                      <ProtectedRoute>
+                        <Settings />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/bonuses" 
+                    element={
+                      <ProtectedRoute>
+                        <Bonuses />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/leaderboard" 
+                    element={
+                      <ProtectedRoute>
+                        <Leaderboard />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/nora" 
+                    element={
+                      <ProtectedRoute>
+                        <Nora />
+                      </ProtectedRoute>
+                    } 
+                  />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <Toaster />
+              </Router>
+            </WalkthroughProvider>
+          </TaskProvider>
+        </OnboardingProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
-
-export default App;

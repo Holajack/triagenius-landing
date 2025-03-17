@@ -9,9 +9,11 @@ import * as ServiceWorker from "@/components/ServiceWorker";
 import { ArrowRight, ArrowDown, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/contexts/ThemeContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { theme } = useTheme();
   
   useEffect(() => {
@@ -23,9 +25,25 @@ const Index = () => {
       setIsLoaded(true);
     }, 100);
     
+    // Check if user is authenticated
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      setIsAuthenticated(!!data.session);
+    };
+    
+    checkAuth();
+    
+    // Listen for auth changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setIsAuthenticated(!!session);
+      }
+    );
+    
     return () => {
       clearTimeout(timer);
       ServiceWorker.unregister();
+      authListener.subscription.unsubscribe();
     };
   }, []);
 
@@ -52,7 +70,11 @@ const Index = () => {
   const navigate = useNavigate();
 
   const handleStartFocusing = () => {
-    navigate('/onboarding');
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    } else {
+      navigate('/auth');
+    }
   };
 
   return (
@@ -97,18 +119,22 @@ const Index = () => {
               className="flex flex-col md:flex-row items-center justify-center gap-4 mb-12"
             >
               <FocusButton 
-                label="Start Focusing" 
+                label={isAuthenticated ? "Continue Session" : "Start Focusing"} 
                 icon="play" 
                 className="w-full md:w-auto"
                 onClick={handleStartFocusing}
               />
               
               <FocusButton 
-                label="Log In" 
+                label={isAuthenticated ? "Logout" : "Log In"} 
                 icon="target" 
                 isPrimary={false} 
                 className="w-full md:w-auto"
-                onClick={() => console.log("Log in")}
+                onClick={() => 
+                  isAuthenticated 
+                    ? supabase.auth.signOut().then(() => navigate('/'))
+                    : navigate('/auth')
+                }
               />
             </motion.div>
             
