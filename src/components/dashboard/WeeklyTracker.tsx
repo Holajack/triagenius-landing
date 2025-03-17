@@ -185,6 +185,9 @@ const WeeklyTracker = ({ chartType, hasData = true }: { chartType: ChartType, ha
   // Get the user's weekly focus goal or use default
   const weeklyFocusGoal = state.weeklyFocusGoal || 10;
   
+  // Calculate daily focus goal (weekly goal divided by 7 days)
+  const dailyFocusGoal = weeklyFocusGoal / 7;
+  
   // Calculate progress percentage
   const progressPercentage = Math.min(100, (totalWeeklyHours / weeklyFocusGoal) * 100);
   
@@ -247,6 +250,8 @@ const WeeklyTracker = ({ chartType, hasData = true }: { chartType: ChartType, ha
               <Bar dataKey="History" stackId="a" fill={colors[2]} />
               <Bar dataKey="English" stackId="a" fill={colors[3]} />
               <Bar dataKey="Chemistry" stackId="a" fill={colors[4]} />
+              {/* Add reference line for daily goal */}
+              <ReferenceLine y={dailyFocusGoal} stroke="#ff4081" strokeDasharray="3 3" label="Daily Goal" />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -283,7 +288,8 @@ const WeeklyTracker = ({ chartType, hasData = true }: { chartType: ChartType, ha
                 formatter={(value: number) => [`${value.toFixed(2)} hr`, "Focus Time"]}
               />
               <Line type="monotone" dataKey="total" stroke={colors[0]} strokeWidth={2} />
-              <ReferenceLine y={weeklyFocusGoal / 7} stroke="#ff4081" strokeDasharray="3 3" label="Daily Goal" />
+              {/* Update to use dailyFocusGoal */}
+              <ReferenceLine y={dailyFocusGoal} stroke="#ff4081" strokeDasharray="3 3" label="Daily Goal" />
             </LineChart>
           </ResponsiveContainer>
         )}
