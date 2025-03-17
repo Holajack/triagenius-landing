@@ -1,10 +1,9 @@
-
 import { useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import NavigationBar from "@/components/dashboard/NavigationBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserCircle2, Settings, Moon, Sun, Clock, Palette, Clock3 } from "lucide-react";
+import { UserCircle2, Settings, Moon, Sun, Clock, Palette, Clock3, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -15,6 +14,17 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import PageHeader from "@/components/common/PageHeader";
 import { StudyEnvironment, WorkStyle } from "@/types/onboarding";
+import { supabase } from "@/integrations/supabase/client";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 
 const Profile = () => {
   const { theme, toggleTheme } = useTheme();
@@ -24,6 +34,26 @@ const Profile = () => {
   const [isEnvDialogOpen, setIsEnvDialogOpen] = useState(false);
   const [isWorkStyleDialogOpen, setIsWorkStyleDialogOpen] = useState(false);
   const [tempFocusGoal, setTempFocusGoal] = useState(state.weeklyFocusGoal || 10);
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        toast.error("Failed to log out", {
+          description: error.message
+        });
+        return;
+      }
+      
+      toast.success("Logged out successfully");
+      navigate("/");
+    } catch (error) {
+      toast.error("An error occurred during logout");
+      console.error("Logout error:", error);
+    }
+  };
 
   const handleSaveFocusGoal = () => {
     dispatch({ type: 'SET_WEEKLY_FOCUS_GOAL', payload: tempFocusGoal });
@@ -33,7 +63,6 @@ const Profile = () => {
     });
   };
 
-  // This function allows for incremental adjustments in 1-hour steps
   const adjustFocusGoal = (adjustment: number) => {
     const newValue = tempFocusGoal + adjustment;
     if (newValue >= 1 && newValue <= 40) {
@@ -41,7 +70,6 @@ const Profile = () => {
     }
   };
 
-  // Environment selection
   const handleSelectEnvironment = (environment: StudyEnvironment) => {
     dispatch({ type: 'SET_ENVIRONMENT', payload: environment });
     setIsEnvDialogOpen(false);
@@ -50,7 +78,6 @@ const Profile = () => {
     });
   };
 
-  // Work style selection
   const handleSelectWorkStyle = (workStyle: WorkStyle) => {
     dispatch({ type: 'SET_WORK_STYLE', payload: workStyle });
     setIsWorkStyleDialogOpen(false);
@@ -59,12 +86,10 @@ const Profile = () => {
     });
   };
 
-  // Format the environment or work style name for display
   const formatName = (name: string) => {
     return name.charAt(0).toUpperCase() + name.slice(1).replace('-', ' ');
   };
 
-  // Environment options
   const environments: Array<{id: StudyEnvironment; title: string; icon: JSX.Element}> = [
     { id: 'office', title: 'Office', icon: <Palette className="h-5 w-5 text-blue-600" /> },
     { id: 'park', title: 'Nature', icon: <Palette className="h-5 w-5 text-green-600" /> },
@@ -73,7 +98,6 @@ const Profile = () => {
     { id: 'library', title: 'Library', icon: <Palette className="h-5 w-5 text-gray-600" /> },
   ];
 
-  // Work style options
   const workStyles: Array<{id: WorkStyle; title: string; icon: JSX.Element}> = [
     { id: 'pomodoro', title: 'Sprints', icon: <Clock3 className="h-5 w-5 text-triage-purple" /> },
     { id: 'balanced', title: 'Balanced', icon: <Clock3 className="h-5 w-5 rotate-90 text-triage-purple" /> },
@@ -130,7 +154,7 @@ const Profile = () => {
               </Button>
             </div>
             
-            <Separator />
+            <Separator className="my-4" />
             
             <div className="flex items-center justify-between">
               <div>
@@ -298,6 +322,34 @@ const Profile = () => {
               </Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
+      
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <AlertDialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
+            <Button 
+              variant="destructive" 
+              className="w-full"
+              onClick={() => setIsLogoutDialogOpen(true)}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Log Out
+            </Button>
+            
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure you want to log out?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  You will need to sign in again to access your account.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleLogout}>Log Out</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardContent>
       </Card>
 
