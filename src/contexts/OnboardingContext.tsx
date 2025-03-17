@@ -54,8 +54,8 @@ type OnboardingContextType = {
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
 
-// Fix: Remove the React.FC type annotation to ensure proper hook usage
-export function OnboardingProvider({ children }: { children: ReactNode }) {
+// Define as a proper React component with React.FC
+const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(onboardingReducer, initialState);
   
   // Save onboarding state to Supabase
@@ -156,12 +156,14 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       {children}
     </OnboardingContext.Provider>
   );
-}
+};
 
-export const useOnboarding = () => {
+const useOnboarding = () => {
   const context = useContext(OnboardingContext);
   if (context === undefined) {
     throw new Error('useOnboarding must be used within an OnboardingProvider');
   }
   return context;
 };
+
+export { OnboardingProvider, useOnboarding };
