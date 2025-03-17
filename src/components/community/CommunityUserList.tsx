@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { MessageSquare, Clock, CheckCircle, Trophy } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface User {
   id: number;
@@ -108,7 +108,6 @@ interface CommunityUserListProps {
 
 export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserListProps) => {
   const navigate = useNavigate();
-  const { toast } = useToast();
   
   const filteredUsers = mockUsers.filter(user => {
     const searchLower = searchQuery.toLowerCase();

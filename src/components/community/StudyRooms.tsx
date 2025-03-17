@@ -1,10 +1,9 @@
-
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Users, Clock, BookOpen, Calendar } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 interface StudyRoom {
@@ -77,11 +76,9 @@ interface StudyRoomsProps {
 }
 
 export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) => {
-  const { toast } = useToast();
   const navigate = useNavigate();
   
   const filteredRooms = mockRooms.filter(room => {
-    // Search filter
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch = 
       room.name.toLowerCase().includes(searchLower) ||
@@ -89,8 +86,6 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
       room.subjects.some(subject => subject.toLowerCase().includes(searchLower));
     
     if (searchQuery && !matchesSearch) return false;
-    
-    // Additional filters could be applied here
     
     return true;
   });

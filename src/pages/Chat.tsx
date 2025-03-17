@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, MoreVertical, Phone, Video } from "lucide-react";
@@ -7,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface ChatMessage {
   id: number;
@@ -28,7 +27,6 @@ interface ChatContact {
   lastActive?: string;
 }
 
-// Mock data for the chat contact
 const getMockContact = (id: string): ChatContact => {
   const contacts: Record<string, ChatContact> = {
     "1": {
@@ -66,9 +64,7 @@ const getMockContact = (id: string): ChatContact => {
   };
 };
 
-// Mock chat messages
 const getMockMessages = (contactId: string): ChatMessage[] => {
-  // Generate different message threads for different contacts
   if (contactId === "1") {
     return [
       {
@@ -188,7 +184,6 @@ const getMockMessages = (contactId: string): ChatMessage[] => {
 const Chat = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const messageEndRef = useRef<HTMLDivElement>(null);
   const [contact, setContact] = useState<ChatContact | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -202,7 +197,6 @@ const Chat = () => {
   }, [id]);
   
   useEffect(() => {
-    // Scroll to the bottom when messages change
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
   
@@ -221,7 +215,6 @@ const Chat = () => {
     setMessages([...messages, newMsg]);
     setNewMessage("");
     
-    // Simulate a reply after a short delay
     setTimeout(() => {
       if (contact?.typing) {
         const reply: ChatMessage = {
@@ -248,7 +241,6 @@ const Chat = () => {
   
   return (
     <div className="flex flex-col h-screen bg-background">
-      {/* Chat Header */}
       <div className="border-b p-3 flex items-center justify-between bg-card">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate('/community')}>
@@ -296,7 +288,6 @@ const Chat = () => {
         </div>
       </div>
       
-      {/* Chat Messages */}
       <div className="flex-1 p-4 overflow-y-auto space-y-4">
         {messages.map((message) => (
           <div 
@@ -332,7 +323,6 @@ const Chat = () => {
         <div ref={messageEndRef} />
       </div>
       
-      {/* Chat Input */}
       <div className="border-t p-3 bg-card">
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" className="rounded-full"

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import TerrainVisualization from './TerrainVisualization';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -6,9 +5,8 @@ import { Button } from '@/components/ui/button';
 import { PathwaySystem } from './PathwaySystem';
 import { Map, Mountain, Award, X } from 'lucide-react';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from "sonner";
 
-// Define the learning path points
 const learningPaths = [
   {
     position: [0, 0, 0] as [number, number, number],
@@ -46,9 +44,7 @@ const TerrainMapping = () => {
   const isMobile = useIsMobile();
   const [showPathwaySystem, setShowPathwaySystem] = useState(false);
   const [showAchievement, setShowAchievement] = useState(true);
-  const { toast } = useToast();
   
-  // Auto-hide achievement notification after 8 seconds
   useEffect(() => {
     if (showAchievement) {
       const timer = setTimeout(() => {
@@ -60,7 +56,6 @@ const TerrainMapping = () => {
   }, [showAchievement]);
   
   const handlePathClick = (point: { label: string; type: string }) => {
-    // Display toast notification when a learning path is clicked
     toast({
       title: `Achievement Unlocked: ${point.type}`,
       description: `You've discovered: ${point.label}`,
@@ -94,7 +89,6 @@ const TerrainMapping = () => {
         </Button>
       </div>
       
-      {/* Achievement Alert that can be dismissed */}
       {showAchievement && (
         <Alert className="mb-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-triage-purple/20 animate-fade-in">
           <Award className="h-4 w-4 text-primary" />

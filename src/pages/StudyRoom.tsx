@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { ArrowLeft, Send, Users, BookOpen, Clock, Timer, MessageSquare } from "lucide-react";
 import { StudyRoomChat } from "@/components/studyroom/StudyRoomChat";
 import { StudyRoomResources } from "@/components/studyroom/StudyRoomResources";
@@ -15,7 +15,6 @@ import { StartFocusDialog } from "@/components/studyroom/StartFocusDialog";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { HikingTrail } from "@/components/focus/HikingTrail";
 import { FocusTimer } from "@/components/focus/FocusTimer";
-import { toast } from "sonner";
 
 const getMockRoom = (roomId: string) => {
   const rooms = {
@@ -74,7 +73,6 @@ const getMockRoom = (roomId: string) => {
 const StudyRoom = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { toast: uiToast } = useToast();
   const { state } = useOnboarding();
   
   const [room, setRoom] = useState<any>(null);

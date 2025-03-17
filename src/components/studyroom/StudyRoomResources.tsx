@@ -1,8 +1,7 @@
-
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Link, Upload, Plus } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface Resource {
   id: number;
@@ -17,8 +16,6 @@ interface StudyRoomResourcesProps {
 }
 
 export const StudyRoomResources = ({ resources }: StudyRoomResourcesProps) => {
-  const { toast } = useToast();
-  
   const handleAddResource = () => {
     toast({
       title: "Feature coming soon",
