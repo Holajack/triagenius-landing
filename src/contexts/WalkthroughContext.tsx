@@ -1,5 +1,5 @@
 
-import { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
 type Step = {
@@ -95,7 +95,7 @@ type WalkthroughContextType = {
 
 const WalkthroughContext = createContext<WalkthroughContextType | undefined>(undefined);
 
-export const WalkthroughProvider = ({ children }: { children: ReactNode }) => {
+export const WalkthroughProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(walkthroughReducer, initialState);
   const location = useLocation();
 

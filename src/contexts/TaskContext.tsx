@@ -131,7 +131,7 @@ type TaskContextType = {
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
-export const TaskProvider = ({ children }: { children: ReactNode }) => {
+export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(taskReducer, initialState);
 
   return (

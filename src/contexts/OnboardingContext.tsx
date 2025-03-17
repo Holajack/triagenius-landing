@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { OnboardingState, UserGoal, WorkStyle, StudyEnvironment, SoundPreference } from '@/types/onboarding';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 
 type OnboardingAction = 
   | { type: 'SET_STEP'; payload: number }
@@ -54,7 +54,7 @@ type OnboardingContextType = {
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
 
-export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
+export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(onboardingReducer, initialState);
   
   // Save onboarding state to Supabase
@@ -63,7 +63,11 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        toast.error('You must be logged in to save preferences');
+        toast({
+          title: "Error",
+          description: "You must be logged in to save preferences",
+          variant: "destructive",
+        });
         return;
       }
       
@@ -80,14 +84,25 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
         }, { onConflict: 'user_id' });
         
       if (error) {
-        toast.error('Failed to save preferences');
+        toast({
+          title: "Error",
+          description: "Failed to save preferences",
+          variant: "destructive",
+        });
         console.error('Error saving onboarding state:', error);
         return;
       }
       
-      toast.success('Preferences saved successfully');
+      toast({
+        title: "Success",
+        description: "Preferences saved successfully",
+      });
     } catch (error) {
-      toast.error('An error occurred while saving preferences');
+      toast({
+        title: "Error",
+        description: "An error occurred while saving preferences",
+        variant: "destructive",
+      });
       console.error('Error in saveOnboardingState:', error);
     }
   };
