@@ -1,5 +1,5 @@
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { UserGoalStep } from "@/components/onboarding/steps/UserGoalStep";
 import { WorkStyleStep } from "@/components/onboarding/steps/WorkStyleStep";
@@ -20,6 +20,7 @@ const Onboarding = () => {
   const { setEnvironmentTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const [userData, setUserData] = useState<{ email: string; username: string } | null>(null);
 
   // Check authentication and reset onboarding state when component mounts
   useEffect(() => {
@@ -35,6 +36,23 @@ const Onboarding = () => {
           } 
         });
         return;
+      }
+      
+      // Get user details
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('username, email')
+          .eq('id', user.id)
+          .single();
+          
+        if (profileData) {
+          setUserData({
+            email: profileData.email || user.email || '',
+            username: profileData.username || user.email?.split('@')[0] || 'User',
+          });
+        }
       }
       
       dispatch({ type: 'RESET_ONBOARDING' });
@@ -117,6 +135,12 @@ const Onboarding = () => {
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-xl mx-auto p-4 sm:p-6">
+        {userData && (
+          <div className="mb-4 text-center">
+            <p className="text-sm text-muted-foreground">Customizing experience for {userData.username}</p>
+          </div>
+        )}
+        
         <div className="pt-6 pb-4 border-b">
           <h2 className="text-2xl font-semibold text-center mb-4">
             {steps[state.step].title}

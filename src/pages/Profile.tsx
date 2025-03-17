@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import NavigationBar from "@/components/dashboard/NavigationBar";
@@ -15,6 +16,7 @@ import { toast } from "sonner";
 import PageHeader from "@/components/common/PageHeader";
 import { StudyEnvironment, WorkStyle } from "@/types/onboarding";
 import { supabase } from "@/integrations/supabase/client";
+import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +37,51 @@ const Profile = () => {
   const [isWorkStyleDialogOpen, setIsWorkStyleDialogOpen] = useState(false);
   const [tempFocusGoal, setTempFocusGoal] = useState(state.weeklyFocusGoal || 10);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [profileData, setProfileData] = useState({
+    username: "",
+    email: "",
+    avatarUrl: "",
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      setIsLoading(true);
+      
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          // Fetch profile data
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('username, email, avatar_url')
+            .eq('id', user.id)
+            .single();
+            
+          if (profileError) {
+            throw profileError;
+          }
+          
+          setProfileData({
+            username: profileData?.username || user.email?.split('@')[0] || 'User',
+            email: profileData?.email || user.email || '',
+            avatarUrl: profileData?.avatar_url || '',
+          });
+        } else {
+          navigate('/auth');
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        toast.error("Failed to load profile");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchUserProfile();
+  }, [navigate]);
   
   const handleLogout = async () => {
     try {
@@ -90,6 +137,42 @@ const Profile = () => {
     return name.charAt(0).toUpperCase() + name.slice(1).replace('-', ' ');
   };
 
+  const getAvatarFallback = () => {
+    if (!profileData.username) return "U";
+    return profileData.username.substring(0, 2).toUpperCase();
+  };
+  
+  const handleProfileUpdated = () => {
+    // Refresh profile data
+    const fetchUserProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('username, email, avatar_url')
+            .eq('id', user.id)
+            .single();
+            
+          if (profileError) {
+            throw profileError;
+          }
+          
+          setProfileData({
+            username: profileData?.username || user.email?.split('@')[0] || 'User',
+            email: profileData?.email || user.email || '',
+            avatarUrl: profileData?.avatar_url || '',
+          });
+        }
+      } catch (error) {
+        console.error('Error refreshing profile:', error);
+      }
+    };
+    
+    fetchUserProfile();
+  };
+
   const environments: Array<{id: StudyEnvironment; title: string; icon: JSX.Element}> = [
     { id: 'office', title: 'Office', icon: <Palette className="h-5 w-5 text-blue-600" /> },
     { id: 'park', title: 'Nature', icon: <Palette className="h-5 w-5 text-green-600" /> },
@@ -103,6 +186,14 @@ const Profile = () => {
     { id: 'balanced', title: 'Balanced', icon: <Clock3 className="h-5 w-5 rotate-90 text-triage-purple" /> },
     { id: 'deep-work', title: 'Deep Work', icon: <Clock3 className="h-5 w-5 rotate-180 text-triage-purple" /> },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="container max-w-md mx-auto px-4 pb-20 pt-8 flex justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-triage-purple"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="container max-w-md mx-auto px-4 pb-20">
@@ -118,15 +209,28 @@ const Profile = () => {
         <CardContent>
           <div className="flex items-center gap-4 mb-4">
             <Avatar className="h-16 w-16">
-              <AvatarImage src="/placeholder.svg" alt="Profile" />
-              <AvatarFallback>US</AvatarFallback>
+              <AvatarImage src={profileData.avatarUrl || "/placeholder.svg"} alt="Profile" />
+              <AvatarFallback>{getAvatarFallback()}</AvatarFallback>
             </Avatar>
             <div>
-              <h3 className="font-medium">User Name</h3>
-              <p className="text-sm text-muted-foreground">user@example.com</p>
+              <h3 className="font-medium">{profileData.username}</h3>
+              <p className="text-sm text-muted-foreground">{profileData.email}</p>
             </div>
           </div>
-          <Button variant="outline" className="w-full">Edit Profile</Button>
+          <Button 
+            variant="outline" 
+            className="w-full"
+            onClick={() => setIsEditProfileOpen(true)}
+          >
+            Edit Profile
+          </Button>
+          
+          <EditProfileDialog 
+            open={isEditProfileOpen} 
+            onOpenChange={setIsEditProfileOpen} 
+            onProfileUpdated={handleProfileUpdated}
+            initialData={profileData}
+          />
         </CardContent>
       </Card>
 
