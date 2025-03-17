@@ -1,55 +1,51 @@
 
-import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { createContext, useContext, useReducer, ReactNode } from 'react';
 
-type Step = {
+// Types for walkthrough steps
+export type WalkthroughStep = {
   id: string;
   title: string;
   description: string;
-  targetSelector?: string;
-  placement?: 'top' | 'right' | 'bottom' | 'left';
-  onNext?: () => void;
+  targetSelector: string;
+  placement: 'top' | 'right' | 'bottom' | 'left';
 };
 
+// State type
 type WalkthroughState = {
   isActive: boolean;
+  steps: WalkthroughStep[];
   currentStepIndex: number;
-  steps: Step[];
   hasCompletedTutorial: boolean;
 };
 
-type WalkthroughAction = 
-  | { type: 'START_WALKTHROUGH'; payload: Step[] }
+// Action types
+type WalkthroughAction =
+  | { type: 'START_WALKTHROUGH'; payload: WalkthroughStep[] }
   | { type: 'NEXT_STEP' }
   | { type: 'PREVIOUS_STEP' }
+  | { type: 'END_WALKTHROUGH' }
   | { type: 'SKIP_WALKTHROUGH' }
-  | { type: 'COMPLETE_WALKTHROUGH' }
-  | { type: 'SET_HAS_COMPLETED' };
+  | { type: 'SET_COMPLETED' };
 
+// Initial state
 const initialState: WalkthroughState = {
   isActive: false,
-  currentStepIndex: 0,
   steps: [],
+  currentStepIndex: 0,
   hasCompletedTutorial: false,
 };
 
-const walkthroughReducer = (state: WalkthroughState, action: WalkthroughAction): WalkthroughState => {
+// Reducer function
+function walkthroughReducer(state: WalkthroughState, action: WalkthroughAction): WalkthroughState {
   switch (action.type) {
     case 'START_WALKTHROUGH':
       return {
         ...state,
         isActive: true,
-        currentStepIndex: 0,
         steps: action.payload,
+        currentStepIndex: 0,
       };
     case 'NEXT_STEP':
-      // Execute onNext callback if it exists
-      const currentStep = state.steps[state.currentStepIndex];
-      if (currentStep?.onNext) {
-        currentStep.onNext();
-      }
-      
-      // If this is the last step, complete the walkthrough
       if (state.currentStepIndex >= state.steps.length - 1) {
         return {
           ...state,
@@ -57,28 +53,30 @@ const walkthroughReducer = (state: WalkthroughState, action: WalkthroughAction):
           hasCompletedTutorial: true,
         };
       }
-      
       return {
         ...state,
         currentStepIndex: state.currentStepIndex + 1,
       };
     case 'PREVIOUS_STEP':
+      if (state.currentStepIndex <= 0) {
+        return state;
+      }
       return {
         ...state,
-        currentStepIndex: Math.max(0, state.currentStepIndex - 1),
+        currentStepIndex: state.currentStepIndex - 1,
+      };
+    case 'END_WALKTHROUGH':
+      return {
+        ...state,
+        isActive: false,
+        hasCompletedTutorial: true,
       };
     case 'SKIP_WALKTHROUGH':
       return {
         ...state,
         isActive: false,
       };
-    case 'COMPLETE_WALKTHROUGH':
-      return {
-        ...state,
-        isActive: false,
-        hasCompletedTutorial: true,
-      };
-    case 'SET_HAS_COMPLETED':
+    case 'SET_COMPLETED':
       return {
         ...state,
         hasCompletedTutorial: true,
@@ -86,52 +84,56 @@ const walkthroughReducer = (state: WalkthroughState, action: WalkthroughAction):
     default:
       return state;
   }
-};
+}
 
+// Context type
 type WalkthroughContextType = {
   state: WalkthroughState;
   dispatch: React.Dispatch<WalkthroughAction>;
 };
 
+// Create context
 const WalkthroughContext = createContext<WalkthroughContextType | undefined>(undefined);
 
-export const WalkthroughProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+// Provider component
+export function WalkthroughProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(walkthroughReducer, initialState);
-  const location = useLocation();
 
-  // Check if user has completed tutorial from localStorage
-  useEffect(() => {
-    const hasCompleted = localStorage.getItem('hasCompletedTutorial') === 'true';
-    if (hasCompleted) {
-      dispatch({ type: 'SET_HAS_COMPLETED' });
+  // Load completed status from localStorage
+  React.useEffect(() => {
+    try {
+      const hasCompleted = localStorage.getItem('hasCompletedTutorial');
+      if (hasCompleted === 'true') {
+        dispatch({ type: 'SET_COMPLETED' });
+      }
+    } catch (error) {
+      console.error('Error accessing localStorage:', error);
     }
   }, []);
 
   // Save completed status to localStorage
-  useEffect(() => {
-    if (state.hasCompletedTutorial) {
-      localStorage.setItem('hasCompletedTutorial', 'true');
+  React.useEffect(() => {
+    try {
+      if (state.hasCompletedTutorial) {
+        localStorage.setItem('hasCompletedTutorial', 'true');
+      }
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
     }
   }, [state.hasCompletedTutorial]);
-
-  // Reset walkthrough when navigating to a different route
-  useEffect(() => {
-    if (state.isActive) {
-      dispatch({ type: 'SKIP_WALKTHROUGH' });
-    }
-  }, [location.pathname]);
 
   return (
     <WalkthroughContext.Provider value={{ state, dispatch }}>
       {children}
     </WalkthroughContext.Provider>
   );
-};
+}
 
-export const useWalkthrough = () => {
+// Hook to use the context
+export function useWalkthrough() {
   const context = useContext(WalkthroughContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useWalkthrough must be used within a WalkthroughProvider');
   }
   return context;
-};
+}

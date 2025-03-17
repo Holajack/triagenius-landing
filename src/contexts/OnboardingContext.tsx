@@ -21,7 +21,7 @@ const initialState: OnboardingState = {
   weeklyFocusGoal: 10, // Default weekly focus goal in hours
 };
 
-const onboardingReducer = (state: OnboardingState, action: OnboardingAction): OnboardingState => {
+function onboardingReducer(state: OnboardingState, action: OnboardingAction): OnboardingState {
   switch (action.type) {
     case 'SET_STEP':
       return { ...state, step: action.payload };
@@ -44,7 +44,7 @@ const onboardingReducer = (state: OnboardingState, action: OnboardingAction): On
     default:
       return state;
   }
-};
+}
 
 type OnboardingContextType = {
   state: OnboardingState;
@@ -54,7 +54,7 @@ type OnboardingContextType = {
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
 
-export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export function OnboardingProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(onboardingReducer, initialState);
   
   // Save onboarding state to Supabase
@@ -65,7 +65,8 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
       if (!user) {
         toast({
           title: "Error",
-          description: "You must be logged in to save preferences"
+          description: "You must be logged in to save preferences",
+          duration: 5000,
         });
         return;
       }
@@ -87,7 +88,8 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
       if (error) {
         toast({
           title: "Error",
-          description: "Failed to save preferences"
+          description: "Failed to save preferences",
+          duration: 5000,
         });
         console.error('Error saving onboarding state:', error);
         return;
@@ -95,12 +97,14 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
       
       toast({
         title: "Success",
-        description: "Preferences saved successfully"
+        description: "Preferences saved successfully",
+        duration: 5000,
       });
     } catch (error) {
       toast({
         title: "Error",
-        description: "An error occurred while saving preferences"
+        description: "An error occurred while saving preferences",
+        duration: 5000,
       });
       console.error('Error in saveOnboardingState:', error);
     }
@@ -167,12 +171,12 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
       {children}
     </OnboardingContext.Provider>
   );
-};
+}
 
-export const useOnboarding = () => {
+export function useOnboarding() {
   const context = useContext(OnboardingContext);
   if (context === undefined) {
     throw new Error('useOnboarding must be used within an OnboardingProvider');
   }
   return context;
-};
+}

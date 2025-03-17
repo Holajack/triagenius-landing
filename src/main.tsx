@@ -7,7 +7,11 @@ import { Toaster } from "./components/ui/toaster"
 import { register } from './components/pwa/ServiceWorker'
 
 // Only register service worker once in the main entry point
-register();
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    register();
+  });
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

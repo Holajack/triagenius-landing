@@ -3,49 +3,51 @@
 
 export function register() {
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', async () => {
-      try {
-        const swUrl = `${window.location.origin}/sw.js`;
-        console.log('Registering service worker at:', swUrl);
-        const registration = await navigator.serviceWorker.register(swUrl);
-        
-        console.log('ServiceWorker registration successful with scope:', registration.scope);
-        
-        // Handle updates
-        registration.onupdatefound = () => {
-          const installingWorker = registration.installing;
-          if (!installingWorker) return;
+    try {
+      const swUrl = `${window.location.origin}/sw.js`;
+      console.log('Registering service worker at:', swUrl);
+      
+      navigator.serviceWorker.register(swUrl)
+        .then(registration => {
+          console.log('ServiceWorker registration successful with scope:', registration.scope);
           
-          installingWorker.onstatechange = () => {
-            if (installingWorker.state === 'installed') {
-              if (navigator.serviceWorker.controller) {
-                // At this point, the updated precached content has been fetched
-                console.log('New content is available; please refresh.');
-                
-                // Show update notification to the user
-                if (window.confirm('New version available! Reload to update?')) {
-                  window.location.reload();
+          // Handle updates
+          registration.onupdatefound = () => {
+            const installingWorker = registration.installing;
+            if (!installingWorker) return;
+            
+            installingWorker.onstatechange = () => {
+              if (installingWorker.state === 'installed') {
+                if (navigator.serviceWorker.controller) {
+                  // At this point, the updated precached content has been fetched
+                  console.log('New content is available; please refresh.');
+                  
+                  // Show update notification to the user
+                  if (window.confirm('New version available! Reload to update?')) {
+                    window.location.reload();
+                  }
+                } else {
+                  // At this point, everything has been precached.
+                  console.log('Content is cached for offline use.');
                 }
-              } else {
-                // At this point, everything has been precached.
-                console.log('Content is cached for offline use.');
               }
-            }
+            };
           };
-        };
-        
-      } catch (error) {
-        console.error('Error during service worker registration:', error);
-      }
-    });
-    
-    // Handle controller updates
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (refreshing) return;
-      refreshing = true;
-      window.location.reload();
-    });
+        })
+        .catch(error => {
+          console.error('Error during service worker registration:', error);
+        });
+      
+      // Handle controller updates
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+      });
+    } catch (error) {
+      console.error('Error initiating service worker registration:', error);
+    }
   }
 }
 

@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_REMOVE_DELAY = 5000
 
 export type ToastActionProps = {
   altText: string
@@ -148,6 +148,7 @@ type Toast = Omit<ToasterToast, "id">
 
 function toast({ ...props }: Toast) {
   const id = genId()
+  const duration = props.duration || 5000
 
   const update = (props: ToasterToast) =>
     dispatch({
@@ -161,6 +162,7 @@ function toast({ ...props }: Toast) {
     toast: {
       ...props,
       id,
+      duration,
       open: true,
       onOpenChange: (open) => {
         if (!open) dismiss()
@@ -175,7 +177,7 @@ function toast({ ...props }: Toast) {
   }
 }
 
-function useToast() {
+export function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
 
   React.useEffect(() => {
@@ -195,22 +197,4 @@ function useToast() {
   }
 }
 
-// This is a custom component that uses the useToast hook but doesn't render JSX
-// Instead it returns the Provider and props that the parent can use to render
-export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const ToastContext = React.createContext<ReturnType<typeof useToast> | null>(null);
-  
-  const Provider = ({ children }: { children: React.ReactNode }) => {
-    const value = useToast();
-    return React.createElement(ToastContext.Provider, { value }, children);
-  };
-
-  return {
-    Provider,
-    providerProps: {
-      children
-    }
-  };
-}
-
-export { useToast, toast };
+export { toast }
