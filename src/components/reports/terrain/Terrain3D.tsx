@@ -1,9 +1,9 @@
 
 import React, { useRef, useEffect } from 'react';
 import { Canvas, useLoader, useThree } from '@react-three/fiber';
-import { OrbitControls, Text } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { pathPoints } from './TerrainMapping';
+// Removed pathPoints import since we're removing the waypoints for now
 
 interface TerrainProps {
   textureUrl: string;
@@ -104,32 +104,7 @@ function TerrainMesh({ textureUrl, terrainData }: TerrainProps) {
   );
 }
 
-// Waypoint markers for learning paths
-function Waypoints() {
-  return (
-    <>
-      {pathPoints.map((point, index) => (
-        <group key={index} position={[point.position[0] * 5, point.position[1] * 3 + 2, point.position[2] * 5]}>
-          <mesh castShadow>
-            <sphereGeometry args={[0.8, 16, 16]} />
-            <meshStandardMaterial color="#ff9900" emissive="#ff6600" emissiveIntensity={0.5} />
-          </mesh>
-          <Text
-            position={[0, 1.5, 0]}
-            fontSize={0.8}
-            color="#ffffff"
-            anchorX="center"
-            anchorY="middle"
-            outlineWidth={0.05}
-            outlineColor="#000000"
-          >
-            {point.label}
-          </Text>
-        </group>
-      ))}
-    </>
-  );
-}
+// Removed Waypoints component since we're not showing it for now
 
 const Terrain3D: React.FC<TerrainProps> = ({ textureUrl, terrainData }) => {
   return (
@@ -158,7 +133,7 @@ const Terrain3D: React.FC<TerrainProps> = ({ textureUrl, terrainData }) => {
         
         <React.Suspense fallback={null}>
           <TerrainMesh textureUrl={textureUrl} terrainData={terrainData} />
-          <Waypoints />
+          {/* Removed Waypoints component here */}
         </React.Suspense>
         
         <OrbitControls 
