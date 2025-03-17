@@ -1,10 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import TerrainVisualization from './TerrainVisualization';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { PathwaySystem } from './PathwaySystem';
-import { Map, Mountain } from 'lucide-react';
+import { Map, Mountain, Award, X } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
 
 // Define the learning path points
 const learningPaths = [
@@ -43,6 +45,29 @@ const learningPaths = [
 const TerrainMapping = () => {
   const isMobile = useIsMobile();
   const [showPathwaySystem, setShowPathwaySystem] = useState(false);
+  const [showAchievement, setShowAchievement] = useState(true);
+  const { toast } = useToast();
+  
+  // Auto-hide achievement notification after 8 seconds
+  useEffect(() => {
+    if (showAchievement) {
+      const timer = setTimeout(() => {
+        setShowAchievement(false);
+      }, 8000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [showAchievement]);
+  
+  const handlePathClick = (point: { label: string; type: string }) => {
+    // Display toast notification when a learning path is clicked
+    toast({
+      title: `Achievement Unlocked: ${point.type}`,
+      description: `You've discovered: ${point.label}`,
+      duration: 5000,
+    });
+    console.log(`Clicked on: ${point.label}`);
+  };
   
   return (
     <div className={`h-full ${isMobile ? 'px-1' : 'px-4'}`}>
@@ -69,10 +94,31 @@ const TerrainMapping = () => {
         </Button>
       </div>
       
+      {/* Achievement Alert that can be dismissed */}
+      {showAchievement && (
+        <Alert className="mb-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-triage-purple/20 animate-fade-in">
+          <Award className="h-4 w-4 text-primary" />
+          <AlertTitle className="flex items-center justify-between">
+            <span>Cognitive Milestone Reached</span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-6 w-6 p-0" 
+              onClick={() => setShowAchievement(false)}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </AlertTitle>
+          <AlertDescription>
+            You've unlocked new neural pathways. Explore the terrain to discover your learning pattern.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       {showPathwaySystem ? (
         <PathwaySystem 
           paths={learningPaths}
-          onPathClick={(point) => console.log(`Clicked on: ${point.label}`)}
+          onPathClick={handlePathClick}
         />
       ) : (
         <TerrainVisualization />
