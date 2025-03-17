@@ -55,12 +55,12 @@ function App() {
                     <Route path="/bonuses" element={<Bonuses />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
+                  <Toaster />
+                  <SonnerToaster position="top-right" closeButton richColors />
                 </WalkthroughProvider>
               </TaskProvider>
             </ThemeProvider>
           </OnboardingProvider>
-          <Toaster />
-          <SonnerToaster position="top-right" closeButton richColors />
         </BrowserRouter>
       </ErrorBoundary>
     </div>
