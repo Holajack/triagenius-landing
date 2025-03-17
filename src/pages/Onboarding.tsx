@@ -7,6 +7,7 @@ import { EnvironmentStep } from "@/components/onboarding/steps/EnvironmentStep";
 import { SoundStep } from "@/components/onboarding/steps/SoundStep";
 import { SummaryStep } from "@/components/onboarding/steps/SummaryStep";
 import { useOnboarding } from "@/contexts/OnboardingContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import QuickStartButton from "@/components/dashboard/QuickStartButton";
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const Onboarding = () => {
   const { state, dispatch, saveOnboardingState } = useOnboarding();
+  const { setEnvironmentTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -40,6 +42,13 @@ const Onboarding = () => {
     
     checkAuth();
   }, [dispatch, navigate]);
+
+  // Update environment theme when environment changes
+  useEffect(() => {
+    if (state.environment) {
+      setEnvironmentTheme(state.environment);
+    }
+  }, [state.environment, setEnvironmentTheme]);
 
   const steps = [
     { component: UserGoalStep, title: "What's your main goal?" },

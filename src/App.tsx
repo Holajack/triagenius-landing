@@ -1,5 +1,4 @@
 
-// Import the new Auth page and ProtectedRoute component
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Index from "@/pages/Index";
 import Dashboard from "@/pages/Dashboard";
@@ -21,7 +20,7 @@ import Onboarding from "@/pages/Onboarding";
 import Auth from "@/pages/Auth";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Toaster } from "@/components/ui/toaster";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { OnboardingProvider } from "@/contexts/OnboardingContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { TaskProvider } from "@/contexts/TaskContext";
@@ -30,11 +29,11 @@ import { WalkthroughProvider } from "@/contexts/WalkthroughContext";
 export default function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider>
-        <OnboardingProvider>
-          <TaskProvider>
-            <WalkthroughProvider>
-              <Router>
+      <Router>
+        <ThemeProvider>
+          <OnboardingProvider>
+            <TaskProvider>
+              <WalkthroughProvider>
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
@@ -154,11 +153,11 @@ export default function App() {
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 <Toaster />
-              </Router>
-            </WalkthroughProvider>
-          </TaskProvider>
-        </OnboardingProvider>
-      </ThemeProvider>
+              </WalkthroughProvider>
+            </TaskProvider>
+          </OnboardingProvider>
+        </ThemeProvider>
+      </Router>
     </ErrorBoundary>
   );
 }

@@ -1,6 +1,5 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { useOnboarding } from './OnboardingContext';
 
 type ThemeMode = 'light' | 'dark';
 
@@ -8,13 +7,13 @@ type ThemeContextType = {
   theme: ThemeMode;
   setTheme: (theme: ThemeMode) => void;
   toggleTheme: () => void;
+  setEnvironmentTheme: (environment: string | undefined) => void;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setTheme] = useState<ThemeMode>('light');
-  const { state } = useOnboarding();
 
   // Initialize theme from localStorage or system preference
   useEffect(() => {
@@ -40,9 +39,9 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     document.documentElement.classList.add(theme);
   }, [theme]);
 
-  // Apply environment theme classes
-  useEffect(() => {
-    if (state.environment) {
+  // Set environment theme classes
+  const setEnvironmentTheme = (environment: string | undefined) => {
+    if (environment) {
       // Remove any existing environment theme classes
       document.documentElement.classList.remove(
         'theme-office', 
@@ -53,16 +52,16 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       );
       
       // Add current environment theme class
-      document.documentElement.classList.add(`theme-${state.environment}`);
+      document.documentElement.classList.add(`theme-${environment}`);
     }
-  }, [state.environment]);
+  };
 
   const toggleTheme = () => {
     setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, setEnvironmentTheme }}>
       {children}
     </ThemeContext.Provider>
   );
