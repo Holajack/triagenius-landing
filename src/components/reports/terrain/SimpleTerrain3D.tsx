@@ -332,7 +332,13 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
       cancelAnimationFrame(frameId);
       
       if (renderer && containerRef.current) {
-        containerRef.current.removeChild(renderer.domElement);
+        try {
+          if (containerRef.current.contains(renderer.domElement)) {
+            containerRef.current.removeChild(renderer.domElement);
+          }
+        } catch (e) {
+          console.error("Error cleaning up THREE.js renderer:", e);
+        }
       }
       
       scene.traverse((object) => {

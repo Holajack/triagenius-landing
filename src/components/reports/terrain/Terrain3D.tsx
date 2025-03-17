@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -279,10 +280,16 @@ const Terrain3D: React.FC<TerrainProps> = ({ textureUrl, terrainData, isNightMod
         });
       }
       
-      if (renderer) {
-        renderer.dispose();
-        if (containerRef.current?.contains(renderer.domElement)) {
-          containerRef.current.removeChild(renderer.domElement);
+      // Fix for "removeChild" error - check if the renderer's DOM element is actually a child
+      // of containerRef before attempting to remove it
+      if (renderer && containerRef.current) {
+        try {
+          // Safely check if element is a child before removing
+          if (containerRef.current.contains(renderer.domElement)) {
+            containerRef.current.removeChild(renderer.domElement);
+          }
+        } catch (e) {
+          console.error("Error during cleanup:", e);
         }
       }
     };
