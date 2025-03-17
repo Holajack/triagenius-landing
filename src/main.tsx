@@ -11,6 +11,6 @@ if (!rootElement) throw new Error('Failed to find the root element');
 createRoot(rootElement).render(
   <React.StrictMode>
     <App />
-    <Toaster />
+    <Toaster position="top-right" richColors />
   </React.StrictMode>
 );
