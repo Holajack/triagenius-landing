@@ -23,7 +23,6 @@ const SessionReport = () => {
   const { state } = useOnboarding();
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const location = useLocation();
   const [sessionNotes, setSessionNotes] = useState('');
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
 
@@ -67,7 +66,13 @@ const SessionReport = () => {
     console.log('Saving notes:', sessionNotes);
     // Clear the session data from localStorage
     localStorage.removeItem('sessionData');
-    navigate('/dashboard');
+    // Force navigation directly to dashboard, bypassing any checks
+    navigate('/dashboard', { replace: true });
+  };
+
+  const handleBackToDashboard = () => {
+    // Force navigation directly to dashboard, bypassing any checks
+    navigate('/dashboard', { replace: true });
   };
 
   return (
@@ -80,7 +85,7 @@ const SessionReport = () => {
         
         <Button 
           variant="ghost" 
-          onClick={() => navigate('/dashboard')}
+          onClick={handleBackToDashboard}
           className="mb-4"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
