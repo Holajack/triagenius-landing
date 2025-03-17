@@ -20,7 +20,6 @@ import NotFound from "@/pages/NotFound";
 import Onboarding from "@/pages/Onboarding";
 import Auth from "@/pages/Auth";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import { Toaster } from "@/components/ui/toaster";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { OnboardingProvider } from "@/contexts/OnboardingContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -153,7 +152,6 @@ export default function App() {
                   />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-                <Toaster />
               </WalkthroughProvider>
             </OnboardingProvider>
           </Router>
