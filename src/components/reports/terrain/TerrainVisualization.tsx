@@ -399,7 +399,7 @@ const TerrainVisualization = () => {
       const nz = normals[i + 2];
       const slope = 1 - ny; // 0 is flat, 1 is vertical
       
-      const [r, g, b] = getTerrainColor(y, slope);
+      const [r, g, b] = getTerrainColor(y, slope, false);
       colors.push(r, g, b);
     }
     
@@ -783,3 +783,4 @@ const TerrainVisualization = () => {
 };
 
 export default TerrainVisualization;
+
