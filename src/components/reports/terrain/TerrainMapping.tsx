@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -46,11 +45,11 @@ const terrainData = {
     "ne": [
       -105.11492,
       40.54043
-    ] as [number, number],  // Explicitly type as tuple
+    ] as [number, number],
     "sw": [
       -106.21862,
       39.56597
-    ] as [number, number]   // Explicitly type as tuple
+    ] as [number, number]
   },
   "resolution": {
     "elevation": {
@@ -154,7 +153,7 @@ const TerrainMapping = () => {
           
           <div className="w-full h-full pt-12 pb-8">
             <Terrain3D 
-              textureUrl="/lovable-uploads/862bad1f-1f97-45f5-add0-47b62a261576.png" 
+              textureUrl="/lovable-uploads/57b94bc3-ef36-4875-92dc-3c7d6a0d737d.png" 
               terrainData={terrainData} 
             />
           </div>

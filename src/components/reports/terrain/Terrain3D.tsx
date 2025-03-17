@@ -1,9 +1,8 @@
 
 import React, { useRef, useEffect } from 'react';
 import { Canvas, useLoader, useThree } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { OrbitControls, Environment } from '@react-three/drei';
 import * as THREE from 'three';
-// Removed pathPoints import since we're removing the waypoints for now
 
 interface TerrainProps {
   textureUrl: string;
@@ -53,7 +52,7 @@ function TerrainMesh({ textureUrl, terrainData }: TerrainProps) {
   // Set initial camera position on mount
   useEffect(() => {
     if (camera) {
-      camera.position.set(0, 20, 40);
+      camera.position.set(0, 30, 50);
       camera.lookAt(0, 0, 0);
     }
   }, [camera]);
@@ -62,13 +61,13 @@ function TerrainMesh({ textureUrl, terrainData }: TerrainProps) {
   const geometry = new THREE.PlaneGeometry(
     terrainData.groundParams.width,
     terrainData.groundParams.height,
-    terrainData.groundParams.subdivisionsX,
-    terrainData.groundParams.subdivisionsY
+    terrainData.groundParams.subdivisionsX / 4, // Reduce for better performance
+    terrainData.groundParams.subdivisionsY / 4  // Reduce for better performance
   );
 
   // Enhanced terrain generation algorithm
   const { array } = geometry.attributes.position;
-  const maxHeight = terrainData.modelCoordinatesAltitudeBounds.max;
+  const maxHeight = terrainData.modelCoordinatesAltitudeBounds.max * 1.5; // Increase height for better visibility
   
   // Generate more realistic mountain terrain
   for (let i = 0; i < array.length; i += 3) {
@@ -80,18 +79,18 @@ function TerrainMesh({ textureUrl, terrainData }: TerrainProps) {
     const centerFactor = Math.max(0, 1 - distance / 35);
     
     // Multiple noise functions at different frequencies for more natural terrain
-    const noise1 = Math.sin(x * 0.3) * Math.cos(z * 0.3) * 0.5;
-    const noise2 = Math.sin(x * 0.7) * Math.cos(z * 0.7) * 0.25;
-    const noise3 = Math.sin(x * 1.4) * Math.cos(z * 1.4) * 0.125;
+    const noise1 = Math.sin(x * 0.5) * Math.cos(z * 0.5) * 0.6;
+    const noise2 = Math.sin(x * 0.9) * Math.cos(z * 0.9) * 0.3;
+    const noise3 = Math.sin(x * 1.6) * Math.cos(z * 1.6) * 0.15;
     const combinedNoise = noise1 + noise2 + noise3;
     
-    // Mountain range along center with realistic peaks
-    const mountainRidge = Math.exp(-Math.pow(x / 10, 2)) * maxHeight * 0.8;
+    // Mountain ridge along center
+    const mountainRidge = Math.exp(-Math.pow(x / 15, 2)) * maxHeight * 0.9;
     
     // Combined elevation with ridge and noise features
-    array[i + 1] = (centerFactor * maxHeight * 0.6) + 
-                  (combinedNoise * maxHeight * 0.4) + 
-                  mountainRidge * (0.5 + Math.random() * 0.5);
+    array[i + 1] = (centerFactor * maxHeight * 0.7) + 
+                  (combinedNoise * maxHeight * 0.5) + 
+                  mountainRidge * (0.7 + Math.random() * 0.3);
   }
 
   // Apply texture and material settings
@@ -99,63 +98,76 @@ function TerrainMesh({ textureUrl, terrainData }: TerrainProps) {
   texture.repeat.set(1, 1);
   
   return (
-    <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]} receiveShadow castShadow>
+    <mesh 
+      ref={meshRef} 
+      rotation={[-Math.PI / 2, 0, 0]} 
+      receiveShadow 
+      castShadow
+    >
       <primitive object={geometry} attach="geometry" />
       <meshStandardMaterial 
         map={texture}
-        displacementScale={3}
-        roughness={0.9}
-        metalness={0.1}
+        displacementScale={5}
+        roughness={0.8}
+        metalness={0.2}
         side={THREE.DoubleSide}
       />
     </mesh>
   );
 }
 
-// Removed Waypoints component since we're not showing it for now
-
 const Terrain3D: React.FC<TerrainProps> = ({ textureUrl, terrainData }) => {
   return (
     <div className="w-full h-full" style={{ minHeight: '400px' }}>
       <Canvas 
         shadows 
-        camera={{ position: [0, 20, 40], fov: 60 }}
+        camera={{ position: [0, 30, 50], fov: 60 }}
         gl={{ antialias: true, alpha: true }}
         onCreated={({ gl }) => {
-          gl.setClearColor(new THREE.Color('#000000'), 0);
+          gl.setClearColor(new THREE.Color('#e0e0e0'), 1); // Light background
           gl.shadowMap.enabled = true;
           gl.shadowMap.type = THREE.PCFSoftShadowMap;
         }}
       >
-        <color attach="background" args={['#111']} />
-        <fog attach="fog" args={['#111', 40, 100]} />
+        {/* Light background color instead of dark */}
+        <color attach="background" args={['#e0e0e0']} />
+        <fog attach="fog" args={['#e0e0e0', 60, 120]} />
         
-        <ambientLight intensity={0.6} />
+        {/* Improved lighting setup */}
+        <ambientLight intensity={0.8} />
         <directionalLight 
-          position={[10, 25, 10]} 
-          intensity={1.5} 
+          position={[10, 30, 10]} 
+          intensity={1.8} 
           castShadow 
           shadow-mapSize-width={2048} 
-          shadow-mapSize-height={2048} 
+          shadow-mapSize-height={2048}
+          shadow-camera-left={-50}
+          shadow-camera-right={50}
+          shadow-camera-top={50}
+          shadow-camera-bottom={-50}
         />
         <directionalLight
-          position={[-10, 15, -10]}
-          intensity={0.8}
+          position={[-10, 20, -10]}
+          intensity={1.2}
           color="#b3e0ff"
+        />
+        <hemisphereLight 
+          args={['#ffffff', '#8888ff', 0.7]} 
+          position={[0, 50, 0]} 
         />
         
         <React.Suspense fallback={null}>
           <TerrainMesh textureUrl={textureUrl} terrainData={terrainData} />
-          {/* Removed Waypoints component here */}
+          <Environment preset="sunset" />
         </React.Suspense>
         
         <OrbitControls 
           enableZoom={true}
           enablePan={true}
           enableRotate={true}
-          maxPolarAngle={Math.PI / 2}
-          minDistance={5}
-          maxDistance={60}
+          maxPolarAngle={Math.PI / 2.2}
+          minDistance={10}
+          maxDistance={80}
         />
       </Canvas>
     </div>
