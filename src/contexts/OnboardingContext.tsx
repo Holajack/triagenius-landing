@@ -60,7 +60,7 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
 
 export const useOnboarding = () => {
   const context = useContext(OnboardingContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useOnboarding must be used within an OnboardingProvider');
   }
   return context;
