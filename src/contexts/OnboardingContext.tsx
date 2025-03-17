@@ -78,7 +78,7 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
           weekly_focus_goal: state.weeklyFocusGoal,
           is_onboarding_complete: state.isComplete,
         }, { 
-          onConflict: 'user_id',  // This will now work with our new constraint
+          onConflict: 'user_id',
         });
         
       if (error) {
