@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -366,6 +367,7 @@ const TerrainVisualization = () => {
   const [peakName, setPeakName] = useState('');
 
   useEffect(() => {
+    // Show achievement popup randomly after 3-8 seconds as a demo
     const timeout = setTimeout(() => {
       setShowAchievementPopup(true);
     }, Math.random() * 5000 + 3000);
@@ -374,12 +376,14 @@ const TerrainVisualization = () => {
   }, []);
 
   const createTerrain = (scene: THREE.Scene) => {
+    // Adjust resolution based on device capability
     const width = 50;
     const height = 50;
     const resolution = isMobile ? 150 : 250; // Lower resolution for mobile
     
     const geometry = createTerrainGeometry(width, height, resolution);
     
+    // Create custom material for colored terrain
     const material = new THREE.MeshStandardMaterial({
       vertexColors: true,
       roughness: 0.8,
@@ -387,6 +391,7 @@ const TerrainVisualization = () => {
       side: THREE.DoubleSide
     });
 
+    // Add vertex colors to represent different terrain types
     const colors = [];
     const positions = geometry.attributes.position.array;
     const normals = geometry.attributes.normal.array;
@@ -394,12 +399,14 @@ const TerrainVisualization = () => {
     for (let i = 0; i < positions.length; i += 3) {
       const y = positions[i + 1]; // height
       
+      // Calculate slope from normal (y component closer to 1 means flatter)
       const nx = normals[i];
       const ny = normals[i + 1];
       const nz = normals[i + 2];
       const slope = 1 - ny; // 0 is flat, 1 is vertical
       
-      const [r, g, b] = getTerrainColor(y, slope, isNightMode);
+      // Get terrain color based on height and slope
+      const [r, g, b] = getTerrainColor(y, slope);
       colors.push(r, g, b);
     }
     
@@ -412,22 +419,27 @@ const TerrainVisualization = () => {
     
     scene.add(terrain);
     
+    // Add hiking paths after terrain is created
     createHikingPaths(scene, terrain);
     
+    // Add a grid helper for scale reference
     const gridHelper = new THREE.GridHelper(50, 50);
     gridHelper.position.y = -0.1; // Just below the terrain
     scene.add(gridHelper);
   };
 
   const updateLighting = (scene: THREE.Scene, isNight: boolean) => {
+    // Remove existing lights
     scene.children = scene.children.filter(child => !(child instanceof THREE.Light));
     
+    // Add ambient light
     const ambientLight = new THREE.AmbientLight(
       isNight ? 0x333366 : 0x777777,
       isNight ? 0.3 : 0.5
     );
     scene.add(ambientLight);
     
+    // Add directional light (sun/moon)
     const directionalLight = new THREE.DirectionalLight(
       isNight ? 0xaabbff : 0xffffbb,
       isNight ? 0.5 : 1.0
@@ -441,6 +453,7 @@ const TerrainVisualization = () => {
     
     directionalLight.castShadow = true;
     
+    // Configure shadow properties
     directionalLight.shadow.mapSize.width = 2048;
     directionalLight.shadow.mapSize.height = 2048;
     directionalLight.shadow.camera.near = 0.5;
@@ -454,6 +467,7 @@ const TerrainVisualization = () => {
     
     scene.add(directionalLight);
     
+    // Add hemisphere light for more natural lighting
     const hemisphereLight = new THREE.HemisphereLight(
       isNight ? 0x000033 : 0x0077ff,
       isNight ? 0x000000 : 0x775533,
@@ -461,11 +475,13 @@ const TerrainVisualization = () => {
     );
     scene.add(hemisphereLight);
     
+    // Add point lights for night mode (moonlight)
     if (isNight) {
       const moonLight = new THREE.PointLight(0x8888ff, 0.8, 30);
       moonLight.position.set(5, 15, 5);
       scene.add(moonLight);
       
+      // Add some small lights along the paths to simulate lanterns
       const lanternPositions = [
         [-15, 2, -10],
         [-5, 2, -2],
@@ -486,59 +502,71 @@ const TerrainVisualization = () => {
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // Scene setup
     const scene = new THREE.Scene();
     sceneRef.current = scene;
     scene.background = new THREE.Color(isNightMode ? 0x0a0a20 : 0x87ceeb);
 
+    // Camera setup - adjust FOV for mobile
     const camera = new THREE.PerspectiveCamera(
-      isMobile ? 85 : 75,
+      isMobile ? 85 : 75, // Wider FOV on mobile for better visibility
       containerRef.current.clientWidth / containerRef.current.clientHeight,
       0.1,
       1000
     );
     cameraRef.current = camera;
     
+    // Adjust initial position for mobile
     if (isMobile) {
-      camera.position.set(0, 15, 25);
+      camera.position.set(0, 15, 25); // Higher and further back on mobile
     } else {
       camera.position.set(0, 12, 20);
     }
 
+    // Renderer setup
     const renderer = new THREE.WebGLRenderer({ 
-      antialias: !isMobile,
+      antialias: !isMobile, // Disable antialiasing on mobile for performance
       powerPreference: "high-performance"
     });
     rendererRef.current = renderer;
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-    renderer.setPixelRatio(isMobile ? 1 : window.devicePixelRatio);
+    renderer.setPixelRatio(isMobile ? 1 : window.devicePixelRatio); // Lower pixel ratio for mobile
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     containerRef.current.appendChild(renderer.domElement);
 
+    // Controls setup - adjust for mobile
     const controls = new OrbitControls(camera, renderer.domElement);
     controlsRef.current = controls;
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
     controls.maxPolarAngle = Math.PI / 2 - 0.1;
-    controls.minDistance = isMobile ? 10 : 5;
+    controls.minDistance = isMobile ? 10 : 5; // Prevent zooming in too close on mobile
     controls.maxDistance = 50;
     
+    // Enable touch rotation for mobile
     if (isMobile) {
-      controls.rotateSpeed = 0.7;
-      controls.zoomSpeed = 0.7;
+      controls.rotateSpeed = 0.7; // Slower rotation on mobile for better control
+      controls.zoomSpeed = 0.7; // Slower zoom on mobile
     }
 
+    // Lighting setup
     updateLighting(scene, isNightMode);
 
+    // Terrain creation
     createTerrain(scene);
 
+    // Fog for atmosphere
     scene.fog = new THREE.FogExp2(isNightMode ? 0x0a0a20 : 0xd7e5f7, 0.002);
 
+    // Animation loop
     const animate = () => {
       animationFrameRef.current = requestAnimationFrame(animate);
       controls.update();
       
+      // If in path camera mode, follow the path
       if (cameraMode === 'path' && viewMode === 'firstPerson') {
+        // Get a curve representation of the first path
         const path = new THREE.CatmullRomCurve3([
           new THREE.Vector3(-20, 3, -20),
           new THREE.Vector3(-15, 3, -10),
@@ -549,12 +577,15 @@ const TerrainVisualization = () => {
           new THREE.Vector3(15, 3, 15),
         ]);
         
+        // Update path position
         pathPositionRef.current += 0.001;
         if (pathPositionRef.current > 1) pathPositionRef.current = 0;
         
+        // Get point on path and camera direction
         const pointOnPath = path.getPointAt(pathPositionRef.current);
         const tangent = path.getTangentAt(pathPositionRef.current);
         
+        // Position camera at point and look in tangent direction
         camera.position.copy(pointOnPath);
         const lookAtPoint = new THREE.Vector3();
         lookAtPoint.copy(pointOnPath).add(tangent);
@@ -565,6 +596,7 @@ const TerrainVisualization = () => {
     };
     animate();
 
+    // Handle window resize
     const handleResize = () => {
       if (!containerRef.current || !camera || !renderer) return;
       
@@ -574,6 +606,7 @@ const TerrainVisualization = () => {
     };
     window.addEventListener('resize', handleResize);
 
+    // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
       if (animationFrameRef.current) {
@@ -602,6 +635,7 @@ const TerrainVisualization = () => {
     const camera = cameraRef.current;
     const controls = controlsRef.current;
 
+    // Reset path position when view mode changes
     pathPositionRef.current = 0;
 
     switch (viewMode) {
@@ -610,7 +644,7 @@ const TerrainVisualization = () => {
         controls.enableRotate = true;
         controls.maxPolarAngle = Math.PI / 2 - 0.1;
         controls.minPolarAngle = 0;
-        setCameraMode('free');
+        setCameraMode('free'); // Reset camera mode
         break;
       case 'firstPerson':
         camera.position.set(0, 3, 0);
@@ -622,7 +656,7 @@ const TerrainVisualization = () => {
         camera.position.set(0, 30, 0);
         camera.lookAt(0, 0, 0);
         controls.enableRotate = false;
-        setCameraMode('free');
+        setCameraMode('free'); // Reset camera mode
         break;
     }
 
@@ -703,6 +737,7 @@ const TerrainVisualization = () => {
       <div className="flex-grow relative bg-black rounded-md overflow-hidden border" ref={containerRef}>
         {/* Three.js canvas will be appended here */}
         
+        {/* Achievement popup */}
         {showAchievementPopup && (
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-background/95 p-4 rounded-lg shadow-lg max-w-[280px] md:max-w-[320px] border-2 border-primary animate-fade-in z-10">
             <div className="flex flex-col items-center">

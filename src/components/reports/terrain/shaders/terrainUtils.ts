@@ -47,13 +47,12 @@ export const mapRange = (
 };
 
 /**
- * Generates a terrain color based on height and slope
+ * Generates a terrain color based on height
  * @param height - The terrain height
- * @param slope - The terrain slope (0-1, where 0 is flat and 1 is vertical)
  * @param isNight - Whether to use night colors
  * @returns RGB color array [r, g, b]
  */
-export const getTerrainColor = (height: number, slope: number, isNight: boolean): [number, number, number] => {
+export const getTerrainColor = (height: number, isNight: boolean): [number, number, number] => {
   if (isNight) {
     // Night mode colors
     if (height > 3.0) return [0.6, 0.6, 0.7]; // Snow peaks
@@ -65,45 +64,6 @@ export const getTerrainColor = (height: number, slope: number, isNight: boolean)
     if (height > 3.0) return [0.95, 0.95, 0.97]; // Snow peaks
     if (height > 2.0) return [0.5, 0.4, 0.35]; // Rocky mountains
     if (height > 1.0) return [0.45, 0.55, 0.3]; // Highland areas
-    
-    // Use slope to determine lowland color variations
-    if (slope > 0.5) {
-      return [0.35, 0.45, 0.25]; // Steep lowlands (rocky areas)
-    }
-    return [0.25, 0.6, 0.3]; // Flat grasslands
+    return [0.25, 0.6, 0.3]; // Grasslands
   }
-};
-
-/**
- * Clamp a value between min and max
- * @param value - The value to clamp
- * @param min - Minimum value
- * @param max - Maximum value
- * @returns Clamped value
- */
-export const clamp = (value: number, min: number, max: number): number => {
-  return Math.max(min, Math.min(max, value));
-};
-
-/**
- * Generate a smooth noise value based on coordinates
- * This is a simplified implementation for demo purposes
- */
-export const smoothNoise = (x: number, y: number, scale: number = 1): number => {
-  // Fractal Brownian Motion approach with multiple octaves
-  let noise = 0;
-  let amplitude = 1;
-  let frequency = 1;
-  let maxValue = 0;
-  
-  // Use 4 octaves for more natural-looking terrain
-  for (let i = 0; i < 4; i++) {
-    noise += amplitude * generateHeight(x * frequency, y * frequency, scale);
-    maxValue += amplitude;
-    amplitude *= 0.5;
-    frequency *= 2;
-  }
-  
-  // Normalize to -1 to 1 range
-  return noise / maxValue;
 };
