@@ -37,6 +37,8 @@ const Leaderboard = () => {
   
   // Get users from the shared data source
   const leaderboardData = getFriendsLeaderboardData();
+  // Use the user's weekly focus goal for progress calculations
+  const weeklyGoal = state.weeklyFocusGoal || 10;
   
   // Get badge based on rank
   const getRankBadge = (rank: number) => {
@@ -96,7 +98,7 @@ const Leaderboard = () => {
                   <span className="text-xs text-muted-foreground">{user.focusHours}h</span>
                 </div>
                 <Progress 
-                  value={user.focusHours / 0.5} 
+                  value={Math.min(100, (user.focusHours / weeklyGoal) * 100)} 
                   className="h-1.5" 
                   indicatorClassName={user.isCurrentUser ? getProgressColor() : ""}
                 />
@@ -107,7 +109,7 @@ const Leaderboard = () => {
         
         <div className="text-center mt-3">
           <p className="text-xs text-muted-foreground">
-            You're in the top 15% of users this week!
+            Weekly Goal: {weeklyGoal} hours | You're in the top 15% of users this week!
           </p>
         </div>
       </CardContent>

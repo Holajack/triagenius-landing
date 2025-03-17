@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -49,7 +50,7 @@ const Leaderboard = () => {
       
       <div className="space-y-8">
         {/* Personal Productivity Stats */}
-        <PersonalStats getAccentColor={getAccentColor} />
+        <PersonalStats weeklyFocusGoal={state.weeklyFocusGoal} getAccentColor={getAccentColor} />
         
         {/* Leaderboard Rankings */}
         <Card>
@@ -115,8 +116,10 @@ const Leaderboard = () => {
 };
 
 // Personal Productivity Stats Component
-const PersonalStats = ({ getAccentColor }: { getAccentColor: () => string }) => {
+const PersonalStats = ({ weeklyFocusGoal, getAccentColor }: { weeklyFocusGoal: number, getAccentColor: () => string }) => {
   const accentColor = getAccentColor();
+  const currentFocusHours = 32.5; // This would come from actual user data in a real app
+  const focusGoalProgress = Math.min(100, (currentFocusHours / weeklyFocusGoal) * 100);
   
   const stats = [
     { 
@@ -172,11 +175,11 @@ const PersonalStats = ({ getAccentColor }: { getAccentColor: () => string }) => 
               Weekly Focus Goal
             </h3>
             <p className="text-sm text-muted-foreground mt-1">
-              You're 65% of the way to your 50-hour weekly focus goal
+              You're {Math.round(focusGoalProgress)}% of the way to your {weeklyFocusGoal}-hour weekly focus goal
             </p>
           </div>
           <div className="text-center">
-            <span className="text-2xl font-semibold block">32.5/50</span>
+            <span className="text-2xl font-semibold block">{currentFocusHours}/{weeklyFocusGoal}</span>
             <span className="text-xs text-muted-foreground">hours</span>
           </div>
         </div>

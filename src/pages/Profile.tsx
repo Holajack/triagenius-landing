@@ -31,6 +31,14 @@ const Profile = () => {
     });
   };
 
+  // This function allows for incremental adjustments in 1-hour steps
+  const adjustFocusGoal = (adjustment: number) => {
+    const newValue = tempFocusGoal + adjustment;
+    if (newValue >= 1 && newValue <= 40) {
+      setTempFocusGoal(newValue);
+    }
+  };
+
   return (
     <div className="container max-w-md mx-auto px-4 pb-20">
       <PageHeader title="Your Profile" subtitle="Manage your account settings" />
@@ -112,19 +120,41 @@ const Profile = () => {
                             onValueChange={(value) => setTempFocusGoal(value[0])}
                             className="flex-1"
                           />
-                          <Input 
-                            type="number" 
-                            value={tempFocusGoal} 
-                            onChange={(e) => {
-                              const value = parseInt(e.target.value);
-                              if (value >= 1 && value <= 40) {
-                                setTempFocusGoal(value);
-                              }
-                            }}
-                            className="w-16" 
-                            min={1}
-                            max={40}
-                          />
+                          <div className="flex items-center">
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              size="icon" 
+                              className="h-8 w-8 rounded-r-none"
+                              onClick={() => adjustFocusGoal(-1)}
+                              disabled={tempFocusGoal <= 1}
+                            >
+                              -
+                            </Button>
+                            <Input 
+                              type="number" 
+                              value={tempFocusGoal} 
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value);
+                                if (value >= 1 && value <= 40) {
+                                  setTempFocusGoal(value);
+                                }
+                              }}
+                              className="w-14 rounded-none text-center" 
+                              min={1}
+                              max={40}
+                            />
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              size="icon" 
+                              className="h-8 w-8 rounded-l-none"
+                              onClick={() => adjustFocusGoal(1)}
+                              disabled={tempFocusGoal >= 40}
+                            >
+                              +
+                            </Button>
+                          </div>
                         </div>
                       </div>
                       <p className="text-sm text-muted-foreground">
