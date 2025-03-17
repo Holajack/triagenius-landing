@@ -102,7 +102,8 @@ const TerrainMapping = () => {
         <div className="w-full h-full pt-12 pb-8">
           <Terrain3D 
             textureUrl="/lovable-uploads/7b817dfc-7eaa-42d5-b84b-d935f7b996e4.png" 
-            terrainData={terrainData} 
+            terrainData={terrainData}
+            isNightMode={isNightMode}
           />
         </div>
         

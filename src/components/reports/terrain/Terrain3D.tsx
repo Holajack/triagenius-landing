@@ -1,9 +1,8 @@
 
-import React, { useRef, useEffect } from 'react';
-import { Canvas, useLoader, useThree, useFrame } from '@react-three/fiber';
-import { OrbitControls, Environment } from '@react-three/drei';
+import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
-import { generateHeight } from './shaders/terrainUtils';
+import { OrbitControls } from '@react-three/drei';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 
 interface TerrainProps {
   textureUrl: string;
@@ -43,14 +42,25 @@ interface TerrainProps {
       subdivisionsY: number;
     };
   };
+  isNightMode: boolean;
 }
 
-function TerrainMesh({ textureUrl, terrainData }: TerrainProps) {
+// Utility function to generate terrain height
+const generateHeight = (x: number, y: number, scale: number = 1): number => {
+  return scale * (
+    Math.sin(x * 0.5) * Math.cos(y * 0.5) + 
+    Math.sin(x * 1.0) * Math.cos(y * 1.5) * 0.5 + 
+    Math.sin(x * 2.0) * Math.cos(y * 3.0) * 0.25 + 
+    Math.sin(x * 4.0) * Math.cos(y * 6.0) * 0.125
+  );
+};
+
+function TerrainMesh({ textureUrl, terrainData, isNightMode }: TerrainProps) {
   const meshRef = useRef<THREE.Mesh>(null);
-  const texture = useLoader(THREE.TextureLoader, textureUrl);
-  const { camera } = useThree();
-  
-  // Set initial camera position for better view of the terrain
+  const { camera, scene } = useThree();
+  const texture = useRef<THREE.Texture | null>(null);
+
+  // Set initial camera position
   useEffect(() => {
     if (camera) {
       camera.position.set(0, 30, 50);
@@ -58,61 +68,96 @@ function TerrainMesh({ textureUrl, terrainData }: TerrainProps) {
     }
   }, [camera]);
 
-  // Create detailed terrain geometry with controlled subdivisions for performance
-  const geometry = new THREE.PlaneGeometry(
-    terrainData.groundParams.width,
-    terrainData.groundParams.height,
-    Math.min(400, terrainData.groundParams.subdivisionsX), // Using higher resolution as in the example
-    Math.min(462, terrainData.groundParams.subdivisionsY)  // Using higher resolution as in the example
-  );
+  // Create terrain geometry
+  useEffect(() => {
+    if (!meshRef.current) return;
 
-  // Apply elevation data using the parameters provided
-  const { array } = geometry.attributes.position;
-  const elevationExaggeration = 3; // From the specifications
-  const maxAltitude = terrainData.modelCoordinatesAltitudeBounds.max;
-  
-  // Generate terrain with elevation data following the example code approach
-  for (let i = 0; i < array.length; i += 3) {
-    const x = array[i];
-    const z = array[i + 2];
-    
-    // Normalize coordinates for pattern generation
-    const nx = (x / terrainData.groundParams.width) * 10 + 5; // Offset to center
-    const nz = (z / terrainData.groundParams.height) * 10 + 5; // Offset to center
-    
-    // Multi-layered noise for realistic terrain
-    const baseNoise = generateHeight(nx, nz, 1.0);
-    const detailNoise = generateHeight(nx * 2, nz * 2, 0.5) * 0.5;
-    const microDetail = generateHeight(nx * 4, nz * 4, 0.25) * 0.25;
-    
-    // Central mountain ridge effect
-    const distanceFromCenter = Math.sqrt(x * x + z * z) / 
-                              Math.max(terrainData.groundParams.width, terrainData.groundParams.height);
-    const mountainRidgeFactor = Math.exp(-Math.pow(distanceFromCenter * 2, 2)) * 1.5;
-    
-    // Snow-capped peaks for higher elevations
-    const snowCapEffect = baseNoise > 0.7 ? (baseNoise - 0.7) * 1.5 : 0;
-    
-    // Calculate combined height with all factors
-    let height = (baseNoise + detailNoise + microDetail) * maxAltitude * 0.8;
-    height += mountainRidgeFactor * maxAltitude * 0.5;
-    height += snowCapEffect * maxAltitude * 0.3;
-    
-    // Apply elevation exaggeration similar to the reference code
-    height *= elevationExaggeration;
-    
-    // Update vertex position
-    array[i + 1] = height;
-  }
+    // Load texture
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load(textureUrl, (loadedTexture) => {
+      loadedTexture.wrapS = loadedTexture.wrapT = THREE.RepeatWrapping;
+      loadedTexture.repeat.set(1, 1);
+      loadedTexture.anisotropy = 16;
+      texture.current = loadedTexture;
+      
+      if (meshRef.current) {
+        (meshRef.current.material as THREE.MeshStandardMaterial).map = loadedTexture;
+        (meshRef.current.material as THREE.MeshStandardMaterial).needsUpdate = true;
+      }
+    });
 
-  // Calculate smooth normals for better lighting
-  geometry.computeVertexNormals();
+    // Create geometry with specified parameters
+    const geometry = new THREE.PlaneGeometry(
+      terrainData.groundParams.width,
+      terrainData.groundParams.height,
+      Math.min(400, terrainData.groundParams.subdivisionsX),
+      Math.min(462, terrainData.groundParams.subdivisionsY)
+    );
 
-  // Optimize texture settings
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(1, 1);
-  texture.anisotropy = 16; // Improve texture sharpness
-  
+    // Apply elevation data
+    const { array } = geometry.attributes.position;
+    const elevationExaggeration = 3;
+    const maxAltitude = terrainData.modelCoordinatesAltitudeBounds.max;
+    
+    for (let i = 0; i < array.length; i += 3) {
+      const x = array[i];
+      const z = array[i + 2];
+      
+      // Normalize coordinates for pattern generation
+      const nx = (x / terrainData.groundParams.width) * 10 + 5;
+      const nz = (z / terrainData.groundParams.height) * 10 + 5;
+      
+      // Multi-layered noise for realistic terrain
+      const baseNoise = generateHeight(nx, nz, 1.0);
+      const detailNoise = generateHeight(nx * 2, nz * 2, 0.5) * 0.5;
+      const microDetail = generateHeight(nx * 4, nz * 4, 0.25) * 0.25;
+      
+      // Central mountain ridge effect
+      const distanceFromCenter = Math.sqrt(x * x + z * z) / 
+                                Math.max(terrainData.groundParams.width, terrainData.groundParams.height);
+      const mountainRidgeFactor = Math.exp(-Math.pow(distanceFromCenter * 2, 2)) * 1.5;
+      
+      // Snow-capped peaks for higher elevations
+      const snowCapEffect = baseNoise > 0.7 ? (baseNoise - 0.7) * 1.5 : 0;
+      
+      // Calculate combined height
+      let height = (baseNoise + detailNoise + microDetail) * maxAltitude * 0.8;
+      height += mountainRidgeFactor * maxAltitude * 0.5;
+      height += snowCapEffect * maxAltitude * 0.3;
+      
+      // Apply elevation exaggeration
+      height *= elevationExaggeration;
+      
+      // Update vertex position
+      array[i + 1] = height;
+    }
+
+    // Calculate normals for better lighting
+    geometry.computeVertexNormals();
+    
+    // Apply geometry to mesh
+    meshRef.current.geometry = geometry;
+  }, [textureUrl, terrainData]);
+
+  // Update lighting based on night mode
+  useEffect(() => {
+    if (!scene) return;
+    
+    // Find lights in the scene
+    scene.traverse((object) => {
+      if (object instanceof THREE.DirectionalLight) {
+        object.intensity = isNightMode ? 0.3 : 1.0;
+      }
+      if (object instanceof THREE.AmbientLight) {
+        object.intensity = isNightMode ? 0.2 : 0.7;
+        object.color.set(isNightMode ? 0x001133 : 0x404040);
+      }
+      if (object instanceof THREE.HemisphereLight) {
+        object.intensity = isNightMode ? 0.3 : 0.7;
+      }
+    });
+  }, [isNightMode, scene]);
+
   return (
     <mesh 
       ref={meshRef} 
@@ -120,20 +165,19 @@ function TerrainMesh({ textureUrl, terrainData }: TerrainProps) {
       receiveShadow 
       castShadow
     >
-      <primitive object={geometry} attach="geometry" />
+      <planeGeometry args={[1, 1, 1, 1]} /> {/* Placeholder, replaced in effect */}
       <meshStandardMaterial 
-        map={texture}
-        displacementScale={0} // We're manually displacing vertices
-        roughness={0.7} // Updated to match example
-        metalness={0.1} // Updated to match example
+        color={0xffffff}
+        roughness={0.7}
+        metalness={0.1}
         side={THREE.DoubleSide}
       />
     </mesh>
   );
 }
 
-// Dust particles component based on the example
-function DustParticles() {
+// Dust particles component
+function DustParticles({ isNightMode }: { isNightMode: boolean }) {
   const pointsRef = useRef<THREE.Points>(null);
   
   useEffect(() => {
@@ -161,16 +205,16 @@ function DustParticles() {
     <points ref={pointsRef}>
       <bufferGeometry />
       <pointsMaterial 
-        color={0xaaaaaa} 
+        color={isNightMode ? 0x335588 : 0xaaaaaa} 
         size={0.1} 
         transparent 
-        opacity={0.5}
+        opacity={isNightMode ? 0.7 : 0.5}
       />
     </points>
   );
 }
 
-const Terrain3D: React.FC<TerrainProps> = ({ textureUrl, terrainData }) => {
+const Terrain3D: React.FC<TerrainProps> = ({ textureUrl, terrainData, isNightMode }) => {
   return (
     <div className="w-full h-full" style={{ minHeight: '400px' }}>
       <Canvas 
@@ -178,20 +222,20 @@ const Terrain3D: React.FC<TerrainProps> = ({ textureUrl, terrainData }) => {
         camera={{ position: [0, 30, 50], fov: 45 }}
         gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
         onCreated={({ gl }) => {
-          gl.setClearColor(new THREE.Color('#e6f0ff'), 1); // Light blue-tinted background
+          gl.setClearColor(new THREE.Color(isNightMode ? '#001425' : '#e6f0ff'), 1);
           gl.shadowMap.enabled = true;
           gl.shadowMap.type = THREE.PCFSoftShadowMap;
         }}
       >
-        {/* Light background color */}
-        <color attach="background" args={['#e6f0ff']} />
-        <fog attach="fog" args={['#e6f0ff', 80, 150]} />
+        {/* Background color based on night mode */}
+        <color attach="background" args={[isNightMode ? '#001425' : '#e6f0ff']} />
+        <fog attach="fog" args={[isNightMode ? '#001425' : '#e6f0ff', 80, 150]} />
         
-        {/* Enhanced lighting setup for Rocky Mountains */}
-        <ambientLight intensity={0.7} />
+        {/* Enhanced lighting setup */}
+        <ambientLight intensity={isNightMode ? 0.2 : 0.7} color={isNightMode ? '#001133' : '#404040'} />
         <directionalLight 
-          position={[10, 10, 10]} // Updated to match example
-          intensity={1.0} 
+          position={[10, 10, 10]}
+          intensity={isNightMode ? 0.3 : 1.0} 
           castShadow 
           shadow-mapSize-width={2048} 
           shadow-mapSize-height={2048}
@@ -202,18 +246,17 @@ const Terrain3D: React.FC<TerrainProps> = ({ textureUrl, terrainData }) => {
         />
         <directionalLight
           position={[-30, 50, -30]}
-          intensity={0.8}
-          color="#bbe1ff"
+          intensity={isNightMode ? 0.2 : 0.8}
+          color={isNightMode ? '#001133' : '#bbe1ff'}
         />
         <hemisphereLight 
-          args={['#ffffff', '#77aaff', 0.7]} 
+          args={[isNightMode ? '#001133' : '#ffffff', isNightMode ? '#000033' : '#77aaff', isNightMode ? 0.3 : 0.7]} 
           position={[0, 50, 0]} 
         />
         
         <React.Suspense fallback={null}>
-          <TerrainMesh textureUrl={textureUrl} terrainData={terrainData} />
-          <DustParticles />
-          <Environment preset="sunset" />
+          <TerrainMesh textureUrl={textureUrl} terrainData={terrainData} isNightMode={isNightMode} />
+          <DustParticles isNightMode={isNightMode} />
         </React.Suspense>
         
         <OrbitControls 
@@ -223,8 +266,8 @@ const Terrain3D: React.FC<TerrainProps> = ({ textureUrl, terrainData }) => {
           maxPolarAngle={Math.PI / 2.1}
           minDistance={15}
           maxDistance={100}
-          dampingFactor={0.05} // Added from example
-          enableDamping={true} // Added from example
+          dampingFactor={0.05}
+          enableDamping={true}
         />
       </Canvas>
     </div>
