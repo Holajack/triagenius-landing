@@ -13,7 +13,7 @@ const sounds: Array<{ id: SoundPreference; title: string; description: string; i
   },
   {
     id: 'ambient',
-    title: 'Ambient',
+    title: 'Nature',
     description: 'Nature and environmental sounds',
     icon: <Headphones className="w-6 h-6" />,
   },
