@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -87,7 +86,7 @@ const terrainData = {
 const TerrainMapping = () => {
   const isMobile = useIsMobile();
   const [showPathwaySystem, setShowPathwaySystem] = useState(false);
-  const [showTerrainView, setShowTerrainView] = useState(false);
+  const [showTerrainView, setShowTerrainView] = useState(true); // Set to true by default
   
   // Handler for when a path point is clicked
   const handlePathClick = (point: any) => {
@@ -124,7 +123,7 @@ const TerrainMapping = () => {
           </Button>
           
           <Button
-            variant="outline"
+            variant={showTerrainView ? "default" : "outline"} // Highlight button when active
             size={isMobile ? "sm" : "default"}
             onClick={() => {
               setShowTerrainView(!showTerrainView);
