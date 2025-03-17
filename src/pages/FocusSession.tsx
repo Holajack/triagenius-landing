@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -54,8 +55,8 @@ const FocusSession = () => {
       environment: state.environment,
     }));
     
-    // Navigate to the session report page
-    navigate("/session-report");
+    // Navigate to the session reflection page instead of directly to report
+    navigate("/session-reflection");
   };
 
   const handleEndSessionConfirm = () => {

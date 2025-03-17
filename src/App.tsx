@@ -12,6 +12,8 @@ import Index from "./pages/Index";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import FocusSession from "./pages/FocusSession";
+import SessionReflection from "./pages/SessionReflection";
+import BreakTimer from "./pages/BreakTimer";
 import SessionReport from "./pages/SessionReport";
 import Reports from "./pages/Reports";
 import Community from "./pages/Community";
@@ -37,6 +39,8 @@ function App() {
                   <Route path="/onboarding" element={<Onboarding />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/focus-session" element={<FocusSession />} />
+                  <Route path="/session-reflection" element={<SessionReflection />} />
+                  <Route path="/break-timer" element={<BreakTimer />} />
                   <Route path="/session-report" element={<SessionReport />} />
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/community" element={<Community />} />
