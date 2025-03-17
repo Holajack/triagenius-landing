@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -39,7 +40,7 @@ export const pathPoints = [
   }
 ];
 
-// Terrain data for Colorado Rocky Mountains
+// Rocky Mountain terrain data with provided specifications
 const terrainData = {
   "bounds": {
     "ne": [
@@ -67,7 +68,7 @@ const terrainData = {
     "base": -1713
   },
   "modelCoordinatesAltitudeBounds": {
-    "max": 8.339242935180664,
+    "max": 8.339,
     "min": 0,
     "base": -5
   },
@@ -76,8 +77,8 @@ const terrainData = {
     "height": 464
   },
   "groundParams": {
-    "width": 69.46004319654428,
-    "height": 80.17278617710582,
+    "width": 69.46,
+    "height": 80.173,
     "subdivisionsX": 401,
     "subdivisionsY": 463
   }
@@ -123,7 +124,7 @@ const TerrainMapping = () => {
           </Button>
           
           <Button
-            variant={showTerrainView ? "default" : "outline"} // Highlight button when active
+            variant={showTerrainView ? "default" : "outline"}
             size={isMobile ? "sm" : "default"}
             onClick={() => {
               setShowTerrainView(!showTerrainView);
@@ -145,7 +146,7 @@ const TerrainMapping = () => {
       ) : showTerrainView ? (
         <div className="relative w-full h-full min-h-[400px] border rounded-md p-4 overflow-hidden">
           <div className="absolute top-0 left-0 right-0 z-10 flex justify-between items-center p-4 bg-background/80 backdrop-blur-sm">
-            <h4 className="text-base font-medium">3D Terrain Map - Mountain Range</h4>
+            <h4 className="text-base font-medium">Rocky Mountains 3D Terrain</h4>
             <div className="text-primary text-sm">
               <span>Interactive 3D View</span>
             </div>
@@ -153,13 +154,13 @@ const TerrainMapping = () => {
           
           <div className="w-full h-full pt-12 pb-8">
             <Terrain3D 
-              textureUrl="/lovable-uploads/57b94bc3-ef36-4875-92dc-3c7d6a0d737d.png" 
+              textureUrl="/lovable-uploads/32cf516d-3324-44fa-aa97-3d4ebd71383d.png" 
               terrainData={terrainData} 
             />
           </div>
           
           <div className="absolute bottom-0 left-0 right-0 p-2 text-xs text-center text-muted-foreground bg-background/80 backdrop-blur-sm">
-            Mountain terrain - drag to rotate, scroll to zoom
+            Colorado Rockies terrain - drag to rotate, scroll to zoom
           </div>
         </div>
       ) : (

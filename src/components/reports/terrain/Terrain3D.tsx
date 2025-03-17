@@ -3,6 +3,7 @@ import React, { useRef, useEffect } from 'react';
 import { Canvas, useLoader, useThree } from '@react-three/fiber';
 import { OrbitControls, Environment } from '@react-three/drei';
 import * as THREE from 'three';
+import { generateHeight, calculateNormal } from './shaders/terrainUtils';
 
 interface TerrainProps {
   textureUrl: string;
@@ -49,53 +50,88 @@ function TerrainMesh({ textureUrl, terrainData }: TerrainProps) {
   const texture = useLoader(THREE.TextureLoader, textureUrl);
   const { camera } = useThree();
   
-  // Set initial camera position on mount
+  // Set initial camera position for better view of the terrain
   useEffect(() => {
     if (camera) {
-      camera.position.set(0, 30, 50);
+      camera.position.set(0, 25, 40);
       camera.lookAt(0, 0, 0);
     }
   }, [camera]);
 
-  // Create terrain geometry with more subdivisions for better detail
+  // Create detailed terrain geometry with the exact subdivisions provided
   const geometry = new THREE.PlaneGeometry(
     terrainData.groundParams.width,
     terrainData.groundParams.height,
-    terrainData.groundParams.subdivisionsX / 4, // Reduce for better performance
-    terrainData.groundParams.subdivisionsY / 4  // Reduce for better performance
+    Math.min(200, terrainData.groundParams.subdivisionsX), // Limit subdivisions for performance
+    Math.min(200, terrainData.groundParams.subdivisionsY)  // Limit subdivisions for performance
   );
 
-  // Enhanced terrain generation algorithm
+  // Apply elevation data using the parameters provided
   const { array } = geometry.attributes.position;
-  const maxHeight = terrainData.modelCoordinatesAltitudeBounds.max * 1.5; // Increase height for better visibility
+  const elevationExaggeration = 3; // From the specifications
+  const maxAltitude = terrainData.modelCoordinatesAltitudeBounds.max;
   
-  // Generate more realistic mountain terrain
+  // Create heightmap data structure
+  const heightMap: number[][] = [];
+  const width = Math.min(200, terrainData.groundParams.subdivisionsX) + 1;
+  const height = Math.min(200, terrainData.groundParams.subdivisionsY) + 1;
+  
+  // Initialize height map
+  for (let y = 0; y < height; y++) {
+    heightMap[y] = [];
+    for (let x = 0; x < width; x++) {
+      heightMap[y][x] = 0;
+    }
+  }
+
+  // Generate realistic terrain using position data and parameters
   for (let i = 0; i < array.length; i += 3) {
     const x = array[i];
     const z = array[i + 2];
     
-    // Distance from center with adjusted scale
-    const distance = Math.sqrt(x * x + z * z);
-    const centerFactor = Math.max(0, 1 - distance / 35);
+    // Normalize coordinates for pattern generation
+    const nx = (x / terrainData.groundParams.width) * 10;
+    const nz = (z / terrainData.groundParams.height) * 10;
     
-    // Multiple noise functions at different frequencies for more natural terrain
-    const noise1 = Math.sin(x * 0.5) * Math.cos(z * 0.5) * 0.6;
-    const noise2 = Math.sin(x * 0.9) * Math.cos(z * 0.9) * 0.3;
-    const noise3 = Math.sin(x * 1.6) * Math.cos(z * 1.6) * 0.15;
-    const combinedNoise = noise1 + noise2 + noise3;
+    // Combine multiple frequencies of noise for natural-looking terrain
+    // Adapted for the Rocky Mountains with higher peaks and valleys
+    const baseNoise = generateHeight(nx, nz, 1.0);
+    const detailNoise = generateHeight(nx * 2, nz * 2, 0.5) * 0.5;
+    const microDetail = generateHeight(nx * 4, nz * 4, 0.25) * 0.25;
     
-    // Mountain ridge along center
-    const mountainRidge = Math.exp(-Math.pow(x / 15, 2)) * maxHeight * 0.9;
+    // Central mountain ridge effect - aligned with provided image
+    const distanceFromCenter = Math.sqrt((nx - 0) ** 2 + (nz - 0) ** 2);
+    const mountainRidgeFactor = Math.exp(-Math.pow(distanceFromCenter / 3, 2)) * 1.2;
     
-    // Combined elevation with ridge and noise features
-    array[i + 1] = (centerFactor * maxHeight * 0.7) + 
-                  (combinedNoise * maxHeight * 0.5) + 
-                  mountainRidge * (0.7 + Math.random() * 0.3);
+    // Snow-capped peaks for higher elevations
+    const snowCapEffect = baseNoise > 0.7 ? (baseNoise - 0.7) * 1.5 : 0;
+    
+    // Calculate combined height with all factors
+    let combinedHeight = (baseNoise + detailNoise + microDetail) * maxAltitude * 0.8;
+    combinedHeight += mountainRidgeFactor * maxAltitude * 0.5;
+    combinedHeight += snowCapEffect * maxAltitude * 0.3;
+    
+    // Apply elevation exaggeration
+    combinedHeight *= elevationExaggeration;
+    
+    // Update vertex position
+    array[i + 1] = combinedHeight;
+    
+    // Store in heightmap for normal calculations
+    const xIndex = Math.floor((x / terrainData.groundParams.width + 0.5) * (width - 1));
+    const zIndex = Math.floor((z / terrainData.groundParams.height + 0.5) * (height - 1));
+    if (xIndex >= 0 && xIndex < width && zIndex >= 0 && zIndex < height) {
+      heightMap[zIndex][xIndex] = combinedHeight;
+    }
   }
 
-  // Apply texture and material settings
+  // Calculate smooth normals for better lighting
+  geometry.computeVertexNormals();
+
+  // Optimize texture settings
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(1, 1);
+  texture.anisotropy = 16; // Improve texture sharpness
   
   return (
     <mesh 
@@ -107,9 +143,9 @@ function TerrainMesh({ textureUrl, terrainData }: TerrainProps) {
       <primitive object={geometry} attach="geometry" />
       <meshStandardMaterial 
         map={texture}
-        displacementScale={5}
-        roughness={0.8}
-        metalness={0.2}
+        displacementScale={0} // We're manually displacing vertices
+        roughness={0.7}
+        metalness={0.1}
         side={THREE.DoubleSide}
       />
     </mesh>
@@ -121,23 +157,23 @@ const Terrain3D: React.FC<TerrainProps> = ({ textureUrl, terrainData }) => {
     <div className="w-full h-full" style={{ minHeight: '400px' }}>
       <Canvas 
         shadows 
-        camera={{ position: [0, 30, 50], fov: 60 }}
+        camera={{ position: [0, 25, 40], fov: 50 }}
         gl={{ antialias: true, alpha: true }}
         onCreated={({ gl }) => {
-          gl.setClearColor(new THREE.Color('#e0e0e0'), 1); // Light background
+          gl.setClearColor(new THREE.Color('#f5f5f5'), 1); // Lighter background
           gl.shadowMap.enabled = true;
           gl.shadowMap.type = THREE.PCFSoftShadowMap;
         }}
       >
-        {/* Light background color instead of dark */}
-        <color attach="background" args={['#e0e0e0']} />
-        <fog attach="fog" args={['#e0e0e0', 60, 120]} />
+        {/* Light background color */}
+        <color attach="background" args={['#f5f5f5']} />
+        <fog attach="fog" args={['#f5f5f5', 70, 140]} />
         
-        {/* Improved lighting setup */}
-        <ambientLight intensity={0.8} />
+        {/* Enhanced lighting setup for Rocky Mountains */}
+        <ambientLight intensity={0.6} />
         <directionalLight 
-          position={[10, 30, 10]} 
-          intensity={1.8} 
+          position={[50, 100, 50]} 
+          intensity={1.5} 
           castShadow 
           shadow-mapSize-width={2048} 
           shadow-mapSize-height={2048}
@@ -147,12 +183,12 @@ const Terrain3D: React.FC<TerrainProps> = ({ textureUrl, terrainData }) => {
           shadow-camera-bottom={-50}
         />
         <directionalLight
-          position={[-10, 20, -10]}
-          intensity={1.2}
-          color="#b3e0ff"
+          position={[-30, 50, -30]}
+          intensity={0.8}
+          color="#bbe1ff"
         />
         <hemisphereLight 
-          args={['#ffffff', '#8888ff', 0.7]} 
+          args={['#ffffff', '#77aaff', 0.6]} 
           position={[0, 50, 0]} 
         />
         
@@ -165,9 +201,9 @@ const Terrain3D: React.FC<TerrainProps> = ({ textureUrl, terrainData }) => {
           enableZoom={true}
           enablePan={true}
           enableRotate={true}
-          maxPolarAngle={Math.PI / 2.2}
+          maxPolarAngle={Math.PI / 2.1}
           minDistance={10}
-          maxDistance={80}
+          maxDistance={100}
         />
       </Canvas>
     </div>
