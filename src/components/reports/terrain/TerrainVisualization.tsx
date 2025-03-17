@@ -16,11 +16,11 @@ const createTerrainGeometry = (width: number, height: number, resolution: number
     const x = vertices[i];
     const z = vertices[i + 2];
     
-    // Generate terrain height with more variation
+    // Enhanced height generation with terrain features matching .OBJ scale
     const heightValue =
-      generateHeight(x * 0.02, z * 0.02, 1.0) * 15.0 +
-      generateHeight(x * 0.1, z * 0.1, 0.8) * 6.0 +
-      generateHeight(x * 0.5, z * 0.5, 0.3) * 2.5;
+      generateHeight(x * 0.02, z * 0.02, 1.0) * 10.0 +
+      generateHeight(x * 0.1, z * 0.1, 0.8) * 4.0 +
+      generateHeight(x * 0.5, z * 0.5, 0.3) * 2.0;
     
     vertices[i + 1] = heightValue;
   }
@@ -34,20 +34,19 @@ const createWaterPlane = (scene: THREE.Scene, width: number, height: number) => 
   const waterMaterial = new THREE.MeshStandardMaterial({
     color: 0x4682B4,
     transparent: true,
-    opacity: 0.8,
-    roughness: 0.2,
-    metalness: 0.5,
+    opacity: 0.7,
+    roughness: 0.3,
+    metalness: 0.6,
   });
   
   const water = new THREE.Mesh(waterGeometry, waterMaterial);
   water.rotation.x = -Math.PI / 2;
-  water.position.y = -2.0; // Keep water slightly below the lowest terrain
+  water.position.y = -3.5; // Set below zero to match low elevation areas
   
   scene.add(water);
 };
 
 const createHikingPaths = (scene: THREE.Scene, terrain: THREE.Mesh) => {
-  // Define paths for hiking/walking with procedural placement
   const paths = [
     { name: "Scenic Trail", color: 0xd2b48c, width: 0.4, points: [
       new THREE.Vector3(-30, 0, -30),
@@ -149,8 +148,8 @@ const TerrainVisualization = () => {
     // Fog for atmosphere
     scene.fog = new THREE.FogExp2(isNightMode ? 0x0a0a20 : 0xd7e5f7, 0.001);
 
-    const width = 150;
-    const height = 150;
+    const width = 70;
+    const height = 80;
     const resolution = isMobile ? 250 : 400;
     
     const terrainGeometry = createTerrainGeometry(width, height, resolution);
@@ -175,7 +174,7 @@ const TerrainVisualization = () => {
       0.1,
       2000
     );
-    camera.position.set(0, 70, 100);
+    camera.position.set(0, 50, 90);
     
     // Renderer
     const renderer = new THREE.WebGLRenderer({ 
