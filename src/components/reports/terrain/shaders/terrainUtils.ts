@@ -47,12 +47,13 @@ export const mapRange = (
 };
 
 /**
- * Generates a terrain color based on height
+ * Generates a terrain color based on height and slope
  * @param height - The terrain height
+ * @param slope - The terrain slope (0-1, where 0 is flat and 1 is vertical)
  * @param isNight - Whether to use night colors
  * @returns RGB color array [r, g, b]
  */
-export const getTerrainColor = (height: number, isNight: boolean): [number, number, number] => {
+export const getTerrainColor = (height: number, slope: number, isNight: boolean): [number, number, number] => {
   if (isNight) {
     // Night mode colors
     if (height > 3.0) return [0.6, 0.6, 0.7]; // Snow peaks
@@ -64,7 +65,12 @@ export const getTerrainColor = (height: number, isNight: boolean): [number, numb
     if (height > 3.0) return [0.95, 0.95, 0.97]; // Snow peaks
     if (height > 2.0) return [0.5, 0.4, 0.35]; // Rocky mountains
     if (height > 1.0) return [0.45, 0.55, 0.3]; // Highland areas
-    return [0.25, 0.6, 0.3]; // Grasslands
+    
+    // Use slope to determine lowland color variations
+    if (slope > 0.5) {
+      return [0.35, 0.45, 0.25]; // Steep lowlands (rocky areas)
+    }
+    return [0.25, 0.6, 0.3]; // Flat grasslands
   }
 };
 
