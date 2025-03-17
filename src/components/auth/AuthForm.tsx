@@ -1,6 +1,5 @@
-
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,29 +10,41 @@ import { toast } from "sonner";
 type AuthMode = "login" | "signup";
 
 const AuthForm = () => {
-  const [mode, setMode] = useState<AuthMode>("login");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const initialMode = location.state?.mode === "signup" ? "signup" : "login";
+  const isFromStartFocusing = location.state?.source === "start-focusing";
+  
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const navigate = useNavigate();
   
   // Form fields
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
+  const [error, setError] = useState("");
   
+  // Clear error when switching modes
+  useEffect(() => {
+    setError("");
+  }, [mode]);
+
   const toggleMode = () => {
     setMode(mode === "login" ? "signup" : "login");
-    // Clear any validation errors when switching modes
+    // Clear form fields and errors when switching modes
     setEmail("");
     setPassword("");
     setName("");
     setUsername("");
+    setError("");
   };
   
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
     
     try {
       if (mode === "login") {
@@ -67,9 +78,17 @@ const AuthForm = () => {
         }
         
         toast.success("Account created successfully!");
-        navigate("/onboarding");
+        
+        // If the user signed up from the "Start Focusing" button, take them to onboarding
+        if (isFromStartFocusing) {
+          navigate("/onboarding");
+        } else {
+          // Otherwise, take them to the dashboard
+          navigate("/dashboard");
+        }
       }
     } catch (error: any) {
+      setError(error.message || "Authentication failed");
       toast.error(error.message || "Authentication failed");
     } finally {
       setLoading(false);
@@ -81,6 +100,12 @@ const AuthForm = () => {
       <h2 className="text-2xl font-bold text-center mb-6">
         {mode === "login" ? "Welcome Back" : "Create Your Account"}
       </h2>
+      
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">
+          {error}
+        </div>
+      )}
       
       <form onSubmit={handleAuth} className="space-y-4">
         {mode === "signup" && (

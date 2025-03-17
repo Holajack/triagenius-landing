@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -15,6 +14,7 @@ const Index = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { theme } = useTheme();
+  const navigate = useNavigate();
   
   useEffect(() => {
     // Register service worker for offline functionality
@@ -67,13 +67,19 @@ const Index = () => {
     }
   };
 
-  const navigate = useNavigate();
-
   const handleStartFocusing = () => {
     if (isAuthenticated) {
       navigate('/dashboard');
     } else {
-      navigate('/auth');
+      navigate('/auth', { state: { mode: 'signup', source: 'start-focusing' } });
+    }
+  };
+
+  const handleLogin = () => {
+    if (isAuthenticated) {
+      supabase.auth.signOut().then(() => navigate('/'));
+    } else {
+      navigate('/auth', { state: { mode: 'login' } });
     }
   };
 
@@ -130,11 +136,7 @@ const Index = () => {
                 icon="target" 
                 isPrimary={false} 
                 className="w-full md:w-auto"
-                onClick={() => 
-                  isAuthenticated 
-                    ? supabase.auth.signOut().then(() => navigate('/'))
-                    : navigate('/auth')
-                }
+                onClick={handleLogin}
               />
             </motion.div>
             

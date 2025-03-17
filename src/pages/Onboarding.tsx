@@ -1,6 +1,5 @@
-
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { UserGoalStep } from "@/components/onboarding/steps/UserGoalStep";
 import { WorkStyleStep } from "@/components/onboarding/steps/WorkStyleStep";
 import { EnvironmentStep } from "@/components/onboarding/steps/EnvironmentStep";
@@ -17,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 const Onboarding = () => {
   const { state, dispatch, saveOnboardingState } = useOnboarding();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Check authentication and reset onboarding state when component mounts
   useEffect(() => {
@@ -24,8 +24,13 @@ const Onboarding = () => {
       const { data } = await supabase.auth.getSession();
       
       if (!data.session) {
-        // Redirect unauthenticated users to auth page
-        navigate('/auth');
+        // Redirect unauthenticated users to auth page with information about source
+        navigate('/auth', { 
+          state: { 
+            mode: 'signup',
+            source: 'onboarding'
+          } 
+        });
         return;
       }
       

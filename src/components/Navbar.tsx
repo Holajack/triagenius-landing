@@ -2,10 +2,14 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -13,8 +17,35 @@ const Navbar = () => {
     };
 
     window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    
+    // Check authentication status
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      setIsAuthenticated(!!data.session);
+    };
+    
+    checkAuth();
+    
+    // Listen for auth changes
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      authListener.subscription.unsubscribe();
+    };
   }, []);
+  
+  const handleLoginClick = () => {
+    if (isAuthenticated) {
+      supabase.auth.signOut().then(() => {
+        navigate('/');
+      });
+    } else {
+      navigate('/auth', { state: { mode: 'login' } });
+    }
+  };
 
   return (
     <header
@@ -44,8 +75,9 @@ const Navbar = () => {
           </Button>
           <Button
             className="ml-2 bg-white/90 hover:bg-white text-gray-900 border border-gray-200 rounded-xl subtle-shadow transition-all duration-300"
+            onClick={handleLoginClick}
           >
-            Log In
+            {isAuthenticated ? "Log Out" : "Log In"}
           </Button>
         </div>
 
@@ -86,9 +118,12 @@ const Navbar = () => {
           </Button>
           <Button
             className="w-full bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 rounded-xl subtle-shadow justify-center"
-            onClick={() => setMobileMenuOpen(false)}
+            onClick={() => {
+              setMobileMenuOpen(false);
+              handleLoginClick();
+            }}
           >
-            Log In
+            {isAuthenticated ? "Log Out" : "Log In"}
           </Button>
         </div>
       </div>
