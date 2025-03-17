@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOnboarding } from "@/contexts/OnboardingContext";
-import { BrainCircuit, Clock, LightBulb, Sparkles, TrendingUp } from "lucide-react";
+import { BrainCircuit, Clock, Lightbulb, Sparkles, TrendingUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -53,7 +53,7 @@ const AIInsights = () => {
         {
           title: "Start Your First Session",
           description: "Begin your first focus session to get personalized insights.",
-          icon: <LightBulb className={`w-5 h-5 ${getAccentColor()}`} />,
+          icon: <Lightbulb className={`w-5 h-5 ${getAccentColor()}`} />,
         },
         {
           title: "Try Different Environments",

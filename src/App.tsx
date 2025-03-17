@@ -30,11 +30,11 @@ import { UserProvider } from "@/hooks/use-user";
 export default function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider>
-        <UserProvider>
+      <UserProvider>
+        <ThemeProvider>
           <TaskProvider>
-            <Router>
-              <WalkthroughProvider>
+            <WalkthroughProvider>
+              <Router>
                 <OnboardingProvider>
                   <Routes>
                     <Route path="/" element={<Index />} />
@@ -155,11 +155,11 @@ export default function App() {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </OnboardingProvider>
-              </WalkthroughProvider>
-            </Router>
+              </Router>
+            </WalkthroughProvider>
           </TaskProvider>
-        </UserProvider>
-      </ThemeProvider>
+        </ThemeProvider>
+      </UserProvider>
     </ErrorBoundary>
   );
 }
