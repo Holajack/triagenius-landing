@@ -69,6 +69,44 @@ const Settings = () => {
         license: "Royalty Free Music for Videos (Safe)",
       },
     ],
+    classic: [
+      {
+        title: "Enlivening",
+        artist: "Pufino",
+        source: "https://freetouse.com/music",
+        license: "No Copyright Background Music",
+      },
+      {
+        title: "Sky Clearing",
+        artist: "Epic Spectrum",
+        source: "https://freetouse.com/music",
+        license: "Background Music for Video (Free)",
+      },
+      {
+        title: "Farewell",
+        artist: "Guillermo Guareschi",
+        source: "https://freetouse.com/music",
+        license: "Free No Copyright Music Download",
+      },
+      {
+        title: "Wings of Freedom",
+        artist: "Alegend",
+        source: "https://freetouse.com/music",
+        license: "Music for Video (Free Download)",
+      },
+      {
+        title: "Dragon Kingdom",
+        artist: "Walen",
+        source: "https://freetouse.com/music",
+        license: "Music for Video (Free Download)",
+      },
+      {
+        title: "Sky With Yellow Spots",
+        artist: "Aeris",
+        source: "https://freetouse.com/music",
+        license: "Free No Copyright Music Download",
+      },
+    ],
     // More categories can be added here in the future
   };
 
@@ -163,6 +201,36 @@ const Settings = () => {
                   <Accordion type="single" collapsible className="w-full">
                     {musicAttributions.nature.map((track, index) => (
                       <AccordionItem key={`nature-${index}`} value={`nature-track-${index}`}>
+                        <AccordionTrigger className="text-sm font-medium">
+                          {track.title} by {track.artist}
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-2 pl-2">
+                            <p className="text-sm">Artist: {track.artist}</p>
+                            <p className="text-sm">License: {track.license}</p>
+                            <div className="flex items-center text-sm text-primary">
+                              <a 
+                                href={track.source} 
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center hover:underline"
+                              >
+                                Source <ExternalLink className="ml-1 h-3 w-3" />
+                              </a>
+                            </div>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                </div>
+                
+                {/* Classic Music Section */}
+                <div>
+                  <h3 className="text-base font-medium mb-2 text-primary">Classic</h3>
+                  <Accordion type="single" collapsible className="w-full">
+                    {musicAttributions.classic.map((track, index) => (
+                      <AccordionItem key={`classic-${index}`} value={`classic-track-${index}`}>
                         <AccordionTrigger className="text-sm font-medium">
                           {track.title} by {track.artist}
                         </AccordionTrigger>
