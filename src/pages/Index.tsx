@@ -4,7 +4,6 @@ import Navbar from "@/components/Navbar";
 import AnimatedIcon from "@/components/AnimatedIcon";
 import FocusButton from "@/components/FocusButton";
 import HowItWorks from "@/components/HowItWorks";
-import * as ServiceWorker from "@/components/ServiceWorker";
 import { ArrowRight, ArrowDown, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -17,9 +16,6 @@ const Index = () => {
   const navigate = useNavigate();
   
   useEffect(() => {
-    // Register service worker for offline functionality
-    ServiceWorker.register();
-    
     // Set loaded state after a short delay to trigger animations
     const timer = setTimeout(() => {
       setIsLoaded(true);
@@ -42,7 +38,6 @@ const Index = () => {
     
     return () => {
       clearTimeout(timer);
-      ServiceWorker.unregister();
       authListener.subscription.unsubscribe();
     };
   }, []);

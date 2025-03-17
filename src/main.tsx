@@ -7,7 +7,7 @@ import { Toaster } from "./components/ui/toaster"
 import { ToastProvider } from "./hooks/use-toast"
 import { register } from './components/pwa/ServiceWorker'
 
-// Register service worker with our enhanced implementation
+// Only register service worker once in the main entry point
 register();
 
 // Create a wrapper component to use our new provider format
