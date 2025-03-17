@@ -194,11 +194,14 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
     
     // Add terrain landmarks
     const addLandmarks = () => {
+      // Define terrain size for height calculation
+      const terrainSize = 50;
+      
       // Helper function to get height at position
       const getHeightAt = (x: number, z: number) => {
         // Convert to 0-1 range
-        const normalizedX = (x + size/2) / size;
-        const normalizedZ = (z + size/2) / size;
+        const normalizedX = (x + terrainSize/2) / terrainSize;
+        const normalizedZ = (z + terrainSize/2) / terrainSize;
         
         if (normalizedX < 0 || normalizedX > 1 || normalizedZ < 0 || normalizedZ > 1) {
           return 0;
