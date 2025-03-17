@@ -1,3 +1,4 @@
+
 import { useTheme } from "@/contexts/ThemeContext";
 import NavigationBar from "@/components/dashboard/NavigationBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +27,24 @@ const Settings = () => {
       artist: "Lukrembo",
       source: "https://freetouse.com/music",
       license: "Copyright Free Music for Video",
+    },
+    {
+      title: "Donut",
+      artist: "Lukrembo",
+      source: "https://freetouse.com/music",
+      license: "Copyright Free Music for Videos",
+    },
+    {
+      title: "Sunset",
+      artist: "Lukrembo",
+      source: "https://freetouse.com/music",
+      license: "Royalty Free Music for Video (Safe)",
+    },
+    {
+      title: "honey jam",
+      artist: "massobeats",
+      source: "https://freetouse.com/music",
+      license: "Free Music Without Copyright (Safe)",
     },
     // More music tracks can be added here in the future
   ];
