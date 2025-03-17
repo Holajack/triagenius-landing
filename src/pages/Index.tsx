@@ -1,10 +1,11 @@
+
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import AnimatedIcon from "@/components/AnimatedIcon";
 import FocusButton from "@/components/FocusButton";
 import HowItWorks from "@/components/HowItWorks";
-import { ArrowRight, ArrowDown, Clock } from "lucide-react";
+import { ArrowDown, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -124,7 +125,6 @@ const Index = () => {
               
               <FocusButton 
                 label={isAuthenticated ? "Logout" : "Log In"} 
-                icon="target" 
                 isPrimary={false} 
                 className="w-full md:w-auto"
                 onClick={handleLogin}
