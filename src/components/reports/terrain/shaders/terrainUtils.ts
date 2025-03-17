@@ -67,3 +67,37 @@ export const getTerrainColor = (height: number, isNight: boolean): [number, numb
     return [0.25, 0.6, 0.3]; // Grasslands
   }
 };
+
+/**
+ * Clamp a value between min and max
+ * @param value - The value to clamp
+ * @param min - Minimum value
+ * @param max - Maximum value
+ * @returns Clamped value
+ */
+export const clamp = (value: number, min: number, max: number): number => {
+  return Math.max(min, Math.min(max, value));
+};
+
+/**
+ * Generate a smooth noise value based on coordinates
+ * This is a simplified implementation for demo purposes
+ */
+export const smoothNoise = (x: number, y: number, scale: number = 1): number => {
+  // Fractal Brownian Motion approach with multiple octaves
+  let noise = 0;
+  let amplitude = 1;
+  let frequency = 1;
+  let maxValue = 0;
+  
+  // Use 4 octaves for more natural-looking terrain
+  for (let i = 0; i < 4; i++) {
+    noise += amplitude * generateHeight(x * frequency, y * frequency, scale);
+    maxValue += amplitude;
+    amplitude *= 0.5;
+    frequency *= 2;
+  }
+  
+  // Normalize to -1 to 1 range
+  return noise / maxValue;
+};
