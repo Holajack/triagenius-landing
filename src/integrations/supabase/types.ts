@@ -9,7 +9,553 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      achievements: {
+        Row: {
+          achievement_type: string
+          created_at: string
+          description: string
+          earned_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          achievement_type: string
+          created_at?: string
+          description: string
+          earned_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          achievement_type?: string
+          created_at?: string
+          description?: string
+          earned_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "achievements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_insights: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          insight_type: string
+          is_read: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          insight_type: string
+          is_read?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          insight_type?: string
+          is_read?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_insights_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      break_sessions: {
+        Row: {
+          break_type: string | null
+          created_at: string
+          duration: number | null
+          end_time: string | null
+          focus_session_id: string | null
+          id: string
+          start_time: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          break_type?: string | null
+          created_at?: string
+          duration?: number | null
+          end_time?: string | null
+          focus_session_id?: string | null
+          id?: string
+          start_time?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          break_type?: string | null
+          created_at?: string
+          duration?: number | null
+          end_time?: string | null
+          focus_session_id?: string | null
+          id?: string
+          start_time?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "break_sessions_focus_session_id_fkey"
+            columns: ["focus_session_id"]
+            isOneToOne: false
+            referencedRelation: "focus_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "break_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      focus_sessions: {
+        Row: {
+          completed: boolean | null
+          created_at: string
+          duration: number | null
+          end_time: string | null
+          environment: string | null
+          id: string
+          milestone_count: number | null
+          start_time: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string
+          duration?: number | null
+          end_time?: string | null
+          environment?: string | null
+          id?: string
+          milestone_count?: number | null
+          start_time?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string
+          duration?: number | null
+          end_time?: string | null
+          environment?: string | null
+          id?: string
+          milestone_count?: number | null
+          start_time?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "focus_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leaderboard_stats: {
+        Row: {
+          created_at: string
+          current_streak: number | null
+          id: string
+          level: number | null
+          longest_streak: number | null
+          monthly_focus_time: number | null
+          points: number | null
+          total_focus_time: number | null
+          total_sessions: number | null
+          updated_at: string
+          user_id: string
+          weekly_focus_time: number | null
+        }
+        Insert: {
+          created_at?: string
+          current_streak?: number | null
+          id?: string
+          level?: number | null
+          longest_streak?: number | null
+          monthly_focus_time?: number | null
+          points?: number | null
+          total_focus_time?: number | null
+          total_sessions?: number | null
+          updated_at?: string
+          user_id: string
+          weekly_focus_time?: number | null
+        }
+        Update: {
+          created_at?: string
+          current_streak?: number | null
+          id?: string
+          level?: number | null
+          longest_streak?: number | null
+          monthly_focus_time?: number | null
+          points?: number | null
+          total_focus_time?: number | null
+          total_sessions?: number | null
+          updated_at?: string
+          user_id?: string
+          weekly_focus_time?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leaderboard_stats_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          is_read: boolean | null
+          recipient_id: string | null
+          room_id: string | null
+          sender_id: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          recipient_id?: string | null
+          room_id?: string | null
+          sender_id: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          recipient_id?: string | null
+          room_id?: string | null
+          sender_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "study_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_preferences: {
+        Row: {
+          created_at: string
+          id: string
+          is_onboarding_complete: boolean | null
+          learning_environment: string | null
+          sound_preference: string | null
+          updated_at: string
+          user_goal: string | null
+          user_id: string
+          weekly_focus_goal: number | null
+          work_style: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_onboarding_complete?: boolean | null
+          learning_environment?: string | null
+          sound_preference?: string | null
+          updated_at?: string
+          user_goal?: string | null
+          user_id: string
+          weekly_focus_goal?: number | null
+          work_style?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_onboarding_complete?: boolean | null
+          learning_environment?: string | null
+          sound_preference?: string | null
+          updated_at?: string
+          user_goal?: string | null
+          user_id?: string
+          weekly_focus_goal?: number | null
+          work_style?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          id: string
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          id: string
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      session_reflections: {
+        Row: {
+          ai_summary: string | null
+          created_at: string
+          id: string
+          mood_rating: number | null
+          productivity_rating: number | null
+          session_id: string
+          updated_at: string
+          user_id: string
+          user_notes: string | null
+        }
+        Insert: {
+          ai_summary?: string | null
+          created_at?: string
+          id?: string
+          mood_rating?: number | null
+          productivity_rating?: number | null
+          session_id: string
+          updated_at?: string
+          user_id: string
+          user_notes?: string | null
+        }
+        Update: {
+          ai_summary?: string | null
+          created_at?: string
+          id?: string
+          mood_rating?: number | null
+          productivity_rating?: number | null
+          session_id?: string
+          updated_at?: string
+          user_id?: string
+          user_notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_reflections_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "focus_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_reflections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_room_participants: {
+        Row: {
+          created_at: string
+          id: string
+          joined_at: string
+          last_active_at: string
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          joined_at?: string
+          last_active_at?: string
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          joined_at?: string
+          last_active_at?: string
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_room_participants_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "study_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_room_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      study_rooms: {
+        Row: {
+          created_at: string
+          creator_id: string
+          current_participants: number | null
+          description: string | null
+          id: string
+          is_private: boolean | null
+          max_participants: number | null
+          name: string
+          room_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          current_participants?: number | null
+          description?: string | null
+          id?: string
+          is_private?: boolean | null
+          max_participants?: number | null
+          name: string
+          room_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          current_participants?: number | null
+          description?: string | null
+          id?: string
+          is_private?: boolean | null
+          max_participants?: number | null
+          name?: string
+          room_code?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_rooms_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          created_at: string
+          description: string | null
+          due_date: string | null
+          focus_session_id: string | null
+          id: string
+          priority: string | null
+          status: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          focus_session_id?: string | null
+          id?: string
+          priority?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          focus_session_id?: string | null
+          id?: string
+          priority?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_focus_session_id_fkey"
+            columns: ["focus_session_id"]
+            isOneToOne: false
+            referencedRelation: "focus_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
