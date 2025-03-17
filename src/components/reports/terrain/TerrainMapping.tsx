@@ -1,8 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
-import { Mountain, Globe } from 'lucide-react';
+import { Mountain, Globe, Sun, Moon } from 'lucide-react';
 import Terrain3D from './Terrain3D';
 
 // Define the terrain data for the Rocky Mountains
@@ -51,6 +51,7 @@ const terrainData = {
 
 const TerrainMapping = () => {
   const isMobile = useIsMobile();
+  const [isNightMode, setIsNightMode] = useState(false);
   
   return (
     <div className={`h-full ${isMobile ? 'px-1' : 'px-4'}`}>
@@ -67,6 +68,18 @@ const TerrainMapping = () => {
         )}
         
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size={isMobile ? "sm" : "default"}
+            onClick={() => setIsNightMode(!isNightMode)}
+            className={isMobile ? 'px-2 py-1 text-xs' : ''}
+          >
+            {isNightMode ? 
+              <Sun className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} /> : 
+              <Moon className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} />
+            }
+            {isMobile ? '' : (isNightMode ? 'Day Mode' : 'Night Mode')}
+          </Button>
           <Button
             variant="default"
             size={isMobile ? "sm" : "default"}
