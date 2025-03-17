@@ -2,10 +2,10 @@
 import React, { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
-import { Mountain, Globe, Sun, Moon } from 'lucide-react';
+import { Mountain, Sun, Moon } from 'lucide-react';
 import Terrain3D from './Terrain3D';
 
-// Define the terrain data for the Rocky Mountains
+// Define the terrain data
 const terrainData = {
   "bounds": {
     "ne": [
