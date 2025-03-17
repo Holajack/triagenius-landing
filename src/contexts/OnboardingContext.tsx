@@ -54,7 +54,7 @@ type OnboardingContextType = {
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
 
-export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(onboardingReducer, initialState);
   
   // Save onboarding state to Supabase
@@ -142,8 +142,14 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
     };
   }, []);
 
+  const contextValue = {
+    state,
+    dispatch,
+    saveOnboardingState
+  };
+
   return (
-    <OnboardingContext.Provider value={{ state, dispatch, saveOnboardingState }}>
+    <OnboardingContext.Provider value={contextValue}>
       {children}
     </OnboardingContext.Provider>
   );
