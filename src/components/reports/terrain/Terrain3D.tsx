@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -143,8 +142,11 @@ const Terrain3D: React.FC<TerrainProps> = ({ textureUrl, terrainData, isNightMod
         // Apply height to vertex
         positions.setY(i, height);
         
-        // Apply color based on height
-        const [r, g, b] = getTerrainColor(height + 1.5, isNightMode);
+        // Calculate slope (can use 0 as default if normals not available)
+        const slope = 0.0; // Default slope when we don't have normals calculated yet
+        
+        // Apply color based on height and slope
+        const [r, g, b] = getTerrainColor(height + 1.5, slope, isNightMode);
         colorAttr.setXYZ(i, r, g, b);
       }
       

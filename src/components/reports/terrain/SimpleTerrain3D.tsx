@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -20,21 +19,17 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
   const isMobile = useIsMobile();
   const [isInitialized, setIsInitialized] = useState(false);
   
-  // Create and manage the 3D scene
   useEffect(() => {
     if (!containerRef.current) return;
     
-    // Clean up any existing canvas elements
     while (containerRef.current.firstChild) {
       containerRef.current.removeChild(containerRef.current.firstChild);
     }
     
-    // Setup
     const container = containerRef.current;
     const width = container.clientWidth;
     const height = container.clientHeight;
     
-    // Create scene
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(isNightMode ? 0x001425 : 0xe6f0ff);
     scene.fog = new THREE.Fog(
@@ -43,7 +38,6 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
       100
     );
     
-    // Create camera
     const camera = new THREE.PerspectiveCamera(
       75, 
       width / height, 
@@ -53,7 +47,6 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
     camera.position.set(0, 20, 30);
     camera.lookAt(0, 0, 0);
     
-    // Create renderer
     const renderer = new THREE.WebGLRenderer({ 
       antialias: !isMobile,
       alpha: true,
@@ -64,7 +57,6 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
     renderer.shadowMap.enabled = true;
     container.appendChild(renderer.domElement);
     
-    // Add OrbitControls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
@@ -72,7 +64,6 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
     controls.maxDistance = 80;
     controls.maxPolarAngle = Math.PI / 2.2;
     
-    // Add lights
     const ambientLight = new THREE.AmbientLight(
       isNightMode ? 0x334466 : 0xffffff, 
       isNightMode ? 0.3 : 0.6
@@ -89,7 +80,6 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
     directionalLight.shadow.mapSize.height = 1024;
     scene.add(directionalLight);
     
-    // Add a hemisphere light for better ambient illumination
     const hemisphereLight = new THREE.HemisphereLight(
       isNightMode ? 0x002244 : 0xaaccff,
       isNightMode ? 0x000000 : 0x554433,
@@ -97,13 +87,10 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
     );
     scene.add(hemisphereLight);
     
-    // Create a simple terrain
     const createTerrain = () => {
-      // Size and resolution
       const size = 50;
       const resolution = isMobile ? 64 : 128;
       
-      // Create geometry
       const geometry = new THREE.PlaneGeometry(
         size, 
         size, 
@@ -111,34 +98,25 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
         resolution
       );
       
-      // Apply height displacement to vertices
       const positions = geometry.attributes.position as THREE.BufferAttribute;
       const colors = new Float32Array(positions.count * 3);
       const colorAttr = new THREE.BufferAttribute(colors, 3);
       
       for (let i = 0; i < positions.count; i++) {
-        // Get x and z coordinates
         const x = positions.getX(i);
         const z = positions.getZ(i);
         
-        // Generate height using smooth noise
         const height = smoothNoise(x * 0.04, z * 0.04, 3.0);
-        
-        // Apply height to y-coordinate
         positions.setY(i, height);
         
-        // Apply color based on height
-        const [r, g, b] = getTerrainColor(height + 1.5, isNightMode);
+        const slope = 0.0;
+        const [r, g, b] = getTerrainColor(height + 1.5, slope, isNightMode);
         colorAttr.setXYZ(i, r, g, b);
       }
       
-      // Add colors to geometry
       geometry.setAttribute('color', colorAttr);
-      
-      // Update normals for proper lighting
       geometry.computeVertexNormals();
       
-      // Create material
       const material = new THREE.MeshStandardMaterial({
         vertexColors: true,
         roughness: 0.8,
@@ -146,7 +124,6 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
         flatShading: false,
       });
       
-      // Create and add mesh
       const terrain = new THREE.Mesh(geometry, material);
       terrain.rotation.x = -Math.PI / 2;
       terrain.position.y = -5;
@@ -159,7 +136,6 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
     
     const terrain = createTerrain();
     
-    // Add simple particles for atmosphere
     const createParticles = () => {
       const particlesCount = isNightMode ? 800 : 200;
       const particlesGeometry = new THREE.BufferGeometry();
@@ -192,14 +168,10 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
     
     const particles = createParticles();
     
-    // Add terrain landmarks
     const addLandmarks = () => {
-      // Define terrain size for height calculation
       const terrainSize = 50;
       
-      // Helper function to get height at position
       const getHeightAt = (x: number, z: number) => {
-        // Convert to 0-1 range
         const normalizedX = (x + terrainSize/2) / terrainSize;
         const normalizedZ = (z + terrainSize/2) / terrainSize;
         
@@ -207,11 +179,9 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
           return 0;
         }
         
-        // Simple height estimation
         return smoothNoise(x * 0.04, z * 0.04, 3.0);
       };
       
-      // Add mountain peak
       const peakX = 10;
       const peakZ = -5;
       const peakHeight = getHeightAt(peakX, peakZ);
@@ -226,7 +196,6 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
       peak.position.set(peakX, peakHeight + 2, peakZ);
       scene.add(peak);
       
-      // Add a flag on the peak
       const flagPoleGeometry = new THREE.CylinderGeometry(0.1, 0.1, 3, 8);
       const flagPoleMaterial = new THREE.MeshStandardMaterial({ 
         color: 0x888888,
@@ -248,7 +217,6 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
       flag.rotation.y = Math.PI / 2;
       flagPole.add(flag);
       
-      // Add trees
       const treePositions = [
         [5, 10],
         [-8, -5],
@@ -260,7 +228,6 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
       treePositions.forEach(([tx, tz]) => {
         const treeHeight = getHeightAt(tx, tz);
         
-        // Tree trunk
         const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.5, 3, 8);
         const trunkMaterial = new THREE.MeshStandardMaterial({
           color: 0x8B4513
@@ -270,7 +237,6 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
         trunk.position.set(tx, treeHeight + 1.5, tz);
         scene.add(trunk);
         
-        // Tree top
         const topGeometry = new THREE.ConeGeometry(2, 4, 8);
         const topMaterial = new THREE.MeshStandardMaterial({
           color: isNightMode ? 0x225544 : 0x225522,
@@ -282,7 +248,6 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
         trunk.add(top);
       });
       
-      // Add a simple path
       const pathPoints = [
         new THREE.Vector3(-15, 0, -15),
         new THREE.Vector3(-10, 0, -5),
@@ -291,23 +256,21 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
         new THREE.Vector3(15, 0, 15)
       ];
       
-      // Set path height to follow terrain
       pathPoints.forEach(point => {
         point.y = getHeightAt(point.x, point.z) + 0.1;
       });
       
-      // Create path as a tube following curve
       const curve = new THREE.CatmullRomCurve3(pathPoints);
       const tubeGeometry = new THREE.TubeGeometry(
         curve, 
-        64,   // Path segments
-        0.3,  // Tube radius
-        8,    // Tube segments
-        false // Closed path
+        64, 
+        0.3, 
+        8, 
+        false
       );
       
       const tubeMaterial = new THREE.MeshStandardMaterial({
-        color: 0xd2b48c, // Sandy trail color
+        color: 0xd2b48c,
         roughness: 0.9
       });
       
@@ -317,7 +280,6 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
     
     addLandmarks();
     
-    // Add a skybox
     const createSkybox = () => {
       const skyColor = isNightMode ? 
         new THREE.Color(0x001425) : 
@@ -336,7 +298,6 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
     
     createSkybox();
     
-    // Handle window resize
     const handleResize = () => {
       if (!containerRef.current) return;
       
@@ -350,27 +311,22 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
     
     window.addEventListener('resize', handleResize);
     
-    // Animation loop
     let frameId: number;
     const animate = () => {
       frameId = requestAnimationFrame(animate);
       
-      // Update controls
       controls.update();
       
-      // Simple animation for particles
       if (particles) {
         particles.rotation.y += 0.0003;
       }
       
-      // Render scene
       renderer.render(scene, camera);
     };
     
     animate();
     setIsInitialized(true);
     
-    // Clean up on unmount
     return () => {
       window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(frameId);
@@ -379,7 +335,6 @@ const SimpleTerrain3D: React.FC<SimpleTerrainProps> = ({
         containerRef.current.removeChild(renderer.domElement);
       }
       
-      // Dispose of resources
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) {
           object.geometry.dispose();
