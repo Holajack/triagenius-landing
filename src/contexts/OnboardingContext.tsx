@@ -8,12 +8,14 @@ type OnboardingAction =
   | { type: 'SET_WORK_STYLE'; payload: WorkStyle }
   | { type: 'SET_ENVIRONMENT'; payload: StudyEnvironment }
   | { type: 'SET_SOUND_PREFERENCE'; payload: SoundPreference }
+  | { type: 'SET_WEEKLY_FOCUS_GOAL'; payload: number }
   | { type: 'COMPLETE_ONBOARDING' }
   | { type: 'RESET_ONBOARDING' };
 
 const initialState: OnboardingState = {
   step: 0,
   isComplete: false,
+  weeklyFocusGoal: 10, // Default weekly focus goal in hours
 };
 
 const onboardingReducer = (state: OnboardingState, action: OnboardingAction): OnboardingState => {
@@ -28,6 +30,8 @@ const onboardingReducer = (state: OnboardingState, action: OnboardingAction): On
       return { ...state, environment: action.payload };
     case 'SET_SOUND_PREFERENCE':
       return { ...state, soundPreference: action.payload };
+    case 'SET_WEEKLY_FOCUS_GOAL':
+      return { ...state, weeklyFocusGoal: action.payload };
     case 'COMPLETE_ONBOARDING':
       return { ...state, isComplete: true };
     case 'RESET_ONBOARDING':

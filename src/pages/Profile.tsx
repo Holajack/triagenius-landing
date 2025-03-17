@@ -1,19 +1,35 @@
 
+import { useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import NavigationBar from "@/components/dashboard/NavigationBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserCircle2, Settings, Moon, Sun } from "lucide-react";
+import { UserCircle2, Settings, Moon, Sun, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import PageHeader from "@/components/common/PageHeader";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 const Profile = () => {
   const { theme, toggleTheme } = useTheme();
-  const { state } = useOnboarding();
+  const { state, dispatch } = useOnboarding();
   const navigate = useNavigate();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [tempFocusGoal, setTempFocusGoal] = useState(state.weeklyFocusGoal || 10);
+
+  const handleSaveFocusGoal = () => {
+    dispatch({ type: 'SET_WEEKLY_FOCUS_GOAL', payload: tempFocusGoal });
+    setIsDialogOpen(false);
+    toast.success("Weekly focus goal updated successfully", {
+      description: `Your weekly focus goal is now set to ${tempFocusGoal} hours`
+    });
+  };
 
   return (
     <div className="container max-w-md mx-auto px-4 pb-20">
@@ -63,6 +79,64 @@ const Profile = () => {
               >
                 {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </Button>
+            </div>
+            
+            <Separator />
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Weekly Focus Goal</p>
+                <p className="text-sm text-muted-foreground">Your target study hours per week</p>
+              </div>
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="h-9">
+                    <Clock className="h-4 w-4 mr-2" />
+                    {state.weeklyFocusGoal || 10} hours
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Set Weekly Focus Goal</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-6 py-4">
+                    <div className="space-y-4">
+                      <div>
+                        <FormLabel>Hours per week</FormLabel>
+                        <div className="flex items-center gap-4 mt-2">
+                          <Slider
+                            value={[tempFocusGoal]}
+                            min={1}
+                            max={40}
+                            step={1}
+                            onValueChange={(value) => setTempFocusGoal(value[0])}
+                            className="flex-1"
+                          />
+                          <Input 
+                            type="number" 
+                            value={tempFocusGoal} 
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value);
+                              if (value >= 1 && value <= 40) {
+                                setTempFocusGoal(value);
+                              }
+                            }}
+                            className="w-16" 
+                            min={1}
+                            max={40}
+                          />
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Setting a realistic goal helps you stay consistent. The recommended range is 5-15 hours per week.
+                      </p>
+                    </div>
+                    <Button onClick={handleSaveFocusGoal} className="w-full">
+                      Save Goal
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
             
             <Separator />

@@ -15,6 +15,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  ReferenceLine,
 } from "recharts";
 
 type ChartType = "bar" | "pie" | "line" | "time";
@@ -78,6 +79,12 @@ const WeeklyTracker = ({ chartType }: { chartType: ChartType }) => {
   
   // Calculate total weekly time (in hours)
   const totalWeeklyHours = data.reduce((total, day) => total + day.total, 0);
+  
+  // Get the user's weekly focus goal or use default
+  const weeklyFocusGoal = state.weeklyFocusGoal || 10;
+  
+  // Calculate progress percentage
+  const progressPercentage = Math.min(100, (totalWeeklyHours / weeklyFocusGoal) * 100);
   
   // Environment-specific colors
   const getColors = () => {
@@ -153,6 +160,7 @@ const WeeklyTracker = ({ chartType }: { chartType: ChartType }) => {
                 formatter={(value: number) => [`${value} hr`, "Focus Time"]}
               />
               <Line type="monotone" dataKey="total" stroke={colors[0]} strokeWidth={2} />
+              <ReferenceLine y={weeklyFocusGoal / 7} stroke="#ff4081" strokeDasharray="3 3" label="Daily Goal" />
             </LineChart>
           </ResponsiveContainer>
         )}
@@ -161,7 +169,20 @@ const WeeklyTracker = ({ chartType }: { chartType: ChartType }) => {
           <div className="space-y-4 p-4">
             <div className="flex justify-between">
               <h3 className="text-sm font-medium">Focus Time Distribution</h3>
-              <p className="text-sm font-medium">{totalWeeklyHours.toFixed(1)} hrs total</p>
+              <div className="text-sm">
+                <span className="font-medium">{totalWeeklyHours.toFixed(1)} hrs</span>
+                <span className="text-muted-foreground"> / {weeklyFocusGoal} hrs goal</span>
+              </div>
+            </div>
+            
+            <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden mb-4">
+              <div
+                className="h-full rounded-full transition-all duration-500 ease-in-out"
+                style={{
+                  width: `${progressPercentage}%`,
+                  backgroundColor: progressPercentage >= 100 ? colors[0] : '#8b5cf6'
+                }}
+              ></div>
             </div>
             
             {["Math", "Physics", "History", "English", "Chemistry"].map((subject, index) => {
