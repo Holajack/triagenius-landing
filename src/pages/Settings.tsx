@@ -1,4 +1,3 @@
-
 import { useTheme } from "@/contexts/ThemeContext";
 import NavigationBar from "@/components/dashboard/NavigationBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +20,12 @@ const Settings = () => {
       artist: "Lukrembo",
       source: "https://freetouse.com/music",
       license: "No Copyright Music for Video (Free)",
+    },
+    {
+      title: "Biscuit",
+      artist: "Lukrembo",
+      source: "https://freetouse.com/music",
+      license: "Copyright Free Music for Video",
     },
     // More music tracks can be added here in the future
   ];
