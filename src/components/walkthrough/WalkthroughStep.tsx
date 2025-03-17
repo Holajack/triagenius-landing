@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -183,7 +184,8 @@ const WalkthroughStep = () => {
   };
   
   const handleSkip = () => {
-    dispatch({ type: 'COMPLETE_WALKTHROUGH' });
+    // Fix the incorrect action type from COMPLETE_WALKTHROUGH to END_WALKTHROUGH
+    dispatch({ type: 'END_WALKTHROUGH' });
     setIsOpen(false);
     setTargetRect(null);
   };
