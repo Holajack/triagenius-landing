@@ -33,7 +33,7 @@ export function register() {
           };
         };
         
-        // Enable background sync for offline support
+        // Enable background sync if supported
         if ('SyncManager' in window) {
           registerBackgroundSync(registration);
         }
@@ -58,12 +58,17 @@ export function register() {
   }
 }
 
-// Register background sync
+// Register background sync with proper type checking
 async function registerBackgroundSync(registration: ServiceWorkerRegistration) {
   try {
-    // Register background sync for offline focus sessions
-    await registration.sync.register('sync-focus-sessions');
-    console.log('Background sync registered successfully');
+    // Check if SyncManager is actually available in the window object
+    if ('SyncManager' in window && 'sync' in registration) {
+      // Use type assertion to tell TypeScript that we've checked the existence
+      await (registration as any).sync.register('sync-focus-sessions');
+      console.log('Background sync registered successfully');
+    } else {
+      console.log('Background sync not supported in this browser');
+    }
   } catch (error) {
     console.error('Background sync registration failed:', error);
   }
