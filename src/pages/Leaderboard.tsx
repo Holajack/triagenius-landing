@@ -24,10 +24,15 @@ import {
 } from "lucide-react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { getFriendsLeaderboardData, getGlobalLeaderboardData, getUserRankingMessage } from "@/utils/leaderboardData";
+import { useUser } from "@/hooks/use-user";
 
 const Leaderboard = () => {
   const { state } = useOnboarding();
+  const { user } = useUser();
   const [leaderboardTab, setLeaderboardTab] = useState<"friends" | "global">("friends");
+  
+  // Determine if this is a new user with no data
+  const isNewUser = !user || (user && user.isLoading) || !user.username;
   
   // Get accent color based on environment
   const getAccentColor = () => {
@@ -50,7 +55,7 @@ const Leaderboard = () => {
       
       <div className="space-y-8">
         {/* Personal Productivity Stats */}
-        <PersonalStats weeklyFocusGoal={state.weeklyFocusGoal} getAccentColor={getAccentColor} />
+        <PersonalStats weeklyFocusGoal={state.weeklyFocusGoal} getAccentColor={getAccentColor} isNewUser={isNewUser} />
         
         {/* Leaderboard Rankings */}
         <Card>
@@ -79,11 +84,11 @@ const Leaderboard = () => {
               </TabsList>
               
               <TabsContent value="friends" className="mt-0">
-                <LeaderboardList type="friends" getAccentColor={getAccentColor} />
+                <LeaderboardList type="friends" getAccentColor={getAccentColor} isNewUser={isNewUser} />
               </TabsContent>
               
               <TabsContent value="global" className="mt-0">
-                <LeaderboardList type="global" getAccentColor={getAccentColor} />
+                <LeaderboardList type="global" getAccentColor={getAccentColor} isNewUser={isNewUser} />
               </TabsContent>
             </Tabs>
             
@@ -105,7 +110,7 @@ const Leaderboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ActivityFeed />
+            <ActivityFeed isNewUser={isNewUser} />
           </CardContent>
         </Card>
       </div>
@@ -116,29 +121,38 @@ const Leaderboard = () => {
 };
 
 // Personal Productivity Stats Component
-const PersonalStats = ({ weeklyFocusGoal, getAccentColor }: { weeklyFocusGoal: number, getAccentColor: () => string }) => {
+const PersonalStats = ({ 
+  weeklyFocusGoal, 
+  getAccentColor, 
+  isNewUser 
+}: { 
+  weeklyFocusGoal: number, 
+  getAccentColor: () => string,
+  isNewUser: boolean
+}) => {
   const accentColor = getAccentColor();
-  const currentFocusHours = 32.5; // This would come from actual user data in a real app
+  // For new users, start with 0 focus hours
+  const currentFocusHours = isNewUser ? 0 : 32.5; 
   const focusGoalProgress = Math.min(100, (currentFocusHours / weeklyFocusGoal) * 100);
   
   const stats = [
     { 
       icon: <Flame className="h-5 w-5" />, 
       title: "Current Streak", 
-      value: "7 days", 
-      progress: 70 
+      value: isNewUser ? "0 days" : "7 days", 
+      progress: isNewUser ? 0 : 70 
     },
     { 
       icon: <Clock className="h-5 w-5" />, 
       title: "Focus Time", 
-      value: "32.5 hours", 
-      progress: 65 
+      value: isNewUser ? "0 hours" : "32.5 hours", 
+      progress: isNewUser ? 0 : 65 
     },
     { 
       icon: <ListChecks className="h-5 w-5" />, 
       title: "Tasks Completed", 
-      value: "24 this week", 
-      progress: 80 
+      value: isNewUser ? "0 this week" : "24 this week", 
+      progress: isNewUser ? 0 : 80 
     },
   ];
   
@@ -175,7 +189,10 @@ const PersonalStats = ({ weeklyFocusGoal, getAccentColor }: { weeklyFocusGoal: n
               Weekly Focus Goal
             </h3>
             <p className="text-sm text-muted-foreground mt-1">
-              You're {Math.round(focusGoalProgress)}% of the way to your {weeklyFocusGoal}-hour weekly focus goal
+              {isNewUser 
+                ? `Start your first focus session to track progress towards your ${weeklyFocusGoal}-hour weekly goal`
+                : `You're ${Math.round(focusGoalProgress)}% of the way to your ${weeklyFocusGoal}-hour weekly focus goal`
+              }
             </p>
           </div>
           <div className="text-center">
@@ -184,24 +201,26 @@ const PersonalStats = ({ weeklyFocusGoal, getAccentColor }: { weeklyFocusGoal: n
           </div>
         </div>
         
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Badge className="flex items-center gap-1 px-3 py-1">
-            <Sparkles className="h-3 w-3" />
-            Level 8
-          </Badge>
-          <Badge variant="secondary" className="flex items-center gap-1 px-3 py-1">
-            <Flame className="h-3 w-3" />
-            Streak Master
-          </Badge>
-          <Badge variant="outline" className="flex items-center gap-1 px-3 py-1">
-            <Brain className="h-3 w-3" />
-            Deep Worker
-          </Badge>
-          <Badge variant="secondary" className="flex items-center gap-1 px-3 py-1">
-            <Clock className="h-3 w-3" />
-            50+ Hours
-          </Badge>
-        </div>
+        {!isNewUser && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Badge className="flex items-center gap-1 px-3 py-1">
+              <Sparkles className="h-3 w-3" />
+              Level 8
+            </Badge>
+            <Badge variant="secondary" className="flex items-center gap-1 px-3 py-1">
+              <Flame className="h-3 w-3" />
+              Streak Master
+            </Badge>
+            <Badge variant="outline" className="flex items-center gap-1 px-3 py-1">
+              <Brain className="h-3 w-3" />
+              Deep Worker
+            </Badge>
+            <Badge variant="secondary" className="flex items-center gap-1 px-3 py-1">
+              <Clock className="h-3 w-3" />
+              50+ Hours
+            </Badge>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -210,16 +229,18 @@ const PersonalStats = ({ weeklyFocusGoal, getAccentColor }: { weeklyFocusGoal: n
 // Leaderboard List Component
 const LeaderboardList = ({ 
   type, 
-  getAccentColor 
+  getAccentColor,
+  isNewUser
 }: { 
   type: "friends" | "global", 
-  getAccentColor: () => string 
+  getAccentColor: () => string,
+  isNewUser: boolean
 }) => {
   const accentColor = getAccentColor();
   
   const leaderboardData = type === "friends" 
-    ? getFriendsLeaderboardData() 
-    : getGlobalLeaderboardData();
+    ? getFriendsLeaderboardData(isNewUser) 
+    : getGlobalLeaderboardData(isNewUser);
   
   const getRankBadge = (rank: number) => {
     switch (rank) {
@@ -292,7 +313,7 @@ const LeaderboardList = ({
       
       <div className="text-center mt-2">
         <p className="text-xs text-muted-foreground">
-          {getUserRankingMessage(type)}
+          {getUserRankingMessage(type, isNewUser)}
         </p>
       </div>
     </div>
@@ -300,8 +321,8 @@ const LeaderboardList = ({
 };
 
 // Activity Feed Component
-const ActivityFeed = () => {
-  const activityData = [
+const ActivityFeed = ({ isNewUser }: { isNewUser: boolean }) => {
+  const activityData = isNewUser ? [] : [
     {
       id: 1,
       user: "John Smith",
@@ -354,6 +375,26 @@ const ActivityFeed = () => {
       isLiked: true
     }
   ];
+  
+  if (isNewUser || activityData.length === 0) {
+    return (
+      <div className="py-10 text-center">
+        <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground/50" />
+        <h3 className="mt-4 text-sm font-medium">No Community Activity Yet</h3>
+        <p className="mt-2 text-xs text-muted-foreground max-w-xs mx-auto">
+          Complete focus sessions and interact with other users to see community activity here.
+        </p>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="mt-4"
+          onClick={() => window.location.href = "/community"}
+        >
+          Explore Community
+        </Button>
+      </div>
+    );
+  }
   
   return (
     <div className="space-y-4">

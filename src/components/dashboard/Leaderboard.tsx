@@ -2,15 +2,20 @@
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOnboarding } from "@/contexts/OnboardingContext";
-import { Award, Crown, Medal } from "lucide-react";
+import { Award, Crown, Medal, Users } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { getFriendsLeaderboardData } from "@/utils/leaderboardData";
+import { useUser } from "@/hooks/use-user";
 
 const Leaderboard = () => {
   const { state } = useOnboarding();
   const navigate = useNavigate();
+  const { user } = useUser();
+  
+  // Determine if this is a new user with no data
+  const isNewUser = !user || (user && user.isLoading) || !user.username;
   
   // Get accent color based on environment
   const getAccentColor = () => {
@@ -35,8 +40,8 @@ const Leaderboard = () => {
     }
   };
   
-  // Get users from the shared data source
-  const leaderboardData = getFriendsLeaderboardData();
+  // Get users from the shared data source - use empty state for new users
+  const leaderboardData = getFriendsLeaderboardData(isNewUser);
   
   // Use the user's weekly focus goal for progress calculations
   // Make sure to provide a fallback value if it's not set
@@ -75,43 +80,63 @@ const Leaderboard = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="space-y-3">
-          {leaderboardData.map((user) => (
-            <div 
-              key={user.rank}
-              className={`flex items-center gap-3 p-2 rounded-md ${
-                user.isCurrentUser ? "bg-muted/50" : ""
-              }`}
+        {isNewUser ? (
+          <div className="py-6 text-center">
+            <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
+            <h3 className="mt-4 text-sm font-medium">No Focus Data Yet</h3>
+            <p className="mt-2 text-xs text-muted-foreground max-w-xs mx-auto">
+              Complete your first focus session to start building your stats and compare with others!
+            </p>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mt-4"
+              onClick={() => navigate("/focus-session")}
             >
-              <div className="w-8 h-8 flex items-center justify-center">
-                {getRankBadge(user.rank)}
-              </div>
-              
-              <Avatar className="h-8 w-8 border">
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-              </Avatar>
-              
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-center mb-1">
-                  <p className={`text-sm font-medium truncate ${user.isCurrentUser ? getAccentColor().split(" ")[0] : ""}`}>
-                    {user.name}
-                  </p>
-                  <span className="text-xs text-muted-foreground">{user.focusHours}h</span>
+              Start Your First Session
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {leaderboardData.map((user) => (
+              <div 
+                key={user.rank}
+                className={`flex items-center gap-3 p-2 rounded-md ${
+                  user.isCurrentUser ? "bg-muted/50" : ""
+                }`}
+              >
+                <div className="w-8 h-8 flex items-center justify-center">
+                  {getRankBadge(user.rank)}
                 </div>
-                <Progress 
-                  value={Math.min(100, (user.focusHours / weeklyGoal) * 100)} 
-                  className="h-1.5" 
-                  indicatorClassName={user.isCurrentUser ? getProgressColor() : ""}
-                />
+                
+                <Avatar className="h-8 w-8 border">
+                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-center mb-1">
+                    <p className={`text-sm font-medium truncate ${user.isCurrentUser ? getAccentColor().split(" ")[0] : ""}`}>
+                      {user.name}
+                    </p>
+                    <span className="text-xs text-muted-foreground">{user.focusHours}h</span>
+                  </div>
+                  <Progress 
+                    value={Math.min(100, (user.focusHours / weeklyGoal) * 100)} 
+                    className="h-1.5" 
+                    indicatorClassName={user.isCurrentUser ? getProgressColor() : ""}
+                  />
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
         
         <div className="text-center mt-3">
           <p className="text-xs text-muted-foreground">
-            Weekly Goal: {weeklyGoal} hours | You're in the top 15% of users this week!
+            {isNewUser 
+              ? "Set a focus goal and start tracking your progress!" 
+              : `Weekly Goal: ${weeklyGoal} hours | You're in the top 15% of users this week!`}
           </p>
         </div>
       </CardContent>
