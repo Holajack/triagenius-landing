@@ -11,4 +11,5 @@ export interface OnboardingState {
   environment?: StudyEnvironment;
   soundPreference?: SoundPreference;
   isComplete: boolean;
+  weeklyFocusGoal: number; // Added this property
 }
