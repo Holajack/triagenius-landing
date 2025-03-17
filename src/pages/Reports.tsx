@@ -32,7 +32,7 @@ const Reports = () => {
   const { state } = useOnboarding();
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const [activeTab, setActiveTab] = useState("terrain"); // Default to terrain view
+  const [activeTab, setActiveTab] = useState("cognitive");
 
   return (
     <div className={cn(
@@ -84,7 +84,7 @@ const Reports = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="terrain" className="space-y-4" value={activeTab} onValueChange={setActiveTab}>
+        <Tabs defaultValue="cognitive" className="space-y-4" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid grid-cols-3 mb-4">
             <TabsTrigger value="cognitive" className="flex items-center gap-1">
               <Book className="h-4 w-4" /> Learning Analysis
@@ -110,10 +110,10 @@ const Reports = () => {
               <CardHeader>
                 <CardTitle className="text-xl flex items-center">
                   <Mountain className="h-5 w-5 mr-2 text-primary" />
-                  Rocky Mountains Terrain Explorer
+                  Advanced Terrain Explorer
                 </CardTitle>
                 <CardDescription>
-                  Interactive 3D visualization of Colorado Rockies terrain
+                  Interactive 3D visualization of learning terrain and pathways
                 </CardDescription>
               </CardHeader>
               <CardContent>
