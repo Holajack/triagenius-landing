@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { PathwaySystem } from './PathwaySystem';
@@ -110,7 +111,7 @@ const TerrainMapping = () => {
         
         <div className="flex gap-2">
           <Button
-            variant="outline"
+            variant={showPathwaySystem ? "default" : "outline"}
             size={isMobile ? "sm" : "default"}
             onClick={() => {
               setShowPathwaySystem(!showPathwaySystem);
@@ -153,7 +154,7 @@ const TerrainMapping = () => {
           
           <div className="w-full h-full pt-12 pb-8">
             <Terrain3D 
-              textureUrl="/lovable-uploads/7d1d245b-23a7-4cff-9ad4-c2ea099f286a.png" 
+              textureUrl="/lovable-uploads/678940a1-a2bb-4813-8dc5-200f55976f4e.png" 
               terrainData={terrainData} 
             />
           </div>

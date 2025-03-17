@@ -53,7 +53,7 @@ function TerrainMesh({ textureUrl, terrainData }: TerrainProps) {
   // Set initial camera position on mount
   useEffect(() => {
     if (camera) {
-      camera.position.set(0, 8, 30);
+      camera.position.set(0, 15, 35);
       camera.lookAt(0, 0, 0);
     }
   }, [camera]);
@@ -70,7 +70,7 @@ function TerrainMesh({ textureUrl, terrainData }: TerrainProps) {
   const { array } = geometry.attributes.position;
   const maxHeight = terrainData.modelCoordinatesAltitudeBounds.max;
   
-  // Simple elevation function that creates mountains in the middle
+  // Terrain generation function using the terrainUtils
   for (let i = 0; i < array.length; i += 3) {
     const x = array[i];
     const z = array[i + 2];
@@ -87,8 +87,12 @@ function TerrainMesh({ textureUrl, terrainData }: TerrainProps) {
     array[i + 1] = (centerFactor * maxHeight * 0.7) + (noise * maxHeight * 0.3);
   }
 
+  // Apply texture and material settings
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1, 1);
+  
   return (
-    <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]}>
+    <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]} receiveShadow castShadow>
       <primitive object={geometry} attach="geometry" />
       <meshStandardMaterial 
         map={texture}
@@ -106,13 +110,13 @@ function Waypoints() {
     <>
       {pathPoints.map((point, index) => (
         <group key={index} position={[point.position[0] * 5, point.position[1] * 3 + 2, point.position[2] * 5]}>
-          <mesh>
-            <sphereGeometry args={[0.5, 16, 16]} />
+          <mesh castShadow>
+            <sphereGeometry args={[0.8, 16, 16]} />
             <meshStandardMaterial color="#ff9900" emissive="#ff6600" emissiveIntensity={0.5} />
           </mesh>
           <Text
-            position={[0, 1.2, 0]}
-            fontSize={0.7}
+            position={[0, 1.5, 0]}
+            fontSize={0.8}
             color="#ffffff"
             anchorX="center"
             anchorY="middle"
@@ -130,7 +134,19 @@ function Waypoints() {
 const Terrain3D: React.FC<TerrainProps> = ({ textureUrl, terrainData }) => {
   return (
     <div className="w-full h-full" style={{ minHeight: '400px' }}>
-      <Canvas shadows>
+      <Canvas 
+        shadows 
+        camera={{ position: [0, 15, 35], fov: 60 }}
+        gl={{ antialias: true, alpha: true }}
+        onCreated={({ gl }) => {
+          gl.setClearColor(new THREE.Color('#000000'), 0);
+          gl.shadowMap.enabled = true;
+          gl.shadowMap.type = THREE.PCFSoftShadowMap;
+        }}
+      >
+        <color attach="background" args={['#000000']} />
+        <fog attach="fog" args={['#000000', 30, 80]} />
+        
         <ambientLight intensity={0.5} />
         <directionalLight 
           position={[10, 20, 10]} 
@@ -139,15 +155,19 @@ const Terrain3D: React.FC<TerrainProps> = ({ textureUrl, terrainData }) => {
           shadow-mapSize-width={1024} 
           shadow-mapSize-height={1024} 
         />
-        <TerrainMesh textureUrl={textureUrl} terrainData={terrainData} />
-        <Waypoints />
+        
+        <React.Suspense fallback={null}>
+          <TerrainMesh textureUrl={textureUrl} terrainData={terrainData} />
+          <Waypoints />
+        </React.Suspense>
+        
         <OrbitControls 
           enableZoom={true}
           enablePan={true}
           enableRotate={true}
           maxPolarAngle={Math.PI / 2}
           minDistance={5}
-          maxDistance={40}
+          maxDistance={50}
         />
       </Canvas>
     </div>
