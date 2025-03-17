@@ -8,14 +8,43 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { getFriendsLeaderboardData } from "@/utils/leaderboardData";
 import { useUser } from "@/hooks/use-user";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
 
 const Leaderboard = () => {
   const { state } = useOnboarding();
   const navigate = useNavigate();
   const { user } = useUser();
+  const [hasData, setHasData] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Check if the user has any focus session data
+  useEffect(() => {
+    const checkForFocusData = async () => {
+      try {
+        setIsLoading(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          const { count } = await supabase
+            .from('focus_sessions')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id);
+            
+          setHasData(count !== null && count > 0);
+        }
+      } catch (error) {
+        console.error('Error checking for focus data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkForFocusData();
+  }, []);
   
   // Determine if this is a new user with no data
-  const isNewUser = !user || (user && user.isLoading) || !user.username;
+  const isNewUser = isLoading || !hasData || !user || (user && user.isLoading) || !user.username;
   
   // Get accent color based on environment
   const getAccentColor = () => {
@@ -60,6 +89,37 @@ const Leaderboard = () => {
         return <span className="text-xs font-medium">{rank}</span>;
     }
   };
+  
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center justify-between">
+            <div className="flex items-center">
+              <Award className="w-5 h-5 mr-2 text-triage-purple" />
+              Focus Leaderboard
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="animate-pulse">
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-muted"></div>
+                  <div className="w-8 h-8 rounded-full bg-muted"></div>
+                  <div className="flex-1">
+                    <div className="h-4 bg-muted rounded w-24 mb-2"></div>
+                    <div className="h-2 bg-muted rounded w-full"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   
   return (
     <Card>

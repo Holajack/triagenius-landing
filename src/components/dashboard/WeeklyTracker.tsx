@@ -20,6 +20,31 @@ import {
 
 type ChartType = "bar" | "pie" | "line" | "time";
 
+// Generate empty data for the weekly tracker
+const generateEmptyData = () => {
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  
+  return days.map(day => ({
+    day,
+    total: 0,
+    Math: 0,
+    Physics: 0,
+    History: 0,
+    English: 0,
+    Chemistry: 0
+  }));
+};
+
+// Generate empty data for the pie chart
+const generateEmptyPieData = () => {
+  const subjects = ["Math", "Physics", "History", "English", "Chemistry"];
+  
+  return subjects.map(name => ({
+    name,
+    value: 0
+  }));
+};
+
 // Mock data for the weekly tracker
 const generateMockData = () => {
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -72,10 +97,10 @@ const generatePieData = () => {
   });
 };
 
-const WeeklyTracker = ({ chartType }: { chartType: ChartType }) => {
+const WeeklyTracker = ({ chartType, hasData = true }: { chartType: ChartType, hasData?: boolean }) => {
   const { state } = useOnboarding();
-  const [data, setData] = useState(() => generateMockData());
-  const [pieData, setPieData] = useState(() => generatePieData());
+  const [data, setData] = useState(() => hasData ? generateMockData() : generateEmptyData());
+  const [pieData, setPieData] = useState(() => hasData ? generatePieData() : generateEmptyPieData());
   
   // Calculate total weekly time (in hours)
   const totalWeeklyHours = data.reduce((total, day) => total + day.total, 0);
@@ -137,8 +162,8 @@ const WeeklyTracker = ({ chartType }: { chartType: ChartType }) => {
                 cy="50%"
                 outerRadius={100}
                 innerRadius={60}
-                labelLine={true}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                labelLine={hasData}
+                label={hasData ? ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%` : false}
                 dataKey="value"
               >
                 {pieData.map((entry, index) => (
@@ -188,7 +213,7 @@ const WeeklyTracker = ({ chartType }: { chartType: ChartType }) => {
             {["Math", "Physics", "History", "English", "Chemistry"].map((subject, index) => {
               // Calculate total minutes for this subject across the week
               const subjectMinutes = data.reduce((total, day) => total + (day[subject] || 0), 0);
-              const percentOfWeek = (subjectMinutes / (totalWeeklyHours * 60)) * 100;
+              const percentOfWeek = totalWeeklyHours > 0 ? (subjectMinutes / (totalWeeklyHours * 60)) * 100 : 0;
               
               return (
                 <div key={subject} className="space-y-1">
