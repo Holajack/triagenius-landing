@@ -31,11 +31,11 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
-        <TaskProvider>
-          <UserProvider>
+        <UserProvider>
+          <TaskProvider>
             <Router>
-              <OnboardingProvider>
-                <WalkthroughProvider>
+              <WalkthroughProvider>
+                <OnboardingProvider>
                   <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/auth" element={<Auth />} />
@@ -154,11 +154,11 @@ export default function App() {
                     />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
-                </WalkthroughProvider>
-              </OnboardingProvider>
+                </OnboardingProvider>
+              </WalkthroughProvider>
             </Router>
-          </UserProvider>
-        </TaskProvider>
+          </TaskProvider>
+        </UserProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );
