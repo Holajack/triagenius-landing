@@ -80,14 +80,6 @@ const TerrainMapping = () => {
             }
             {isMobile ? '' : (isNightMode ? 'Day Mode' : 'Night Mode')}
           </Button>
-          <Button
-            variant="default"
-            size={isMobile ? "sm" : "default"}
-            className={isMobile ? 'px-2 py-1 text-xs' : ''}
-          >
-            <Globe className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} mr-1`} />
-            {isMobile ? '' : '3D Terrain'}
-          </Button>
         </div>
       </div>
       
