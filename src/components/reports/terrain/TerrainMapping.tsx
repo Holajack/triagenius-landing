@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Mountain, Sun, Moon } from 'lucide-react';
@@ -35,21 +36,60 @@ const terrainData = {
 const TerrainMapping = () => {
   const isMobile = useIsMobile();
   const [isNightMode, setIsNightMode] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scriptLoaded, setScriptLoaded] = useState(false);
   
   useEffect(() => {
-    // Load the Clooned script
-    const script = document.createElement('script');
-    script.src = "https://clooned.com/wp-content/uploads/cloons/scripts/clooned.js";
-    script.async = true;
-    document.body.appendChild(script);
+    // Check if Clooned script already exists
+    const existingScript = document.querySelector('script[src*="clooned.js"]');
     
-    // Clean up script on unmount
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-    };
+    if (!existingScript) {
+      // Load the Clooned script
+      const script = document.createElement('script');
+      script.src = "https://clooned.com/wp-content/uploads/cloons/scripts/clooned.js";
+      script.async = true;
+      
+      script.onload = () => {
+        console.log('Clooned script loaded successfully');
+        setScriptLoaded(true);
+      };
+      
+      script.onerror = (error) => {
+        console.error('Error loading Clooned script:', error);
+      };
+      
+      document.head.appendChild(script);
+      
+      return () => {
+        // Only remove if it's the script we added
+        if (document.head.contains(script)) {
+          document.head.removeChild(script);
+        }
+      };
+    } else {
+      setScriptLoaded(true);
+    }
   }, []);
+  
+  // Create clooned-object element manually after script loads
+  useEffect(() => {
+    if (scriptLoaded && containerRef.current) {
+      // Clear previous content
+      if (containerRef.current.firstChild) {
+        containerRef.current.innerHTML = '';
+      }
+      
+      // Create the clooned-object element
+      const cloonedObject = document.createElement('clooned-object');
+      cloonedObject.setAttribute('features', 'lsc;dt;fs');
+      cloonedObject.setAttribute('oid', 'a4ff2c22518f4b3aaac823e1fa5abbbc');
+      
+      // Add to container
+      containerRef.current.appendChild(cloonedObject);
+      
+      console.log('Clooned object element created and appended');
+    }
+  }, [scriptLoaded]);
   
   return (
     <div className={`h-full ${isMobile ? 'px-1' : 'px-4'}`}>
@@ -89,8 +129,8 @@ const TerrainMapping = () => {
           </div>
         </div>
         
-        <div className="w-full h-full pt-12 pb-8">
-          <clooned-object features="lsc;dt;fs" oid="a4ff2c22518f4b3aaac823e1fa5abbbc"></clooned-object>
+        <div className="w-full h-full pt-12 pb-8" ref={containerRef}>
+          {/* clooned-object will be inserted here programmatically */}
         </div>
         
         <div className="absolute bottom-0 left-0 right-0 p-2 text-xs text-center text-muted-foreground bg-background/80 backdrop-blur-sm">
