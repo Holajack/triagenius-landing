@@ -6,6 +6,40 @@ import { Button } from '@/components/ui/button';
 import { PathwaySystem } from './PathwaySystem';
 import { Map, Mountain } from 'lucide-react';
 
+// Define the learning path points
+const learningPaths = [
+  {
+    position: [0, 0, 0] as [number, number, number],
+    type: 'basecamp' as const,
+    label: 'Start of Learning Journey'
+  },
+  {
+    position: [5, 2, 3] as [number, number, number],
+    type: 'prefrontal' as const,
+    label: 'Critical Thinking'
+  },
+  {
+    position: [-4, 1, 4] as [number, number, number],
+    type: 'hippocampus' as const,
+    label: 'Memory Formation'
+  },
+  {
+    position: [3, 1, -5] as [number, number, number],
+    type: 'amygdala' as const,
+    label: 'Emotional Learning'
+  },
+  {
+    position: [-5, 1, -3] as [number, number, number],
+    type: 'cerebellum' as const,
+    label: 'Skill Automation'
+  },
+  {
+    position: [6, 2, 0] as [number, number, number],
+    type: 'parietal' as const,
+    label: 'Knowledge Integration'
+  }
+];
+
 const TerrainMapping = () => {
   const isMobile = useIsMobile();
   const [showPathwaySystem, setShowPathwaySystem] = useState(false);
@@ -36,7 +70,10 @@ const TerrainMapping = () => {
       </div>
       
       {showPathwaySystem ? (
-        <PathwaySystem />
+        <PathwaySystem 
+          paths={learningPaths}
+          onPathClick={(point) => console.log(`Clicked on: ${point.label}`)}
+        />
       ) : (
         <TerrainVisualization />
       )}
