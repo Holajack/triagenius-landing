@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Mountain, Sun, Moon } from 'lucide-react';
-import Terrain3D from './Terrain3D';
+import SimpleTerrain3D from './SimpleTerrain3D';
 
 // Define the terrain data
 const terrainData = {
@@ -77,10 +77,9 @@ const TerrainMapping = () => {
         </div>
         
         <div className="w-full h-full pt-12 pb-8">
-          <Terrain3D 
-            textureUrl="/lovable-uploads/7b817dfc-7eaa-42d5-b84b-d935f7b996e4.png" 
-            terrainData={terrainData}
+          <SimpleTerrain3D 
             isNightMode={isNightMode}
+            onNightModeToggle={() => setIsNightMode(!isNightMode)}
           />
         </div>
         
