@@ -9,45 +9,68 @@ import { Separator } from "@/components/ui/separator";
 import PageHeader from "@/components/common/PageHeader";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useNavigate } from "react-router-dom";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const Settings = () => {
   const { theme } = useTheme();
   const navigate = useNavigate();
 
-  // Music attribution data
-  const musicAttributions = [
-    {
-      title: "Marshmallow",
-      artist: "Lukrembo",
-      source: "https://freetouse.com/music",
-      license: "No Copyright Music for Video (Free)",
-    },
-    {
-      title: "Biscuit",
-      artist: "Lukrembo",
-      source: "https://freetouse.com/music",
-      license: "Copyright Free Music for Video",
-    },
-    {
-      title: "Donut",
-      artist: "Lukrembo",
-      source: "https://freetouse.com/music",
-      license: "Copyright Free Music for Videos",
-    },
-    {
-      title: "Sunset",
-      artist: "Lukrembo",
-      source: "https://freetouse.com/music",
-      license: "Royalty Free Music for Video (Safe)",
-    },
-    {
-      title: "honey jam",
-      artist: "massobeats",
-      source: "https://freetouse.com/music",
-      license: "Free Music Without Copyright (Safe)",
-    },
-    // More music tracks can be added here in the future
-  ];
+  // Music attribution data organized by categories
+  const musicAttributions = {
+    lofi: [
+      {
+        title: "Marshmallow",
+        artist: "Lukrembo",
+        source: "https://freetouse.com/music",
+        license: "No Copyright Music for Video (Free)",
+      },
+      {
+        title: "Biscuit",
+        artist: "Lukrembo",
+        source: "https://freetouse.com/music",
+        license: "Copyright Free Music for Video",
+      },
+      {
+        title: "Donut",
+        artist: "Lukrembo",
+        source: "https://freetouse.com/music",
+        license: "Copyright Free Music for Videos",
+      },
+      {
+        title: "Sunset",
+        artist: "Lukrembo",
+        source: "https://freetouse.com/music",
+        license: "Royalty Free Music for Video (Safe)",
+      },
+      {
+        title: "honey jam",
+        artist: "massobeats",
+        source: "https://freetouse.com/music",
+        license: "Free Music Without Copyright (Safe)",
+      },
+    ],
+    nature: [
+      {
+        title: "Flourish",
+        artist: "Pufino",
+        source: "https://freetouse.com/music",
+        license: "Free To Use Music for Video",
+      },
+      {
+        title: "Creek",
+        artist: "Pufino",
+        source: "https://freetouse.com/music",
+        license: "Music for Video (Free Download)",
+      },
+      {
+        title: "Wallflower",
+        artist: "Epic Spectrum",
+        source: "https://freetouse.com/music",
+        license: "Royalty Free Music for Videos (Safe)",
+      },
+    ],
+    // More categories can be added here in the future
+  };
 
   return (
     <div className="container max-w-md mx-auto px-4 pb-20">
@@ -103,31 +126,67 @@ const Settings = () => {
                 The Triage System uses music from various sources. Below are the attributions for the music tracks used in the app.
               </p>
               
-              <Accordion type="single" collapsible className="w-full">
-                {musicAttributions.map((track, index) => (
-                  <AccordionItem key={index} value={`track-${index}`}>
-                    <AccordionTrigger className="text-sm font-medium">
-                      {track.title} by {track.artist}
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className="space-y-2 pl-2">
-                        <p className="text-sm">Artist: {track.artist}</p>
-                        <p className="text-sm">License: {track.license}</p>
-                        <div className="flex items-center text-sm text-primary">
-                          <a 
-                            href={track.source} 
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center hover:underline"
-                          >
-                            Source <ExternalLink className="ml-1 h-3 w-3" />
-                          </a>
-                        </div>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
+              <div className="space-y-6">
+                {/* Lo-Fi Music Section */}
+                <div>
+                  <h3 className="text-base font-medium mb-2 text-primary">Lo-Fi Music</h3>
+                  <Accordion type="single" collapsible className="w-full">
+                    {musicAttributions.lofi.map((track, index) => (
+                      <AccordionItem key={`lofi-${index}`} value={`lofi-track-${index}`}>
+                        <AccordionTrigger className="text-sm font-medium">
+                          {track.title} by {track.artist}
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-2 pl-2">
+                            <p className="text-sm">Artist: {track.artist}</p>
+                            <p className="text-sm">License: {track.license}</p>
+                            <div className="flex items-center text-sm text-primary">
+                              <a 
+                                href={track.source} 
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center hover:underline"
+                              >
+                                Source <ExternalLink className="ml-1 h-3 w-3" />
+                              </a>
+                            </div>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                </div>
+                
+                {/* Nature Music Section */}
+                <div>
+                  <h3 className="text-base font-medium mb-2 text-primary">Nature</h3>
+                  <Accordion type="single" collapsible className="w-full">
+                    {musicAttributions.nature.map((track, index) => (
+                      <AccordionItem key={`nature-${index}`} value={`nature-track-${index}`}>
+                        <AccordionTrigger className="text-sm font-medium">
+                          {track.title} by {track.artist}
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-2 pl-2">
+                            <p className="text-sm">Artist: {track.artist}</p>
+                            <p className="text-sm">License: {track.license}</p>
+                            <div className="flex items-center text-sm text-primary">
+                              <a 
+                                href={track.source} 
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center hover:underline"
+                              >
+                                Source <ExternalLink className="ml-1 h-3 w-3" />
+                              </a>
+                            </div>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                </div>
+              </div>
             </CardContent>
           </Card>
           
