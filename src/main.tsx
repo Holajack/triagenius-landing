@@ -5,19 +5,10 @@ import App from './App'
 import './index.css'
 import { Toaster } from "./components/ui/toaster"
 import { ToastProvider } from "./hooks/use-toast"
+import { register } from './components/pwa/ServiceWorker'
 
-// Register service worker
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(registration => {
-        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-      })
-      .catch(error => {
-        console.log('ServiceWorker registration failed: ', error);
-      });
-  });
-}
+// Register service worker with our enhanced implementation
+register();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
