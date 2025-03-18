@@ -14,9 +14,15 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+// Create root outside of the render call
+const rootElement = document.getElementById('root');
+if (!rootElement) throw new Error('Root element not found');
+const root = ReactDOM.createRoot(rootElement);
+
+// Render with React.StrictMode
+root.render(
   <React.StrictMode>
     <App />
     <Toaster />
   </React.StrictMode>
-)
+);

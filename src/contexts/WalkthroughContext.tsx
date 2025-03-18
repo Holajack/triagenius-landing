@@ -95,7 +95,7 @@ type WalkthroughContextType = {
 // Create context
 const WalkthroughContext = createContext<WalkthroughContextType | undefined>(undefined);
 
-// Provider component
+// Provider component with explicit React.FC typing
 export const WalkthroughProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(walkthroughReducer, initialState);
 

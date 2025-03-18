@@ -35,8 +35,8 @@ function App() {
       <ThemeProvider>
         <UserProvider>
           <TaskProvider>
-            <OnboardingProvider>
-              <WalkthroughProvider>
+            <WalkthroughProvider>
+              <OnboardingProvider>
                 <Router>
                   <Routes>
                     <Route path="/" element={<Index />} />
@@ -60,8 +60,8 @@ function App() {
                   </Routes>
                   <InstallPrompt />
                 </Router>
-              </WalkthroughProvider>
-            </OnboardingProvider>
+              </OnboardingProvider>
+            </WalkthroughProvider>
           </TaskProvider>
         </UserProvider>
       </ThemeProvider>
