@@ -4,6 +4,7 @@ import { FocusTimer } from "@/components/focus/FocusTimer";
 import { SimpleLandscapeAnimation } from "@/components/focus/SimpleLandscapeAnimation";
 import SessionGoals from "@/components/focus/SessionGoals";
 import { StudyEnvironment } from "@/types/onboarding";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 interface FocusSessionContentProps {
   timerRef: React.MutableRefObject<{ stopTimer: () => void } | null>;
@@ -134,18 +135,24 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({
         onEndSessionClick={handleEndClick}
       />
       
-      {/* Using SimpleLandscapeAnimation instead of HikingTrail */}
+      {/* Wrap SimpleLandscapeAnimation in ErrorBoundary */}
       <div 
         className="relative w-full aspect-[3/1] rounded-lg overflow-hidden shadow-md" 
         aria-hidden={lowPowerMode}
         style={{ display: lowPowerMode ? 'none' : 'block' }} // Force DOM removal for PWA performance
       >
-        <SimpleLandscapeAnimation 
-          environment={safeEnvironment}
-          milestone={currentMilestone}
-          isCelebrating={isCelebrating}
-          progress={segmentProgress}
-        />
+        <ErrorBoundary fallback={
+          <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center">
+            <p className="text-muted-foreground">Landscape view unavailable</p>
+          </div>
+        }>
+          <SimpleLandscapeAnimation 
+            environment={safeEnvironment}
+            milestone={currentMilestone}
+            isCelebrating={isCelebrating}
+            progress={segmentProgress}
+          />
+        </ErrorBoundary>
       </div>
       
       <SessionGoals />

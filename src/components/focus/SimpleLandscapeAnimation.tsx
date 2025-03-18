@@ -55,19 +55,32 @@ export const SimpleLandscapeAnimation: React.FC<SimpleLandscapeAnimationProps> =
   
   // Get the appropriate images for this environment
   const getEnvironmentImages = () => {
-    const envType = environment as keyof typeof ENVIRONMENT_IMAGES;
-    return ENVIRONMENT_IMAGES[envType] || ENVIRONMENT_IMAGES.default;
+    try {
+      const envType = environment as keyof typeof ENVIRONMENT_IMAGES;
+      return ENVIRONMENT_IMAGES[envType] || ENVIRONMENT_IMAGES.default;
+    } catch (error) {
+      console.error("Error getting environment images:", error);
+      return ENVIRONMENT_IMAGES.default;
+    }
   };
   
   const images = getEnvironmentImages();
   
   // Effect to cycle through images for animation
   useEffect(() => {
+    // Safety check to ensure component is mounted
+    let isMounted = true;
+    
     const interval = setInterval(() => {
-      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % images.length);
+      if (isMounted && images && images.length > 0) {
+        setCurrentImageIndex((prevIndex) => (prevIndex + 1) % images.length);
+      }
     }, 3000); // Change image every 3 seconds
     
-    return () => clearInterval(interval);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [images.length]);
   
   // Calculate milestone indicator positions
@@ -77,65 +90,83 @@ export const SimpleLandscapeAnimation: React.FC<SimpleLandscapeAnimationProps> =
   
   // Calculate progress indicator position
   const getProgressPosition = () => {
-    const basePosition = 10 + milestone * 25;
-    const progressOffset = (progress / 100) * 25;
+    const basePosition = 10 + (milestone || 0) * 25;
+    const progressOffset = ((progress || 0) / 100) * 25;
     return `${basePosition + progressOffset}%`;
   };
 
-  return (
-    <div className="relative w-full h-full overflow-hidden rounded-lg">
-      {/* Background Animation */}
-      <motion.div 
-        className="absolute inset-0 w-full h-full"
-        animate={{ opacity: 1 }}
-        initial={{ opacity: 0.8 }}
-        transition={{ duration: 1.5, repeat: Infinity, repeatType: "reverse" }}
-      >
-        <img 
-          src={images[currentImageIndex]} 
-          alt="Landscape" 
-          className="w-full h-full object-cover"
-        />
-      </motion.div>
-      
-      {/* Overlay for milestone indicators */}
-      <div className="absolute bottom-4 left-0 right-0 h-1 bg-white/20">
-        {/* Milestone markers */}
-        {[0, 1, 2, 3].map((i) => (
-          <div 
-            key={i}
-            className={`absolute w-3 h-3 rounded-full -top-1 transform -translate-x-1/2 ${
-              i <= milestone ? 'bg-primary' : 'bg-white/40'
-            }`}
-            style={{ left: getMilestonePosition(i) }}
+  // Safely render component with error handling
+  try {
+    return (
+      <div className="relative w-full h-full overflow-hidden rounded-lg">
+        {/* Background Animation */}
+        {images && images.length > 0 && (
+          <motion.div 
+            className="absolute inset-0 w-full h-full"
+            animate={{ opacity: 1 }}
+            initial={{ opacity: 0.8 }}
+            transition={{ duration: 1.5, repeat: Infinity, repeatType: "reverse" }}
+          >
+            <img 
+              src={images[currentImageIndex]} 
+              alt="Landscape" 
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                console.error("Image failed to load:", e);
+                e.currentTarget.src = "/placeholder.svg"; // Fallback to placeholder
+              }}
+            />
+          </motion.div>
+        )}
+        
+        {/* Overlay for milestone indicators */}
+        <div className="absolute bottom-4 left-0 right-0 h-1 bg-white/20">
+          {/* Milestone markers */}
+          {[0, 1, 2, 3].map((i) => (
+            <div 
+              key={i}
+              className={`absolute w-3 h-3 rounded-full -top-1 transform -translate-x-1/2 ${
+                i <= (milestone || 0) ? 'bg-primary' : 'bg-white/40'
+              }`}
+              style={{ left: getMilestonePosition(i) }}
+            />
+          ))}
+          
+          {/* Progress indicator */}
+          <motion.div 
+            className="absolute h-1 bg-primary rounded-r-full"
+            style={{ 
+              width: getProgressPosition(), 
+              left: 0 
+            }}
           />
-        ))}
-        
-        {/* Progress indicator */}
-        <motion.div 
-          className="absolute h-1 bg-primary rounded-r-full"
-          style={{ 
-            width: getProgressPosition(), 
-            left: 0 
-          }}
-        />
-        
-        {/* Character indicator */}
-        <motion.div 
-          className="absolute w-4 h-4 -top-1.5 bg-primary rounded-full border-2 border-white"
-          style={{ left: getProgressPosition() }}
-          animate={isCelebrating ? { 
-            y: [0, -5, 0],
-            scale: [1, 1.2, 1]
-          } : {}}
-          transition={isCelebrating ? { 
-            duration: 0.5, 
-            repeat: 3, 
-            repeatType: "reverse" 
-          } : {}}
-        />
+          
+          {/* Character indicator */}
+          <motion.div 
+            className="absolute w-4 h-4 -top-1.5 bg-primary rounded-full border-2 border-white"
+            style={{ left: getProgressPosition() }}
+            animate={isCelebrating ? { 
+              y: [0, -5, 0],
+              scale: [1, 1.2, 1]
+            } : {}}
+            transition={isCelebrating ? { 
+              duration: 0.5, 
+              repeat: 3, 
+              repeatType: "reverse" 
+            } : {}}
+          />
+        </div>
       </div>
-    </div>
-  );
+    );
+  } catch (error) {
+    console.error("Error rendering SimpleLandscapeAnimation:", error);
+    // Return a minimal fallback to prevent white screen
+    return (
+      <div className="relative w-full h-full overflow-hidden rounded-lg bg-gray-100">
+        <div className="w-full h-full flex items-center justify-center">
+          <p className="text-gray-500">Landscape view unavailable</p>
+        </div>
+      </div>
+    );
+  }
 };
-
