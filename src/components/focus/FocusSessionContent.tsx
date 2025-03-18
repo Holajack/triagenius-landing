@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { FocusTimer } from "@/components/focus/FocusTimer";
 import { HikingTrail } from "@/components/focus/HikingTrail";
 import SessionGoals from "@/components/focus/SessionGoals";
@@ -36,6 +36,36 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({
   isCelebrating,
   segmentProgress
 }) => {
+  const renderCountRef = useRef(0);
+  const lastRenderTimeRef = useRef(Date.now());
+  const previousLowPowerRef = useRef(lowPowerMode);
+  
+  // Track significant renders and low power mode changes
+  useEffect(() => {
+    renderCountRef.current++;
+    const now = Date.now();
+    const elapsed = now - lastRenderTimeRef.current;
+    
+    // Only log occasional renders to avoid flooding console
+    if (elapsed > 100 || renderCountRef.current % 10 === 0) {
+      console.log(`FocusSessionContent: Render #${renderCountRef.current} at ${now}, ${elapsed}ms since last render`);
+    }
+    
+    lastRenderTimeRef.current = now;
+    
+    // Specifically track low power mode changes
+    if (previousLowPowerRef.current !== lowPowerMode) {
+      console.log(`FocusSessionContent: lowPowerMode changed from ${previousLowPowerRef.current} to ${lowPowerMode} at ${now}`);
+      previousLowPowerRef.current = lowPowerMode;
+    }
+  });
+  
+  // Track end session button clicks
+  const handleEndClick = () => {
+    console.log(`FocusSessionContent: End session button clicked at ${Date.now()}`);
+    onEndSessionClick();
+  };
+  
   // Cast the environment string to StudyEnvironment or use a default value if it's not valid
   const validEnvironments: StudyEnvironment[] = ['office', 'park', 'home', 'coffee-shop', 'library'];
   const safeEnvironment: StudyEnvironment = validEnvironments.includes(environment as StudyEnvironment) 
@@ -50,11 +80,17 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({
         onResume={onResume}
         onComplete={onComplete}
         onMilestoneReached={onMilestoneReached}
-        onProgressUpdate={onProgressUpdate}
+        onProgressUpdate={(progress) => {
+          // Occasionally log progress updates
+          if (Math.floor(progress * 100) % 10 === 0) {
+            console.log(`FocusSessionContent: Progress update ${progress.toFixed(2)} at ${Date.now()}`);
+          }
+          onProgressUpdate(progress);
+        }}
         isPaused={isPaused}
         autoStart={true}
         showControls={false}
-        onEndSessionClick={onEndSessionClick}
+        onEndSessionClick={handleEndClick}
       />
       
       {/* Only render the HikingTrail when not in low power mode */}
