@@ -1,12 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip, PieChart, Pie, Cell, LineChart, Line } from "recharts";
-import { BarChart2, Clock, ListChecks, Zap } from "lucide-react";
+import { BarChart2, Clock, ListChecks, Zap, CheckCircle2 } from "lucide-react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/hooks/use-user";
+import { useTasks } from "@/contexts/TaskContext";
+import { PriorityLevel } from "@/types/tasks";
 
 interface WeeklyTrackerProps {
   chartType: string;
@@ -17,6 +18,7 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
   const { state } = useOnboarding();
   const [activeTab, setActiveTab] = useState("focus-time");
   const { user } = useUser();
+  const { state: taskState } = useTasks();
   
   const [focusTimeData, setFocusTimeData] = useState<{ day: string; total: number; }[]>([
     { day: "Mon", total: 0 },
@@ -61,7 +63,6 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
     return { startOfWeek, endOfWeek };
   };
   
-  // Load user's tasks and subjects from the database
   useEffect(() => {
     const loadData = async () => {
       if (!user?.id) return;
@@ -71,7 +72,6 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
       try {
         const { startOfWeek, endOfWeek } = getWeekBounds();
         
-        // Fetch focus session data
         const { data: focusData, error: focusError } = await supabase
           .from('focus_sessions')
           .select('start_time, duration, created_at')
@@ -100,7 +100,6 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
           setFocusTimeData(formattedFocusData);
         }
         
-        // Fetch user's tasks - Use only columns that exist in the tasks table
         const { data: tasksData, error: tasksError } = await supabase
           .from('tasks')
           .select('id, title, status, priority, created_at')
@@ -111,7 +110,6 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
         if (tasksError) {
           console.error('Error fetching tasks data:', tasksError);
         } else if (tasksData) {
-          // Process task completion by day
           const weeklyTaskData = {
             "Mon": 0, "Tue": 0, "Wed": 0, "Thu": 0, "Fri": 0, "Sat": 0, "Sun": 0
           };
@@ -130,7 +128,6 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
           
           setTaskData(formattedTaskData);
           
-          // Process task status counts
           const taskStatusCounts = {
             "Completed": 0,
             "In Progress": 0,
@@ -150,11 +147,9 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
           
           setTaskStatusData(formattedTaskStatusData);
           
-          // Process subject distribution using task titles since 'subject' is not available
           const titleCounts: Record<string, number> = {};
           
           tasksData.forEach(task => {
-            // Use title as the subject
             const subject = task.title || 'Untitled';
             titleCounts[subject] = (titleCounts[subject] || 0) + 1;
           });
@@ -175,7 +170,6 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
     
     loadData();
     
-    // Listen for changes to tasks and focus sessions
     const channel = supabase
       .channel('weekly-tracker-changes')
       .on('postgres_changes', 
@@ -204,14 +198,19 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
     }
   };
   
-  // Colors for pie charts
-  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088fe'];
+  const getPriorityColor = (priority: PriorityLevel) => {
+    switch (priority) {
+      case 'high': return '#ef4444';
+      case 'medium': return '#f59e0b';
+      case 'low': return '#22c55e';
+      default: return '#8884d8';
+    }
+  };
   
   const formatTooltip = (value: number, name: string) => {
     return [`${value} ${activeTab === "focus-time" ? "hrs" : "tasks"}`, name];
   };
   
-  // Render appropriate chart based on type
   const renderChart = () => {
     const data = activeTab === "focus-time" ? focusTimeData : taskData;
     
@@ -257,7 +256,6 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
           </ResponsiveContainer>
         );
       case "time":
-        // Time chart shows distribution by day
         return (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart 
@@ -372,33 +370,75 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
           <div className="flex items-center gap-2 mb-3">
             <Zap className="w-4 h-4 text-triage-purple" />
             <p className="text-sm font-medium">
-              {activeTab === "focus-time" ? "Subject Distribution" : "Task Status"}
+              {activeTab === "focus-time" ? "Subject Distribution" : "Your Tasks"}
             </p>
           </div>
           
-          <div className="space-y-2">
-            {(activeTab === "focus-time" ? subjectData : taskStatusData).map((item, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <span className="w-20 text-xs truncate">{item.name}</span>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${Math.min(100, (item.value / 10) * 100)}%`,
-                      backgroundColor: COLORS[index % COLORS.length]
-                    }}
-                  ></div>
+          {activeTab === "focus-time" ? (
+            <div className="space-y-2">
+              {subjectData.map((item, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <span className="w-20 text-xs truncate">{item.name}</span>
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${Math.min(100, (item.value / 10) * 100)}%`,
+                        backgroundColor: COLORS[index % COLORS.length]
+                      }}
+                    ></div>
+                  </div>
+                  <span className="text-xs">{item.value}</span>
                 </div>
-                <span className="text-xs">{item.value}</span>
+              ))}
+              
+              {subjectData.length === 0 && (
+                <div className="text-center py-2 text-sm text-muted-foreground">
+                  No data available. Start creating subjects to see your progress!
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[200px] overflow-y-auto">
+              {taskState.tasks.length > 0 ? (
+                taskState.tasks.map((task) => (
+                  <div key={task.id} className="flex items-center gap-2 py-1 border-b border-gray-100 last:border-0">
+                    <div 
+                      className="w-2 h-2 rounded-full" 
+                      style={{ backgroundColor: getPriorityColor(task.priority) }}
+                    ></div>
+                    <span className="text-xs truncate flex-1 max-w-[80%]">
+                      {task.title}
+                    </span>
+                    <div className="flex items-center ml-auto">
+                      {task.completed ? (
+                        <CheckCircle2 className="h-3 w-3 text-green-500" />
+                      ) : (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                          {task.subtasks.length > 0 ? 
+                            `${task.subtasks.filter(st => st.completed).length}/${task.subtasks.length}` : 
+                            "pending"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-2 text-sm text-muted-foreground">
+                  No tasks available. Add tasks in the task list below!
+                </div>
+              )}
+            </div>
+          )}
+          
+          {activeTab === "tasks" && taskState.tasks.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-dashed border-gray-200">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Total: {taskState.tasks.length} tasks</span>
+                <span>Completed: {taskState.tasks.filter(t => t.completed).length}</span>
               </div>
-            ))}
-            
-            {(activeTab === "focus-time" ? subjectData : taskStatusData).length === 0 && (
-              <div className="text-center py-2 text-sm text-muted-foreground">
-                No data available. Start creating {activeTab === "focus-time" ? "subjects" : "tasks"} to see your progress!
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
