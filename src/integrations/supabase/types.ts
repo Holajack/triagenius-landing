@@ -308,6 +308,45 @@ export type Database = {
         }
         Relationships: []
       }
+      learning_styles: {
+        Row: {
+          auditory: number
+          created_at: string
+          id: string
+          logical: number
+          physical: number
+          primary_style: string | null
+          updated_at: string
+          user_id: string
+          visual: number
+          vocal: number
+        }
+        Insert: {
+          auditory?: number
+          created_at?: string
+          id?: string
+          logical?: number
+          physical?: number
+          primary_style?: string | null
+          updated_at?: string
+          user_id: string
+          visual?: number
+          vocal?: number
+        }
+        Update: {
+          auditory?: number
+          created_at?: string
+          id?: string
+          logical?: number
+          physical?: number
+          primary_style?: string | null
+          updated_at?: string
+          user_id?: string
+          visual?: number
+          vocal?: number
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string

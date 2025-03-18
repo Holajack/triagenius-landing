@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
@@ -104,10 +103,8 @@ const LearningQuiz = () => {
   const [startTime, setStartTime] = useState<number | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   
-  // Reference to track if component is mounted
   const isMounted = useRef(true);
   
-  // Initialize the quiz on component mount
   useEffect(() => {
     if (!user) {
       toast.error("Please log in to take the quiz");
@@ -115,7 +112,6 @@ const LearningQuiz = () => {
       return;
     }
     
-    // Load the first style questions
     fetchQuestionsForStyle('Physical');
     
     return () => {
@@ -170,12 +166,9 @@ const LearningQuiz = () => {
       });
     }
     
-    // Don't show that the answer is correct/incorrect
-    // Just record it and add to score behind the scenes
     const isCorrect = answer === currentQuestions[currentQuestionIndex]?.correctAnswer;
     const responseTime = Date.now() - (startTime || Date.now());
     
-    // Calculate score - weight correctness more heavily than speed
     const responseTimeFactor = Math.max(0.1, Math.min(1.0, 5000 / responseTime));
     const pointsForQuestion = isCorrect ? (1 + responseTimeFactor) : (responseTimeFactor * 0.5);
     
@@ -184,7 +177,6 @@ const LearningQuiz = () => {
       [currentStyle]: prev[currentStyle] + pointsForQuestion
     }));
     
-    // Auto-advance after a slight delay
     setTimeout(() => {
       handleNextQuestion();
     }, 350);
@@ -197,7 +189,6 @@ const LearningQuiz = () => {
       setShowExplanation(false);
       
       if (currentQuestionIndex < currentQuestions.length - 1) {
-        // Move to the next question
         setCurrentQuestionIndex(currentQuestionIndex + 1);
         setSelectedAnswer(null);
         setStartTime(Date.now());
@@ -208,7 +199,6 @@ const LearningQuiz = () => {
     }
     
     if (currentQuestionIndex < currentQuestions.length - 1) {
-      // Move to the next question
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setSelectedAnswer(null);
       setStartTime(Date.now());
@@ -218,21 +208,16 @@ const LearningQuiz = () => {
   };
   
   const moveToNextSection = () => {
-    // This learning style section is complete
     setCompletedStyles([...completedStyles, currentStyle]);
     
-    // Find the next style to test
     const nextStyleIndex = styleOrder.findIndex(s => s === currentStyle) + 1;
     
     if (nextStyleIndex < styleOrder.length) {
-      // Move to the next learning style
       const nextStyle = styleOrder[nextStyleIndex];
       fetchQuestionsForStyle(nextStyle);
     } else {
-      // All styles completed, show results
       setIsResultsDialogOpen(true);
       
-      // Save results to database
       saveQuizResults();
     }
   };
@@ -241,29 +226,31 @@ const LearningQuiz = () => {
     if (!user) return;
     
     try {
-      // Normalize scores to percentages that add up to 100%
       const total = Object.values(quizResults).reduce((sum, val) => sum + val, 0);
       const normalizedResults = Object.entries(quizResults).reduce((obj, [key, value]) => {
         obj[key as LearningStyle] = Math.round((value / total) * 100);
         return obj;
       }, {} as Record<LearningStyle, number>);
       
-      // Get primary style (highest percentage)
       const primaryStyle = Object.entries(normalizedResults)
         .sort((a, b) => b[1] - a[1])[0][0];
       
-      // Save to Supabase
       const { error } = await supabase
-        .from('learning_styles')
+        .from('learning_metrics')
         .upsert({
           user_id: user.id,
-          physical: normalizedResults.Physical,
-          auditory: normalizedResults.Auditory,
-          visual: normalizedResults.Visual,
-          logical: normalizedResults.Logical,
-          vocal: normalizedResults.Vocal,
-          primary_style: primaryStyle,
-          created_at: new Date().toISOString()
+          cognitive_analytical: normalizedResults.Logical,
+          cognitive_memory: normalizedResults.Visual,
+          cognitive_problem_solving: normalizedResults.Physical,
+          cognitive_creativity: normalizedResults.Vocal,
+          focus_distribution: [
+            { name: "Physical", value: normalizedResults.Physical },
+            { name: "Auditory", value: normalizedResults.Auditory },
+            { name: "Visual", value: normalizedResults.Visual },
+            { name: "Logical", value: normalizedResults.Logical },
+            { name: "Vocal", value: normalizedResults.Vocal }
+          ],
+          time_of_day_data: [{ time: new Date().toISOString(), primary_style: primaryStyle }]
         });
       
       if (error) {
@@ -279,11 +266,9 @@ const LearningQuiz = () => {
     }
   };
   
-  // Calculate progress percentage across all sections
   const progressPercentage = ((completedStyles.length * 100) + 
     ((currentQuestionIndex / Math.max(1, currentQuestions.length)) * 20)) / 5;
   
-  // Get normalized percentages for results
   const getNormalizedResults = () => {
     const total = Object.values(quizResults).reduce((sum, val) => sum + val, 0);
     return Object.entries(quizResults).reduce((obj, [key, value]) => {
@@ -292,13 +277,11 @@ const LearningQuiz = () => {
     }, {} as Record<LearningStyle, number>);
   };
   
-  // Get the dominant learning style
   const getDominantStyle = () => {
     return Object.entries(getNormalizedResults())
       .sort((a, b) => b[1] - a[1])[0][0] as LearningStyle;
   };
   
-  // Get learning style recommendations
   const getRecommendations = (style: LearningStyle) => {
     switch(style) {
       case 'Physical':
@@ -314,11 +297,9 @@ const LearningQuiz = () => {
     }
   };
   
-  // Current learning style icon and color
   const CurrentIcon = styleConfigs[currentStyle]?.icon || Hand;
   const currentColor = styleConfigs[currentStyle]?.color || "bg-slate-100";
   
-  // Handle results dialog close
   const handleResultsDialogClose = () => {
     setIsResultsDialogOpen(false);
     navigate("/bonuses");
@@ -332,7 +313,6 @@ const LearningQuiz = () => {
       />
       
       <div className="mt-4">
-        {/* Progress bar and section indicator */}
         <div className="space-y-2 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -419,7 +399,6 @@ const LearningQuiz = () => {
         )}
       </div>
       
-      {/* Results Dialog */}
       <Dialog open={isResultsDialogOpen} onOpenChange={setIsResultsDialogOpen}>
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
