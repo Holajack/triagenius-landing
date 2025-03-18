@@ -40,6 +40,31 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({
   const lastProgressUpdateRef = useRef(Date.now());
   const throttleTimeRef = useRef(lowPowerMode ? 500 : 100);
   const animationFramesRef = useRef<number[]>([]);
+  const isMountedRef = useRef(true);
+  
+  // Set mounted flag and handle cleanup
+  useEffect(() => {
+    isMountedRef.current = true;
+    
+    return () => {
+      isMountedRef.current = false;
+      
+      // Cancel all stored animation frames to prevent memory leaks
+      animationFramesRef.current.forEach(id => {
+        if (id) window.cancelAnimationFrame(id);
+      });
+      animationFramesRef.current = [];
+      
+      // Also cancel any other potentially running animations
+      if (window.cancelAnimationFrame) {
+        const maxId = 100; // Safety limit to prevent infinite loops
+        const currentId = window.requestAnimationFrame(() => {});
+        for (let i = currentId; i > currentId - maxId; i--) {
+          window.cancelAnimationFrame(i);
+        }
+      }
+    };
+  }, []);
   
   // Optimize progress updates and handle low power mode changes
   useEffect(() => {
@@ -50,19 +75,10 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({
     }
   }, [lowPowerMode]);
   
-  // Cleanup animation frames on unmount
-  useEffect(() => {
-    return () => {
-      // Cancel all stored animation frames to prevent memory leaks
-      animationFramesRef.current.forEach(id => {
-        if (id) window.cancelAnimationFrame(id);
-      });
-      animationFramesRef.current = [];
-    };
-  }, []);
-  
   // Optimized progress handler with throttling
   const handleProgressUpdate = (progress: number) => {
+    if (!isMountedRef.current) return;
+    
     const now = Date.now();
     if (now - lastProgressUpdateRef.current >= throttleTimeRef.current) {
       lastProgressUpdateRef.current = now;
@@ -72,6 +88,8 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({
   
   // Handle end session clicks with proper animation cleanup
   const handleEndClick = () => {
+    if (!isMountedRef.current) return;
+    
     // Cancel any pending animations that might cause lag
     animationFramesRef.current.forEach(id => {
       if (id) window.cancelAnimationFrame(id);
@@ -88,9 +106,11 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({
     }
     
     // Introduce a very small delay before navigation to ensure UI is stable
-    setTimeout(() => {
-      onEndSessionClick();
-    }, 10);
+    requestAnimationFrame(() => {
+      if (isMountedRef.current) {
+        onEndSessionClick();
+      }
+    });
   };
   
   // Cast the environment string to StudyEnvironment or use a default value if it's not valid

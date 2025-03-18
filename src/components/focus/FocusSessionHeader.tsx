@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Battery, BatteryLow } from "lucide-react";
 import PageHeader from "@/components/common/PageHeader";
@@ -16,19 +16,43 @@ const FocusSessionHeader: React.FC<FocusSessionHeaderProps> = ({
   operationInProgress
 }) => {
   const [isToggling, setIsToggling] = useState(false);
+  const isMountedRef = useRef(true);
+  const timeoutIdRef = useRef<number | null>(null);
+  
+  // Set mounted flag and handle cleanup
+  useEffect(() => {
+    isMountedRef.current = true;
+    
+    return () => {
+      isMountedRef.current = false;
+      if (timeoutIdRef.current) {
+        window.clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
+      }
+    };
+  }, []);
   
   // Reset toggling state after a timeout
   useEffect(() => {
-    let timeoutId: number | undefined;
-    
-    if (isToggling) {
-      timeoutId = window.setTimeout(() => {
-        setIsToggling(false);
+    if (isToggling && isMountedRef.current) {
+      // Clear any existing timeout
+      if (timeoutIdRef.current) {
+        window.clearTimeout(timeoutIdRef.current);
+      }
+      
+      timeoutIdRef.current = window.setTimeout(() => {
+        if (isMountedRef.current) {
+          setIsToggling(false);
+        }
+        timeoutIdRef.current = null;
       }, 1000);
     }
     
     return () => {
-      if (timeoutId) window.clearTimeout(timeoutId);
+      if (timeoutIdRef.current) {
+        window.clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
+      }
     };
   }, [isToggling]);
   
@@ -37,7 +61,7 @@ const FocusSessionHeader: React.FC<FocusSessionHeaderProps> = ({
     e.stopPropagation(); // Prevent event bubbling
     
     // Prevent multiple rapid clicks
-    if (isToggling || operationInProgress) {
+    if (isToggling || operationInProgress || !isMountedRef.current) {
       return;
     }
     
@@ -52,11 +76,13 @@ const FocusSessionHeader: React.FC<FocusSessionHeaderProps> = ({
       }
     }
     
-    // Small delay to ensure UI is ready for state change
-    setTimeout(() => {
-      // Call the toggle function
-      toggleLowPowerMode();
-    }, 5);
+    // Use requestAnimationFrame for better performance
+    requestAnimationFrame(() => {
+      if (isMountedRef.current) {
+        // Call the toggle function
+        toggleLowPowerMode();
+      }
+    });
   };
 
   return (

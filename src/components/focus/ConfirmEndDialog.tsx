@@ -19,14 +19,14 @@ import { toast } from "sonner";
 interface ConfirmEndDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onConfirmEnd: () => void; // New prop to handle session end from the parent
 }
 
 export function ConfirmEndDialog({
   open,
   onOpenChange,
+  onConfirmEnd
 }: ConfirmEndDialogProps) {
-  const navigate = useNavigate();
-  const { user } = useUser();
   const navigationAttemptedRef = useRef(false);
   
   // Reset navigation flag when dialog closes
@@ -36,7 +36,7 @@ export function ConfirmEndDialog({
     }
   }, [open]);
   
-  const handleConfirm = async (e: React.MouseEvent) => {
+  const handleConfirm = (e: React.MouseEvent) => {
     e.preventDefault();
     
     // Prevent multiple navigation attempts
@@ -48,80 +48,11 @@ export function ConfirmEndDialog({
     // Close dialog immediately for better UX
     onOpenChange(false);
     
-    try {
-      // Get current session data
-      const sessionDataStr = localStorage.getItem('sessionData');
-      
-      if (sessionDataStr) {
-        const sessionData = JSON.parse(sessionDataStr);
-        
-        // Generate a proper UUID for database compatibility
-        let reportId = '';
-        if (crypto.randomUUID) {
-          reportId = crypto.randomUUID();
-        } else {
-          // Fallback to a timestamp-based ID if randomUUID isn't available
-          reportId = `session-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-        }
-        
-        // Prepare report data
-        const reportData = {
-          ...sessionData,
-          savedAt: new Date().toISOString(),
-          deviceId: localStorage.getItem('deviceId') || 'unknown',
-          completed: false
-        };
-        
-        // Store in localStorage first before any async operations
-        localStorage.setItem(`sessionReport_${reportId}`, JSON.stringify(reportData));
-        localStorage.setItem(`sessionNotes_${reportId}`, "");
-        localStorage.removeItem('sessionData');
-        
-        // Navigate to the report page immediately
-        setTimeout(() => {
-          try {
-            navigate(`/session-report/${reportId}`, { replace: true });
-          } catch (error) {
-            console.error("Navigation error:", error);
-            navigate("/dashboard", { replace: true });
-          }
-        }, 50);
-        
-        // Save to Supabase if online and user is logged in (after navigation to avoid blocking)
-        if (navigator.onLine && user?.id) {
-          try {
-            // The database operation happens after navigation for better UX
-            setTimeout(async () => {
-              try {
-                await supabase.from('focus_sessions').insert({
-                  id: reportId,
-                  user_id: user.id,
-                  milestone_count: sessionData.milestone || 0,
-                  duration: sessionData.duration || 0,
-                  created_at: sessionData.timestamp || new Date().toISOString(),
-                  environment: sessionData.environment || 'default',
-                  completed: false
-                });
-              } catch (error) {
-                console.error("Error saving session to database:", error);
-              }
-            }, 100);
-          } catch (error) {
-            console.error("Error scheduling database save:", error);
-          }
-        }
-      } else {
-        // No session data, redirect to dashboard
-        setTimeout(() => {
-          navigate("/dashboard", { replace: true });
-        }, 50);
-      }
-    } catch (error) {
-      console.error("Error ending session:", error);
-      setTimeout(() => {
-        navigate("/dashboard", { replace: true });
-      }, 50);
-    }
+    // Delegate the session ending to the parent component
+    // This ensures a single source of truth for navigation
+    setTimeout(() => {
+      onConfirmEnd();
+    }, 50);
   };
 
   return (

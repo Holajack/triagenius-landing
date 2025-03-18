@@ -17,12 +17,15 @@ const FocusSession = () => {
   const isMobile = useIsMobile();
   const operationInProgressRef = useRef(false);
   const operationTimeoutRef = useRef<number | null>(null);
+  const isMountedRef = useRef(true);
   
-  // Clean up animations when component unmounts
+  // Set mounted flag and clean up animations when component unmounts
   useEffect(() => {
     document.body.style.overflow = 'hidden';
+    isMountedRef.current = true;
     
     return () => {
+      isMountedRef.current = false;
       document.body.style.overflow = 'auto';
       
       // Cancel any pending timeouts
@@ -58,6 +61,7 @@ const FocusSession = () => {
     handlePause,
     handleResume,
     handleSessionEnd,
+    handleEndSessionEarly,
     handleMilestoneReached,
     handleProgressUpdate,
     toggleLowPowerMode,
@@ -68,7 +72,7 @@ const FocusSession = () => {
   } = useFocusSession();
   
   const handleLowPowerModeToggle = () => {
-    if (operationInProgressRef.current) return;
+    if (operationInProgressRef.current || !isMountedRef.current) return;
     
     operationInProgressRef.current = true;
     
@@ -79,10 +83,12 @@ const FocusSession = () => {
     
     // Small delay to prevent UI freezing
     operationTimeoutRef.current = window.setTimeout(() => {
-      toggleLowPowerMode();
-      toast.info(lowPowerMode ? "Enhanced mode activated" : "Low power mode activated", {
-        duration: 2000
-      });
+      if (isMountedRef.current) {
+        toggleLowPowerMode();
+        toast.info(lowPowerMode ? "Enhanced mode activated" : "Low power mode activated", {
+          duration: 2000
+        });
+      }
       
       // Release the lock after a short delay
       operationTimeoutRef.current = window.setTimeout(() => {
@@ -93,7 +99,7 @@ const FocusSession = () => {
   };
   
   const handleEndSessionClick = () => {
-    if (operationInProgressRef.current) return;
+    if (operationInProgressRef.current || !isMountedRef.current) return;
     
     operationInProgressRef.current = true;
     
@@ -104,10 +110,27 @@ const FocusSession = () => {
     
     // Small delay to prevent UI freezing
     operationTimeoutRef.current = window.setTimeout(() => {
-      setShowEndConfirmation(true);
+      if (isMountedRef.current) {
+        setShowEndConfirmation(true);
+      }
+      
       operationInProgressRef.current = false;
       operationTimeoutRef.current = null;
     }, 10);
+  };
+  
+  // New handler that will be passed to the confirmation dialog
+  const handleEndSessionConfirm = () => {
+    if (!isMountedRef.current) return;
+    
+    // Ensure timer is stopped first
+    if (timerRef.current) {
+      timerRef.current.stopTimer();
+    }
+    
+    // Call the session ending logic from the hook
+    // This centralizes navigation to a single code path
+    handleEndSessionEarly();
   };
 
   return (
@@ -149,6 +172,7 @@ const FocusSession = () => {
         onOpenChange={(open) => {
           setShowEndConfirmation(open);
         }}
+        onConfirmEnd={handleEndSessionConfirm}
       />
     </div>
   );
