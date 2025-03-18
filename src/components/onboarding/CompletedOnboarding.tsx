@@ -8,31 +8,26 @@ import { toast } from "sonner";
 
 const CompletedOnboarding: React.FC = () => {
   const navigate = useNavigate();
-  const isPwa = window.matchMedia('(display-mode: standalone)').matches || 
-               (window.navigator as any).standalone === true;
   
   useEffect(() => {
+    const isPwa = window.matchMedia('(display-mode: standalone)').matches || 
+                 (window.navigator as any).standalone === true;
+    
     // Show success toast when onboarding is complete
     toast.success("Welcome to The Triage System!", {
       description: "Your personalized focus experience is ready.",
       icon: <CheckCircle2 className="text-green-500" />,
     });
     
-    // Auto-navigate to dashboard after a short delay
+    // Auto-navigate to dashboard after a short delay in PWA mode
     if (isPwa) {
       const timer = setTimeout(() => {
-        console.log('CompletedOnboarding: Auto-navigating to dashboard');
         navigate('/dashboard');
-      }, 1500);
+      }, 2000);
       
       return () => clearTimeout(timer);
     }
-  }, [navigate, isPwa]);
-  
-  const handleNavigate = () => {
-    console.log('CompletedOnboarding: Manually navigating to dashboard');
-    navigate('/dashboard');
-  };
+  }, [navigate]);
   
   return (
     <div className="min-h-screen bg-white">
@@ -55,7 +50,7 @@ const CompletedOnboarding: React.FC = () => {
           <div className="flex justify-center mt-8">
             <Button 
               variant="outline" 
-              onClick={handleNavigate}
+              onClick={() => navigate('/dashboard')}
               className="px-6"
             >
               Go to Dashboard

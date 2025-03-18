@@ -21,8 +21,18 @@ const OnboardingNavigation: React.FC<OnboardingNavigationProps> = ({
   isPwa = false
 }) => {
   const handleNext = () => {
-    // Directly call onNext without delay - fixes PWA navigation
-    onNext();
+    // In PWA mode, add a subtle visual feedback
+    if (isPwa && currentStep === totalSteps - 1) {
+      const btn = document.activeElement as HTMLElement;
+      if (btn) btn.blur();
+      
+      // Add some delay for better UX in PWA
+      setTimeout(() => {
+        onNext();
+      }, 100);
+    } else {
+      onNext();
+    }
   };
 
   return (

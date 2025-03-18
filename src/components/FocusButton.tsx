@@ -26,17 +26,21 @@ const FocusButton: React.FC<FocusButtonProps> = ({
   const handleClick = () => {
     if (onClick) {
       onClick();
+      return;
     }
     
     if (navigateTo) {
-      const isPwa = window.matchMedia('(display-mode: standalone)').matches || 
-                   (window.navigator as any).standalone === true;
+      // For PWA, add a slight delay to ensure state updates before navigation
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                          (window.navigator as any).standalone === true;
       
-      // Log navigation attempt
-      console.log(`Navigating to: ${navigateTo}, isPWA: ${isPwa}`);
-      
-      // Directly navigate - no delays for PWA
-      navigate(navigateTo);
+      if (isStandalone) {
+        // Special handling for PWA navigation
+        localStorage.setItem('pwaNavigationIntent', navigateTo);
+        setTimeout(() => navigate(navigateTo), 100);
+      } else {
+        navigate(navigateTo);
+      }
     }
   };
   
