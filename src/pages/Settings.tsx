@@ -1,19 +1,43 @@
-
+import { useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import NavigationBar from "@/components/dashboard/NavigationBar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ExternalLink, Settings as SettingsIcon, Music, Info } from "lucide-react";
+import { ExternalLink, Settings as SettingsIcon, Music, Info, Bell, Shield, Sun, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import PageHeader from "@/components/common/PageHeader";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useNavigate } from "react-router-dom";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { toast } from "sonner";
+import { requestNotificationPermission } from "@/components/pwa/ServiceWorker";
 
 const Settings = () => {
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(() => {
+    return Notification.permission === 'granted';
+  });
+  const [dndEnabled, setDndEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('dndEnabled') === 'true';
+  });
+  const [dndDuringFocus, setDndDuringFocus] = useState<boolean>(() => {
+    return localStorage.getItem('dndDuringFocus') === 'true' || true;
+  });
+  const [dndDuringReflection, setDndDuringReflection] = useState<boolean>(() => {
+    return localStorage.getItem('dndDuringReflection') === 'true' || false;
+  });
+  const [dataSaving, setDataSaving] = useState<boolean>(() => {
+    return localStorage.getItem('dataSavingMode') === 'true' || false;
+  });
+  const [autoPlayMusic, setAutoPlayMusic] = useState<boolean>(() => {
+    return localStorage.getItem('autoPlayMusic') !== 'false';
+  });
+  const [highContrastMode, setHighContrastMode] = useState<boolean>(() => {
+    return localStorage.getItem('highContrastMode') === 'true' || false;
+  });
 
   // Music attribution data organized by categories
   const musicAttributions = {
@@ -107,7 +131,58 @@ const Settings = () => {
         license: "Free No Copyright Music Download",
       },
     ],
-    // More categories can be added here in the future
+  };
+
+  const handleToggleNotifications = async () => {
+    try {
+      const permissionResult = await requestNotificationPermission();
+      setNotificationsEnabled(permissionResult);
+      
+      if (permissionResult) {
+        toast.success("Notifications enabled");
+      } else {
+        toast.error("Notification permission denied", {
+          description: "Please enable notifications in your browser settings"
+        });
+      }
+    } catch (error) {
+      console.error("Error requesting notification permission:", error);
+      toast.error("Failed to update notification settings");
+    }
+  };
+
+  const handleToggleDND = (value: boolean) => {
+    setDndEnabled(value);
+    localStorage.setItem('dndEnabled', value.toString());
+    toast.success(value ? "Do Not Disturb enabled" : "Do Not Disturb disabled");
+  };
+
+  const handleToggleDNDDuringFocus = (value: boolean) => {
+    setDndDuringFocus(value);
+    localStorage.setItem('dndDuringFocus', value.toString());
+  };
+
+  const handleToggleDNDDuringReflection = (value: boolean) => {
+    setDndDuringReflection(value);
+    localStorage.setItem('dndDuringReflection', value.toString());
+  };
+
+  const handleToggleDataSaving = (value: boolean) => {
+    setDataSaving(value);
+    localStorage.setItem('dataSavingMode', value.toString());
+    toast.success(`Data saving mode ${value ? 'enabled' : 'disabled'}`);
+  };
+
+  const handleToggleAutoPlayMusic = (value: boolean) => {
+    setAutoPlayMusic(value);
+    localStorage.setItem('autoPlayMusic', value.toString());
+  };
+
+  const handleToggleHighContrastMode = (value: boolean) => {
+    setHighContrastMode(value);
+    localStorage.setItem('highContrastMode', value.toString());
+    document.documentElement.classList.toggle('high-contrast-mode', value);
+    toast.success(`High contrast mode ${value ? 'enabled' : 'disabled'}`);
   };
 
   return (
@@ -115,8 +190,9 @@ const Settings = () => {
       <PageHeader title="Settings" subtitle="Customize your experience" />
 
       <Tabs defaultValue="general" className="mb-6">
-        <TabsList className="w-full">
+        <TabsList className="w-full grid-cols-3">
           <TabsTrigger value="general" className="flex-1">General</TabsTrigger>
+          <TabsTrigger value="permissions" className="flex-1">Permissions</TabsTrigger>
           <TabsTrigger value="attribution" className="flex-1">Attribution</TabsTrigger>
         </TabsList>
         
@@ -130,6 +206,62 @@ const Settings = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Theme</p>
+                    <p className="text-sm text-muted-foreground">Toggle light and dark mode</p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={toggleTheme}
+                    className="h-9 w-9"
+                  >
+                    {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                  </Button>
+                </div>
+                
+                <Separator />
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">High Contrast Mode</p>
+                    <p className="text-sm text-muted-foreground">Increase visual contrast</p>
+                  </div>
+                  <Switch 
+                    checked={highContrastMode}
+                    onCheckedChange={handleToggleHighContrastMode}
+                  />
+                </div>
+                
+                <Separator />
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Data Saving Mode</p>
+                    <p className="text-sm text-muted-foreground">Use less data for images and animations</p>
+                  </div>
+                  <Switch 
+                    checked={dataSaving}
+                    onCheckedChange={handleToggleDataSaving}
+                  />
+                </div>
+                
+                <Separator />
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Auto-play Music</p>
+                    <p className="text-sm text-muted-foreground">Start music automatically in focus sessions</p>
+                  </div>
+                  <Switch 
+                    checked={autoPlayMusic}
+                    onCheckedChange={handleToggleAutoPlayMusic}
+                  />
+                </div>
+                
+                <Separator />
+                
                 <div>
                   <p className="font-medium">App Version</p>
                   <p className="text-sm text-muted-foreground">1.0.0</p>
@@ -145,6 +277,74 @@ const Settings = () => {
                   >
                     User Profile Settings
                   </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="permissions" className="pt-4">
+          <Card className="mb-6">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center">
+                <Shield className="h-5 w-5 mr-2 text-primary" />
+                Permissions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Notifications</p>
+                    <p className="text-sm text-muted-foreground">Allow app to send notifications</p>
+                  </div>
+                  <Switch 
+                    checked={notificationsEnabled}
+                    onCheckedChange={handleToggleNotifications}
+                  />
+                </div>
+                
+                <Separator />
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Do Not Disturb</p>
+                    <p className="text-sm text-muted-foreground">Pause notifications</p>
+                  </div>
+                  <Switch 
+                    checked={dndEnabled}
+                    onCheckedChange={handleToggleDND}
+                  />
+                </div>
+                
+                <Collapsible className="mt-2" open={dndEnabled}>
+                  <CollapsibleContent className="space-y-3 pl-4 pr-0">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm">During focus sessions</p>
+                      <Switch 
+                        checked={dndDuringFocus}
+                        onCheckedChange={handleToggleDNDDuringFocus}
+                        disabled={!dndEnabled}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm">During session reflections</p>
+                      <Switch 
+                        checked={dndDuringReflection}
+                        onCheckedChange={handleToggleDNDDuringReflection}
+                        disabled={!dndEnabled}
+                      />
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+                
+                <Separator />
+                
+                <div className="rounded-md bg-muted p-4">
+                  <p className="text-sm text-muted-foreground">
+                    Additional permissions for camera, microphone and location can be managed in your browser settings
+                  </p>
                 </div>
               </div>
             </CardContent>
