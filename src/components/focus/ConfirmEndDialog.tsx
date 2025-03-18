@@ -1,5 +1,6 @@
 
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +26,8 @@ export function ConfirmEndDialog({
   onConfirm,
   onCancel,
 }: ConfirmEndDialogProps) {
+  const navigate = useNavigate();
+  
   // Get PWA status
   const isPwa = localStorage.getItem('isPWA') === 'true';
   
@@ -42,10 +45,25 @@ export function ConfirmEndDialog({
       // Close dialog immediately first to prevent UI blocking
       onOpenChange(false);
       
-      // Very short timeout to ensure UI updates before heavy processing
+      // Generate a session report ID
+      const reportId = `session_${Date.now()}`;
+      
+      // Save session data - minimal approach for mobile
+      try {
+        // Get current session data if available
+        const sessionData = localStorage.getItem('sessionData');
+        if (sessionData) {
+          // Store it as a report
+          localStorage.setItem(`sessionReport_${reportId}`, sessionData);
+        }
+      } catch (e) {
+        console.error('Error saving session data', e);
+      }
+      
+      // Very short timeout to ensure UI updates before navigation
       requestAnimationFrame(() => {
-        // Call the confirm handler with minimal delay
-        onConfirm();
+        // Navigate directly to the session report page
+        navigate(`/session-report/${reportId}`, { replace: true });
       });
     } else {
       // Standard behavior for non-PWA

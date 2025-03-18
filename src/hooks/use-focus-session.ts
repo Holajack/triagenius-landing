@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -236,8 +237,17 @@ export const useFocusSession = () => {
           savedAt: new Date().toISOString()
         }));
         
-        // Navigate immediately to the session report page
-        navigate(`/session-report/${reportId}`, { replace: true });
+        // Check if we're on a mobile device for special handling
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        
+        if (isMobile) {
+          // For mobile PWA, navigate directly to the report page for better performance
+          navigate(`/session-report/${reportId}`, { replace: true });
+        } else {
+          // For desktop PWA, standard navigation 
+          navigate(`/session-report/${reportId}`, { replace: true });
+        }
+        
         isEndingRef.current = false;
         operationInProgressRef.current = false;
       } catch (e) {
@@ -294,8 +304,45 @@ export const useFocusSession = () => {
       
       setShowEndConfirmation(false);
       
-      // Immediate navigation to end session report for PWA
-      handleEndSessionEarly();
+      // Check if we're on a mobile device for special handling
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
+      // Create report ID for consistency
+      const reportId = `session_${Date.now()}`;
+      
+      if (isMobile) {
+        // For mobile PWA, prepare minimal data and navigate immediately
+        try {
+          // Prepare session data for report
+          const reportKey = `sessionReport_${reportId}`;
+          const sessionData = {
+            milestone: currentMilestone,
+            duration: currentMilestone * 45,
+            timestamp: new Date().toISOString(),
+            environment: localStorage.getItem('environment') || 'default',
+          };
+          
+          // Save session data with minimal processing
+          localStorage.setItem('sessionData', JSON.stringify(sessionData));
+          localStorage.setItem(reportKey, JSON.stringify({
+            ...sessionData,
+            notes: "",
+            savedAt: new Date().toISOString()
+          }));
+          
+          // Navigate directly to report page - immediately and with replace:true
+          navigate(`/session-report/${reportId}`, { replace: true });
+          operationInProgressRef.current = false;
+        } catch (e) {
+          console.error("Error in mobile PWA session end:", e);
+          // Emergency fallback
+          navigate("/dashboard", { replace: true });
+          operationInProgressRef.current = false;
+        }
+      } else {
+        // For desktop PWA, use standard flow
+        handleEndSessionEarly();
+      }
       return;
     }
     

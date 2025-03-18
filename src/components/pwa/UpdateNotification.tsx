@@ -80,11 +80,12 @@ export function UpdateNotification() {
             
             // Show toast notification with proper domain detection
             const hostname = window.location.hostname;
+            const isProduction = hostname === 'triagenius-landing.lovable.app';
             const isDev = hostname.includes('lovableproject.com');
             
             toast({
               title: "Update Available",
-              description: `A new version is available on ${isDev ? 'preview' : 'production'}. Tap to refresh.`,
+              description: `A new version is available${isProduction ? ' for production' : isDev ? ' on preview' : ''}. Tap to refresh.`,
               action: (
                 <button 
                   onClick={refreshApp}
