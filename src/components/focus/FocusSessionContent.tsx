@@ -21,14 +21,14 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({ sessionData, 
           data-walkthrough="focus-timer"
         >
           <FocusTimer 
-            initialTime={sessionData?.duration || 25 * 60} 
-            onSessionEnd={onEndSession}
             onPause={() => {}}
             onResume={() => {}}
             onComplete={onEndSession}
             isPaused={false}
             autoStart={false}
             showControls={true}
+            onEndSessionClick={handleEndSession}
+            onMilestoneReached={() => {}}
           />
         </div>
         <div className="text-center">

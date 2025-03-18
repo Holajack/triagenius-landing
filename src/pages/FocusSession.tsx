@@ -56,7 +56,9 @@ const FocusSession = () => {
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 relative overflow-hidden">
       <div data-walkthrough="focus-header">
         <FocusSessionHeader
-          onEndSession={handleEndSession}
+          lowPowerMode={false}
+          toggleLowPowerMode={() => {}}
+          operationInProgress={false}
         />
       </div>
       
