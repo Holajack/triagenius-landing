@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
         
         if (error) {
           console.error('Error fetching users:', error);
+          toast.error("Failed to load users");
           return;
         }
         
@@ -74,6 +76,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
         
       } catch (error) {
         console.error('Error in fetchAllUsers:', error);
+        toast.error("Failed to load users");
       } finally {
         setLoading(false);
       }
@@ -120,6 +123,28 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     };
     
     fetchFriendRequests();
+
+    // Set up realtime subscription to profile changes
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles'
+        },
+        (payload) => {
+          // Refresh user list when profiles change
+          fetchAllUsers();
+        }
+      )
+      .subscribe();
+
+    // Cleanup function
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
   
   useEffect(() => {
