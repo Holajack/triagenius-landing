@@ -248,17 +248,29 @@ const LearningQuiz = () => {
         return obj;
       }, {} as Record<LearningStyle, number>);
       
+      // Get primary style (highest percentage)
+      const primaryStyle = Object.entries(normalizedResults)
+        .sort((a, b) => b[1] - a[1])[0][0];
+      
       // Save to Supabase
-      await supabase.from('learning_styles').upsert([{
-        user_id: user.id,
-        physical: normalizedResults.Physical,
-        auditory: normalizedResults.Auditory,
-        visual: normalizedResults.Visual,
-        logical: normalizedResults.Logical,
-        vocal: normalizedResults.Vocal,
-        primary_style: Object.entries(normalizedResults).sort((a, b) => b[1] - a[1])[0][0],
-        created_at: new Date().toISOString()
-      }]);
+      const { error } = await supabase
+        .from('learning_styles')
+        .upsert({
+          user_id: user.id,
+          physical: normalizedResults.Physical,
+          auditory: normalizedResults.Auditory,
+          visual: normalizedResults.Visual,
+          logical: normalizedResults.Logical,
+          vocal: normalizedResults.Vocal,
+          primary_style: primaryStyle,
+          created_at: new Date().toISOString()
+        });
+      
+      if (error) {
+        console.error("Error saving learning styles:", error);
+        toast.error("Failed to save your results. Please try again.");
+        return;
+      }
       
       toast.success("Your learning profile has been saved!");
     } catch (error) {
