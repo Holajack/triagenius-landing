@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -43,6 +43,26 @@ const FocusSession = () => {
     setShowEndConfirmation
   } = useFocusSession();
 
+  // Debug logging for component initialization and prop status
+  useEffect(() => {
+    console.log("FocusSession: Component mounted");
+    console.log("FocusSession: Initial state:", { 
+      isPaused, 
+      showEndConfirmation, 
+      currentMilestone,
+      environment: state.environment
+    });
+    
+    return () => {
+      console.log("FocusSession: Component unmounting");
+    };
+  }, []);
+
+  // Debug logging for dialog state changes
+  useEffect(() => {
+    console.log("FocusSession: showEndConfirmation changed to", showEndConfirmation);
+  }, [showEndConfirmation]);
+
   return (
     <div className={cn(
       "min-h-screen bg-background text-foreground flex flex-col items-center p-4 overflow-hidden",
@@ -63,7 +83,10 @@ const FocusSession = () => {
           onMilestoneReached={handleMilestoneReached}
           onProgressUpdate={handleProgressUpdate}
           isPaused={isPaused}
-          onEndSessionClick={() => setShowEndConfirmation(true)}
+          onEndSessionClick={() => {
+            console.log("FocusSession: End session button clicked, showing confirmation dialog");
+            setShowEndConfirmation(true);
+          }}
           lowPowerMode={lowPowerMode}
           environment={state.environment}
           currentMilestone={currentMilestone}
@@ -79,9 +102,18 @@ const FocusSession = () => {
 
       <ConfirmEndDialog
         open={showEndConfirmation}
-        onOpenChange={setShowEndConfirmation}
-        onConfirm={handleEndSessionConfirm}
-        onCancel={() => setShowEndConfirmation(false)}
+        onOpenChange={(open) => {
+          console.log("FocusSession: ConfirmEndDialog onOpenChange called with", open);
+          setShowEndConfirmation(open);
+        }}
+        onConfirm={() => {
+          console.log("FocusSession: ConfirmEndDialog onConfirm called");
+          handleEndSessionConfirm();
+        }}
+        onCancel={() => {
+          console.log("FocusSession: ConfirmEndDialog onCancel called");
+          setShowEndConfirmation(false);
+        }}
       />
     </div>
   );
