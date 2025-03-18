@@ -1,6 +1,5 @@
-
 // Cache version identifier - change this when files are updated
-const CACHE_NAME = 'triage-system-v2'; // Updated cache version
+const CACHE_NAME = 'triage-system-v3'; // Updated cache version for better navigation
 
 // Add list of files to cache for offline access
 const STATIC_ASSETS = [
@@ -28,7 +27,13 @@ const APP_ROUTES = [
   '/auth',
   '/login',
   '/register',
-  '/onboarding'
+  '/onboarding',
+  '/session-report',
+  '/session-reflection',
+  '/break-timer',
+  '/leaderboard',
+  '/nora',
+  '/bonuses'
 ];
 
 // Install event - cache static resources
@@ -108,9 +113,9 @@ const isSpaRoute = (url) => {
   );
 };
 
-// Add special handling for navigation during session transitions
+// Add special handling for navigation during session transitions with improved offline support
 self.addEventListener('navigate', event => {
-  // Enhance PWA navigation performance, especially for session transitions
+  // Enhance PWA navigation performance, especially for auth transitions
   if (event.request.mode === 'navigate') {
     event.respondWith(
       (async () => {
@@ -120,12 +125,20 @@ self.addEventListener('navigate', event => {
           if (preloadResponse) return preloadResponse;
           
           const networkResponse = await fetch(event.request);
+          
+          // Cache successful network responses for offline use
+          if (networkResponse.ok) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(event.request, networkResponse.clone());
+          }
+          
           return networkResponse;
         } catch (error) {
+          console.log('[Service Worker] Navigation fetch failed, falling back to cache');
           // Fall back to cache
           const cache = await caches.open(CACHE_NAME);
-          const cachedResponse = await cache.match(event.request);
-          return cachedResponse || await caches.match('/index.html');
+          const cachedResponse = await cache.match(event.request) || await caches.match('/index.html');
+          return cachedResponse;
         }
       })()
     );
@@ -337,6 +350,22 @@ self.addEventListener('message', event => {
         client.postMessage({
           type: 'SESSION_TRANSITION',
           message: 'Focus session ended'
+        });
+      });
+    });
+  }
+  
+  // Add special handling for authentication intent
+  if (event.data && event.data.type === 'AUTH_NAVIGATION') {
+    console.log('Processing authentication navigation intent');
+    
+    // Notify all clients about the auth transition
+    self.clients.matchAll().then(clients => {
+      clients.forEach(client => {
+        client.postMessage({
+          type: 'AUTH_TRANSITION',
+          message: 'Authentication status changed',
+          target: event.data.target || '/dashboard'
         });
       });
     });

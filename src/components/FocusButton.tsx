@@ -1,82 +1,67 @@
 
-import { useState } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
-import { motion, AnimatePresence } from "framer-motion";
-import { Target, Play, Timer } from "lucide-react";
-import { useTheme } from "@/contexts/ThemeContext";
+import { Play, LogIn, ArrowUpRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface FocusButtonProps {
   label: string;
-  icon?: "target" | "play" | "timer";
-  onClick?: () => void;
+  icon?: "play" | "login" | "arrow";
   isPrimary?: boolean;
   className?: string;
   navigateTo?: string;
+  onClick?: () => void;
 }
 
-const FocusButton = ({ 
-  label, 
-  icon = "target", 
-  onClick, 
+const FocusButton: React.FC<FocusButtonProps> = ({
+  label,
+  icon = "play",
   isPrimary = true,
   className = "",
-  navigateTo
-}: FocusButtonProps) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const { theme } = useTheme();
+  navigateTo,
+  onClick
+}) => {
   const navigate = useNavigate();
   
   const handleClick = () => {
-    if (navigateTo) {
-      navigate(navigateTo);
-    } else if (onClick) {
+    if (onClick) {
       onClick();
+      return;
+    }
+    
+    if (navigateTo) {
+      // For PWA, add a slight delay to ensure state updates before navigation
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                          (window.navigator as any).standalone === true;
+      
+      if (isStandalone) {
+        // Special handling for PWA navigation
+        localStorage.setItem('pwaNavigationIntent', navigateTo);
+        setTimeout(() => navigate(navigateTo), 100);
+      } else {
+        navigate(navigateTo);
+      }
     }
   };
   
-  const getIcon = () => {
-    switch (icon) {
-      case "target":
-        return <Target className="w-5 h-5 mr-2" />;
-      case "play":
-        return <Play className="w-5 h-5 mr-2" />;
-      case "timer":
-        return <Timer className="w-5 h-5 mr-2" />;
-      default:
-        return <Target className="w-5 h-5 mr-2" />;
-    }
+  const IconComponent = () => {
+    if (icon === "play") return <Play className="w-4 h-4 mr-2" />;
+    if (icon === "login") return <LogIn className="w-4 h-4 mr-2" />;
+    if (icon === "arrow") return <ArrowUpRight className="w-4 h-4 mr-2" />;
+    return null;
   };
 
   return (
     <Button
-      className={`relative group overflow-hidden transition-all duration-300 px-6 py-6 h-auto ${
-        isPrimary 
-          ? "button-gradient text-white" 
-          : theme === 'dark' 
-            ? "bg-gray-800 border border-gray-700 text-gray-100 hover:bg-gray-700" 
-            : "bg-white border border-gray-200 text-gray-800 hover:bg-gray-50"
-      } rounded-xl subtle-shadow ${className}`}
       onClick={handleClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      className={`${
+        isPrimary
+          ? "bg-triage-purple hover:bg-triage-indigo text-white"
+          : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+      } py-3 px-5 rounded-xl text-base font-medium transition-colors ${className}`}
     >
-      <span className="flex items-center justify-center relative z-10">
-        {getIcon()}
-        <span className="font-medium">{label}</span>
-      </span>
-      
-      <AnimatePresence>
-        {isHovered && isPrimary && (
-          <motion.span
-            className="absolute inset-0 bg-white/10"
-            initial={{ x: "-100%", opacity: 0.5 }}
-            animate={{ x: "100%", opacity: 0.2 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
-          />
-        )}
-      </AnimatePresence>
+      <IconComponent />
+      {label}
     </Button>
   );
 };

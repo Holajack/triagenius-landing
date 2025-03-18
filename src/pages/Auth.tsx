@@ -17,6 +17,7 @@ const Auth = () => {
   const [isPwa, setIsPwa] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isOffline, setIsOffline] = useState(false);
+  const [authIntent, setAuthIntent] = useState<string | null>(null);
 
   useEffect(() => {
     // Check network status
@@ -24,6 +25,13 @@ const Auth = () => {
     
     const handleOnlineStatus = () => {
       setIsOffline(!navigator.onLine);
+      
+      // Show toast when coming back online
+      if (navigator.onLine) {
+        toast.success("You're back online!");
+      } else {
+        toast.warning("You're offline. Limited functionality available.");
+      }
     };
     
     window.addEventListener('online', handleOnlineStatus);
@@ -45,6 +53,13 @@ const Auth = () => {
       console.log('Auth: Running in PWA/standalone mode');
     }
     
+    // Check if there's a stored intent from home page
+    const storedIntent = localStorage.getItem('pwaNavigationIntent');
+    if (storedIntent === '/auth') {
+      localStorage.removeItem('pwaNavigationIntent');
+      setAuthIntent('start-focusing');
+    }
+    
     // Check if user is already authenticated
     const checkAuth = async () => {
       try {
@@ -54,8 +69,30 @@ const Auth = () => {
         if (data.session) {
           setIsAuthenticated(true);
           
+          // Check onboarding status
+          try {
+            const { data: onboardingData } = await supabase
+              .from('onboarding_preferences')
+              .select('is_onboarding_complete')
+              .eq('user_id', data.session.user.id)
+              .maybeSingle();
+            
+            // If onboarding not completed, redirect to onboarding
+            if (!onboardingData?.is_onboarding_complete) {
+              // If in PWA mode, add delay for better navigation
+              if (isStandalone) {
+                setTimeout(() => navigate("/onboarding"), 300);
+              } else {
+                navigate("/onboarding");
+              }
+              return;
+            }
+          } catch (error) {
+            console.error("Error checking onboarding status:", error);
+          }
+          
           // If already authenticated, redirect to appropriate page with a delay in PWA mode
-          if (isFromStartFocusing) {
+          if (isFromStartFocusing || authIntent === 'start-focusing') {
             if (isStandalone) {
               setTimeout(() => navigate("/onboarding"), 300);
             } else {
@@ -81,7 +118,21 @@ const Auth = () => {
     };
     
     checkAuth();
-  }, [navigate, isFromStartFocusing]);
+    
+    // Listen for auth navigation messages from service worker
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'AUTH_TRANSITION') {
+        console.log('Received auth transition message:', event.data);
+        checkAuth();
+      }
+    };
+    
+    navigator.serviceWorker?.addEventListener('message', handleServiceWorkerMessage);
+    
+    return () => {
+      navigator.serviceWorker?.removeEventListener('message', handleServiceWorkerMessage);
+    };
+  }, [navigate, isFromStartFocusing, authIntent]);
   
   if (isLoading) {
     return (
@@ -113,11 +164,14 @@ const Auth = () => {
         <div className="max-w-md mx-auto">
           {isOffline && (
             <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-md text-sm">
-              You are currently offline. Some features may be limited.
+              <p className="font-medium mb-1">You are currently offline</p>
+              <p className="text-xs">
+                You can still sign in if you've logged in before, but new registrations require an internet connection.
+              </p>
             </div>
           )}
           
-          {isFromStartFocusing ? (
+          {isFromStartFocusing || authIntent === 'start-focusing' ? (
             <div className="mb-6 text-center">
               <h1 className="text-2xl font-bold mb-2">Create Your Account</h1>
               <p className="text-sm text-triage-purple bg-purple-50 p-3 rounded-lg">
@@ -130,18 +184,24 @@ const Auth = () => {
             </h1>
           )}
           
-          <Tabs defaultValue={isFromStartFocusing ? "signup" : initialMode} className="w-full">
+          <Tabs defaultValue={isFromStartFocusing || authIntent === 'start-focusing' ? "signup" : initialMode} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="login">Log In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
             
             <TabsContent value="login">
-              <AuthForm mode="login" source={isFromStartFocusing ? "start-focusing" : location.state?.source} />
+              <AuthForm 
+                mode="login" 
+                source={isFromStartFocusing || authIntent === 'start-focusing' ? "start-focusing" : location.state?.source} 
+              />
             </TabsContent>
             
             <TabsContent value="signup">
-              <AuthForm mode="signup" source={isFromStartFocusing ? "start-focusing" : location.state?.source} />
+              <AuthForm 
+                mode="signup" 
+                source={isFromStartFocusing || authIntent === 'start-focusing' ? "start-focusing" : location.state?.source} 
+              />
             </TabsContent>
           </Tabs>
         </div>

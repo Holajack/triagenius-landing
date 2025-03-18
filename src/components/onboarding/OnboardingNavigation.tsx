@@ -9,6 +9,7 @@ interface OnboardingNavigationProps {
   canProceed: boolean;
   onNext: () => void;
   onBack: () => void;
+  isPwa?: boolean;
 }
 
 const OnboardingNavigation: React.FC<OnboardingNavigationProps> = ({ 
@@ -16,8 +17,24 @@ const OnboardingNavigation: React.FC<OnboardingNavigationProps> = ({
   totalSteps,
   canProceed,
   onNext,
-  onBack 
+  onBack,
+  isPwa = false
 }) => {
+  const handleNext = () => {
+    // In PWA mode, add a subtle visual feedback
+    if (isPwa && currentStep === totalSteps - 1) {
+      const btn = document.activeElement as HTMLElement;
+      if (btn) btn.blur();
+      
+      // Add some delay for better UX in PWA
+      setTimeout(() => {
+        onNext();
+      }, 100);
+    } else {
+      onNext();
+    }
+  };
+
   return (
     <div className="flex justify-between mt-8">
       <Button
@@ -29,7 +46,7 @@ const OnboardingNavigation: React.FC<OnboardingNavigationProps> = ({
         <ArrowLeft className="w-4 h-4 mr-1" /> Back
       </Button>
       <Button 
-        onClick={onNext}
+        onClick={handleNext}
         className="bg-triage-purple hover:bg-triage-purple/90 text-white"
         disabled={!canProceed}
         size="sm"
