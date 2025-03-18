@@ -42,7 +42,6 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
   const [milestoneReached, setMilestoneReached] = useState(0);
   const timerRef = useRef<number>();
   const notificationShownRef = useRef(false);
-  const lastMilestoneTimeRef = useRef(0);
   
   // Calculate elapsed time based on the original time and current time
   // This is used for milestone tracking
@@ -242,24 +241,24 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
   };
 
   const handleEndSessionClick = () => {
-    if (time > 0 && isActive) {
-      if (onEndSessionClick) {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = undefined;
+    }
+    
+    setIsActive(false);
+    
+    if (onEndSessionClick) {
+      setTimeout(() => {
         onEndSessionClick();
-      } else {
-        // In case there's no external handler, directly call onComplete
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = undefined;
-        }
-        setIsActive(false);
-        onComplete();
-      }
+      }, 50);
     } else {
-      onComplete();
+      setTimeout(() => {
+        onComplete();
+      }, 50);
     }
   };
 
-  // Calculate the overall session progress (out of 3 hours)
   const calculateOverallProgress = () => {
     const completedTime = elapsedTimeRef.current + (initialTimeRef.current - time);
     return Math.min((completedTime / TOTAL_SESSION_TIME) * 100, 100);
@@ -320,7 +319,6 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
           </div>
         )}
         
-        {/* Current segment progress */}
         <Progress value={progress} className="w-full" />
         
         <div className="flex gap-4">

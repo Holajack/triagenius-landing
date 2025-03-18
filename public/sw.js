@@ -1,5 +1,5 @@
 // Cache version identifier - change this when files are updated
-const CACHE_NAME = 'triage-system-v1';
+const CACHE_NAME = 'triage-system-v2'; // Updated cache version
 
 // Add list of files to cache for offline access
 const STATIC_ASSETS = [
@@ -106,6 +106,30 @@ const isSpaRoute = (url) => {
     route !== '/' && pathname.startsWith(route + '/')
   );
 };
+
+// Add special handling for navigation during session transitions
+self.addEventListener('navigate', event => {
+  // Enhance PWA navigation performance, especially for session transitions
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      (async () => {
+        try {
+          // Try network first for fresh content
+          const preloadResponse = await event.preloadResponse;
+          if (preloadResponse) return preloadResponse;
+          
+          const networkResponse = await fetch(event.request);
+          return networkResponse;
+        } catch (error) {
+          // Fall back to cache
+          const cache = await caches.open(CACHE_NAME);
+          const cachedResponse = await cache.match(event.request);
+          return cachedResponse || await caches.match('/index.html');
+        }
+      })()
+    );
+  }
+});
 
 // Fetch event handler using network-first strategy for API/dynamic content
 // and cache-first strategy for static assets
@@ -295,10 +319,26 @@ self.addEventListener('notificationclick', event => {
   );
 });
 
-// Message event handler for client-service worker communication
+// Enhance message handling for PWA session transitions
 self.addEventListener('message', event => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+    console.log('Service worker skipping waiting phase');
+  }
+  
+  if (event.data && event.data.type === 'SESSION_ENDED') {
+    // Special handling for session end events
+    console.log('Focus session ended early, ensuring smooth transition');
+    
+    // Notify all clients about the session transition
+    self.clients.matchAll().then(clients => {
+      clients.forEach(client => {
+        client.postMessage({
+          type: 'SESSION_TRANSITION',
+          message: 'Focus session ended'
+        });
+      });
+    });
   }
 });
 
