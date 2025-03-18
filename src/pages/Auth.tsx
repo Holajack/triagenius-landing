@@ -15,9 +15,9 @@ const Auth = () => {
   const initialMode = location.state?.mode || "login";
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isPwa, setIsPwa] = useState(false);
+  const [isMobilePwa, setIsMobilePwa] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isOffline, setIsOffline] = useState(false);
-  const [authIntent, setAuthIntent] = useState<string | null>(null);
 
   useEffect(() => {
     // Check network status
@@ -44,20 +44,17 @@ const Auth = () => {
   }, []);
 
   useEffect(() => {
-    // Check if running as PWA
+    // Check if running as PWA and if on mobile
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                         (window.navigator as any).standalone === true;
     setIsPwa(isStandalone);
     
-    if (isStandalone) {
-      console.log('Auth: Running in PWA/standalone mode');
-    }
+    // Check if on mobile device
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    setIsMobilePwa(isStandalone && isMobile);
     
-    // Check if there's a stored intent from home page
-    const storedIntent = localStorage.getItem('pwaNavigationIntent');
-    if (storedIntent === '/auth') {
-      localStorage.removeItem('pwaNavigationIntent');
-      setAuthIntent('start-focusing');
+    if (isStandalone) {
+      console.log('Auth: Running in PWA/standalone mode, Mobile:', isMobile);
     }
     
     // Check if user is already authenticated
@@ -79,10 +76,12 @@ const Auth = () => {
             
             // If onboarding not completed, redirect to onboarding
             if (!onboardingData?.is_onboarding_complete) {
-              // If in PWA mode, add delay for better navigation
-              if (isStandalone) {
-                setTimeout(() => navigate("/onboarding"), 300);
+              // For mobile PWA, always use direct navigation
+              if (isMobilePwa) {
+                console.log('Mobile PWA: Redirecting directly to onboarding');
+                navigate("/onboarding");
               } else {
+                // For browser or desktop, use original approach
                 navigate("/onboarding");
               }
               return;
@@ -91,17 +90,23 @@ const Auth = () => {
             console.error("Error checking onboarding status:", error);
           }
           
-          // If already authenticated, redirect to appropriate page with a delay in PWA mode
-          if (isFromStartFocusing || authIntent === 'start-focusing') {
-            if (isStandalone) {
-              setTimeout(() => navigate("/onboarding"), 300);
+          // If already authenticated, redirect to appropriate page
+          if (isFromStartFocusing) {
+            // For mobile PWA, use direct navigation
+            if (isMobilePwa) {
+              console.log('Mobile PWA: Redirecting directly to focus session');
+              navigate("/focus-session");
             } else {
-              navigate("/onboarding");
+              // For browser or desktop, use original approach
+              navigate("/focus-session");
             }
           } else {
-            if (isStandalone) {
-              setTimeout(() => navigate("/dashboard"), 300);
+            // For mobile PWA, use direct navigation
+            if (isMobilePwa) {
+              console.log('Mobile PWA: Redirecting directly to dashboard');
+              navigate("/dashboard");
             } else {
+              // For browser or desktop, use original approach
               navigate("/dashboard");
             }
           }
@@ -118,21 +123,7 @@ const Auth = () => {
     };
     
     checkAuth();
-    
-    // Listen for auth navigation messages from service worker
-    const handleServiceWorkerMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === 'AUTH_TRANSITION') {
-        console.log('Received auth transition message:', event.data);
-        checkAuth();
-      }
-    };
-    
-    navigator.serviceWorker?.addEventListener('message', handleServiceWorkerMessage);
-    
-    return () => {
-      navigator.serviceWorker?.removeEventListener('message', handleServiceWorkerMessage);
-    };
-  }, [navigate, isFromStartFocusing, authIntent]);
+  }, [navigate, isFromStartFocusing]);
   
   if (isLoading) {
     return (
@@ -149,6 +140,59 @@ const Auth = () => {
     return null; // Don't render anything while redirecting
   }
   
+  // For mobile PWA, simplify the UI
+  if (isMobilePwa) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-white to-purple-50/30 flex flex-col">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-md mx-auto">
+            {isOffline && (
+              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-md text-sm">
+                <p className="font-medium mb-1">You are currently offline</p>
+                <p className="text-xs">
+                  You can still sign in if you've logged in before, but new registrations require an internet connection.
+                </p>
+              </div>
+            )}
+            
+            <div className="mb-6 text-center">
+              <h1 className="text-2xl font-bold mb-2">
+                {isFromStartFocusing ? "Create Your Account" : "Welcome Back"}
+              </h1>
+              {isFromStartFocusing && (
+                <p className="text-sm text-triage-purple bg-purple-50 p-3 rounded-lg">
+                  Create an account to start your focus journey and track your progress
+                </p>
+              )}
+            </div>
+            
+            <Tabs defaultValue={isFromStartFocusing ? "signup" : initialMode} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="login">Log In</TabsTrigger>
+                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="login">
+                <AuthForm 
+                  mode="login" 
+                  source={isFromStartFocusing ? "start-focusing" : location.state?.source} 
+                />
+              </TabsContent>
+              
+              <TabsContent value="signup">
+                <AuthForm 
+                  mode="signup" 
+                  source={isFromStartFocusing ? "start-focusing" : location.state?.source} 
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Standard browser version
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-purple-50/30 flex flex-col">
       <div className="container mx-auto px-4 py-8">
@@ -171,7 +215,7 @@ const Auth = () => {
             </div>
           )}
           
-          {isFromStartFocusing || authIntent === 'start-focusing' ? (
+          {isFromStartFocusing ? (
             <div className="mb-6 text-center">
               <h1 className="text-2xl font-bold mb-2">Create Your Account</h1>
               <p className="text-sm text-triage-purple bg-purple-50 p-3 rounded-lg">
@@ -184,7 +228,7 @@ const Auth = () => {
             </h1>
           )}
           
-          <Tabs defaultValue={isFromStartFocusing || authIntent === 'start-focusing' ? "signup" : initialMode} className="w-full">
+          <Tabs defaultValue={isFromStartFocusing ? "signup" : initialMode} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="login">Log In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -193,14 +237,14 @@ const Auth = () => {
             <TabsContent value="login">
               <AuthForm 
                 mode="login" 
-                source={isFromStartFocusing || authIntent === 'start-focusing' ? "start-focusing" : location.state?.source} 
+                source={isFromStartFocusing ? "start-focusing" : location.state?.source} 
               />
             </TabsContent>
             
             <TabsContent value="signup">
               <AuthForm 
                 mode="signup" 
-                source={isFromStartFocusing || authIntent === 'start-focusing' ? "start-focusing" : location.state?.source} 
+                source={isFromStartFocusing ? "start-focusing" : location.state?.source} 
               />
             </TabsContent>
           </Tabs>

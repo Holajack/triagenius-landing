@@ -30,15 +30,20 @@ const FocusButton: React.FC<FocusButtonProps> = ({
     }
     
     if (navigateTo) {
-      // For PWA, add a slight delay to ensure state updates before navigation
+      // Check if we're in PWA mode
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                           (window.navigator as any).standalone === true;
       
-      if (isStandalone) {
-        // Special handling for PWA navigation
-        localStorage.setItem('pwaNavigationIntent', navigateTo);
-        setTimeout(() => navigate(navigateTo), 100);
+      // Check if we're on mobile
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
+      if (isStandalone && isMobile) {
+        // For mobile PWA, use direct navigation without local storage
+        // This prevents getting stuck on loading screens
+        console.log(`Mobile PWA: Navigating directly to ${navigateTo}`);
+        navigate(navigateTo);
       } else {
+        // For browser or desktop version, use the original approach
         navigate(navigateTo);
       }
     }

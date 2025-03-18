@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
@@ -23,6 +22,7 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isPwa, setIsPwa] = useState(false);
+  const [isMobilePwa, setIsMobilePwa] = useState(false);
   
   // Form fields
   const [email, setEmail] = useState("");
@@ -37,8 +37,12 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
                          (window.navigator as any).standalone === true;
     setIsPwa(isStandalone);
     
+    // Check if on mobile device
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    setIsMobilePwa(isStandalone && isMobile);
+    
     if (isStandalone) {
-      console.log('AuthForm: Running in PWA/standalone mode');
+      console.log('AuthForm: Running in PWA/standalone mode, Mobile:', isMobile);
     }
   }, []);
 
@@ -61,10 +65,12 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
         
         toast.success("Welcome back to The Triage System!");
         
-        // In PWA mode, add a slight delay to ensure state updates before navigation
-        if (isPwa) {
-          setTimeout(() => navigate("/dashboard"), 300);
+        // For mobile PWA, use direct navigation to avoid loading issues
+        if (isMobilePwa) {
+          console.log('Mobile PWA: Login successful, navigating directly to dashboard');
+          navigate("/dashboard");
         } else {
+          // For browser or desktop, use original approach
           navigate("/dashboard");
         }
       } else {
@@ -88,18 +94,22 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
         
         // If the user signed up from the "Start Focusing" button, take them to onboarding
         if (isFromStartFocusing || !data.session?.user.app_metadata.onboarding_completed) {
-          // In PWA mode, add a slight delay to ensure state updates before navigation
-          if (isPwa) {
-            setTimeout(() => navigate("/onboarding"), 300);
+          // For mobile PWA, use direct navigation
+          if (isMobilePwa) {
+            console.log('Mobile PWA: Signup successful, navigating directly to onboarding');
+            navigate("/onboarding");
           } else {
+            // For browser or desktop, use original approach
             navigate("/onboarding");
           }
         } else {
           // Otherwise, take them to the dashboard
-          // In PWA mode, add a slight delay to ensure state updates before navigation
-          if (isPwa) {
-            setTimeout(() => navigate("/dashboard"), 300);
+          // For mobile PWA, use direct navigation
+          if (isMobilePwa) {
+            console.log('Mobile PWA: Signup successful, navigating directly to dashboard');
+            navigate("/dashboard");
           } else {
+            // For browser or desktop, use original approach
             navigate("/dashboard");
           }
         }
@@ -111,6 +121,11 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
       setLoading(false);
     }
   };
+  
+  // For mobile PWA, simplify the UI slightly
+  const buttonClass = isMobilePwa 
+    ? "w-full bg-triage-purple hover:bg-triage-purple/90 py-4" 
+    : "w-full bg-triage-purple hover:bg-triage-purple/90";
   
   return (
     <div className="w-full bg-white rounded-xl shadow-sm border p-6">
@@ -189,7 +204,7 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
         
         <Button
           type="submit"
-          className="w-full bg-triage-purple hover:bg-triage-purple/90"
+          className={buttonClass}
           disabled={loading}
         >
           {mode === "login" ? (
