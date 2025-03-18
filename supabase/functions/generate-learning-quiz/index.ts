@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -23,57 +22,16 @@ serve(async (req) => {
       );
     }
     
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    // The new quiz format doesn't use the OpenAI API to generate questions,
+    // but we'll keep this endpoint for compatibility with any existing code
+    // that might be calling it
     
-    // Prepare system prompt based on quiz type
-    const systemPrompt = `
-      You are designing a learning assessment quiz for the ${quizType} learning style.
-      Create 5 questions that will help determine if a person learns best through ${quizType} methods.
-      
-      For Physical/Kinesthetic learning: Focus on hands-on activities, movement-based concepts.
-      For Auditory learning: Focus on listening comprehension, verbal processing.
-      For Visual learning: Focus on spatial relationships, imagery, and visual patterns.
-      For Logical learning: Focus on problem-solving, patterns, and analytical thinking.
-      For Vocal learning: Focus on verbal expression, speaking aloud, and linguistic processing.
-      
-      Format your response as a JSON array with objects containing:
-      {
-        "question": "The question text",
-        "options": ["option1", "option2", "option3", "option4"],
-        "correctAnswer": "The correct option",
-        "explanation": "Why this is the correct answer",
-        "learningStyleIndicator": "What this question reveals about learning style"
-      }
-    `;
-
-    // Call OpenAI API
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Generate ${quizType} learning style assessment questions.` }
-        ],
-        temperature: 0.7,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('OpenAI API error:', errorData);
-      throw new Error(`OpenAI API returned an error: ${JSON.stringify(errorData)}`);
-    }
-
-    const data = await response.json();
-    const quizQuestions = JSON.parse(data.choices[0].message.content);
-    
+    // Return an empty array since we're not using dynamically generated questions anymore
     return new Response(
-      JSON.stringify({ questions: quizQuestions }),
+      JSON.stringify({ 
+        questions: [],
+        message: "Questions are now defined client-side in the LearningQuiz component"
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
