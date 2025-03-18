@@ -1,3 +1,4 @@
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
@@ -5,13 +6,21 @@ import './index.css'
 import { Toaster } from "./components/ui/toaster"
 import { UpdateNotification } from './components/pwa/UpdateNotification'
 
-// Detect if the app is being launched in standalone mode
+// Detect if the app is being launched in standalone mode with multi-domain support
 const detectPWA = () => {
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                       (window.navigator as any).standalone === true;
   
+  // Get current domain information
+  const hostname = window.location.hostname;
+  const isProductionDomain = hostname === 'triagenius-landing.lovable.app';
+  const isPreviewDomain = hostname.includes('lovableproject.com');
+  
+  // Track the domain for analytics and debugging
+  localStorage.setItem('pwa-domain', isProductionDomain ? 'production' : (isPreviewDomain ? 'preview' : 'other'));
+  
   if (isStandalone) {
-    console.log('Running as installed PWA');
+    console.log('Running as installed PWA on domain:', hostname);
     document.body.classList.add('standalone-mode');
     localStorage.setItem('isPWA', 'true');
     
@@ -36,7 +45,7 @@ const detectPWA = () => {
     if (wasPWA && !isStandalone) {
       // Keep PWA status if this appears to be a page refresh in the PWA
       if (document.referrer.includes(window.location.hostname)) {
-        console.log('Refreshed PWA detected');
+        console.log('Refreshed PWA detected on domain:', hostname);
       } else {
         // Reset isPWA if opened in regular browser
         localStorage.removeItem('isPWA');
@@ -59,6 +68,8 @@ detectPWA();
 // Register service worker for PWA functionality with improved error handling
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
+    // Use the correct service worker path for each domain
+    const hostname = window.location.hostname;
     const swUrl = '/sw.js';
     
     // More reliable service worker registration

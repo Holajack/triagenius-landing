@@ -48,10 +48,10 @@ export function UpdateNotification() {
     // Add event listener for messages from service worker
     navigator.serviceWorker.addEventListener('message', handleUpdateMessage);
     
-    // Set up periodic update checks for PWA (every 60 minutes)
+    // Set up periodic update checks for PWA (every 30 minutes)
     const intervalId = setInterval(() => {
       checkForUpdate();
-    }, 60 * 60 * 1000);
+    }, 30 * 60 * 1000);
     
     return () => {
       navigator.serviceWorker.removeEventListener('message', handleUpdateMessage);
@@ -78,10 +78,13 @@ export function UpdateNotification() {
               version: event.data.version
             });
             
-            // Show toast notification
+            // Show toast notification with proper domain detection
+            const hostname = window.location.hostname;
+            const isDev = hostname.includes('lovableproject.com');
+            
             toast({
               title: "Update Available",
-              description: "A new version is available. Tap to refresh.",
+              description: `A new version is available on ${isDev ? 'preview' : 'production'}. Tap to refresh.`,
               action: (
                 <button 
                   onClick={refreshApp}

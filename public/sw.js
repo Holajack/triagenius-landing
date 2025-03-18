@@ -1,7 +1,13 @@
 
 // Cache version identifier - change this when files are updated
-const CACHE_NAME = 'triage-system-v5';
+const CACHE_NAME = 'triage-system-v6';
 const APP_NAME = 'The Triage System';
+
+// Detect environment domain for proper caching and navigation
+const HOST_DOMAINS = [
+  'triagenius-landing.lovable.app',
+  '0e9564c7-1283-4938-8998-98c4b60f0bf4.lovableproject.com'
+];
 
 // Add list of files to cache for offline access
 const STATIC_ASSETS = [
@@ -31,7 +37,7 @@ const CRITICAL_ROUTES = [
 
 // Install event - cache static resources with error handling
 self.addEventListener('install', event => {
-  console.log('Installing service worker v5 - with update notification system');
+  console.log('Installing service worker v6 - with cross-domain support');
   self.skipWaiting(); // Force activation on install
   
   event.waitUntil(
@@ -81,14 +87,26 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Improved fetch strategy for PWA with focus on performance
+// Improved fetch strategy for PWA with focus on performance and cross-domain support
 self.addEventListener('fetch', event => {
-  // Skip cross-origin requests and non-GET requests
-  if (!event.request.url.startsWith(self.location.origin) || event.request.method !== 'GET') {
+  // Enhanced request handling for cross-domain PWA support
+  const url = new URL(event.request.url);
+  
+  // Skip non-GET requests
+  if (event.request.method !== 'GET') {
     return;
   }
   
-  const url = new URL(event.request.url);
+  // Cross-domain support - check if request is for one of our domains
+  const isOurDomain = HOST_DOMAINS.some(domain => url.hostname.includes(domain));
+  if (!isOurDomain && !url.hostname.includes(self.location.hostname)) {
+    // For third-party requests, use network first with fast fallback
+    event.respondWith(
+      fetch(event.request)
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
   
   // Special handling for focus session and related routes
   const isCriticalRoute = CRITICAL_ROUTES.some(route => url.pathname.includes(route));
