@@ -21,6 +21,14 @@ const Onboarding = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [userData, setUserData] = useState<{ email: string; username: string } | null>(null);
+  const [isPwa, setIsPwa] = useState(false);
+
+  // Check for PWA mode
+  useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                         (window.navigator as any).standalone === true;
+    setIsPwa(isStandalone);
+  }, []);
 
   // Check authentication and reset onboarding state when component mounts
   useEffect(() => {
@@ -88,13 +96,17 @@ const Onboarding = () => {
       await saveOnboardingState();
       
       // Show success toast when onboarding is complete
-      toast.success("Onboarding complete! Your preferences have been saved.", {
+      toast.success("Welcome to The Triage System!", {
         description: "Your personalized focus experience is ready.",
         icon: <CheckCircle2 className="text-green-500" />,
       });
       
       // Navigate to the dashboard after completion
-      navigate('/dashboard');
+      if (isPwa) {
+        setTimeout(() => navigate('/dashboard'), 300);
+      } else {
+        navigate('/dashboard');
+      }
     }
   };
 

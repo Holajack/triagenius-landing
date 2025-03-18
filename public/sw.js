@@ -1,3 +1,4 @@
+
 // Cache version identifier - change this when files are updated
 const CACHE_NAME = 'triage-system-v2'; // Updated cache version
 

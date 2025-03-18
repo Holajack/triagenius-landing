@@ -1,6 +1,8 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
+import { useUser } from "@/hooks/use-user";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import WeeklyTracker from "@/components/dashboard/WeeklyTracker";
 import QuickStartButton from "@/components/dashboard/QuickStartButton";
@@ -14,13 +16,35 @@ import { PieChartIcon, BarChart4, LineChart, Clock } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import DashboardWalkthrough from "@/components/walkthrough/DashboardWalkthrough";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { toast } from "sonner";
 
 const Dashboard = () => {
   const { state } = useOnboarding();
+  const { user } = useUser();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const isMobile = useIsMobile();
+  const [isPwa, setIsPwa] = useState(false);
+
+  // Check if running as PWA
+  useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                        (window.navigator as any).standalone === true;
+    setIsPwa(isStandalone);
+    
+    if (isStandalone) {
+      console.log('Dashboard: Running in PWA/standalone mode');
+    }
+  }, []);
+
+  // Check for authentication
+  useEffect(() => {
+    // If not authenticated, redirect to auth page
+    if (!user && !isLoading) {
+      navigate("/auth");
+    }
+  }, [user, navigate, isLoading]);
 
   // Modified redirection logic to only redirect if explicitly coming from the index page
   useEffect(() => {
@@ -28,10 +52,17 @@ const Dashboard = () => {
       navigate("/onboarding");
     } else {
       // Simulate data loading
-      const timer = setTimeout(() => setIsLoading(false), 800);
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+        
+        // Show welcome back toast for returning users
+        if (user && !isLoading) {
+          toast.success(`Welcome back to The Triage System${user.username ? ', ' + user.username : ''}!`);
+        }
+      }, 800);
       return () => clearTimeout(timer);
     }
-  }, [state, navigate]);
+  }, [state, navigate, user, isLoading]);
 
   // Get theme variables based on environment
   const getEnvTheme = () => {

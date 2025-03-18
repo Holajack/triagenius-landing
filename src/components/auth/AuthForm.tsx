@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
@@ -58,7 +59,7 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
           throw error;
         }
         
-        toast.success("Welcome back!");
+        toast.success("Welcome back to The Triage System!");
         
         // In PWA mode, add a slight delay to ensure state updates before navigation
         if (isPwa) {
@@ -83,10 +84,10 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
           throw error;
         }
         
-        toast.success("Account created successfully!");
+        toast.success("Welcome to The Triage System!");
         
         // If the user signed up from the "Start Focusing" button, take them to onboarding
-        if (isFromStartFocusing) {
+        if (isFromStartFocusing || !data.session?.user.app_metadata.onboarding_completed) {
           // In PWA mode, add a slight delay to ensure state updates before navigation
           if (isPwa) {
             setTimeout(() => navigate("/onboarding"), 300);
