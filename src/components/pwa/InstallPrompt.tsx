@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Download, ExternalLink, Info } from 'lucide-react';
@@ -34,16 +33,13 @@ const InstallPrompt = () => {
   const { toast } = useToast();
   
   useEffect(() => {
-    // Force the prompt to appear for testing/debugging
     const forcePrompt = new URLSearchParams(window.location.search).get('pwa-prompt');
     
-    // Enhanced browser and device detection
     const detectBrowser = () => {
       const userAgent = navigator.userAgent.toLowerCase();
       let browserName = 'Unknown';
       let version = '';
       
-      // More precise browser detection
       if (userAgent.includes('edg/') || userAgent.includes('edge/')) {
         browserName = 'Edge';
         version = userAgent.match(/edg?\/([0-9]+)/) ? 
@@ -90,7 +86,6 @@ const InstallPrompt = () => {
         browserName = 'Brave';
       }
       
-      // Enhanced OS and device detection
       const isIOS = /ipad|iphone|ipod/.test(userAgent) && !(window as any).MSStream;
       const isAndroid = /android/.test(userAgent);
       const isMobile = /mobi|tablet|ipad|iphone|ipod|android/.test(userAgent) || 
@@ -114,59 +109,45 @@ const InstallPrompt = () => {
     setBrowserInfo(browser);
     console.log('Browser detected:', browser);
     
-    // Don't show if already in standalone mode (unless forced)
     if (browser.isStandalone && !forcePrompt) {
       console.log('App is already installed and running in standalone mode');
       return;
     }
     
-    // Enhanced install prompt timing logic
     const shouldPrompt = () => {
       const lastPrompt = localStorage.getItem('installPromptDismissed');
       const hasVisitedBefore = localStorage.getItem('hasVisitedBefore');
       
-      // First-time visitor: set flag but don't show immediately
       if (!hasVisitedBefore) {
         localStorage.setItem('hasVisitedBefore', 'true');
         return false;
       }
       
-      // Force prompt for testing
       if (forcePrompt) return true;
       
-      // Show if we haven't prompted before or it's been more than 3 days
       return !lastPrompt || daysBetween(new Date(lastPrompt), new Date()) > 3;
     };
     
-    // Check if the user has previously seen the prompt and dismissed it
     const checkForReturningUser = () => {
       const lastDismissed = localStorage.getItem('installPromptDismissed');
       const hasExitedWithoutInstall = localStorage.getItem('exitedWithoutInstall');
       
-      // If they've previously dismissed but didn't install, and it's a return visit
       if (lastDismissed && hasExitedWithoutInstall === 'true' && !browser.isStandalone) {
-        // Show the prompt again, but with a delay to not be intrusive immediately
         setTimeout(() => {
           setIsVisible(true);
-          // Add a toast notification as a gentle reminder
           toast({
             title: "Install The Triage System",
             description: "Get the best experience by installing our app to your device",
             duration: 8000
           });
-        }, 30000); // 30 second delay
+        }, 30000);
       }
     };
     
-    // Handle Chrome on Android specific handler
     const handleAndroidChrome = () => {
-      // For Chrome on Android, we need to be more aggressive with the install prompt
       if (browser.isAndroid && browser.name === 'Chrome') {
-        // Always check if app is already installed via display-mode
         if (!browser.isStandalone && shouldPrompt()) {
           console.log('Chrome on Android detected - showing install prompt');
-          // For Chrome on Android, we'll show our prompt after a short delay
-          // even if the beforeinstallprompt event never fires
           setTimeout(() => {
             if (!installPrompt && !isVisible) {
               setIsVisible(true);
@@ -176,17 +157,14 @@ const InstallPrompt = () => {
       }
     };
     
-    // Specific handling for iOS browsers
     if (browser.isIOS) {
       if (shouldPrompt()) {
-        // Show prompt after a delay for better UX
         setTimeout(() => setIsVisible(true), 3000);
       }
       checkForReturningUser();
       return;
     }
     
-    // Browsers without standard beforeinstallprompt but that support PWAs
     if ((browser.isAndroid && (browser.name === 'Samsung Internet' || browser.name === 'UC Browser')) || 
         browser.name === 'Firefox' || 
         browser.name === 'DuckDuckGo') {
@@ -197,31 +175,21 @@ const InstallPrompt = () => {
       return;
     }
     
-    // Handle Chrome on Android (most common PWA install scenario)
     handleAndroidChrome();
     
-    // Standard beforeinstallprompt handler for Chrome, Edge, etc.
     const handleBeforeInstallPrompt = (e: Event) => {
-      // Always prevent default to disable mini-infobar
       e.preventDefault();
       console.log('Captured beforeinstallprompt event', e);
-      
-      // Store event for later use
       setInstallPrompt(e as BeforeInstallPromptEvent);
       
-      // Show our custom prompt if appropriate
       if (shouldPrompt()) {
         setTimeout(() => setIsVisible(true), 2000);
       }
     };
     
-    // Add prompt handler and explicitly log it
-    console.log('Adding beforeinstallprompt event listener');
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     
-    // Fallback installer for browsers where beforeinstallprompt might not fire consistently
     if (shouldPrompt()) {
-      // Backup check after 5 seconds in case beforeinstallprompt never fired
       setTimeout(() => {
         if (!installPrompt && !isVisible) {
           console.log('beforeinstallprompt never fired, showing prompt anyway');
@@ -230,12 +198,9 @@ const InstallPrompt = () => {
       }, 5000);
     }
     
-    // Check for returning users who didn't install
     checkForReturningUser();
     
-    // Track when users exit the page without installing
     const handleBeforeUnload = () => {
-      // If the prompt was shown but the app isn't installed, mark as exited without install
       if (!browser.isStandalone && localStorage.getItem('installPromptDismissed')) {
         localStorage.setItem('exitedWithoutInstall', 'true');
         localStorage.setItem('lastExitTime', new Date().toISOString());
@@ -244,12 +209,10 @@ const InstallPrompt = () => {
     
     window.addEventListener('beforeunload', handleBeforeUnload);
     
-    // Track successful installs
     window.addEventListener('appinstalled', (e) => {
       console.log('PWA was installed', e);
       setIsVisible(false);
       localStorage.setItem('appInstalled', 'true');
-      // Remove the exited without install flag
       localStorage.removeItem('exitedWithoutInstall');
       toast({
         title: "Installation Complete",
@@ -257,13 +220,12 @@ const InstallPrompt = () => {
       });
     });
     
-    // Show a return prompt if they visit in a browser after installing
     const checkReturnVisit = () => {
       const hasInstalledBefore = localStorage.getItem('appInstalled') === 'true';
       if (hasInstalledBefore && !browser.isStandalone) {
         setTimeout(() => {
           toast({
-            title: "Open in Installed App",
+            title: "Open The Triage System",
             description: "You've installed The Triage System. Would you like to open it?",
             action: <Button size="sm" onClick={() => {
               window.location.href = "/";
@@ -275,7 +237,6 @@ const InstallPrompt = () => {
     
     checkReturnVisit();
     
-    // Cleanup
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('beforeunload', handleBeforeUnload);
@@ -283,15 +244,12 @@ const InstallPrompt = () => {
   }, [toast]);
   
   const handleInstallClick = async () => {
-    // Track that the user initiated an install attempt
     console.log('Install button clicked');
     try {
-      // For browsers with native install prompt
       if (installPrompt) {
         console.log('Triggering native browser install prompt');
         await installPrompt.prompt();
         
-        // Wait for the user to respond to the prompt
         const choiceResult = await installPrompt.userChoice;
         
         if (choiceResult.outcome === 'accepted') {
@@ -305,21 +263,17 @@ const InstallPrompt = () => {
           setIsVisible(false);
         } else {
           console.log('User dismissed the install prompt');
-          // Save the dismissal time
           localStorage.setItem('installPromptDismissed', new Date().toISOString());
         }
         
-        // Clear the saved prompt since it can't be used again
         setInstallPrompt(null);
       } else {
-        // For browsers without beforeinstallprompt support or if it failed
         console.log('No native install prompt available, showing browser-specific instructions');
         setShowInstructions(true);
         showBrowserSpecificInstructions(browserInfo.name, browserInfo.isIOS, browserInfo.isAndroid);
       }
     } catch (error) {
       console.error('Error during install attempt:', error);
-      // Fallback to manual instructions
       setShowInstructions(true);
       showBrowserSpecificInstructions(browserInfo.name, browserInfo.isIOS, browserInfo.isAndroid);
     }
@@ -329,15 +283,12 @@ const InstallPrompt = () => {
     console.log('User dismissed the install prompt');
     setIsVisible(false);
     setShowInstructions(false);
-    
-    // Save the current time to localStorage
     localStorage.setItem('installPromptDismissed', new Date().toISOString());
   };
   
   const showIOSInstructions = () => {
-    // iOS-specific instructions
     toast({
-      title: "Install on iOS",
+      title: "Install The Triage System on iOS",
       description: "1. Tap the Share button (📤) at the bottom of your screen\n2. Scroll down and tap 'Add to Home Screen'\n3. Tap 'Add' in the top right corner",
       duration: 15000
     });
@@ -349,18 +300,14 @@ const InstallPrompt = () => {
       return;
     }
     
-    let title = `Install on ${browser}`;
+    let title = `Install The Triage System on ${browser}`;
     let instructions = "";
     
-    // Enhanced browser-specific instructions
     switch(browser.toLowerCase()) {
       case "chrome":
         if (isAndroid) {
-          // Most common case - Chrome on Android
           instructions = "1. Tap the menu button (⋮) in the top right\n2. Select 'Install App' or 'Add to Home Screen'\n3. Tap 'Install' in the prompt\n\nIf you don't see 'Install App', try refreshing the page and waiting a moment.";
           
-          // For Chrome on Android, we can try to retrigger the install prompt via reload
-          // This can help in cases where Chrome didn't show the prompt initially
           if (!localStorage.getItem('hasTriedReload')) {
             localStorage.setItem('hasTriedReload', 'true');
             toast({
@@ -412,7 +359,7 @@ const InstallPrompt = () => {
   };
   
   const daysBetween = (date1: Date, date2: Date) => {
-    const oneDay = 24 * 60 * 60 * 1000; // hours*minutes*seconds*milliseconds
+    const oneDay = 24 * 60 * 60 * 1000;
     const diffDays = Math.round(Math.abs((date1.getTime() - date2.getTime()) / oneDay));
     return diffDays;
   };
@@ -473,7 +420,6 @@ const InstallPrompt = () => {
             </button>
           </div>
           
-          {/* Browser-specific tips */}
           <div className="mt-3 pt-2 border-t border-[#403E43]">
             <p className="text-xs text-gray-400 flex items-center">
               <Info className="w-3 h-3 mr-1 inline" />

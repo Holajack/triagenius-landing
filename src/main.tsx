@@ -1,4 +1,3 @@
-
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
@@ -106,7 +105,7 @@ if ('serviceWorker' in navigator) {
                 });
               } else {
                 // For browser mode, we can use a more direct approach
-                if (window.confirm('New version available! Reload to update?')) {
+                if (window.confirm('New version of The Triage System available! Reload to update?')) {
                   window.location.reload();
                 }
               }
