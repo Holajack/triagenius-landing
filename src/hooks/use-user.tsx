@@ -1,7 +1,8 @@
 
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
-import { supabase, handleSupabaseError } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { UserProfile } from "@/types/database";
 
 interface UserData {
   id: string;
@@ -9,6 +10,7 @@ interface UserData {
   username: string | null;
   avatarUrl: string | null;
   isLoading: boolean;
+  profile: UserProfile | null;
 }
 
 interface UserContextType {
@@ -17,6 +19,7 @@ interface UserContextType {
   isLoading: boolean;
   error: Error | null;
   clearError: () => void;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -52,12 +55,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         username: null,
         avatarUrl: null,
         isLoading: true,
+        profile: null
       });
       
       // Fetch profile data
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('username, email, avatar_url')
+        .select('*')
         .eq('id', authUser.id)
         .single();
       
@@ -70,7 +74,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             .insert({
               id: authUser.id,
               email: authUser.email,
-              username: authUser.email?.split('@')[0] || null
+              username: authUser.email?.split('@')[0] || null,
+              preferences: {},
+              privacy_settings: {
+                showEmail: false,
+                showActivity: true
+              }
             });
             
           if (insertError) {
@@ -84,6 +93,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             username: authUser.email?.split('@')[0] || null,
             avatarUrl: null,
             isLoading: false,
+            profile: null
           });
         } else {
           console.error("Error fetching profile:", profileError);
@@ -100,12 +110,40 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         username: profileData.username || authUser.email?.split('@')[0] || null,
         avatarUrl: profileData.avatar_url,
         isLoading: false,
+        profile: profileData as UserProfile
       });
       
     } catch (error: any) {
       console.error("Failed to fetch user data:", error);
       setError(error);
       setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const updateProfile = async (updates: Partial<UserProfile>) => {
+    if (!user) {
+      toast.error("You must be logged in to update your profile");
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id);
+        
+      if (error) throw error;
+      
+      toast.success("Profile updated successfully");
+      await fetchUserData(); // Refresh user data
+      
+    } catch (error: any) {
+      console.error("Failed to update profile:", error);
+      toast.error(error.message || "Failed to update profile");
     } finally {
       setIsLoading(false);
     }
@@ -135,7 +173,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       refreshUser: fetchUserData, 
       isLoading,
       error,
-      clearError
+      clearError,
+      updateProfile
     }}>
       {children}
     </UserContext.Provider>

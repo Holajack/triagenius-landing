@@ -458,6 +458,9 @@ export type Database = {
           email: string | null
           id: string
           major: string | null
+          password_hash: string | null
+          preferences: Json | null
+          privacy_settings: Json | null
           profession: string | null
           show_business: boolean | null
           show_classes: boolean | null
@@ -476,6 +479,9 @@ export type Database = {
           email?: string | null
           id: string
           major?: string | null
+          password_hash?: string | null
+          preferences?: Json | null
+          privacy_settings?: Json | null
           profession?: string | null
           show_business?: boolean | null
           show_classes?: boolean | null
@@ -494,6 +500,9 @@ export type Database = {
           email?: string | null
           id?: string
           major?: string | null
+          password_hash?: string | null
+          preferences?: Json | null
+          privacy_settings?: Json | null
           profession?: string | null
           show_business?: boolean | null
           show_classes?: boolean | null
@@ -646,6 +655,36 @@ export type Database = {
           },
         ]
       }
+      subjects: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tasks: {
         Row: {
           created_at: string
@@ -696,6 +735,53 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_tasks: {
+        Row: {
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          priority: string | null
+          status: string | null
+          subject_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string | null
+          status?: string | null
+          subject_id?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string | null
+          status?: string | null
+          subject_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_tasks_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
             referencedColumns: ["id"]
           },
         ]
