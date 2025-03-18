@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -12,14 +11,9 @@ import * as z from "zod";
 import { Loader2 } from "lucide-react";
 
 interface EditProfileDialogProps {
-  open: boolean;
+  open: boolean;  // Keep this prop name as 'open' instead of 'isOpen'
   onOpenChange: (open: boolean) => void;
-  onProfileUpdated: () => void;
-  initialData: {
-    username?: string;
-    email?: string;
-    avatarUrl?: string;
-  };
+  onUpdate: (avatar: string) => void;
 }
 
 const formSchema = z.object({
@@ -27,27 +21,17 @@ const formSchema = z.object({
   email: z.string().email("Please enter a valid email"),
 });
 
-export function EditProfileDialog({ open, onOpenChange, onProfileUpdated, initialData }: EditProfileDialogProps) {
+export function EditProfileDialog({ open, onOpenChange, onUpdate }: EditProfileDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: initialData.username || "",
-      email: initialData.email || "",
+      username: "",
+      email: "",
     },
   });
   
-  // Update form when initialData changes
-  useEffect(() => {
-    if (initialData) {
-      form.reset({
-        username: initialData.username || "",
-        email: initialData.email || "",
-      });
-    }
-  }, [initialData, form]);
-
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     
@@ -74,24 +58,16 @@ export function EditProfileDialog({ open, onOpenChange, onProfileUpdated, initia
       }
       
       // Update email in auth if it changed
-      if (values.email !== initialData.email) {
-        const { error: updateEmailError } = await supabase.auth.updateUser({
-          email: values.email,
-        });
-        
-        if (updateEmailError) {
-          // If email update fails, revert the profile change
-          await supabase
-            .from('profiles')
-            .update({ email: initialData.email })
-            .eq('id', user.id);
-            
-          throw updateEmailError;
-        }
+      const { error: updateEmailError } = await supabase.auth.updateUser({
+        email: values.email,
+      });
+      
+      if (updateEmailError) {
+        throw updateEmailError;
       }
       
       toast.success("Profile updated successfully");
-      onProfileUpdated();
+      onUpdate("");
       onOpenChange(false);
       
     } catch (error: any) {

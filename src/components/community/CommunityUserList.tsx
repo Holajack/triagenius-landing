@@ -67,17 +67,15 @@ export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityU
         if (statsError) throw statsError;
         
         // Fetch friend requests
-        // Using a custom SQL query since friend_requests table is not in the types yet
-        const { data: requests, error: requestsError } = await supabase
-          .rpc('get_friend_requests', { user_id_param: user?.id })
-          .select('*');
+        // Using a fetch to the edge function instead of RPC
+        const { data: requests, error: requestsError } = await supabase.functions.invoke('get_friend_requests');
           
         if (requestsError) {
           console.error('Error fetching friend requests:', requestsError);
-          // Fallback to empty array if the RPC call fails
+          // Fallback to empty array if the function call fails
           setFriendRequests([]);
         } else {
-          setFriendRequests(requests as FriendRequest[] || []);
+          setFriendRequests(requests.data || []);
         }
         
         const statsMap = new Map();
@@ -199,10 +197,12 @@ export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityU
     try {
       setProcessingRequests(prev => new Set(prev).add(userId));
       
-      // Use a direct SQL insert since friend_requests is not in types
-      const { error } = await supabase.rpc('create_friend_request', { 
-        sender_id_param: user.id,
-        recipient_id_param: userId
+      // Use the edge function instead of direct RPC
+      const { error } = await supabase.functions.invoke('create_friend_request', {
+        body: { 
+          sender_id_param: user.id,
+          recipient_id_param: userId
+        }
       });
       
       if (error) throw error;
@@ -247,10 +247,12 @@ export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityU
         return;
       }
       
-      // Use RPC to update the request
-      const { error } = await supabase.rpc('update_friend_request', {
-        request_id_param: request.id,
-        new_status_param: accept ? 'accepted' : 'rejected'
+      // Use the edge function instead of direct RPC
+      const { error } = await supabase.functions.invoke('update_friend_request', {
+        body: {
+          request_id_param: request.id,
+          new_status_param: accept ? 'accepted' : 'rejected'
+        }
       });
       
       if (error) throw error;

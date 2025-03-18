@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import NavigationBar from "@/components/dashboard/NavigationBar";
@@ -32,7 +31,6 @@ const Profile = () => {
     email: "",
     avatar_url: "",
     
-    // Additional profile fields
     university: "",
     major: "",
     business: "",
@@ -40,7 +38,6 @@ const Profile = () => {
     state: "",
     classes: [] as string[],
     
-    // Privacy settings
     show_university: true,
     show_business: true,
     show_state: true,
@@ -55,14 +52,12 @@ const Profile = () => {
     return classes;
   };
   
-  // Function to load user profile data
   const loadProfile = useCallback(async () => {
     if (!user) return;
     
     try {
       setLoading(true);
       
-      // Make sure this query includes the new fields
       const { data, error } = await supabase
         .from('profiles')
         .select('username, email, avatar_url, university, major, business, profession, state, classes, show_university, show_business, show_state, show_classes')
@@ -81,10 +76,10 @@ const Profile = () => {
         profession: data.profession || "",
         state: data.state || "",
         classes: formatClasses(data.classes),
-        show_university: data.show_university !== false, // Default to true if null
-        show_business: data.show_business !== false, // Default to true if null
-        show_state: data.show_state !== false, // Default to true if null
-        show_classes: data.show_classes !== false // Default to true if null
+        show_university: data.show_university !== false,
+        show_business: data.show_business !== false,
+        show_state: data.show_state !== false,
+        show_classes: data.show_classes !== false
       });
       
       setEditedData({
@@ -132,11 +127,9 @@ const Profile = () => {
       
       setLoading(true);
       
-      // Format classes as an array of strings
       let formattedClasses: string[] = [];
       
       if (typeof editedData.classes === 'string') {
-        // Convert comma-separated string to array
         formattedClasses = (editedData.classes as string)
           .split(',')
           .map(c => c.trim())
@@ -506,8 +499,8 @@ const Profile = () => {
       </Tabs>
       
       <EditProfileDialog 
-        isOpen={isEditDialogOpen} 
-        onClose={() => setIsEditDialogOpen(false)} 
+        open={isEditDialogOpen} 
+        onOpenChange={(open) => setIsEditDialogOpen(open)} 
         onUpdate={(avatar) => {
           setEditedData(prev => ({...prev, avatar_url: avatar}));
           setIsEditDialogOpen(false);

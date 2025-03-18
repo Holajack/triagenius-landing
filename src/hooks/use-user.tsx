@@ -14,19 +14,24 @@ interface UserData {
 interface UserContextType {
   user: UserData | null;
   refreshUser: () => Promise<void>;
+  isLoading: boolean;  // Add this property
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);  // Add loading state
   
   const fetchUserData = async () => {
     try {
+      setIsLoading(true);  // Set loading to true when fetching
+      
       const { data: { user: authUser } } = await supabase.auth.getUser();
       
       if (!authUser) {
         setUser(null);
+        setIsLoading(false);  // Set loading to false when done
         return;
       }
       
@@ -49,6 +54,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (error) {
         console.error("Error fetching profile:", error);
         setUser(prev => prev ? { ...prev, isLoading: false } : null);
+        setIsLoading(false);  // Set loading to false when done with error
         return;
       }
       
@@ -64,6 +70,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error("Failed to fetch user data:", error);
       setUser(null);
+    } finally {
+      setIsLoading(false);  // Always set loading to false in finally block
     }
   };
   
@@ -82,7 +90,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   }, []);
   
   return (
-    <UserContext.Provider value={{ user, refreshUser: fetchUserData }}>
+    <UserContext.Provider value={{ user, refreshUser: fetchUserData, isLoading }}>
       {children}
     </UserContext.Provider>
   );
