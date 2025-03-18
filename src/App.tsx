@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
@@ -33,7 +34,6 @@ import { register } from "./components/ServiceWorker";
 
 function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -48,15 +48,6 @@ function App() {
     };
   }, []);
 
-  const handleAppError = (error: Error) => {
-    console.error("Application error:", error);
-    setHasError(true);
-  };
-
-  useEffect(() => {
-    setHasError(false);
-  }, [window.location.pathname]);
-
   return (
     <ErrorBoundary>
       <ThemeProvider>
@@ -70,26 +61,15 @@ function App() {
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/onboarding" element={<Onboarding />} />
                     
+                    {/* Protected routes */}
                     <Route element={<ProtectedRoute />}>
-                      <Route path="/dashboard" element={
-                        <ErrorBoundary>
-                          <Dashboard />
-                        </ErrorBoundary>
-                      } />
-                      <Route path="/focus-session" element={
-                        <ErrorBoundary>
-                          <FocusSession />
-                        </ErrorBoundary>
-                      } />
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/focus-session" element={<FocusSession />} />
                       <Route path="/break-timer" element={<BreakTimer />} />
                       <Route path="/session-reflection" element={<SessionReflection />} />
                       <Route path="/session-report/:id" element={<SessionReport />} />
                       <Route path="/reports" element={<Reports />} />
-                      <Route path="/profile" element={
-                        <ErrorBoundary>
-                          <Profile />
-                        </ErrorBoundary>
-                      } />
+                      <Route path="/profile" element={<Profile />} />
                       <Route path="/settings" element={<Settings />} />
                       <Route path="/community" element={<Community />} />
                       <Route path="/leaderboard" element={<Leaderboard />} />
@@ -104,6 +84,7 @@ function App() {
                   
                   <Toaster richColors position="top-center" />
                   
+                  {/* PWA components */}
                   <PWADetector />
                   <InstallPrompt />
                 </BrowserRouter>

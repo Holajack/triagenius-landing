@@ -1,10 +1,9 @@
 
 import React, { useRef, useEffect } from "react";
 import { FocusTimer } from "@/components/focus/FocusTimer";
-import { SimpleLandscapeAnimation } from "@/components/focus/SimpleLandscapeAnimation";
+import { HikingTrail } from "@/components/focus/HikingTrail";
 import SessionGoals from "@/components/focus/SessionGoals";
 import { StudyEnvironment } from "@/types/onboarding";
-import ErrorBoundary from "@/components/ErrorBoundary";
 
 interface FocusSessionContentProps {
   timerRef: React.MutableRefObject<{ stopTimer: () => void } | null>;
@@ -135,25 +134,21 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({
         onEndSessionClick={handleEndClick}
       />
       
-      {/* Wrap SimpleLandscapeAnimation in ErrorBoundary */}
-      <div 
-        className="relative w-full aspect-[3/1] rounded-lg overflow-hidden shadow-md" 
-        aria-hidden={lowPowerMode}
-        style={{ display: lowPowerMode ? 'none' : 'block' }} // Force DOM removal for PWA performance
-      >
-        <ErrorBoundary fallback={
-          <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center">
-            <p className="text-muted-foreground">Landscape view unavailable</p>
-          </div>
-        }>
-          <SimpleLandscapeAnimation 
+      {/* Only render the HikingTrail when not in low power mode */}
+      {!lowPowerMode && (
+        <div 
+          className="relative w-full aspect-[3/1] rounded-lg overflow-hidden" 
+          aria-hidden={lowPowerMode}
+          style={{ display: lowPowerMode ? 'none' : 'block' }} // Force DOM removal for PWA performance
+        >
+          <HikingTrail 
             environment={safeEnvironment}
             milestone={currentMilestone}
             isCelebrating={isCelebrating}
             progress={segmentProgress}
           />
-        </ErrorBoundary>
-      </div>
+        </div>
+      )}
       
       <SessionGoals />
     </div>
