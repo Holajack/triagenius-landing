@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { ArrowLeft, Send, Users, BookOpen, Clock, Timer, MessageSquare } from "lucide-react";
+import { ArrowLeft, Send, Users, BookOpen, Clock, Timer, MessageSquare, Loader2 } from "lucide-react";
 import { StudyRoomChat } from "@/components/studyroom/StudyRoomChat";
 import { StudyRoomResources } from "@/components/studyroom/StudyRoomResources";
 import { StudyRoomMember } from "@/components/studyroom/StudyRoomMember";
@@ -15,98 +16,153 @@ import { StartFocusDialog } from "@/components/studyroom/StartFocusDialog";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { HikingTrail } from "@/components/focus/HikingTrail";
 import { FocusTimer } from "@/components/focus/FocusTimer";
-
-const getMockRoom = (roomId: string) => {
-  const rooms = {
-    "1": {
-      id: 1,
-      name: "Software Engineering Study Group",
-      topic: "Data Structures",
-      description: "A group focused on software engineering fundamentals, algorithms, and data structures",
-      participants: [
-        { id: 1, name: "Sarah Johnson", avatar: "/placeholder.svg", online: true, role: "organizer" },
-        { id: 2, name: "Michael Chen", avatar: "/placeholder.svg", online: true, role: "member" },
-        { id: 3, name: "Emily Wilson", avatar: "/placeholder.svg", online: false, role: "member" },
-        { id: 4, name: "David Park", avatar: "/placeholder.svg", online: true, role: "member" }
-      ],
-      subjects: ["Algorithms", "Programming", "Computer Science"],
-      schedule: "Daily, 3-5 PM",
-      duration: "2 hours",
-      messages: [
-        { id: 1, sender: "Sarah Johnson", content: "Welcome everyone to our study session!", timestamp: "10:30 AM", avatar: "/placeholder.svg" },
-        { id: 2, name: "Michael Chen", content: "Has everyone reviewed the materials for today?", timestamp: "10:32 AM", avatar: "/placeholder.svg" },
-        { id: 3, sender: "Emily Wilson", content: "Yes, I've gone through the reading list!", timestamp: "10:34 AM", avatar: "/placeholder.svg" }
-      ],
-      resources: [
-        { id: 1, title: "Introduction to Algorithms", type: "PDF", sharedBy: "Sarah Johnson", timestamp: "Yesterday" },
-        { id: 2, title: "Data Structures Cheat Sheet", type: "Link", sharedBy: "Michael Chen", timestamp: "2 days ago" }
-      ],
-      activeSession: false
-    },
-    "2": {
-      id: 2,
-      name: "UI/UX Design Workshop",
-      topic: "User Research",
-      description: "A collaborative workshop focused on user interface design principles and usability testing",
-      participants: [
-        { id: 5, name: "Jessica Park", avatar: "/placeholder.svg", online: true, role: "organizer" },
-        { id: 6, name: "Ryan Kim", avatar: "/placeholder.svg", online: false, role: "member" },
-        { id: 7, name: "Alex Turner", avatar: "/placeholder.svg", online: true, role: "member" }
-      ],
-      subjects: ["Design", "Usability", "Prototyping"],
-      schedule: "Tue & Thu, 4-6 PM",
-      duration: "2 hours",
-      messages: [
-        { id: 1, sender: "Jessica Park", content: "Let's discuss the prototyping assignment", timestamp: "2:15 PM", avatar: "/placeholder.svg" },
-        { id: 2, sender: "Alex Turner", content: "I've created a few wireframes to share", timestamp: "2:18 PM", avatar: "/placeholder.svg" }
-      ],
-      resources: [
-        { id: 1, title: "UI Design Patterns", type: "Link", sharedBy: "Jessica Park", timestamp: "3 days ago" }
-      ],
-      activeSession: false
-    }
-  };
-  
-  return rooms[roomId as keyof typeof rooms] || null;
-};
+import { useStudyRooms } from "@/hooks/use-study-rooms";
+import { useRoomMessages } from "@/hooks/use-room-messages";
+import { useUser } from "@/hooks/use-user";
+import { supabase } from "@/integrations/supabase/client";
+import { requestMediaPermissions } from "@/components/pwa/ServiceWorker";
 
 const StudyRoom = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { state } = useOnboarding();
+  const { user } = useUser();
+  const { getRoomById, joinRoom, leaveRoom } = useStudyRooms();
   
   const [room, setRoom] = useState<any>(null);
   const [message, setMessage] = useState("");
   const [showFocusDialog, setShowFocusDialog] = useState(false);
   const [inFocusSession, setInFocusSession] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [participants, setParticipants] = useState<any[]>([]);
+  const [resources, setResources] = useState<any[]>([]);
+  
+  // Get room messages if ID exists
+  const { messages: roomMessages, sendMessage: sendRoomMessage } = useRoomMessages(id || "");
 
   useEffect(() => {
-    if (id) {
-      const roomData = getMockRoom(id);
-      if (roomData) {
-        setRoom(roomData);
+    const loadRoomData = async () => {
+      if (!id) return;
+      
+      try {
+        setLoading(true);
+        
+        // Get room data
+        const { data: roomData, error: roomError } = await supabase
+          .from('study_rooms')
+          .select(`
+            *,
+            creator:creator_id(id, username, avatar_url)
+          `)
+          .eq('id', id)
+          .single();
+          
+        if (roomError) throw roomError;
+        
+        // Get participants
+        const { data: participantsData, error: participantsError } = await supabase
+          .from('study_room_participants')
+          .select(`
+            *,
+            user:user_id(id, username, avatar_url)
+          `)
+          .eq('room_id', id);
+          
+        if (participantsError) throw participantsError;
+        
+        // Mark the creator as organizer
+        const mappedParticipants = participantsData.map(p => ({
+          id: p.id,
+          name: p.user.username || `User-${p.user.id.substring(0, 4)}`,
+          avatar: p.user.avatar_url || "/placeholder.svg",
+          online: true, // We'll update this with presence
+          role: p.user_id === roomData.creator_id ? "organizer" : "member"
+        }));
+        
+        // Check if user has permissions
+        if (user?.id) {
+          // Join the room (or update last active time)
+          await joinRoom(id);
+        }
+        
+        setRoom({
+          ...roomData,
+          activeSession: false // We'll set this with room state
+        });
+        
+        setParticipants(mappedParticipants);
+        
+        // These would come from database in a real implementation
+        setResources([
+          { id: 1, title: "Study Room Guide", type: "Link", sharedBy: "System", timestamp: "Just now" }
+        ]);
+      } catch (err) {
+        console.error('Error loading study room data:', err);
+        toast.error('Could not load study room data');
+        navigate('/community');
+      } finally {
+        setLoading(false);
       }
-    }
-  }, [id]);
-
-  const handleSendMessage = () => {
-    if (!message.trim()) return;
-    
-    const newMessage = {
-      id: room.messages.length + 1,
-      sender: "You",
-      content: message,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      avatar: "/placeholder.svg"
     };
     
-    setRoom({
-      ...room,
-      messages: [...room.messages, newMessage]
-    });
+    loadRoomData();
     
-    setMessage("");
+    // Request permissions when joining a room
+    const requestPermissions = async () => {
+      await requestMediaPermissions();
+    };
+    
+    requestPermissions();
+    
+    // Subscribe to presence for online status
+    const channel = supabase.channel(`room_${id}_presence`)
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const online = new Set<string>();
+        
+        Object.values(state).forEach(presence => {
+          const presences = presence as Array<{user_id: string}>;
+          presences.forEach(p => {
+            if (p.user_id) online.add(p.user_id);
+          });
+        });
+        
+        // Update participants' online status
+        setParticipants(current => 
+          current.map(p => ({
+            ...p,
+            online: online.has(p.id)
+          }))
+        );
+      })
+      .subscribe();
+    
+    // Track user's presence in this room
+    if (user?.id) {
+      channel.track({
+        user_id: user.id,
+        room_id: id,
+        online_at: new Date().toISOString()
+      });
+    }
+    
+    // Clean up when leaving
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, user?.id]);
+
+  const handleSendMessage = async () => {
+    if (!message.trim() || !id) return;
+    
+    try {
+      await sendRoomMessage(message);
+      setMessage("");
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message');
+    }
   };
 
   const handleStartFocusSession = (duration: number) => {
@@ -122,6 +178,8 @@ const StudyRoom = () => {
       description: `${duration} minute session has begun`,
       position: "top-center"
     });
+    
+    // In a real app, you would update the room state in the database
   };
 
   const handlePause = () => {
@@ -144,7 +202,33 @@ const StudyRoom = () => {
       description: "Great job everyone.",
       position: "top-center"
     });
+    
+    // In a real app, you would update the room state in the database
   };
+  
+  const handleLeaveRoom = async () => {
+    if (!id) return;
+    
+    try {
+      const left = await leaveRoom(id);
+      if (left) {
+        toast.success('Left the study room');
+        navigate('/community');
+      }
+    } catch (error) {
+      console.error('Error leaving room:', error);
+      toast.error('Failed to leave room');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
+        <p>Loading study room...</p>
+      </div>
+    );
+  }
 
   if (!room) {
     return (
@@ -171,18 +255,27 @@ const StudyRoom = () => {
               <span className="font-medium">Topic:</span> 
               <span className="truncate">{room.topic}</span>
             </div>
-            {!inFocusSession && (
-              <Button className="mt-2 sm:mt-0" onClick={() => setShowFocusDialog(true)}>
-                <Timer className="h-4 w-4 mr-2" />
-                Start Focus Session
+            <div className="flex gap-2">
+              {!inFocusSession && (
+                <Button className="mt-2 sm:mt-0" onClick={() => setShowFocusDialog(true)}>
+                  <Timer className="h-4 w-4 mr-2" />
+                  Start Focus Session
+                </Button>
+              )}
+              <Button 
+                variant="outline" 
+                className="mt-2 sm:mt-0" 
+                onClick={handleLeaveRoom}
+              >
+                Leave Room
               </Button>
-            )}
+            </div>
           </div>
           
           <p className="text-muted-foreground line-clamp-2">{room.description}</p>
           
           <div className="flex flex-wrap gap-1 mt-1">
-            {room.subjects.map((subject: string, index: number) => (
+            {room.subjects?.map((subject: string, index: number) => (
               <Badge key={index} variant="outline" className="text-xs">
                 {subject}
               </Badge>
@@ -191,17 +284,17 @@ const StudyRoom = () => {
           
           <div className="flex items-center gap-1 text-sm mt-1">
             <Users className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span>{room.participants.length} participants</span>
+            <span>{participants.length} participants</span>
             <span className="flex -space-x-2 ml-2">
-              {room.participants.slice(0, 3).map((participant: any, index: number) => (
+              {participants.slice(0, 3).map((participant: any, index: number) => (
                 <Avatar key={index} className="h-6 w-6 border-2 border-background">
                   <AvatarImage src={participant.avatar} />
                   <AvatarFallback>{participant.name[0]}</AvatarFallback>
                 </Avatar>
               ))}
-              {room.participants.length > 3 && (
+              {participants.length > 3 && (
                 <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs border-2 border-background">
-                  +{room.participants.length - 3}
+                  +{participants.length - 3}
                 </div>
               )}
             </span>
@@ -253,7 +346,13 @@ const StudyRoom = () => {
           
           <TabsContent value="chat">
             <StudyRoomChat 
-              messages={room.messages} 
+              messages={roomMessages.map(msg => ({
+                id: msg.id,
+                sender: msg.sender?.username || 'Unknown',
+                content: msg.content,
+                timestamp: new Date(msg.created_at).toLocaleTimeString(),
+                avatar: msg.sender?.avatar_url || '/placeholder.svg'
+              }))} 
               onSendMessage={handleSendMessage}
               message={message}
               setMessage={setMessage}
@@ -261,11 +360,11 @@ const StudyRoom = () => {
           </TabsContent>
           
           <TabsContent value="resources">
-            <StudyRoomResources resources={room.resources} />
+            <StudyRoomResources resources={resources} />
           </TabsContent>
           
           <TabsContent value="members">
-            <StudyRoomMember participants={room.participants} />
+            <StudyRoomMember participants={participants} />
           </TabsContent>
         </Tabs>
       )}

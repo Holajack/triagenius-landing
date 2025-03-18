@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, MoreVertical, Phone, Video } from "lucide-react";
@@ -5,230 +6,189 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useUser } from "@/hooks/use-user";
+import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
+import { supabase } from "@/integrations/supabase/client";
+import { formatDistanceToNow } from "date-fns";
+import { requestMediaPermissions, sendNotification } from "@/components/pwa/ServiceWorker";
 
-interface ChatMessage {
-  id: number;
-  content: string;
-  sender: "user" | "other";
-  timestamp: string;
-  read: boolean;
-  delivered: boolean;
-}
-
-interface ChatContact {
-  id: number;
-  name: string;
-  avatar: string;
-  online: boolean;
-  status: string;
+interface ChatProfile {
+  id: string;
+  username: string | null;
+  avatar_url: string | null;
+  online?: boolean;
+  status?: string;
   typing?: boolean;
   lastActive?: string;
 }
-
-const getMockContact = (id: string): ChatContact => {
-  const contacts: Record<string, ChatContact> = {
-    "1": {
-      id: 1,
-      name: "Sarah Johnson",
-      avatar: "/placeholder.svg",
-      online: true,
-      status: "Available",
-      typing: false
-    },
-    "2": {
-      id: 2,
-      name: "Study Group",
-      avatar: "/placeholder.svg",
-      online: true,
-      status: "5 members",
-      typing: true
-    },
-    "3": {
-      id: 3,
-      name: "Michael Chen",
-      avatar: "/placeholder.svg",
-      online: false,
-      status: "Last active 30m ago",
-      lastActive: "30m ago"
-    }
-  };
-  
-  return contacts[id] || {
-    id: parseInt(id),
-    name: "Unknown Contact",
-    avatar: "/placeholder.svg",
-    online: false,
-    status: "Unavailable"
-  };
-};
-
-const getMockMessages = (contactId: string): ChatMessage[] => {
-  if (contactId === "1") {
-    return [
-      {
-        id: 1,
-        content: "Hey! Want to join our study session?",
-        sender: "other",
-        timestamp: "2:30 PM",
-        read: true,
-        delivered: true
-      },
-      {
-        id: 2,
-        content: "Sure! When is it happening?",
-        sender: "user",
-        timestamp: "2:32 PM",
-        read: true,
-        delivered: true
-      },
-      {
-        id: 3,
-        content: "We're starting at 4 PM today. It's a focus session for the upcoming exam.",
-        sender: "other",
-        timestamp: "2:33 PM",
-        read: true,
-        delivered: true
-      },
-      {
-        id: 4,
-        content: "Sounds good. I'll be there!",
-        sender: "user",
-        timestamp: "2:35 PM",
-        read: true,
-        delivered: true
-      },
-      {
-        id: 5,
-        content: "Great! We'll be in Study Room 3. See you then!",
-        sender: "other",
-        timestamp: "2:36 PM",
-        read: true,
-        delivered: true
-      },
-    ];
-  } else if (contactId === "2") {
-    return [
-      {
-        id: 1,
-        content: "Welcome everyone to our study group!",
-        sender: "other",
-        timestamp: "Yesterday",
-        read: true,
-        delivered: true
-      },
-      {
-        id: 2,
-        content: "I've shared the materials for our next session.",
-        sender: "other",
-        timestamp: "Yesterday",
-        read: true,
-        delivered: true
-      },
-      {
-        id: 3,
-        content: "Thanks for sharing. I've reviewed them already.",
-        sender: "user",
-        timestamp: "Yesterday",
-        read: true,
-        delivered: true
-      },
-      {
-        id: 4,
-        content: "Great progress everyone! Let's meet again tomorrow.",
-        sender: "other",
-        timestamp: "1h ago",
-        read: true,
-        delivered: true
-      }
-    ];
-  } else {
-    return [
-      {
-        id: 1,
-        content: "Hi there! How's your studying going?",
-        sender: "other",
-        timestamp: "3h ago",
-        read: true,
-        delivered: true
-      },
-      {
-        id: 2,
-        content: "I just finished the chapter 5 exercises, need help with anything?",
-        sender: "other",
-        timestamp: "3h ago",
-        read: true,
-        delivered: true
-      },
-      {
-        id: 3,
-        content: "It's going well, thanks! I might need some help with the database section.",
-        sender: "user",
-        timestamp: "2h ago",
-        read: true,
-        delivered: true
-      },
-      {
-        id: 4,
-        content: "Sure, I can help with that. Want to set up a quick call later?",
-        sender: "other",
-        timestamp: "2h ago",
-        read: true,
-        delivered: true
-      }
-    ];
-  }
-};
 
 const Chat = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const messageEndRef = useRef<HTMLDivElement>(null);
-  const [contact, setContact] = useState<ChatContact | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [contact, setContact] = useState<ChatProfile | null>(null);
   const [newMessage, setNewMessage] = useState("");
+  const { user } = useUser();
+  const { getConversation, sendMessage, markAsRead } = useRealtimeMessages();
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  
+  // Get conversation messages
+  const messages = id ? getConversation(id) : [];
   
   useEffect(() => {
-    if (id) {
-      setContact(getMockContact(id));
-      setMessages(getMockMessages(id));
+    const fetchProfile = async () => {
+      if (!id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (error) throw error;
+        
+        setContact({
+          id: data.id,
+          username: data.username || `User-${data.id.substring(0, 4)}`,
+          avatar_url: data.avatar_url,
+          online: false, // Will be updated by presence channel
+          status: "Offline"
+        });
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+        toast.error('Could not load contact information');
+      }
+    };
+    
+    fetchProfile();
+    
+    // Subscribe to user presence
+    const channel = supabase.channel('online-users')
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const online = new Set<string>();
+        
+        Object.values(state).forEach(presence => {
+          const presences = presence as Array<{user_id: string}>;
+          presences.forEach(p => {
+            if (p.user_id) online.add(p.user_id);
+          });
+        });
+        
+        setOnlineUsers(online);
+        
+        // Update contact's online status
+        if (contact) {
+          setContact(prev => {
+            if (!prev) return prev;
+            const isOnline = online.has(prev.id);
+            return {
+              ...prev,
+              online: isOnline,
+              status: isOnline ? "Online" : `Last seen ${formatDistanceToNow(new Date(), { addSuffix: true })}`,
+            };
+          });
+        }
+      })
+      .subscribe();
+    
+    // Track user's own presence when they view the chat
+    if (user?.id) {
+      channel.track({
+        user_id: user.id,
+        online_at: new Date().toISOString()
+      });
     }
-  }, [id]);
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, user?.id]);
   
+  // Mark unread messages as read
   useEffect(() => {
+    if (!id || !user?.id) return;
+    
+    // Mark messages from this contact as read
+    messages.forEach(msg => {
+      if (msg.sender_id === id && !msg.is_read) {
+        markAsRead(msg.id);
+      }
+    });
+  }, [id, messages, user?.id, markAsRead]);
+
+  useEffect(() => {
+    // Scroll to bottom when messages change
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
   
-  const handleSendMessage = () => {
-    if (!newMessage.trim() || !id) return;
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !id || !user?.id) return;
     
-    const newMsg: ChatMessage = {
-      id: messages.length + 1,
-      content: newMessage,
-      sender: "user",
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      read: false,
-      delivered: true
-    };
-    
-    setMessages([...messages, newMsg]);
-    setNewMessage("");
-    
-    setTimeout(() => {
-      if (contact?.typing) {
-        const reply: ChatMessage = {
-          id: messages.length + 2,
-          content: "Thanks for your message! I'll get back to you soon.",
-          sender: "other",
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          read: true,
-          delivered: true
-        };
+    const sent = await sendMessage(id, newMessage);
+    if (sent) {
+      setNewMessage("");
+    }
+  };
+  
+  const handleAudioCall = async () => {
+    try {
+      // Request media permissions before starting a call
+      const permissions = await requestMediaPermissions();
+      
+      if (permissions.audio) {
+        // In a real app, you would initiate a call here
+        toast("Starting audio call...", {
+          description: "Audio calling feature is being implemented."
+        });
         
-        setMessages(prev => [...prev, reply]);
+        // Simulate a call notification to the other user
+        // In a real app, this would be done through a server
+        sendNotification(
+          `Incoming call from ${user?.username || "Someone"}`,
+          {
+            body: "Tap to answer",
+            data: { url: `/community/chat/${user?.id}` }
+          }
+        );
+      } else {
+        toast.error("Microphone access is required for audio calls");
       }
-    }, 3000);
+    } catch (error) {
+      console.error('Error starting audio call:', error);
+      toast.error("Could not start audio call");
+    }
+  };
+  
+  const handleVideoCall = async () => {
+    try {
+      // Request media permissions before starting a video call
+      const permissions = await requestMediaPermissions();
+      
+      if (permissions.video && permissions.audio) {
+        // In a real app, you would initiate a call here
+        toast("Starting video call...", {
+          description: "Video calling feature is being implemented."
+        });
+        
+        // Simulate a call notification to the other user
+        // In a real app, this would be done through a server
+        sendNotification(
+          `Incoming video call from ${user?.username || "Someone"}`,
+          {
+            body: "Tap to answer",
+            data: { url: `/community/chat/${user?.id}` }
+          }
+        );
+      } else {
+        toast.error("Camera and microphone access is required for video calls");
+      }
+    } catch (error) {
+      console.error('Error starting video call:', error);
+      toast.error("Could not start video call");
+    }
   };
   
   if (!contact || !id) {
@@ -250,8 +210,8 @@ const Chat = () => {
           <div className="flex items-center gap-3">
             <div className="relative">
               <Avatar>
-                <AvatarImage src={contact.avatar} alt={contact.name} />
-                <AvatarFallback>{contact.name[0]}</AvatarFallback>
+                <AvatarImage src={contact.avatar_url || ""} alt={contact.username || ""} />
+                <AvatarFallback>{contact.username?.[0] || "U"}</AvatarFallback>
               </Avatar>
               {contact.online && (
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
@@ -259,7 +219,7 @@ const Chat = () => {
             </div>
             
             <div>
-              <h2 className="font-medium text-sm">{contact.name}</h2>
+              <h2 className="font-medium text-sm">{contact.username}</h2>
               <p className="text-xs text-muted-foreground">
                 {contact.typing ? "typing..." : contact.status}
               </p>
@@ -268,16 +228,20 @@ const Chat = () => {
         </div>
         
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="rounded-full h-8 w-8"
-            onClick={() => toast("Feature coming soon", {
-              description: "Audio calls will be available in a future update."
-            })}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="rounded-full h-8 w-8"
+            onClick={handleAudioCall}
+          >
             <Phone className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="rounded-full h-8 w-8"
-            onClick={() => toast("Feature coming soon", {
-              description: "Video calls will be available in a future update."
-            })}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="rounded-full h-8 w-8"
+            onClick={handleVideoCall}
+          >
             <Video className="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="icon" className="rounded-full h-8 w-8">
@@ -287,46 +251,55 @@ const Chat = () => {
       </div>
       
       <div className="flex-1 p-4 overflow-y-auto space-y-4">
-        {messages.map((message) => (
-          <div 
-            key={message.id} 
-            className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            {message.sender === 'other' && (
-              <Avatar className="h-8 w-8 mr-2 mt-1">
-                <AvatarImage src={contact.avatar} alt={contact.name} />
-                <AvatarFallback>{contact.name[0]}</AvatarFallback>
-              </Avatar>
-            )}
-            
+        {messages.length > 0 ? (
+          messages.map((message) => (
             <div 
-              className={`max-w-[75%] p-3 rounded-lg ${
-                message.sender === 'user' 
-                  ? 'bg-primary text-primary-foreground' 
-                  : 'bg-muted'
-              }`}
+              key={message.id} 
+              className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
             >
-              <p className="text-sm">{message.content}</p>
-              <div className={`flex items-center justify-end gap-1 mt-1 text-xs ${
-                message.sender === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'
-              }`}>
-                <span>{message.timestamp}</span>
-                {message.sender === 'user' && (
-                  <span>{message.read ? '✓✓' : '✓'}</span>
-                )}
+              {message.sender_id !== user?.id && (
+                <Avatar className="h-8 w-8 mr-2 mt-1">
+                  <AvatarImage src={contact.avatar_url || ""} alt={contact.username || ""} />
+                  <AvatarFallback>{contact.username?.[0] || "U"}</AvatarFallback>
+                </Avatar>
+              )}
+              
+              <div 
+                className={`max-w-[75%] p-3 rounded-lg ${
+                  message.sender_id === user?.id 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-muted'
+                }`}
+              >
+                <p className="text-sm">{message.content}</p>
+                <div className={`flex items-center justify-end gap-1 mt-1 text-xs ${
+                  message.sender_id === user?.id ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                }`}>
+                  <span>{formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}</span>
+                  {message.sender_id === user?.id && (
+                    <span>{message.is_read ? '✓✓' : '✓'}</span>
+                  )}
+                </div>
               </div>
             </div>
+          ))
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+            <p>No messages yet</p>
+            <p className="text-sm mt-2">Send a message to start the conversation</p>
           </div>
-        ))}
+        )}
         <div ref={messageEndRef} />
       </div>
       
       <div className="border-t p-3 bg-card">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="rounded-full"
-            onClick={() => toast("Feature coming soon", {
-              description: "File attachments will be available in a future update."
-            })}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="rounded-full"
+            onClick={() => toast.info("File sharing coming soon")}
+          >
             <Paperclip className="h-5 w-5 text-muted-foreground" />
           </Button>
           
@@ -342,10 +315,12 @@ const Chat = () => {
             }}
           />
           
-          <Button variant="ghost" size="icon" className="rounded-full"
-            onClick={() => toast("Feature coming soon", {
-              description: "Emoji picker will be available in a future update."
-            })}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="rounded-full"
+            onClick={() => toast.info("Emoji picker coming soon")}
+          >
             <Smile className="h-5 w-5 text-muted-foreground" />
           </Button>
           
@@ -363,4 +338,3 @@ const Chat = () => {
 };
 
 export default Chat;
-

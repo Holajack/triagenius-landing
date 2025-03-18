@@ -62,20 +62,88 @@ export function register() {
   }
 }
 
-// Register background sync with proper type checking
-async function registerBackgroundSync(registration: ServiceWorkerRegistration) {
+// Request notification permission
+export async function requestNotificationPermission() {
+  if (!('Notification' in window)) {
+    console.log('This browser does not support notifications');
+    return false;
+  }
+  
   try {
-    // Check if SyncManager is actually available in the window object
-    if ('SyncManager' in window && 'sync' in registration) {
-      // Use type assertion to tell TypeScript that we've checked the existence
-      await (registration as any).sync?.register('sync-focus-sessions');
-      console.log('Background sync registered successfully');
+    const permission = await Notification.requestPermission();
+    
+    if (permission === 'granted') {
+      console.log('Notification permission granted');
+      return true;
     } else {
-      console.log('Background sync not supported in this browser');
+      console.log('Notification permission denied');
+      return false;
     }
   } catch (error) {
-    console.error('Background sync registration failed:', error);
+    console.error('Error requesting notification permission:', error);
+    return false;
   }
+}
+
+// Send notification
+export function sendNotification(title: string, options: NotificationOptions = {}) {
+  if (!('Notification' in window)) {
+    return;
+  }
+  
+  if (Notification.permission === 'granted') {
+    try {
+      const notification = new Notification(title, {
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/icon-192x192.png',
+        ...options,
+      });
+      
+      notification.onclick = function() {
+        window.focus();
+        if (options.data?.url) {
+          window.location.href = options.data.url;
+        }
+        notification.close();
+      };
+    } catch (error) {
+      console.error('Error creating notification:', error);
+    }
+  }
+}
+
+// Request camera and microphone permissions
+export async function requestMediaPermissions(): Promise<{video: boolean, audio: boolean}> {
+  const result = { video: false, audio: false };
+  
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    console.log('getUserMedia is not supported in this browser');
+    return result;
+  }
+  
+  // Check for video permission
+  try {
+    const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    result.video = true;
+    
+    // Stop the tracks to release the camera
+    videoStream.getTracks().forEach(track => track.stop());
+  } catch (error) {
+    console.error('Error requesting video permission:', error);
+  }
+  
+  // Check for audio permission
+  try {
+    const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    result.audio = true;
+    
+    // Stop the tracks to release the microphone
+    audioStream.getTracks().forEach(track => track.stop());
+  } catch (error) {
+    console.error('Error requesting audio permission:', error);
+  }
+  
+  return result;
 }
 
 // Register for push notifications (user permission required)
