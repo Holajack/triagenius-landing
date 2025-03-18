@@ -36,7 +36,8 @@ export function register() {
           
           // Register for background sync if browser supports it
           if ('SyncManager' in window) {
-            registration.sync.register('sync-focus-session')
+            // Use optional chaining and type checking to safely access the sync property
+            (registration as any).sync?.register('sync-focus-session')
               .catch(err => console.error('Background sync registration failed:', err));
           }
         })

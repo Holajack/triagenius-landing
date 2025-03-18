@@ -48,22 +48,20 @@ function App() {
                   <Route path="/onboarding" element={<Onboarding />} />
                   
                   {/* Protected routes */}
-                  <Route element={<ProtectedRoute />}>
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/focus-session" element={<FocusSession />} />
-                    <Route path="/session-report/:id" element={<SessionReport />} />
-                    <Route path="/session-reflection/:id" element={<SessionReflection />} />
-                    <Route path="/break-timer" element={<BreakTimer />} />
-                    <Route path="/reports" element={<Reports />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/community" element={<Community />} />
-                    <Route path="/community/room/:id" element={<StudyRoom />} />
-                    <Route path="/community/chat/:id" element={<Chat />} />
-                    <Route path="/leaderboard" element={<Leaderboard />} />
-                    <Route path="/bonuses" element={<Bonuses />} />
-                    <Route path="/nora" element={<Nora />} />
-                  </Route>
+                  <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                  <Route path="/focus-session" element={<ProtectedRoute><FocusSession /></ProtectedRoute>} />
+                  <Route path="/session-report/:id" element={<ProtectedRoute><SessionReport /></ProtectedRoute>} />
+                  <Route path="/session-reflection/:id" element={<ProtectedRoute><SessionReflection /></ProtectedRoute>} />
+                  <Route path="/break-timer" element={<ProtectedRoute><BreakTimer /></ProtectedRoute>} />
+                  <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+                  <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                  <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                  <Route path="/community" element={<ProtectedRoute><Community /></ProtectedRoute>} />
+                  <Route path="/community/room/:id" element={<ProtectedRoute><StudyRoom /></ProtectedRoute>} />
+                  <Route path="/community/chat/:id" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+                  <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
+                  <Route path="/bonuses" element={<ProtectedRoute><Bonuses /></ProtectedRoute>} />
+                  <Route path="/nora" element={<ProtectedRoute><Nora /></ProtectedRoute>} />
                   
                   {/* Fallback route */}
                   <Route path="*" element={<NotFound />} />
