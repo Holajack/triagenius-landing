@@ -33,20 +33,34 @@ export function useRealtimeMessages() {
     const fetchMessages = async () => {
       try {
         setLoading(true);
-        // Use the 'messages' table instead of 'chat_messages' since that's what we have in the DB schema
-        const { data, error } = await supabase
+        
+        // First, fetch messages
+        const { data: messagesData, error: messagesError } = await supabase
           .from('messages')
-          .select(`
-            *,
-            sender:sender_id(id, username, avatar_url)
-          `)
+          .select('*')
           .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
-
-        // Cast the data to Message[] to ensure TypeScript compatibility
-        setMessages(data as Message[] || []);
+        if (messagesError) throw messagesError;
+        
+        // Then, for each message, fetch the sender profile
+        const messagesWithSenders: Message[] = [];
+        
+        for (const msg of messagesData || []) {
+          // Fetch sender profile
+          const { data: senderData } = await supabase
+            .from('profiles')
+            .select('id, username, avatar_url')
+            .eq('id', msg.sender_id)
+            .single();
+            
+          messagesWithSenders.push({
+            ...msg,
+            sender: senderData || undefined
+          } as Message);
+        }
+        
+        setMessages(messagesWithSenders);
       } catch (err) {
         console.error('Error fetching messages:', err);
         setError(err instanceof Error ? err : new Error('Failed to fetch messages'));
@@ -63,7 +77,7 @@ export function useRealtimeMessages() {
     if (!user?.id) return;
 
     const channel = supabase
-      .channel('chat_messages_changes')
+      .channel('messages_changes')
       .on(
         'postgres_changes',
         {
@@ -118,7 +132,6 @@ export function useRealtimeMessages() {
     }
 
     try {
-      // Use the 'messages' table instead of 'chat_messages'
       const { data, error } = await supabase
         .from('messages')
         .insert({

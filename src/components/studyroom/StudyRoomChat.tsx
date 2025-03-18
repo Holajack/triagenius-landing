@@ -4,8 +4,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-interface Message {
-  id: number;
+interface StudyRoomMessage {
+  id: string;
   sender: string;
   content: string;
   timestamp: string;
@@ -13,7 +13,7 @@ interface Message {
 }
 
 interface StudyRoomChatProps {
-  messages: Message[];
+  messages: StudyRoomMessage[];
   onSendMessage: () => void;
   message: string;
   setMessage: (message: string) => void;

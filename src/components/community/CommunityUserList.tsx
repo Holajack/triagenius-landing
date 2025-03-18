@@ -40,21 +40,18 @@ export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityU
       try {
         setLoading(true);
         
-        // Fetch all user profiles
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*');
           
         if (profilesError) throw profilesError;
         
-        // Fetch stats for all users
         const { data: stats, error: statsError } = await supabase
           .from('leaderboard_stats')
           .select('user_id, total_focus_time, total_sessions, level');
           
         if (statsError) throw statsError;
         
-        // Create a map of stats by user_id
         const statsMap = new Map();
         stats?.forEach(stat => {
           statsMap.set(stat.user_id, {
@@ -64,7 +61,6 @@ export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityU
           });
         });
         
-        // Combine profiles with their stats
         const usersWithStats = profiles?.map(profile => ({
           id: profile.id,
           username: profile.username || `User-${profile.id.substring(0, 4)}`,
@@ -74,7 +70,7 @@ export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityU
             total_sessions: 0,
             level: 1
           },
-          online: false // Will be updated by presence channel
+          online: false
         })) || [];
         
         setUsers(usersWithStats);
@@ -88,7 +84,6 @@ export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityU
     
     fetchUsers();
     
-    // Subscribe to user presence
     const channel = supabase.channel('online-users')
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
@@ -98,12 +93,15 @@ export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityU
           const presences = presence as Array<{[key: string]: any}>;
           presences.forEach(p => {
             if (p.user_id) online.add(p.user_id);
+            if (p.presence_ref) {
+              const match = p.presence_ref.match(/user_id=([^&]+)/);
+              if (match && match[1]) online.add(match[1]);
+            }
           });
         });
         
         setOnlineUsers(online);
         
-        // Update online status on users
         setUsers(currentUsers => 
           currentUsers.map(u => ({
             ...u,
@@ -113,7 +111,6 @@ export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityU
       })
       .subscribe();
       
-    // Track user's own presence when they view the community page
     if (user?.id) {
       channel.track({
         user_id: user.id,

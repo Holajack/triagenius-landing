@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
@@ -47,12 +46,10 @@ const StudyRoom = () => {
   const [resources, setResources] = useState<any[]>([]);
   const [formattedMessages, setFormattedMessages] = useState<StudyRoomMessage[]>([]);
   
-  // Get room messages if ID exists
   const { messages: roomMessages, sendMessage: sendRoomMessage } = useRoomMessages(id || "");
 
-  // Format room messages for the chat component
   useEffect(() => {
-    const formatted = roomMessages.map(msg => ({
+    const formatted: StudyRoomMessage[] = roomMessages.map(msg => ({
       id: msg.id,
       sender: msg.sender?.username || 'Unknown',
       content: msg.content,
@@ -69,7 +66,6 @@ const StudyRoom = () => {
       try {
         setLoading(true);
         
-        // Get room data
         const { data: roomData, error: roomError } = await supabase
           .from('study_rooms')
           .select(`
@@ -81,7 +77,6 @@ const StudyRoom = () => {
           
         if (roomError) throw roomError;
         
-        // Get participants
         const { data: participantsData, error: participantsError } = await supabase
           .from('study_room_participants')
           .select(`
@@ -92,26 +87,22 @@ const StudyRoom = () => {
           
         if (participantsError) throw participantsError;
         
-        // Mark the creator as organizer
         const mappedParticipants = participantsData.map(p => ({
           id: p.id,
           name: p.user.username || `User-${p.user.id.substring(0, 4)}`,
           avatar: p.user.avatar_url || "/placeholder.svg",
-          online: true, // We'll update this with presence
+          online: true,
           role: p.user_id === roomData.creator_id ? "organizer" : "member"
         }));
         
-        // Check if user has permissions
         if (user?.id) {
-          // Join the room (or update last active time)
           await joinRoom(id);
         }
         
-        // Add missing properties from SQL schema to make it compatible with StudyRoom interface
         const enrichedRoomData = {
           ...roomData,
-          activeSession: false, // We'll set this with room state
-          topic: roomData.description || 'General Study', // Use description as topic if not provided
+          activeSession: false,
+          topic: roomData.description || 'General Study',
           is_active: true,
           schedule: null,
           duration: null,
@@ -121,7 +112,6 @@ const StudyRoom = () => {
         setRoom(enrichedRoomData);
         setParticipants(mappedParticipants);
         
-        // These would come from database in a real implementation
         setResources([
           { id: 1, title: "Study Room Guide", type: "Link", sharedBy: "System", timestamp: "Just now" }
         ]);
@@ -136,28 +126,24 @@ const StudyRoom = () => {
     
     loadRoomData();
     
-    // Request permissions when joining a room
     const requestPermissions = async () => {
       await requestMediaPermissions();
     };
     
     requestPermissions();
     
-    // Subscribe to presence for online status
     const channel = supabase.channel(`room_${id}_presence`)
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
         const online = new Set<string>();
         
         Object.values(state).forEach(presence => {
-          // Fix: Properly type and handle presence data
           const presences = presence as Array<{[key: string]: any}>;
           presences.forEach(p => {
             if (p.user_id) online.add(p.user_id);
           });
         });
         
-        // Update participants' online status
         setParticipants(current => 
           current.map(p => ({
             ...p,
@@ -167,7 +153,6 @@ const StudyRoom = () => {
       })
       .subscribe();
     
-    // Track user's presence in this room
     if (user?.id) {
       channel.track({
         user_id: user.id,
@@ -176,7 +161,6 @@ const StudyRoom = () => {
       });
     }
     
-    // Clean up when leaving
     return () => {
       supabase.removeChannel(channel);
     };
@@ -207,8 +191,6 @@ const StudyRoom = () => {
       description: `${duration} minute session has begun`,
       position: "top-center"
     });
-    
-    // In a real app, you would update the room state in the database
   };
 
   const handlePause = () => {
@@ -231,8 +213,6 @@ const StudyRoom = () => {
       description: "Great job everyone.",
       position: "top-center"
     });
-    
-    // In a real app, you would update the room state in the database
   };
   
   const handleLeaveRoom = async () => {

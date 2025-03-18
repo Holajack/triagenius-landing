@@ -32,7 +32,6 @@ const Chat = () => {
   const { getConversation, sendMessage, markAsRead } = useRealtimeMessages();
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   
-  // Get conversation messages
   const messages = id ? getConversation(id) : [];
   
   useEffect(() => {
@@ -52,7 +51,7 @@ const Chat = () => {
           id: data.id,
           username: data.username || `User-${data.id.substring(0, 4)}`,
           avatar_url: data.avatar_url,
-          online: false, // Will be updated by presence channel
+          online: false,
           status: "Offline"
         });
       } catch (err) {
@@ -63,7 +62,6 @@ const Chat = () => {
     
     fetchProfile();
     
-    // Subscribe to user presence
     const channel = supabase.channel('online-users')
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
@@ -73,12 +71,15 @@ const Chat = () => {
           const presences = presence as Array<{[key: string]: any}>;
           presences.forEach(p => {
             if (p.user_id) online.add(p.user_id);
+            if (p.presence_ref) {
+              const match = p.presence_ref.match(/user_id=([^&]+)/);
+              if (match && match[1]) online.add(match[1]);
+            }
           });
         });
         
         setOnlineUsers(online);
         
-        // Update contact's online status
         if (contact) {
           setContact(prev => {
             if (!prev) return prev;
@@ -93,7 +94,6 @@ const Chat = () => {
       })
       .subscribe();
     
-    // Track user's own presence when they view the chat
     if (user?.id) {
       channel.track({
         user_id: user.id,
@@ -106,20 +106,17 @@ const Chat = () => {
     };
   }, [id, user?.id]);
   
-  // Mark unread messages as read
   useEffect(() => {
     if (!id || !user?.id) return;
     
-    // Mark messages from this contact as read
     messages.forEach(msg => {
       if (msg.sender_id === id && !msg.is_read) {
         markAsRead(msg.id);
       }
     });
   }, [id, messages, user?.id, markAsRead]);
-
+  
   useEffect(() => {
-    // Scroll to bottom when messages change
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
   
@@ -134,17 +131,13 @@ const Chat = () => {
   
   const handleAudioCall = async () => {
     try {
-      // Request media permissions before starting a call
       const permissions = await requestMediaPermissions();
       
       if (permissions.audio) {
-        // In a real app, you would initiate a call here
         toast("Starting audio call...", {
           description: "Audio calling feature is being implemented."
         });
         
-        // Simulate a call notification to the other user
-        // In a real app, this would be done through a server
         sendNotification(
           `Incoming call from ${user?.username || "Someone"}`,
           {
@@ -163,17 +156,13 @@ const Chat = () => {
   
   const handleVideoCall = async () => {
     try {
-      // Request media permissions before starting a video call
       const permissions = await requestMediaPermissions();
       
       if (permissions.video && permissions.audio) {
-        // In a real app, you would initiate a call here
         toast("Starting video call...", {
           description: "Video calling feature is being implemented."
         });
         
-        // Simulate a call notification to the other user
-        // In a real app, this would be done through a server
         sendNotification(
           `Incoming video call from ${user?.username || "Someone"}`,
           {
