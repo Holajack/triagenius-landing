@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -8,7 +7,15 @@ import { BarChart2, Clock, ListChecks, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/hooks/use-user";
 
-const WeeklyTracker: React.FC = () => {
+interface WeeklyTrackerProps {
+  chartType?: 'bar' | 'pie' | 'line' | 'time';
+  optimizeForMobile?: boolean;
+}
+
+const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ 
+  chartType = 'bar',
+  optimizeForMobile = false 
+}) => {
   const { state } = useOnboarding();
   const [activeTab, setActiveTab] = useState("focus-time");
   const { user } = useUser();
@@ -37,17 +44,15 @@ const WeeklyTracker: React.FC = () => {
   const [taskStatusData, setTaskStatusData] = useState<{ name: string; value: number; }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Get the current date and format days of the week
   const getDayOfWeek = (dateString: string): string => {
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const date = new Date(dateString);
     return days[date.getDay()];
   };
   
-  // Get start and end of current week
   const getWeekBounds = () => {
     const now = new Date();
-    const dayOfWeek = now.getDay(); // 0 is Sunday, 6 is Saturday
+    const dayOfWeek = now.getDay();
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - dayOfWeek);
     startOfWeek.setHours(0, 0, 0, 0);
@@ -67,7 +72,6 @@ const WeeklyTracker: React.FC = () => {
       try {
         const { startOfWeek, endOfWeek } = getWeekBounds();
         
-        // Get weekly focus time data
         const { data: focusData, error: focusError } = await supabase
           .from('focus_sessions')
           .select('start_time, duration')
@@ -78,19 +82,16 @@ const WeeklyTracker: React.FC = () => {
         if (focusError) {
           console.error('Error fetching focus data:', focusError);
         } else {
-          // Initialize weekly focus data
           const weeklyFocusData = {
             "Mon": 0, "Tue": 0, "Wed": 0, "Thu": 0, "Fri": 0, "Sat": 0, "Sun": 0
           };
           
-          // Aggregate focus time by day
           focusData?.forEach(session => {
             const day = getDayOfWeek(session.start_time);
-            const durationHours = (session.duration || 0) / 60; // Convert minutes to hours
+            const durationHours = (session.duration || 0) / 60;
             weeklyFocusData[day as keyof typeof weeklyFocusData] += durationHours;
           });
           
-          // Format data for chart
           const formattedFocusData = Object.entries(weeklyFocusData).map(([day, total]) => ({
             day,
             total: parseFloat(total.toFixed(1))
@@ -99,7 +100,6 @@ const WeeklyTracker: React.FC = () => {
           setFocusTimeData(formattedFocusData);
         }
         
-        // Get weekly tasks data
         const { data: tasksData, error: tasksError } = await supabase
           .from('tasks')
           .select('created_at, status')
@@ -110,12 +110,10 @@ const WeeklyTracker: React.FC = () => {
         if (tasksError) {
           console.error('Error fetching tasks data:', tasksError);
         } else {
-          // Initialize weekly tasks data
           const weeklyTaskData = {
             "Mon": 0, "Tue": 0, "Wed": 0, "Thu": 0, "Fri": 0, "Sat": 0, "Sun": 0
           };
           
-          // Count completed tasks by day
           tasksData?.forEach(task => {
             if (task.status === 'completed') {
               const day = getDayOfWeek(task.created_at);
@@ -123,7 +121,6 @@ const WeeklyTracker: React.FC = () => {
             }
           });
           
-          // Format data for chart
           const formattedTaskData = Object.entries(weeklyTaskData).map(([day, total]) => ({
             day,
             total
@@ -131,7 +128,6 @@ const WeeklyTracker: React.FC = () => {
           
           setTaskData(formattedTaskData);
           
-          // Aggregate task status data
           const taskStatusCounts = {
             "Completed": 0,
             "In Progress": 0,
@@ -152,7 +148,6 @@ const WeeklyTracker: React.FC = () => {
           setTaskStatusData(formattedTaskStatusData);
         }
         
-        // Get subject distribution from focus sessions
         const { data: focusSessions, error: subjectsError } = await supabase
           .from('focus_sessions')
           .select('id, tasks:tasks(title)')
@@ -163,25 +158,22 @@ const WeeklyTracker: React.FC = () => {
         if (subjectsError) {
           console.error('Error fetching subjects data:', subjectsError);
         } else {
-          // Extract subject data from tasks associated with focus sessions
           const subjectCounts: Record<string, number> = {};
           
           focusSessions?.forEach(session => {
             const tasks = session.tasks as any[];
             if (Array.isArray(tasks)) {
               tasks.forEach(task => {
-                // Use task title as subject
                 const subject = task.title || 'Untitled';
                 subjectCounts[subject] = (subjectCounts[subject] || 0) + 1;
               });
             }
           });
           
-          // Format for chart
           const formattedSubjectData = Object.entries(subjectCounts)
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value)
-            .slice(0, 5); // Only show top 5 subjects
+            .slice(0, 5);
           
           setSubjectData(formattedSubjectData);
         }
@@ -194,7 +186,6 @@ const WeeklyTracker: React.FC = () => {
     
     loadData();
     
-    // Set up real-time subscription for updates
     const channel = supabase
       .channel('weekly-tracker-changes')
       .on('postgres_changes', 
@@ -212,7 +203,6 @@ const WeeklyTracker: React.FC = () => {
     };
   }, [user?.id]);
   
-  // Chart customization based on environment
   const getChartColor = () => {
     switch (state.environment) {
       case 'office': return "#3b82f6";
@@ -224,7 +214,6 @@ const WeeklyTracker: React.FC = () => {
     }
   };
   
-  // Format data for tooltip
   const formatTooltip = (value: number, name: string) => {
     return [`${value} ${activeTab === "focus-time" ? "hrs" : "tasks"}`, name];
   };

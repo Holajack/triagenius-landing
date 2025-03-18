@@ -1,4 +1,3 @@
-
 // Types for leaderboard data
 export interface LeaderboardUser {
   rank: number;
@@ -9,6 +8,11 @@ export interface LeaderboardUser {
   streak: number;
   isCurrentUser: boolean;
   badge?: string;
+}
+
+// Type for the RPC response
+interface UserFollow {
+  following_id: string;
 }
 
 // Fetch friends leaderboard data from Supabase
@@ -53,7 +57,7 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
       });
       
       if (!followingError && followingData) {
-        friendIds = followingData.map((connection: any) => connection.following_id);
+        friendIds = (followingData as UserFollow[]).map(connection => connection.following_id);
       }
     } catch (error) {
       console.error('Error fetching friend IDs:', error);
@@ -362,3 +366,4 @@ export const getCommunityActivityFeed = async (isNewUser = false): Promise<any[]
     return [];
   }
 };
+
