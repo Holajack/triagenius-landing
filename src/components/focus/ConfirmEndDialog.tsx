@@ -1,6 +1,5 @@
 
 import React, { useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,14 +11,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Clock, AlertCircle } from "lucide-react";
-import { useUser } from "@/hooks/use-user";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 
 interface ConfirmEndDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirmEnd: () => void; // New prop to handle session end from the parent
+  onConfirmEnd: () => void; // Handler from parent
 }
 
 export function ConfirmEndDialog({
@@ -39,7 +35,7 @@ export function ConfirmEndDialog({
   const handleConfirm = (e: React.MouseEvent) => {
     e.preventDefault();
     
-    // Prevent multiple navigation attempts
+    // Prevent multiple confirmation attempts
     if (navigationAttemptedRef.current) {
       return;
     }
@@ -48,8 +44,7 @@ export function ConfirmEndDialog({
     // Close dialog immediately for better UX
     onOpenChange(false);
     
-    // Delegate the session ending to the parent component
-    // This ensures a single source of truth for navigation
+    // Use slight delay to ensure dialog closes before navigation
     setTimeout(() => {
       onConfirmEnd();
     }, 50);

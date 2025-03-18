@@ -62,6 +62,7 @@ const FocusSession = () => {
     handleResume,
     handleSessionEnd,
     handleEndSessionEarly,
+    handleEndSessionConfirm,
     handleMilestoneReached,
     handleProgressUpdate,
     toggleLowPowerMode,
@@ -117,20 +118,6 @@ const FocusSession = () => {
       operationInProgressRef.current = false;
       operationTimeoutRef.current = null;
     }, 10);
-  };
-  
-  // New handler that will be passed to the confirmation dialog
-  const handleEndSessionConfirm = () => {
-    if (!isMountedRef.current) return;
-    
-    // Ensure timer is stopped first
-    if (timerRef.current) {
-      timerRef.current.stopTimer();
-    }
-    
-    // Call the session ending logic from the hook
-    // This centralizes navigation to a single code path
-    handleEndSessionEarly();
   };
 
   return (
