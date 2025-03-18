@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 // Types for leaderboard data
@@ -16,11 +15,6 @@ export interface LeaderboardUser {
 // Type for the RPC response
 interface UserFollow {
   following_id: string;
-}
-
-// Type for RPC input parameters
-interface GetUserFollowsParams {
-  user_id_param: string;
 }
 
 // Fetch friends leaderboard data from Supabase
@@ -60,12 +54,15 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
     let friendIds: string[] = [];
     try {
       // Make a direct RPC call to get friend IDs
-      const { data: followingData, error: followingError } = await supabase.rpc<UserFollow[], GetUserFollowsParams>('get_user_follows', {
-        user_id_param: user.id
-      });
+      const { data: followingData, error: followingError } = await supabase.rpc(
+        'get_user_follows',
+        { user_id_param: user.id }
+      );
       
       if (!followingError && followingData) {
-        friendIds = followingData.map(connection => connection.following_id);
+        // Explicitly type the returned data as an array of UserFollow objects
+        const typedFollowingData = followingData as UserFollow[];
+        friendIds = typedFollowingData.map(connection => connection.following_id);
       }
     } catch (error) {
       console.error('Error fetching friend IDs:', error);
