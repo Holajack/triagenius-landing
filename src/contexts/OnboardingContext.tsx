@@ -50,6 +50,7 @@ type OnboardingContextType = {
   state: OnboardingState;
   dispatch: React.Dispatch<OnboardingAction>;
   saveOnboardingState: () => Promise<void>;
+  isLoading: boolean; // Added loading state
 };
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
@@ -57,10 +58,12 @@ const OnboardingContext = createContext<OnboardingContextType | undefined>(undef
 // Explicitly type the component as React.FC to ensure React recognizes it properly
 export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(onboardingReducer, initialState);
+  const [isLoading, setIsLoading] = React.useState(false); // Added loading state
   
   // Save onboarding state to Supabase
   const saveOnboardingState = async () => {
     try {
+      setIsLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
@@ -75,10 +78,9 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
         .eq('user_id', user.id)
         .maybeSingle();
         
-      if (fetchError && fetchError.code !== 'PGRST116') {
+      if (fetchError) {
         console.error('Error checking for existing preferences:', fetchError);
-        toast.error("Failed to save preferences");
-        return;
+        throw new Error(fetchError.message);
       }
       
       let saveError;
@@ -117,14 +119,16 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
         
       if (saveError) {
         console.error('Error saving onboarding state:', saveError);
-        toast.error("Failed to save preferences");
-        return;
+        throw new Error(saveError.message);
       }
       
       toast.success("Preferences saved successfully");
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in saveOnboardingState:', error);
-      toast.error("An error occurred while saving preferences");
+      toast.error(`Failed to save preferences: ${error.message || "An unknown error occurred"}`);
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
   
@@ -132,6 +136,7 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
   useEffect(() => {
     const loadOnboardingState = async () => {
       try {
+        setIsLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
@@ -161,6 +166,8 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
         }
       } catch (error) {
         console.error('Error in loadOnboardingState:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
     
@@ -181,7 +188,8 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
   const contextValue = {
     state,
     dispatch,
-    saveOnboardingState
+    saveOnboardingState,
+    isLoading
   };
 
   return (
