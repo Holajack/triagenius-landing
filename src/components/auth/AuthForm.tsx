@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,8 +21,6 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
   const [mode] = useState<AuthMode>(initialMode);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [isPwa, setIsPwa] = useState(false);
-  const [isMobilePwa, setIsMobilePwa] = useState(false);
   
   // Form fields
   const [email, setEmail] = useState("");
@@ -30,21 +28,6 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [error, setError] = useState("");
-
-  // Check if running as PWA
-  useEffect(() => {
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                         (window.navigator as any).standalone === true;
-    setIsPwa(isStandalone);
-    
-    // Check if on mobile device
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    setIsMobilePwa(isStandalone && isMobile);
-    
-    if (isStandalone) {
-      console.log('AuthForm: Running in PWA/standalone mode, Mobile:', isMobile);
-    }
-  }, []);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,16 +46,8 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
           throw error;
         }
         
-        toast.success("Welcome back to The Triage System!");
-        
-        // For mobile PWA, use direct navigation to avoid loading issues
-        if (isMobilePwa) {
-          console.log('Mobile PWA: Login successful, navigating directly to dashboard');
-          navigate("/dashboard");
-        } else {
-          // For browser or desktop, use original approach
-          navigate("/dashboard");
-        }
+        toast.success("Welcome back!");
+        navigate("/dashboard");
       } else {
         // Handle signup
         const { data, error } = await supabase.auth.signUp({
@@ -90,28 +65,14 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
           throw error;
         }
         
-        toast.success("Welcome to The Triage System!");
+        toast.success("Account created successfully!");
         
         // If the user signed up from the "Start Focusing" button, take them to onboarding
-        if (isFromStartFocusing || !data.session?.user.app_metadata.onboarding_completed) {
-          // For mobile PWA, use direct navigation
-          if (isMobilePwa) {
-            console.log('Mobile PWA: Signup successful, navigating directly to onboarding');
-            navigate("/onboarding");
-          } else {
-            // For browser or desktop, use original approach
-            navigate("/onboarding");
-          }
+        if (isFromStartFocusing) {
+          navigate("/onboarding");
         } else {
           // Otherwise, take them to the dashboard
-          // For mobile PWA, use direct navigation
-          if (isMobilePwa) {
-            console.log('Mobile PWA: Signup successful, navigating directly to dashboard');
-            navigate("/dashboard");
-          } else {
-            // For browser or desktop, use original approach
-            navigate("/dashboard");
-          }
+          navigate("/dashboard");
         }
       }
     } catch (error: any) {
@@ -121,11 +82,6 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
       setLoading(false);
     }
   };
-  
-  // For mobile PWA, simplify the UI slightly
-  const buttonClass = isMobilePwa 
-    ? "w-full bg-triage-purple hover:bg-triage-purple/90 py-4" 
-    : "w-full bg-triage-purple hover:bg-triage-purple/90";
   
   return (
     <div className="w-full bg-white rounded-xl shadow-sm border p-6">
@@ -204,7 +160,7 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
         
         <Button
           type="submit"
-          className={buttonClass}
+          className="w-full bg-triage-purple hover:bg-triage-purple/90"
           disabled={loading}
         >
           {mode === "login" ? (

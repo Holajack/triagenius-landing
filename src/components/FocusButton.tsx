@@ -1,72 +1,70 @@
 
-import React from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Play, LogIn, ArrowUpRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { Target, Play, Timer } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface FocusButtonProps {
   label: string;
-  icon?: "play" | "login" | "arrow";
+  icon?: "target" | "play" | "timer";
+  onClick?: () => void;
   isPrimary?: boolean;
   className?: string;
-  navigateTo?: string;
-  onClick?: () => void;
 }
 
-const FocusButton: React.FC<FocusButtonProps> = ({
-  label,
-  icon = "play",
+const FocusButton = ({ 
+  label, 
+  icon = "target", 
+  onClick, 
   isPrimary = true,
-  className = "",
-  navigateTo,
-  onClick
-}) => {
-  const navigate = useNavigate();
+  className = "" 
+}: FocusButtonProps) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const { theme } = useTheme();
   
-  const handleClick = () => {
-    if (onClick) {
-      onClick();
-      return;
+  const getIcon = () => {
+    switch (icon) {
+      case "target":
+        return <Target className="w-5 h-5 mr-2" />;
+      case "play":
+        return <Play className="w-5 h-5 mr-2" />;
+      case "timer":
+        return <Timer className="w-5 h-5 mr-2" />;
+      default:
+        return <Target className="w-5 h-5 mr-2" />;
     }
-    
-    if (navigateTo) {
-      // Check if we're in PWA mode
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                          (window.navigator as any).standalone === true;
-      
-      // Check if we're on mobile
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      
-      if (isStandalone && isMobile) {
-        // For mobile PWA, use direct navigation without local storage
-        // This prevents getting stuck on loading screens
-        console.log(`Mobile PWA: Navigating directly to ${navigateTo}`);
-        navigate(navigateTo);
-      } else {
-        // For browser or desktop version, use the original approach
-        navigate(navigateTo);
-      }
-    }
-  };
-  
-  const IconComponent = () => {
-    if (icon === "play") return <Play className="w-4 h-4 mr-2" />;
-    if (icon === "login") return <LogIn className="w-4 h-4 mr-2" />;
-    if (icon === "arrow") return <ArrowUpRight className="w-4 h-4 mr-2" />;
-    return null;
   };
 
   return (
     <Button
-      onClick={handleClick}
-      className={`${
-        isPrimary
-          ? "bg-triage-purple hover:bg-triage-indigo text-white"
-          : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-      } py-3 px-5 rounded-xl text-base font-medium transition-colors ${className}`}
+      className={`relative group overflow-hidden transition-all duration-300 px-6 py-6 h-auto ${
+        isPrimary 
+          ? "button-gradient text-white" 
+          : theme === 'dark' 
+            ? "bg-gray-800 border border-gray-700 text-gray-100 hover:bg-gray-700" 
+            : "bg-white border border-gray-200 text-gray-800 hover:bg-gray-50"
+      } rounded-xl subtle-shadow ${className}`}
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      <IconComponent />
-      {label}
+      <span className="flex items-center justify-center relative z-10">
+        {getIcon()}
+        <span className="font-medium">{label}</span>
+      </span>
+      
+      <AnimatePresence>
+        {isHovered && isPrimary && (
+          <motion.span
+            className="absolute inset-0 bg-white/10"
+            initial={{ x: "-100%", opacity: 0.5 }}
+            animate={{ x: "100%", opacity: 0.2 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+          />
+        )}
+      </AnimatePresence>
     </Button>
   );
 };

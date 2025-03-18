@@ -1,276 +1,111 @@
+
 // Cache version identifier - change this when files are updated
-const CACHE_NAME = 'triage-system-v3'; // Updated cache version for better navigation
+const CACHE_NAME = 'triagenius-v1';
 
 // Add list of files to cache for offline access
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/lovable-uploads/298f5dd5-723c-4333-9008-33d6b981ccfb.png',
-  '/favicon.ico'
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png'
 ];
 
-// Create a cache of dynamic assets - CSS, JS, etc.
-// This will be populated as the user navigates the app
-const DYNAMIC_CACHE = 'triage-system-dynamic-v1';
-
-// List of routes that should serve the index.html file (for SPA navigation)
-const APP_ROUTES = [
-  '/',
-  '/dashboard',
-  '/focus-session',
-  '/reports',
-  '/profile',
-  '/settings',
-  '/community',
-  '/study-room',
-  '/auth',
-  '/login',
-  '/register',
-  '/onboarding',
-  '/session-report',
-  '/session-reflection',
-  '/break-timer',
-  '/leaderboard',
-  '/nora',
-  '/bonuses'
+// App Shell - critical resources
+const APP_SHELL = [
+  '/src/main.tsx',
+  '/src/index.css',
+  '/src/App.tsx'
 ];
 
 // Install event - cache static resources
 self.addEventListener('install', event => {
-  console.log('[Service Worker] Installing');
   self.skipWaiting(); // Force activation on install
   
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('[Service Worker] Caching static assets');
-        return cache.addAll(STATIC_ASSETS.map(url => {
-          return new Request(url, { cache: 'no-cache', mode: 'no-cors' });
-        }));
+        console.log('Service Worker: Caching files');
+        return cache.addAll([...STATIC_ASSETS, ...APP_SHELL]);
       })
   );
 });
 
-// Activate event - clean up old caches and notify clients about update
+// Activate event - clean up old caches
 self.addEventListener('activate', event => {
-  console.log('[Service Worker] Activating');
-  const cacheWhitelist = [CACHE_NAME, DYNAMIC_CACHE];
+  const cacheWhitelist = [CACHE_NAME];
   
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
-            console.log('[Service Worker] Deleting old cache', cacheName);
+            console.log('Service Worker: Deleting old cache', cacheName);
             return caches.delete(cacheName);
           }
           return null;
         })
       );
     }).then(() => {
-      console.log('[Service Worker] Now ready to handle fetches!');
-      
-      // Notify all open clients about the update
-      return self.clients.matchAll().then(clients => {
-        clients.forEach(client => {
-          // Send update available message to client
-          client.postMessage({
-            type: 'UPDATE_AVAILABLE',
-            message: 'New content is available. Please reload to update.'
-          });
-        });
-        
-        return self.clients.claim(); // Take control immediately
-      });
+      console.log('Service Worker: Now ready to handle fetches!');
+      return self.clients.claim(); // Take control immediately
     })
   );
 });
 
-// Helper function to determine if a request is for an API or external resource
-const isApiRequest = (url) => {
-  return url.pathname.startsWith('/api/') || 
-         !url.origin.includes(self.location.origin);
-};
-
-// Helper function to determine if a request is for an HTML page
-const isHtmlRequest = (request) => {
-  return request.headers.get('accept')?.includes('text/html');
-};
-
-// Helper function to determine if a URL is an SPA route that should serve index.html
-const isSpaRoute = (url) => {
-  const pathname = url.pathname;
-  
-  // Check if the pathname exactly matches one of our app routes
-  if (APP_ROUTES.includes(pathname)) {
-    return true;
-  }
-  
-  // Check if the pathname starts with any of our app routes (to handle nested routes)
-  return APP_ROUTES.some(route => 
-    route !== '/' && pathname.startsWith(route + '/')
-  );
-};
-
-// Add special handling for navigation during session transitions with improved offline support
-self.addEventListener('navigate', event => {
-  // Enhance PWA navigation performance, especially for auth transitions
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      (async () => {
-        try {
-          // Try network first for fresh content
-          const preloadResponse = await event.preloadResponse;
-          if (preloadResponse) return preloadResponse;
-          
-          const networkResponse = await fetch(event.request);
-          
-          // Cache successful network responses for offline use
-          if (networkResponse.ok) {
-            const cache = await caches.open(CACHE_NAME);
-            cache.put(event.request, networkResponse.clone());
-          }
-          
-          return networkResponse;
-        } catch (error) {
-          console.log('[Service Worker] Navigation fetch failed, falling back to cache');
-          // Fall back to cache
-          const cache = await caches.open(CACHE_NAME);
-          const cachedResponse = await cache.match(event.request) || await caches.match('/index.html');
-          return cachedResponse;
-        }
-      })()
-    );
-  }
-});
-
-// Fetch event handler using network-first strategy for API/dynamic content
-// and cache-first strategy for static assets
+// Fetch event handler using stale-while-revalidate strategy
 self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-  
-  // Skip URLs that are not GET requests
-  if (event.request.method !== 'GET') return;
-  
-  // Skip URLs with no-cache parameter
-  if (url.searchParams.has('no-cache')) return;
-  
-  // Skip cross-origin requests for third-party scripts and stylesheets
-  if (!url.origin.includes(self.location.origin) && 
-      !url.pathname.endsWith('.js') && 
-      !url.pathname.endsWith('.css') && 
-      !url.pathname.endsWith('.png') && 
-      !url.pathname.endsWith('.jpg') && 
-      !url.pathname.endsWith('.svg')) return;
-  
-  // Special handling for all SPA routes - always serve index.html
-  // This ensures that the PWA can navigate to any route correctly
-  if (isSpaRoute(url) || isHtmlRequest(event.request)) {
-    event.respondWith(
-      fetch(event.request)
-        .catch(() => {
-          return caches.match('/index.html');
-        })
-    );
+  // Skip cross-origin requests
+  if (!event.request.url.startsWith(self.location.origin)) {
     return;
   }
   
-  // Optimization: For API requests or external resources, prefer network
-  if (isApiRequest(url)) {
-    event.respondWith(
-      fetch(event.request)
-        .catch(() => {
-          // If network request fails, try serving from cache
-          return caches.match(event.request);
-        })
-    );
-    return;
-  }
-  
-  // For all other requests, use cache-first strategy
+  // Handle the fetch with a stale-while-revalidate approach
   event.respondWith(
-    caches.match(event.request)
-      .then(cachedResponse => {
-        if (cachedResponse) {
-          // Return cached response
-          // Update cache in the background for next time
-          fetch(event.request)
-            .then(response => {
-              if (response && response.status === 200) {
-                // Only cache valid responses
-                const responseToCache = response.clone();
-                caches.open(DYNAMIC_CACHE).then(cache => {
-                  // Add immutable caching for static assets
-                  const headers = new Headers(response.headers);
-                  headers.append('Cache-Control', 'immutable');
-                  
-                  const responseWithHeaders = new Response(responseToCache.body, {
-                    status: responseToCache.status,
-                    statusText: responseToCache.statusText,
-                    headers: headers
-                  });
-                  
-                  cache.put(event.request, responseWithHeaders);
-                });
-              }
-            })
-            .catch(err => console.error('Background fetch failed:', err));
-          
-          return cachedResponse;
+    caches.match(event.request).then(cachedResponse => {
+      // Return cached response if available
+      if (cachedResponse) {
+        // Update cache in the background
+        fetch(event.request).then(response => {
+          if (response.ok) {
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, response);
+            });
+          }
+        }).catch(err => console.error('Background fetch failed:', err));
+        
+        return cachedResponse;
+      }
+      
+      // If not in cache, fetch from network
+      return fetch(event.request).then(response => {
+        // Don't cache non-successful responses
+        if (!response || response.status !== 200) {
+          return response;
         }
         
-        // If not in cache, fetch from network
-        return fetch(event.request)
-          .then(response => {
-            if (!response || response.status !== 200) {
-              return response;
-            }
-            
-            // Clone the response
-            const responseToCache = response.clone();
-            
-            // Cache the fetched response
-            caches.open(DYNAMIC_CACHE).then(cache => {
-              // Add Cache-Control header for static assets
-              if (event.request.url.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg)$/i)) {
-                const headers = new Headers(responseToCache.headers);
-                headers.append('Cache-Control', 'immutable');
-                
-                const responseWithHeaders = new Response(responseToCache.body, {
-                  status: responseToCache.status,
-                  statusText: responseToCache.statusText,
-                  headers: headers
-                });
-                
-                cache.put(event.request, responseWithHeaders);
-              } else {
-                cache.put(event.request, responseToCache);
-              }
-            });
-            
-            return response;
-          })
-          .catch(error => {
-            console.error('Fetch failed:', error);
-            
-            // Provide a fallback for image requests
-            if (event.request.url.match(/\.(png|jpg|jpeg|gif|svg)$/i)) {
-              return caches.match('/placeholder.svg');
-            }
-            
-            // For navigation, return the offline page
-            if (isHtmlRequest(event.request)) {
-              return caches.match('/');
-            }
-            
-            // Return an error response for other requests
-            return new Response('Network error happened', {
-              status: 408,
-              headers: { 'Content-Type': 'text/plain' }
-            });
-          });
-      })
+        // Clone the response so we can cache it
+        const responseToCache = response.clone();
+        
+        caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, responseToCache);
+        });
+        
+        return response;
+      }).catch(error => {
+        console.error('Fetch failed:', error);
+        // Provide a fallback for navigations
+        if (event.request.mode === 'navigate') {
+          return caches.match('/');
+        }
+        
+        // Return an error response for other requests
+        return new Response('Network error happened', {
+          status: 408,
+          headers: { 'Content-Type': 'text/plain' }
+        });
+      });
+    })
   );
 });
 
@@ -283,25 +118,12 @@ self.addEventListener('push', event => {
     
     const options = {
       body: data.body || 'New notification',
-      icon: '/lovable-uploads/298f5dd5-723c-4333-9008-33d6b981ccfb.png',
-      badge: '/lovable-uploads/298f5dd5-723c-4333-9008-33d6b981ccfb.png',
-      vibrate: [100, 50, 100],
-      data: {
-        dateOfArrival: Date.now(),
-        primaryKey: 1,
-        url: data.url || '/'
-      },
-      actions: [
-        {
-          action: 'open',
-          title: 'Open App',
-          icon: '/lovable-uploads/298f5dd5-723c-4333-9008-33d6b981ccfb.png'
-        }
-      ]
+      icon: '/icons/icon-192x192.png',
+      badge: '/icons/icon-192x192.png'
     };
     
     event.waitUntil(
-      self.registration.showNotification(data.title || 'The Triage System Notification', options)
+      self.registration.showNotification(data.title || 'Notification', options)
     );
   } catch (error) {
     console.error('Push notification error:', error);
@@ -312,87 +134,18 @@ self.addEventListener('push', event => {
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   
-  // Navigate user to a specific URL if provided in the notification data
-  const url = event.notification.data && event.notification.data.url 
-    ? event.notification.data.url 
-    : '/';
-  
   event.waitUntil(
     clients.matchAll({ type: 'window' }).then(clientList => {
       // Focus if already open
       for (const client of clientList) {
-        if (client.url === url && 'focus' in client) {
+        if (client.url === '/' && 'focus' in client) {
           return client.focus();
         }
       }
       // Open if not already open
       if (clients.openWindow) {
-        return clients.openWindow(url);
+        return clients.openWindow('/');
       }
     })
   );
 });
-
-// Enhance message handling for PWA session transitions
-self.addEventListener('message', event => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-    console.log('Service worker skipping waiting phase');
-  }
-  
-  if (event.data && event.data.type === 'SESSION_ENDED') {
-    // Special handling for session end events
-    console.log('Focus session ended early, ensuring smooth transition');
-    
-    // Notify all clients about the session transition
-    self.clients.matchAll().then(clients => {
-      clients.forEach(client => {
-        client.postMessage({
-          type: 'SESSION_TRANSITION',
-          message: 'Focus session ended'
-        });
-      });
-    });
-  }
-  
-  // Add special handling for authentication intent
-  if (event.data && event.data.type === 'AUTH_NAVIGATION') {
-    console.log('Processing authentication navigation intent');
-    
-    // Notify all clients about the auth transition
-    self.clients.matchAll().then(clients => {
-      clients.forEach(client => {
-        client.postMessage({
-          type: 'AUTH_TRANSITION',
-          message: 'Authentication status changed',
-          target: event.data.target || '/dashboard'
-        });
-      });
-    });
-  }
-});
-
-// Add support for App Banner events
-self.addEventListener('appinstalled', (event) => {
-  console.log('App was installed', event);
-});
-
-// Periodic background sync for new content (if supported)
-if ('periodicSync' in self.registration) {
-  self.addEventListener('periodicsync', (event) => {
-    if (event.tag === 'update-content') {
-      event.waitUntil(
-        // Fetch new content and update cache
-        fetch('/api/latest-content')
-          .then(response => response.json())
-          .then(data => {
-            // Update caches with new content
-            console.log('Background sync: updating content');
-          })
-          .catch(err => {
-            console.error('Background sync failed:', err);
-          })
-      );
-    }
-  });
-}
