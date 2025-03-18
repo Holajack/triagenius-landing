@@ -14,7 +14,7 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
-import { getLearningMetrics, getFocusStatistics, FocusDistribution, FocusTrend, TimeOfDayMetric } from "@/utils/learningMetricsData";
+import { getLearningMetrics, getFocusStatistics, FocusDistribution, FocusTrend, TimeOfDayMetric, FocusStats } from "@/utils/learningMetricsData";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const FocusBreakdown = () => {
@@ -23,7 +23,7 @@ const FocusBreakdown = () => {
   const [focusDistribution, setFocusDistribution] = useState<FocusDistribution[]>([]);
   const [focusTrends, setFocusTrends] = useState<FocusTrend[]>([]);
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDayMetric[]>([]);
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<FocusStats>({
     totalHours: 0,
     avgSession: 0,
     focusScore: 0,
@@ -72,10 +72,6 @@ const FocusBreakdown = () => {
       .channel('focus-breakdown-changes')
       .on('postgres_changes', 
         { event: 'INSERT', schema: 'public', table: 'focus_sessions' }, 
-        () => loadFocusData()
-      )
-      .on('postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'learning_metrics' },
         () => loadFocusData()
       )
       .subscribe();

@@ -47,6 +47,23 @@ export interface LearningMetrics {
   timeOfDay: TimeOfDayMetric[];
 }
 
+// Type for our learning_metrics table
+interface LearningMetricsRow {
+  id: string;
+  user_id: string;
+  cognitive_memory: CognitiveMetric[];
+  cognitive_problem_solving: CognitiveMetric[];
+  cognitive_creativity: CognitiveMetric[];
+  cognitive_analytical: CognitiveMetric[];
+  weekly_data: WeeklyMetric[];
+  growth_data: GrowthMetric[];
+  focus_distribution: FocusDistribution[];
+  focus_trends: FocusTrend[];
+  time_of_day_data: TimeOfDayMetric[];
+  created_at: string;
+  updated_at: string;
+}
+
 // Default empty metrics
 const emptyMetrics: LearningMetrics = {
   cognitiveData: [
@@ -96,19 +113,20 @@ export const getLearningMetrics = async (): Promise<LearningMetrics> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return emptyMetrics;
 
-    // Check if we have existing metrics
-    const { data: metricsData, error: metricsError } = await supabase
+    // Check if we have existing metrics - using 'from' with string for table that's not in the types
+    const { data, error } = await supabase
       .from('learning_metrics')
       .select('*')
       .eq('user_id', user.id)
       .single();
 
-    if (metricsError && metricsError.code !== 'PGRST116') {
-      console.error('Error fetching learning metrics:', metricsError);
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching learning metrics:', error);
     }
 
     // If we have recent metrics, return them
-    if (metricsData) {
+    if (data) {
+      const metricsData = data as unknown as LearningMetricsRow;
       const updatedAt = new Date(metricsData.updated_at);
       const now = new Date();
       const hoursSinceUpdate = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60);
@@ -117,10 +135,10 @@ export const getLearningMetrics = async (): Promise<LearningMetrics> => {
       if (hoursSinceUpdate < 12) {
         return {
           cognitiveData: [
-            ...metricsData.cognitive_memory || emptyMetrics.cognitiveData.filter(m => m.name === "Memory"),
-            ...metricsData.cognitive_problem_solving || emptyMetrics.cognitiveData.filter(m => m.name === "Problem Solving"),
-            ...metricsData.cognitive_creativity || emptyMetrics.cognitiveData.filter(m => m.name === "Creativity"),
-            ...metricsData.cognitive_analytical || emptyMetrics.cognitiveData.filter(m => m.name === "Analytical"),
+            ...(metricsData.cognitive_memory || emptyMetrics.cognitiveData.filter(m => m.name === "Memory")),
+            ...(metricsData.cognitive_problem_solving || emptyMetrics.cognitiveData.filter(m => m.name === "Problem Solving")),
+            ...(metricsData.cognitive_creativity || emptyMetrics.cognitiveData.filter(m => m.name === "Creativity")),
+            ...(metricsData.cognitive_analytical || emptyMetrics.cognitiveData.filter(m => m.name === "Analytical")),
           ],
           weeklyData: metricsData.weekly_data || emptyMetrics.weeklyData,
           growthData: metricsData.growth_data || emptyMetrics.growthData,
@@ -201,7 +219,7 @@ export const getLearningMetrics = async (): Promise<LearningMetrics> => {
           focus_distribution: insights.focusDistribution || emptyMetrics.focusDistribution,
           focus_trends: insights.focusTrends || emptyMetrics.focusTrends,
           time_of_day_data: insights.timeOfDay || emptyMetrics.timeOfDay
-        }, { onConflict: 'user_id' });
+        } as any, { onConflict: 'user_id' });
 
       if (insertError) {
         console.error('Error saving learning metrics:', insertError);
@@ -231,11 +249,19 @@ export const getLearningMetrics = async (): Promise<LearningMetrics> => {
   }
 };
 
+// Type for focus statistics
+export interface FocusStats {
+  totalHours: number;
+  avgSession: number;
+  focusScore: number;
+  improvement: string;
+}
+
 // Generate focus statistics
-export const getFocusStatistics = async () => {
+export const getFocusStatistics = async (): Promise<FocusStats> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { totalHours: 0, avgSession: 0, focusScore: 0 };
+    if (!user) return { totalHours: 0, avgSession: 0, focusScore: 0, improvement: "0%" };
 
     // Get focus sessions from the last 30 days
     const thirtyDaysAgo = new Date();
@@ -249,11 +275,11 @@ export const getFocusStatistics = async () => {
 
     if (sessionError) {
       console.error('Error fetching session data:', sessionError);
-      return { totalHours: 0, avgSession: 0, focusScore: 0 };
+      return { totalHours: 0, avgSession: 0, focusScore: 0, improvement: "0%" };
     }
 
     if (!sessionData || sessionData.length === 0) {
-      return { totalHours: 0, avgSession: 0, focusScore: 0 };
+      return { totalHours: 0, avgSession: 0, focusScore: 0, improvement: "0%" };
     }
 
     // Calculate total hours
@@ -281,6 +307,6 @@ export const getFocusStatistics = async () => {
     };
   } catch (error) {
     console.error('Error in getFocusStatistics:', error);
-    return { totalHours: 0, avgSession: 0, focusScore: 0 };
+    return { totalHours: 0, avgSession: 0, focusScore: 0, improvement: "0%" };
   }
 };
