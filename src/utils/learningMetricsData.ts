@@ -47,23 +47,6 @@ export interface LearningMetrics {
   timeOfDay: TimeOfDayMetric[];
 }
 
-// Interface for the learning_metrics table
-interface LearningMetricsRecord {
-  id: string;
-  user_id: string;
-  cognitive_memory: CognitiveMetric[];
-  cognitive_problem_solving: CognitiveMetric[];
-  cognitive_creativity: CognitiveMetric[];
-  cognitive_analytical: CognitiveMetric[];
-  weekly_data: WeeklyMetric[];
-  growth_data: GrowthMetric[];
-  focus_distribution: FocusDistribution[];
-  focus_trends: FocusTrend[];
-  time_of_day_data: TimeOfDayMetric[];
-  created_at: string;
-  updated_at: string;
-}
-
 // Default empty metrics
 const emptyMetrics: LearningMetrics = {
   cognitiveData: [
@@ -113,48 +96,38 @@ export const getLearningMetrics = async (): Promise<LearningMetrics> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return emptyMetrics;
 
-    // Check if we have existing metrics - using rpc to avoid type issues
-    const { data, error } = await supabase
-      .rpc('get_learning_metrics_by_user_id', { user_id_param: user.id })
-      .maybeSingle();
+    // Check if we have existing metrics directly from the edge function
+    const { data: metricsData, error: metricsError } = await supabase.functions.invoke('update-learning-metrics', {
+      method: 'GET',
+      body: { userId: user.id, action: 'get' }
+    });
 
-    if (error) {
-      console.error('Error fetching learning metrics:', error);
-      // Fall back to raw query with type assertion
-      const { data: rawData, error: rawError } = await supabase
-        .from('learning_metrics')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-        
-      if (rawError) {
-        console.error('Error with raw query:', rawError);
-        return emptyMetrics;
-      }
+    if (metricsError) {
+      console.error('Error fetching learning metrics:', metricsError);
+      return emptyMetrics;
+    }
+
+    if (metricsData && metricsData.data) {
+      const metrics = metricsData.data;
+      const updatedAt = metrics.updated_at ? new Date(metrics.updated_at) : new Date();
+      const now = new Date();
+      const hoursSinceUpdate = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60);
       
-      if (rawData) {
-        // Type assertion to treat the data as our expected type
-        const metricsData = rawData as unknown as LearningMetricsRecord;
-        const updatedAt = new Date(metricsData.updated_at);
-        const now = new Date();
-        const hoursSinceUpdate = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60);
-        
-        // If metrics are less than 12 hours old, use them
-        if (hoursSinceUpdate < 12) {
-          return {
-            cognitiveData: [
-              ...(metricsData.cognitive_memory || []),
-              ...(metricsData.cognitive_problem_solving || []),
-              ...(metricsData.cognitive_creativity || []),
-              ...(metricsData.cognitive_analytical || []),
-            ],
-            weeklyData: metricsData.weekly_data || emptyMetrics.weeklyData,
-            growthData: metricsData.growth_data || emptyMetrics.growthData,
-            focusDistribution: metricsData.focus_distribution || emptyMetrics.focusDistribution,
-            focusTrends: metricsData.focus_trends || emptyMetrics.focusTrends,
-            timeOfDay: metricsData.time_of_day_data || emptyMetrics.timeOfDay
-          };
-        }
+      // If metrics are less than 12 hours old, use them
+      if (hoursSinceUpdate < 12) {
+        return {
+          cognitiveData: [
+            ...(metrics.cognitive_memory || []),
+            ...(metrics.cognitive_problem_solving || []),
+            ...(metrics.cognitive_creativity || []),
+            ...(metrics.cognitive_analytical || []),
+          ],
+          weeklyData: metrics.weekly_data || emptyMetrics.weeklyData,
+          growthData: metrics.growth_data || emptyMetrics.growthData,
+          focusDistribution: metrics.focus_distribution || emptyMetrics.focusDistribution,
+          focusTrends: metrics.focus_trends || emptyMetrics.focusTrends,
+          timeOfDay: metrics.time_of_day_data || emptyMetrics.timeOfDay
+        };
       }
     }
 
@@ -214,69 +187,27 @@ export const getLearningMetrics = async (): Promise<LearningMetrics> => {
       const cognitiveCreativity = insights.cognitivePatterns?.creativity || [];
       const cognitiveAnalytical = insights.cognitivePatterns?.analytical || [];
 
-      // Store the generated metrics using rpc to avoid type issues
-      const { error: upsertError } = await supabase.rpc(
-        'upsert_learning_metrics',
-        {
-          p_user_id: user.id,
-          p_cognitive_memory: JSON.stringify(cognitiveMemory),
-          p_cognitive_problem_solving: JSON.stringify(cognitiveProblemSolving),
-          p_cognitive_creativity: JSON.stringify(cognitiveCreativity),
-          p_cognitive_analytical: JSON.stringify(cognitiveAnalytical),
-          p_weekly_data: JSON.stringify(insights.weeklyData || emptyMetrics.weeklyData),
-          p_growth_data: JSON.stringify(insights.growthData || emptyMetrics.growthData),
-          p_focus_distribution: JSON.stringify(insights.focusDistribution || emptyMetrics.focusDistribution),
-          p_focus_trends: JSON.stringify(insights.focusTrends || emptyMetrics.focusTrends),
-          p_time_of_day_data: JSON.stringify(insights.timeOfDay || emptyMetrics.timeOfDay)
-        }
-      );
-
-      if (upsertError) {
-        console.error('Error with upsert RPC:', upsertError);
-        // Fallback to raw query with type assertion
-        const { error: insertError } = await supabase.rpc(
-          'insert_or_update_learning_metrics',
-          {
-            p_user_id: user.id,
-            p_data: {
-              cognitive_memory: cognitiveMemory,
-              cognitive_problem_solving: cognitiveProblemSolving,
-              cognitive_creativity: cognitiveCreativity,
-              cognitive_analytical: cognitiveAnalytical,
-              weekly_data: insights.weeklyData || emptyMetrics.weeklyData,
-              growth_data: insights.growthData || emptyMetrics.growthData,
-              focus_distribution: insights.focusDistribution || emptyMetrics.focusDistribution,
-              focus_trends: insights.focusTrends || emptyMetrics.focusTrends,
-              time_of_day_data: insights.timeOfDay || emptyMetrics.timeOfDay
-            }
-          }
-        );
-
-        if (insertError) {
-          console.error('Error with alternative RPC method:', insertError);
-          
-          // Final fallback using raw SQL query via functions
-          const { error: fnError } = await supabase.functions.invoke('update-learning-metrics', {
-            body: {
-              userId: user.id,
-              metrics: {
-                cognitive_memory: cognitiveMemory,
-                cognitive_problem_solving: cognitiveProblemSolving,
-                cognitive_creativity: cognitiveCreativity,
-                cognitive_analytical: cognitiveAnalytical,
-                weekly_data: insights.weeklyData || emptyMetrics.weeklyData,
-                growth_data: insights.growthData || emptyMetrics.growthData,
-                focus_distribution: insights.focusDistribution || emptyMetrics.focusDistribution,
-                focus_trends: insights.focusTrends || emptyMetrics.focusTrends,
-                time_of_day_data: insights.timeOfDay || emptyMetrics.timeOfDay
-              }
-            }
-          });
-          
-          if (fnError) {
-            console.error('Error saving learning metrics via edge function:', fnError);
+      // Store the generated metrics using our edge function
+      const { error: updateError } = await supabase.functions.invoke('update-learning-metrics', {
+        method: 'POST',
+        body: {
+          userId: user.id,
+          metrics: {
+            cognitive_memory: cognitiveMemory,
+            cognitive_problem_solving: cognitiveProblemSolving,
+            cognitive_creativity: cognitiveCreativity,
+            cognitive_analytical: cognitiveAnalytical,
+            weekly_data: insights.weeklyData || emptyMetrics.weeklyData,
+            growth_data: insights.growthData || emptyMetrics.growthData,
+            focus_distribution: insights.focusDistribution || emptyMetrics.focusDistribution,
+            focus_trends: insights.focusTrends || emptyMetrics.focusTrends,
+            time_of_day_data: insights.timeOfDay || emptyMetrics.timeOfDay
           }
         }
+      });
+
+      if (updateError) {
+        console.error('Error saving learning metrics via edge function:', updateError);
       }
 
       // Return the generated metrics
@@ -364,3 +295,4 @@ export const getFocusStatistics = async (): Promise<FocusStats> => {
     return { totalHours: 0, avgSession: 0, focusScore: 0, improvement: "0%" };
   }
 };
+
