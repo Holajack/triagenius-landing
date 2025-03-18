@@ -1,8 +1,10 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Brain, Zap, BookOpen } from 'lucide-react';
+import { Brain, Zap, BookOpen, Sparkles, CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import PageHeader from '@/components/common/PageHeader';
 import NavigationBar from '@/components/dashboard/NavigationBar';
 import LearningStyleQuiz from '@/components/bonuses/LearningStyleQuiz';
@@ -12,13 +14,19 @@ import BonusesWalkthrough from '@/components/walkthrough/BonusesWalkthrough';
 const Bonuses = () => {
   const navigate = useNavigate();
   const [showBrainMapping, setShowBrainMapping] = useState(false);
+  const [showComingSoon, setShowComingSoon] = useState(false);
 
   const handleShowBrainMapping = () => {
-    setShowBrainMapping(true);
+    // Instead of showing the brain mapping visualization, show the coming soon dialog
+    setShowComingSoon(true);
   };
 
   const handleCloseBrainMapping = () => {
     setShowBrainMapping(false);
+  };
+
+  const handleCloseComingSoon = () => {
+    setShowComingSoon(false);
   };
 
   return (
@@ -121,6 +129,44 @@ const Bonuses = () => {
             <Button onClick={handleCloseBrainMapping} className="mt-4">Close</Button>
           </DialogContent>
         </Dialog>
+
+        {/* Coming Soon Dialog */}
+        <AlertDialog open={showComingSoon} onOpenChange={setShowComingSoon}>
+          <AlertDialogContent className="max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-xl text-purple-600 dark:text-purple-400">
+                <Sparkles className="h-5 w-5" /> 
+                Neural Pathway Mapping - Coming Soon!
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-4 pt-2">
+                <p>
+                  We're developing an advanced visualization tool that maps your neural pathways as they strengthen through focused learning sessions.
+                </p>
+                <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-100 dark:border-purple-800/30">
+                  <h4 className="font-medium flex items-center gap-2 text-purple-700 dark:text-purple-300">
+                    <CalendarClock className="h-4 w-4" /> 
+                    Planned Features:
+                  </h4>
+                  <ul className="mt-2 space-y-1 text-sm">
+                    <li>• 3D visualization of your cognitive patterns</li>
+                    <li>• Real-time brain activity insights</li>
+                    <li>• Personalized recommendations based on neural activity</li>
+                    <li>• Track your cognitive growth over time</li>
+                  </ul>
+                </div>
+                <p className="text-sm text-muted-foreground italic">
+                  Be among the first to experience this groundbreaking feature when it launches!
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <Button 
+              onClick={handleCloseComingSoon} 
+              className="w-full mt-2 bg-purple-600 hover:bg-purple-700"
+            >
+              I can't wait!
+            </Button>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
       
       {/* Add navigation bar with data-walkthrough attribute */}
