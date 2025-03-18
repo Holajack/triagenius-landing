@@ -1,6 +1,5 @@
-
 // Cache version identifier - change this when files are updated
-const CACHE_NAME = 'lux-aquinmata-v1';
+const CACHE_NAME = 'lux-aquinmata-v2';
 
 // Add list of files to cache for offline access
 const STATIC_ASSETS = [
@@ -13,7 +12,7 @@ const STATIC_ASSETS = [
 
 // Create a cache of dynamic assets - CSS, JS, etc.
 // This will be populated as the user navigates the app
-const DYNAMIC_CACHE = 'lux-aquinmata-dynamic-v1';
+const DYNAMIC_CACHE = 'lux-aquinmata-dynamic-v2';
 
 // List of routes that should serve the index.html file (for SPA navigation)
 const APP_ROUTES = [
@@ -26,6 +25,8 @@ const APP_ROUTES = [
   '/community',
   '/study-room',
   '/auth',
+  '/login',
+  '/register',
   '/onboarding'
 ];
 
@@ -113,8 +114,9 @@ self.addEventListener('fetch', event => {
       !url.pathname.endsWith('.jpg') && 
       !url.pathname.endsWith('.svg')) return;
   
-  // Special handling for SPA routes - always serve index.html
-  if (isSpaRoute(url)) {
+  // Special handling for all SPA routes - always serve index.html
+  // This ensures that the PWA can navigate to any route correctly
+  if (isSpaRoute(url) || isHtmlRequest(event.request)) {
     event.respondWith(
       fetch(event.request)
         .catch(() => {
@@ -131,33 +133,6 @@ self.addEventListener('fetch', event => {
         .catch(() => {
           // If network request fails, try serving from cache
           return caches.match(event.request);
-        })
-    );
-    return;
-  }
-  
-  // For HTML navigations, use network-first approach
-  if (isHtmlRequest(event.request)) {
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          // Cache the latest version
-          const responseClone = response.clone();
-          caches.open(DYNAMIC_CACHE).then(cache => {
-            cache.put(event.request, responseClone);
-          });
-          return response;
-        })
-        .catch(() => {
-          // If network fails, serve from cache or serve offline page
-          return caches.match(event.request)
-            .then(cachedResponse => {
-              if (cachedResponse) {
-                return cachedResponse;
-              }
-              // Return the cached homepage as a fallback for all html requests
-              return caches.match('/');
-            });
         })
     );
     return;

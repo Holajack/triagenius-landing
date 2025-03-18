@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
   const [mode] = useState<AuthMode>(initialMode);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isPwa, setIsPwa] = useState(false);
   
   // Form fields
   const [email, setEmail] = useState("");
@@ -28,6 +29,17 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [error, setError] = useState("");
+
+  // Check if running as PWA
+  useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                         (window.navigator as any).standalone === true;
+    setIsPwa(isStandalone);
+    
+    if (isStandalone) {
+      console.log('AuthForm: Running in PWA/standalone mode');
+    }
+  }, []);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +59,13 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
         }
         
         toast.success("Welcome back!");
-        navigate("/dashboard");
+        
+        // In PWA mode, add a slight delay to ensure state updates before navigation
+        if (isPwa) {
+          setTimeout(() => navigate("/dashboard"), 300);
+        } else {
+          navigate("/dashboard");
+        }
       } else {
         // Handle signup
         const { data, error } = await supabase.auth.signUp({
@@ -69,10 +87,20 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
         
         // If the user signed up from the "Start Focusing" button, take them to onboarding
         if (isFromStartFocusing) {
-          navigate("/onboarding");
+          // In PWA mode, add a slight delay to ensure state updates before navigation
+          if (isPwa) {
+            setTimeout(() => navigate("/onboarding"), 300);
+          } else {
+            navigate("/onboarding");
+          }
         } else {
           // Otherwise, take them to the dashboard
-          navigate("/dashboard");
+          // In PWA mode, add a slight delay to ensure state updates before navigation
+          if (isPwa) {
+            setTimeout(() => navigate("/dashboard"), 300);
+          } else {
+            navigate("/dashboard");
+          }
         }
       }
     } catch (error: any) {

@@ -1,4 +1,3 @@
-
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
@@ -9,6 +8,14 @@ import { Toaster } from "./components/ui/toaster"
 const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('Root element not found');
 const root = ReactDOM.createRoot(rootElement);
+
+// Log when running in standalone PWA mode
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                    (window.navigator as any).standalone === true;
+if (isStandalone) {
+  console.log('App running in standalone/PWA mode');
+  document.documentElement.classList.add('pwa-mode');
+}
 
 // Render with React.StrictMode
 root.render(
@@ -44,15 +51,25 @@ if ('serviceWorker' in navigator) {
               console.log('New content is available; please refresh.');
               
               // Check if running in standalone mode (PWA installed)
-              const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                                  (window.navigator as any).standalone === true;
-              
-              // Improved update UX with custom UI based on mode
               if (isStandalone) {
                 // For installed PWA, use a less intrusive update notification
                 // that doesn't disrupt the app-like experience
                 const event = new CustomEvent('pwa-update-available');
                 window.dispatchEvent(event);
+                
+                // Show toast notification for update in PWA mode
+                try {
+                  const toastEvent = new CustomEvent('pwa-show-toast', {
+                    detail: {
+                      title: 'Update Available',
+                      description: 'A new version is available. Reload to update.',
+                      action: () => window.location.reload()
+                    }
+                  });
+                  window.dispatchEvent(toastEvent);
+                } catch (err) {
+                  console.error('Error showing toast:', err);
+                }
               } else {
                 // For browser mode, we can use a more direct approach
                 if (window.confirm('New version available! Reload to update?')) {
@@ -145,6 +162,22 @@ if ('serviceWorker' in navigator) {
         navigator.serviceWorker.addEventListener('message', event => {
           console.log('[ServiceWorker Message]:', event.data);
         });
+      }
+      
+      // Add specific handling for auth routes in PWA mode
+      if (isStandalone) {
+        // Listen for navigation events in PWA mode
+        window.addEventListener('popstate', (event) => {
+          // Log navigation in PWA mode for debugging
+          console.log('PWA navigation:', window.location.pathname);
+        });
+        
+        // If we're in PWA mode and on the auth page, make sure it's properly displayed
+        if (window.location.pathname === '/auth' || 
+            window.location.pathname === '/login' || 
+            window.location.pathname === '/register') {
+          console.log('PWA on auth page, ensuring proper display');
+        }
       }
       
     } catch (error) {

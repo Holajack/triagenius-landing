@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -13,25 +14,67 @@ const Auth = () => {
   const isFromStartFocusing = location.state?.source === "start-focusing";
   const initialMode = location.state?.mode || "login";
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isPwa, setIsPwa] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Check if running as PWA
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                        (window.navigator as any).standalone === true;
+    setIsPwa(isStandalone);
+    
+    if (isStandalone) {
+      console.log('Auth: Running in PWA/standalone mode');
+    }
+    
     // Check if user is already authenticated
     const checkAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      setIsAuthenticated(!!data.session);
-      
-      // If already authenticated, redirect to appropriate page
-      if (data.session) {
-        if (isFromStartFocusing) {
-          navigate("/onboarding");
+      try {
+        setIsLoading(true);
+        const { data } = await supabase.auth.getSession();
+        
+        if (data.session) {
+          setIsAuthenticated(true);
+          
+          // If already authenticated, redirect to appropriate page with a delay in PWA mode
+          if (isFromStartFocusing) {
+            if (isStandalone) {
+              setTimeout(() => navigate("/onboarding"), 300);
+            } else {
+              navigate("/onboarding");
+            }
+          } else {
+            if (isStandalone) {
+              setTimeout(() => navigate("/dashboard"), 300);
+            } else {
+              navigate("/dashboard");
+            }
+          }
         } else {
-          navigate("/dashboard");
+          // Not authenticated, stay on auth page
+          setIsAuthenticated(false);
         }
+      } catch (error) {
+        console.error("Error checking authentication:", error);
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
       }
     };
     
     checkAuth();
   }, [navigate, isFromStartFocusing]);
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-triage-purple border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
   
   if (isAuthenticated) {
     return null; // Don't render anything while redirecting
