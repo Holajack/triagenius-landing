@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { Suspense, lazy, useEffect } from 'react';
 import InstallPrompt from '@/components/pwa/InstallPrompt';
-import { Sonner, toast } from 'sonner';
+import { toast, Toaster } from 'sonner';
 
 // Import your main pages
 import Index from './pages/Index';
@@ -53,6 +53,7 @@ const App = () => {
     <ThemeProvider>
       <Router>
         <InstallPrompt />
+        <Toaster />
         <Suspense fallback={
           <div className="min-h-screen flex items-center justify-center">
             <div className="text-center">
