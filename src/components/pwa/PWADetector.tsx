@@ -12,9 +12,18 @@ interface BeforeInstallPromptEvent extends Event {
 const PWADetector = () => {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
+    // Check if on mobile
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+      return /android|iPad|iPhone|iPod/.test(userAgent);
+    };
+    
+    setIsMobile(checkMobile());
+    
     // Check if already installed
     const checkStandalone = () => {
       const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || 
@@ -80,15 +89,20 @@ const PWADetector = () => {
   };
   
   // Don't render anything if already installed or can't install
-  if (isStandalone || !installPrompt) return null;
+  // Or if not on mobile (since this is mobile-only)
+  if (isStandalone || !installPrompt || !isMobile) return null;
   
   return (
     <div className="fixed bottom-16 right-4 z-50">
       <Button 
         onClick={handleInstallClick}
-        className="flex items-center gap-2 shadow-lg button-gradient"
+        className="flex items-center gap-2 shadow-lg bg-black hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
       >
-        <Download className="w-4 h-4" />
+        <img 
+          src="/lovable-uploads/95f9c287-86ca-4428-bbc4-b9c9b75478b9.png" 
+          alt="The Triage System" 
+          className="w-4 h-4 mr-1"
+        />
         Add to Home Screen
       </Button>
     </div>

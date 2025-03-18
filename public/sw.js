@@ -1,6 +1,7 @@
 
 // Cache version identifier - change this when files are updated
 const CACHE_NAME = 'triage-system-v1';
+const APP_NAME = 'The Triage System';
 
 // Add list of files to cache for offline access
 const STATIC_ASSETS = [
@@ -8,7 +9,8 @@ const STATIC_ASSETS = [
   '/index.html',
   '/manifest.json',
   '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png'
+  '/icons/icon-512x512.png',
+  '/lovable-uploads/95f9c287-86ca-4428-bbc4-b9c9b75478b9.png'
 ];
 
 // App Shell - critical resources for the app to function
@@ -136,7 +138,7 @@ self.addEventListener('push', event => {
     
     const options = {
       body: data.body || 'New notification from The Triage System',
-      icon: '/icons/icon-192x192.png',
+      icon: '/lovable-uploads/95f9c287-86ca-4428-bbc4-b9c9b75478b9.png',
       badge: '/icons/icon-192x192.png',
       vibrate: [100, 50, 100],
       data: {
@@ -145,7 +147,7 @@ self.addEventListener('push', event => {
     };
     
     event.waitUntil(
-      self.registration.showNotification(data.title || 'The Triage System', options)
+      self.registration.showNotification(data.title || APP_NAME, options)
     );
   } catch (error) {
     console.error('Push notification error:', error);
