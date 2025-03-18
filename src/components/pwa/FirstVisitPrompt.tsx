@@ -16,6 +16,15 @@ const FirstVisitPrompt = () => {
     // Check if this is first visit
     const hasVisited = localStorage.getItem('hasSeenDownloadInstructions');
     
+    // Check if already installed as PWA
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                         (window.navigator as any).standalone === true;
+    
+    // If already installed as PWA, don't show the prompt
+    if (isStandalone) {
+      return;
+    }
+    
     // Detect device type
     const userAgent = navigator.userAgent.toLowerCase();
     let detectedDevice: 'android' | 'ios' | 'other' = 'other';
@@ -28,8 +37,8 @@ const FirstVisitPrompt = () => {
     
     setDeviceType(detectedDevice);
     
-    // Only show for mobile devices on first visit
-    if (!hasVisited && isMobile) {
+    // Only show for mobile devices on first visit and when not in standalone mode
+    if (!hasVisited && isMobile && !isStandalone) {
       // Delay showing the dialog to allow the page to load first
       const timer = setTimeout(() => {
         setIsOpen(true);
@@ -44,7 +53,10 @@ const FirstVisitPrompt = () => {
     localStorage.setItem('hasSeenDownloadInstructions', 'true');
   };
   
-  if (!isMobile) return null;
+  // Don't render component if not mobile or already in standalone mode
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                      (window.navigator as any).standalone === true;
+  if (!isMobile || isStandalone) return null;
   
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Download, Share } from 'lucide-react';
@@ -41,36 +40,39 @@ const InstallPrompt = () => {
       return;
     }
     
-    // Capture the beforeinstallprompt event
-    const beforeInstallPromptHandler = (e: Event) => {
-      // Prevent Chrome 67 and earlier from automatically showing the prompt
-      e.preventDefault();
-      // Store the event so it can be triggered later
-      console.log('Captured beforeinstallprompt event');
-      setInstallPrompt(e as BeforeInstallPromptEvent);
+    // Only proceed if we're in a browser context, not in standalone mode
+    if (!isStandalone) {
+      // Capture the beforeinstallprompt event
+      const beforeInstallPromptHandler = (e: Event) => {
+        // Prevent Chrome 67 and earlier from automatically showing the prompt
+        e.preventDefault();
+        // Store the event so it can be triggered later
+        console.log('Captured beforeinstallprompt event');
+        setInstallPrompt(e as BeforeInstallPromptEvent);
+        
+        // Only show our custom prompt for mobile users
+        if (checkMobile()) {
+          // Show our custom prompt after a short delay
+          setTimeout(() => {
+            const lastPrompt = localStorage.getItem('installPromptDismissed');
+            const currentDate = new Date().toISOString();
+            
+            if (!lastPrompt || daysBetween(new Date(lastPrompt), new Date()) > 3) {
+              console.log('Showing custom install prompt');
+              setIsVisible(true);
+            }
+          }, 3000);
+        }
+      };
       
-      // Only show our custom prompt for mobile users
-      if (checkMobile()) {
-        // Show our custom prompt after a short delay
-        setTimeout(() => {
-          const lastPrompt = localStorage.getItem('installPromptDismissed');
-          const currentDate = new Date().toISOString();
-          
-          if (!lastPrompt || daysBetween(new Date(lastPrompt), new Date()) > 3) {
-            console.log('Showing custom install prompt');
-            setIsVisible(true);
-          }
-        }, 3000);
-      }
-    };
-    
-    console.log('Adding beforeinstallprompt event listener');
-    window.addEventListener('beforeinstallprompt', beforeInstallPromptHandler);
-    
-    // Cleanup
-    return () => {
-      window.removeEventListener('beforeinstallprompt', beforeInstallPromptHandler);
-    };
+      console.log('Adding beforeinstallprompt event listener');
+      window.addEventListener('beforeinstallprompt', beforeInstallPromptHandler);
+      
+      // Cleanup
+      return () => {
+        window.removeEventListener('beforeinstallprompt', beforeInstallPromptHandler);
+      };
+    }
   }, []);
   
   const handleInstallClick = async () => {
@@ -123,10 +125,10 @@ const InstallPrompt = () => {
     return diffDays;
   };
   
-  // Don't show anything if not on mobile
-  if (!isMobile && !window.location.search.includes('showInstallPrompt=true')) {
-    return null;
-  }
+  // Don't render anything if not on mobile or already installed as PWA
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                       (window.navigator as any).standalone === true;
+  if (!isMobile || isStandalone) return null;
   
   return (
     <>

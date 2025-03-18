@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
@@ -37,35 +36,38 @@ const PWADetector = () => {
     
     checkStandalone();
     
-    // Listen for beforeinstallprompt event
-    const handleBeforeInstallPrompt = (e: Event) => {
-      // Prevent Chrome 76+ from automatically showing the prompt
-      e.preventDefault();
-      // Save the event so it can be triggered later
-      setInstallPrompt(e as BeforeInstallPromptEvent);
-    };
-    
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    
-    // Listen for app installed event
-    const handleAppInstalled = () => {
-      setInstallPrompt(null);
-      setIsStandalone(true);
-      localStorage.setItem('isPWA', 'true');
-      toast({
-        title: "App installed!",
-        description: "The Triage System has been added to your home screen",
-      });
-    };
-    
-    window.addEventListener('appinstalled', handleAppInstalled);
-    
-    // Clean up event listeners
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
-    };
-  }, [toast]);
+    // Only proceed if we're in a browser context, not in standalone mode
+    if (!isStandalone) {
+      // Listen for beforeinstallprompt event
+      const handleBeforeInstallPrompt = (e: Event) => {
+        // Prevent Chrome 76+ from automatically showing the prompt
+        e.preventDefault();
+        // Save the event so it can be triggered later
+        setInstallPrompt(e as BeforeInstallPromptEvent);
+      };
+      
+      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      
+      // Listen for app installed event
+      const handleAppInstalled = () => {
+        setInstallPrompt(null);
+        setIsStandalone(true);
+        localStorage.setItem('isPWA', 'true');
+        toast({
+          title: "App installed!",
+          description: "The Triage System has been added to your home screen",
+        });
+      };
+      
+      window.addEventListener('appinstalled', handleAppInstalled);
+      
+      // Clean up event listeners
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        window.removeEventListener('appinstalled', handleAppInstalled);
+      };
+    }
+  }, [toast, isStandalone]);
   
   const handleInstallClick = async () => {
     if (!installPrompt) return;
