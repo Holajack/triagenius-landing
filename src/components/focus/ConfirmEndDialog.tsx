@@ -29,18 +29,17 @@ export function ConfirmEndDialog({
   const navigate = useNavigate();
   
   // Get PWA status
-  const isPwa = localStorage.getItem('isPWA') === 'true';
+  const isPwa = localStorage.getItem('isPWA') === 'true' || window.matchMedia('(display-mode: standalone)').matches;
   
   // Get additional mobile detection
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-  // Optimized confirm handler with PWA-specific paths
+  // Direct action handler for mobile PWA
   const handleConfirm = (e: React.MouseEvent) => {
     // Prevent default behavior
     e.preventDefault();
     
-    // For mobile PWA, we need to be extra careful to avoid UI freezing
-    // and ensure proper navigation to Session Report
+    // For mobile PWA, navigate directly to Session Report
     if (isPwa && isMobile) {
       // Close dialog immediately first to prevent UI blocking
       onOpenChange(false);
@@ -60,9 +59,8 @@ export function ConfirmEndDialog({
         console.error('Error saving session data', e);
       }
       
-      // Very short timeout to ensure UI updates before navigation
+      // Navigate directly to the session report page
       requestAnimationFrame(() => {
-        // Navigate directly to the session report page
         navigate(`/session-report/${reportId}`, { replace: true });
       });
     } else {
@@ -71,20 +69,10 @@ export function ConfirmEndDialog({
     }
   };
 
-  // Optimized cancel handler with PWA-specific handling
+  // Optimized cancel handler
   const handleCancel = (e: React.MouseEvent) => {
     e.preventDefault();
-    
-    if (isPwa && isMobile) {
-      // Close dialog first for better mobile performance
-      onOpenChange(false);
-      requestAnimationFrame(() => {
-        onCancel();
-      });
-    } else {
-      // Standard behavior for browsers
-      onCancel();
-    }
+    onCancel();
   };
 
   return (

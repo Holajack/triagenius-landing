@@ -11,7 +11,11 @@ interface UpdateInfo {
 export function UpdateNotification() {
   const { toast } = useToast();
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo>({ available: false });
-  const isPWA = localStorage.getItem('isPWA') === 'true' || window.matchMedia('(display-mode: standalone)').matches;
+  
+  // Enhanced PWA detection
+  const isPWA = localStorage.getItem('isPWA') === 'true' || 
+                window.matchMedia('(display-mode: standalone)').matches ||
+                (window.navigator as any).standalone === true;
   
   useEffect(() => {
     if (!isPWA || !('serviceWorker' in navigator)) return;
@@ -48,10 +52,10 @@ export function UpdateNotification() {
     // Add event listener for messages from service worker
     navigator.serviceWorker.addEventListener('message', handleUpdateMessage);
     
-    // Set up periodic update checks for PWA (every 30 minutes)
+    // Set up periodic update checks for PWA (every 15 minutes)
     const intervalId = setInterval(() => {
       checkForUpdate();
-    }, 30 * 60 * 1000);
+    }, 15 * 60 * 1000);
     
     return () => {
       navigator.serviceWorker.removeEventListener('message', handleUpdateMessage);
@@ -78,9 +82,9 @@ export function UpdateNotification() {
               version: event.data.version
             });
             
-            // Show toast notification with proper domain detection
+            // Detect domain for more accurate update messaging
             const hostname = window.location.hostname;
-            const isProduction = hostname === 'triagenius-landing.lovable.app';
+            const isProduction = hostname === 'triagenius-landing.lovable.app' || hostname === 'triagenius.lovable.app';
             const isDev = hostname.includes('lovableproject.com');
             
             toast({

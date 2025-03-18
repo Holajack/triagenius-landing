@@ -17,7 +17,7 @@ export const useFocusSession = () => {
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
   const isEndingRef = useRef(false);
   const timerRef = useRef<{ stopTimer: () => void } | null>(null);
-  const isPwaRef = useRef(localStorage.getItem('isPWA') === 'true');
+  const isPwaRef = useRef(localStorage.getItem('isPWA') === 'true' || window.matchMedia('(display-mode: standalone)').matches);
   const workerRef = useRef<Worker | null>(null);
   const operationInProgressRef = useRef(false);
   const lowPowerToggleInProgressRef = useRef(false);
@@ -295,69 +295,48 @@ export const useFocusSession = () => {
     if (!isMountedRef.current || operationInProgressRef.current || navigationAttemptedRef.current) return;
     operationInProgressRef.current = true;
     
-    // For PWA, use a direct approach to avoid freezing
-    if (isPwaRef.current) {
-      // Stop timer first
-      if (timerRef.current) {
-        timerRef.current.stopTimer();
-      }
-      
-      setShowEndConfirmation(false);
-      
-      // Check if we're on a mobile device for special handling
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      
-      // Create report ID for consistency
-      const reportId = `session_${Date.now()}`;
-      
-      if (isMobile) {
-        // For mobile PWA, prepare minimal data and navigate immediately
-        try {
-          // Prepare session data for report
-          const reportKey = `sessionReport_${reportId}`;
-          const sessionData = {
-            milestone: currentMilestone,
-            duration: currentMilestone * 45,
-            timestamp: new Date().toISOString(),
-            environment: localStorage.getItem('environment') || 'default',
-          };
-          
-          // Save session data with minimal processing
-          localStorage.setItem('sessionData', JSON.stringify(sessionData));
-          localStorage.setItem(reportKey, JSON.stringify({
-            ...sessionData,
-            notes: "",
-            savedAt: new Date().toISOString()
-          }));
-          
-          // Navigate directly to report page - immediately and with replace:true
-          navigate(`/session-report/${reportId}`, { replace: true });
-          operationInProgressRef.current = false;
-        } catch (e) {
-          console.error("Error in mobile PWA session end:", e);
-          // Emergency fallback
-          navigate("/dashboard", { replace: true });
-          operationInProgressRef.current = false;
-        }
-      } else {
-        // For desktop PWA, use standard flow
-        handleEndSessionEarly();
-      }
-      return;
-    }
-    
-    // Standard flow for non-PWA
+    // Stop timer first
     if (timerRef.current) {
       timerRef.current.stopTimer();
     }
     
+    // Close dialog 
     setShowEndConfirmation(false);
     
-    setTimeout(() => {
-      if (isMountedRef.current) {
-        handleEndSessionEarly();
+    // For mobile PWA users, direct navigation to session report
+    if (isPwaRef.current && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+      // Generate a unique session report ID
+      const reportId = `session_${Date.now()}`;
+      const reportKey = `sessionReport_${reportId}`;
+      
+      try {
+        // Prepare and save minimal session data
+        const sessionData = {
+          milestone: currentMilestone,
+          duration: currentMilestone * 45,
+          timestamp: new Date().toISOString(),
+          environment: localStorage.getItem('environment') || 'default',
+          notes: "",
+          savedAt: new Date().toISOString()
+        };
+        
+        // Save session data directly to localStorage
+        localStorage.setItem('sessionData', JSON.stringify(sessionData));
+        localStorage.setItem(reportKey, JSON.stringify(sessionData));
+        
+        // Immediate navigation to session report
+        navigate(`/session-report/${reportId}`, { replace: true });
+        operationInProgressRef.current = false;
+      } catch (e) {
+        console.error("Error preparing session report:", e);
+        // Emergency fallback navigation
+        navigate("/dashboard", { replace: true });
+        operationInProgressRef.current = false;
       }
-    }, 0);
+    } else {
+      // Standard flow for non-mobile-PWA
+      handleEndSessionEarly();
+    }
   };
   
   const handleMilestoneReached = (milestone: number) => {

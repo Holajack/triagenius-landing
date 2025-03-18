@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip } from "recharts";
+import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 import { BarChart2, Clock, ListChecks, Zap } from "lucide-react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -61,6 +61,7 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
     return { startOfWeek, endOfWeek };
   };
   
+  // Load user's tasks and subjects from the database
   useEffect(() => {
     const loadData = async () => {
       if (!user?.id) return;
@@ -70,12 +71,13 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
       try {
         const { startOfWeek, endOfWeek } = getWeekBounds();
         
+        // Fetch focus session data
         const { data: focusData, error: focusError } = await supabase
           .from('focus_sessions')
-          .select('start_time, duration')
+          .select('start_time, duration, created_at')
           .eq('user_id', user.id)
-          .gte('start_time', startOfWeek.toISOString())
-          .lt('start_time', endOfWeek.toISOString());
+          .gte('created_at', startOfWeek.toISOString())
+          .lt('created_at', endOfWeek.toISOString());
           
         if (focusError) {
           console.error('Error fetching focus data:', focusError);
@@ -85,7 +87,7 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
           };
           
           focusData?.forEach(session => {
-            const day = getDayOfWeek(session.start_time);
+            const day = getDayOfWeek(session.created_at || session.start_time);
             const durationHours = (session.duration || 0) / 60;
             weeklyFocusData[day as keyof typeof weeklyFocusData] += durationHours;
           });
@@ -98,9 +100,10 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
           setFocusTimeData(formattedFocusData);
         }
         
+        // Fetch user's tasks
         const { data: tasksData, error: tasksError } = await supabase
           .from('tasks')
-          .select('created_at, status')
+          .select('created_at, status, title, subject')
           .eq('user_id', user.id)
           .gte('created_at', startOfWeek.toISOString())
           .lt('created_at', endOfWeek.toISOString());
@@ -108,6 +111,7 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
         if (tasksError) {
           console.error('Error fetching tasks data:', tasksError);
         } else {
+          // Process task completion by day
           const weeklyTaskData = {
             "Mon": 0, "Tue": 0, "Wed": 0, "Thu": 0, "Fri": 0, "Sat": 0, "Sun": 0
           };
@@ -126,6 +130,7 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
           
           setTaskData(formattedTaskData);
           
+          // Process task status counts
           const taskStatusCounts = {
             "Completed": 0,
             "In Progress": 0,
@@ -144,28 +149,13 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
           }));
           
           setTaskStatusData(formattedTaskStatusData);
-        }
-        
-        const { data: focusSessions, error: subjectsError } = await supabase
-          .from('focus_sessions')
-          .select('id, tasks:tasks(title)')
-          .eq('user_id', user.id)
-          .gte('start_time', startOfWeek.toISOString())
-          .lt('start_time', endOfWeek.toISOString());
           
-        if (subjectsError) {
-          console.error('Error fetching subjects data:', subjectsError);
-        } else {
+          // Process subject distribution
           const subjectCounts: Record<string, number> = {};
           
-          focusSessions?.forEach(session => {
-            const tasks = session.tasks as any[];
-            if (Array.isArray(tasks)) {
-              tasks.forEach(task => {
-                const subject = task.title || 'Untitled';
-                subjectCounts[subject] = (subjectCounts[subject] || 0) + 1;
-              });
-            }
+          tasksData?.forEach(task => {
+            const subject = task.subject || task.title || 'Untitled';
+            subjectCounts[subject] = (subjectCounts[subject] || 0) + 1;
           });
           
           const formattedSubjectData = Object.entries(subjectCounts)
@@ -184,6 +174,7 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
     
     loadData();
     
+    // Listen for changes to tasks and focus sessions
     const channel = supabase
       .channel('weekly-tracker-changes')
       .on('postgres_changes', 
@@ -191,7 +182,7 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
         () => loadData()
       )
       .on('postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'tasks' },
+        { event: '*', schema: 'public', table: 'tasks' },
         () => loadData()
       )
       .subscribe();
@@ -212,8 +203,119 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
     }
   };
   
+  // Colors for pie charts
+  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088fe'];
+  
   const formatTooltip = (value: number, name: string) => {
     return [`${value} ${activeTab === "focus-time" ? "hrs" : "tasks"}`, name];
+  };
+  
+  // Render appropriate chart based on type
+  const renderChart = () => {
+    const data = activeTab === "focus-time" ? focusTimeData : taskData;
+    
+    switch (chartType) {
+      case "pie":
+        return (
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="total"
+                nameKey="day"
+                label={(entry) => entry.day}
+              >
+                {data.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={formatTooltip} />
+            </PieChart>
+          </ResponsiveContainer>
+        );
+      case "line":
+        return (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data}>
+              <XAxis dataKey="day" tickLine={false} axisLine={false} fontSize={12} />
+              <Tooltip formatter={formatTooltip} />
+              <Line
+                type="monotone"
+                dataKey="total"
+                stroke={getChartColor()}
+                strokeWidth={2}
+                dot={{ r: 4, fill: getChartColor() }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        );
+      case "time":
+        // Time chart shows distribution by day
+        return (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart 
+              data={data} 
+              barGap={8}
+              barSize={optimizeForMobile ? 15 : 20}
+              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+            >
+              <XAxis
+                dataKey="day"
+                tickLine={false}
+                axisLine={false}
+                fontSize={optimizeForMobile ? 10 : 12}
+                interval={0}
+              />
+              <Tooltip
+                cursor={false}
+                formatter={formatTooltip}
+              />
+              <Bar
+                dataKey="total"
+                fill={getChartColor()}
+                radius={[4, 4, 0, 0]}
+                name={activeTab === "focus-time" ? "Focus Hours" : "Completed Tasks"}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        );
+      case "bar":
+      default:
+        return (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart 
+              data={data} 
+              barGap={8}
+              barSize={optimizeForMobile ? 15 : 20}
+              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+            >
+              <XAxis
+                dataKey="day"
+                tickLine={false}
+                axisLine={false}
+                fontSize={optimizeForMobile ? 10 : 12}
+                interval={0}
+              />
+              <Tooltip
+                cursor={false}
+                formatter={formatTooltip}
+              />
+              <Bar
+                dataKey="total"
+                fill={getChartColor()}
+                radius={[4, 4, 0, 0]}
+                name={activeTab === "focus-time" ? "Focus Hours" : "Completed Tasks"}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        );
+    }
   };
   
   if (isLoading) {
@@ -257,49 +359,11 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
           </TabsList>
           
           <TabsContent value="focus-time" className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={focusTimeData} barGap={8}>
-                <XAxis
-                  dataKey="day"
-                  tickLine={false}
-                  axisLine={false}
-                  fontSize={12}
-                />
-                <Tooltip
-                  cursor={false}
-                  formatter={formatTooltip}
-                />
-                <Bar
-                  dataKey="total"
-                  fill={getChartColor()}
-                  radius={[4, 4, 0, 0]}
-                  name="Focus Hours"
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            {renderChart()}
           </TabsContent>
           
           <TabsContent value="tasks" className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={taskData} barGap={8}>
-                <XAxis
-                  dataKey="day"
-                  tickLine={false}
-                  axisLine={false}
-                  fontSize={12}
-                />
-                <Tooltip
-                  cursor={false}
-                  formatter={formatTooltip}
-                />
-                <Bar
-                  dataKey="total"
-                  fill={getChartColor()}
-                  radius={[4, 4, 0, 0]}
-                  name="Completed Tasks"
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            {renderChart()}
           </TabsContent>
         </Tabs>
 
@@ -320,7 +384,7 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
                     className="h-full rounded-full"
                     style={{
                       width: `${Math.min(100, (item.value / 10) * 100)}%`,
-                      backgroundColor: getChartColor()
+                      backgroundColor: COLORS[index % COLORS.length]
                     }}
                   ></div>
                 </div>
