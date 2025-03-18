@@ -32,8 +32,8 @@ const Bonuses = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <PageHeader
-        title="Bonus Features"
-        subtitle="Explore additional tools and resources"
+        title="Learning Boosters"
+        subtitle="Unlock powerful tools to enhance your study experience and maximize your potential"
         data-walkthrough="bonuses-header"
       />
       
