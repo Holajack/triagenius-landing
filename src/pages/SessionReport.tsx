@@ -228,25 +228,36 @@ const SessionReport = () => {
     loadSessionData();
   }, [params.id, navigate, user]);
 
-  // Calculate stats based on milestone reached
+  // Calculate stats based on milestone reached and actual session duration
   const getFocusScore = () => {
     if (!sessionData) return 0;
     
-    // Base score calculated from milestone completion
-    const baseScore = (sessionData.milestone / 3) * 100;
+    // Base calculation using milestone as a percentage of completion
+    let baseScore = Math.min((sessionData.milestone / 3) * 100, 100);
     
-    // Add a small random variation for interest
-    const variation = Math.floor(Math.random() * 10);
+    // Add a small random variation for interest (1-5%)
+    const variation = Math.floor(Math.random() * 5) + 1;
     
+    // If session was completed fully, ensure minimum score of 85
+    if (sessionData.completed || sessionData.milestone >= 3) {
+      baseScore = Math.max(baseScore, 85);
+    }
+    
+    // Cap the score at 100
     return Math.min(Math.floor(baseScore + variation), 100);
   };
   
   const getSessionTime = () => {
     if (!sessionData) return '00:00';
     
-    const hours = Math.floor(sessionData.duration / 60);
-    const minutes = sessionData.duration % 60;
+    // Handle case where duration might be undefined or zero
+    const duration = sessionData.duration || 0;
     
+    // Calculate hours and minutes from duration (in minutes)
+    const hours = Math.floor(duration / 60);
+    const minutes = duration % 60;
+    
+    // Format as HH:MM
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
   
