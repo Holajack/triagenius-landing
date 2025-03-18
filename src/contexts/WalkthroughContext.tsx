@@ -96,7 +96,7 @@ type WalkthroughContextType = {
 const WalkthroughContext = createContext<WalkthroughContextType | undefined>(undefined);
 
 // Provider component
-export function WalkthroughProvider({ children }: { children: ReactNode }) {
+export const WalkthroughProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(walkthroughReducer, initialState);
 
   // Load completed status from localStorage
@@ -127,7 +127,7 @@ export function WalkthroughProvider({ children }: { children: ReactNode }) {
       {children}
     </WalkthroughContext.Provider>
   );
-}
+};
 
 // Hook to use the context
 export function useWalkthrough() {

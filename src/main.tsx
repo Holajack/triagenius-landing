@@ -10,6 +10,7 @@ import { register } from './components/pwa/ServiceWorker'
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     register();
+    console.log('Service worker registered successfully');
   });
 }
 
