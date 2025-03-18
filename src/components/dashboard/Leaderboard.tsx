@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,25 +19,49 @@ const Leaderboard = () => {
   const [hasData, setHasData] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardUser[]>([]);
+  const [userRank, setUserRank] = useState("");
   
   // Check if the user has any focus session data
   useEffect(() => {
     const checkForFocusData = async () => {
       try {
         setIsLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: authData } = await supabase.auth.getUser();
         
-        if (user) {
-          const { count } = await supabase
+        if (authData?.user) {
+          const { count, error } = await supabase
             .from('focus_sessions')
             .select('*', { count: 'exact', head: true })
-            .eq('user_id', user.id);
+            .eq('user_id', authData.user.id);
             
           setHasData(count !== null && count > 0);
           
           // Load real leaderboard data
           const realData = await getFriendsLeaderboardData(count === 0);
           setLeaderboardData(realData);
+          
+          // Get user ranking
+          if (count && count > 0) {
+            // Get total users for percentage calculation
+            const { count: totalUsers } = await supabase
+              .from('leaderboard_stats')
+              .select('*', { count: 'exact', head: true });
+              
+            if (totalUsers) {
+              // Find current user position
+              const { data: allStats } = await supabase
+                .from('leaderboard_stats')
+                .select('user_id, points')
+                .order('points', { ascending: false });
+                
+              const userPosition = allStats?.findIndex(stat => stat.user_id === authData.user.id) || -1;
+              
+              if (userPosition >= 0) {
+                const percentage = Math.round(((userPosition + 1) / (totalUsers || 1)) * 100);
+                setUserRank(`You're in the top ${percentage}% of users this week!`);
+              }
+            }
+          }
         }
       } catch (error) {
         console.error('Error checking for focus data:', error);
@@ -46,6 +71,30 @@ const Leaderboard = () => {
     };
     
     checkForFocusData();
+    
+    // Set up real-time subscription for leaderboard updates
+    const channel = supabase
+      .channel('leaderboard-updates')
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'leaderboard_stats' }, 
+        async () => {
+          const { data: authData } = await supabase.auth.getUser();
+          if (authData?.user) {
+            const { count } = await supabase
+              .from('focus_sessions')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_id', authData.user.id);
+              
+            const realData = await getFriendsLeaderboardData(count === 0);
+            setLeaderboardData(realData);
+          }
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
   
   // Determine if this is a new user with no data
@@ -198,7 +247,7 @@ const Leaderboard = () => {
           <p className="text-xs text-muted-foreground">
             {isNewUser 
               ? "Set a focus goal and start tracking your progress!" 
-              : `Weekly Goal: ${weeklyGoal} hours | You're in the top 15% of users this week!`}
+              : userRank || `Weekly Goal: ${weeklyGoal} hours`}
           </p>
         </div>
       </CardContent>

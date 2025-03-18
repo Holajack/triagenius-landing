@@ -1,489 +1,356 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip } from "recharts";
 import { useOnboarding } from "@/contexts/OnboardingContext";
-import {
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-  ReferenceLine,
-  Legend,
-} from "recharts";
+import { BarChart2, Clock, ListChecks, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/hooks/use-user";
 
-type ChartType = "bar" | "pie" | "line" | "time";
-
-interface WeeklyTrackerProps {
-  chartType: ChartType;
-  hasData?: boolean;
-  optimizeForMobile?: boolean;
-}
-
-// Generate empty data for the weekly tracker
-const generateEmptyData = () => {
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  
-  return days.map(day => ({
-    day,
-    total: 0
-  }));
-};
-
-// Generate empty data for the pie chart
-const generateEmptyPieData = () => {
-  return [];
-};
-
-const WeeklyTracker = ({ chartType, hasData = true, optimizeForMobile = false }: WeeklyTrackerProps) => {
+const WeeklyTracker: React.FC = () => {
   const { state } = useOnboarding();
+  const [activeTab, setActiveTab] = useState("focus-time");
   const { user } = useUser();
-  const [data, setData] = useState(generateEmptyData());
-  const [pieData, setPieData] = useState(generateEmptyPieData());
-  const [subjectColors, setSubjectColors] = useState<{[key: string]: string}>({});
-  const [isLoading, setIsLoading] = useState(true);
-  const [noDataAvailable, setNoDataAvailable] = useState(false);
   
-  // Fetch real focus session data
+  const [focusTimeData, setFocusTimeData] = useState<{ day: string; total: number; }[]>([
+    { day: "Mon", total: 0 },
+    { day: "Tue", total: 0 },
+    { day: "Wed", total: 0 },
+    { day: "Thu", total: 0 },
+    { day: "Fri", total: 0 },
+    { day: "Sat", total: 0 },
+    { day: "Sun", total: 0 },
+  ]);
+  
+  const [taskData, setTaskData] = useState<{ day: string; total: number; }[]>([
+    { day: "Mon", total: 0 },
+    { day: "Tue", total: 0 },
+    { day: "Wed", total: 0 },
+    { day: "Thu", total: 0 },
+    { day: "Fri", total: 0 },
+    { day: "Sat", total: 0 },
+    { day: "Sun", total: 0 },
+  ]);
+  
+  const [subjectData, setSubjectData] = useState<{ name: string; value: number; }[]>([]);
+  const [taskStatusData, setTaskStatusData] = useState<{ name: string; value: number; }[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Get the current date and format days of the week
+  const getDayOfWeek = (dateString: string): string => {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const date = new Date(dateString);
+    return days[date.getDay()];
+  };
+  
+  // Get start and end of current week
+  const getWeekBounds = () => {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0 is Sunday, 6 is Saturday
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - dayOfWeek);
+    startOfWeek.setHours(0, 0, 0, 0);
+    
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 7);
+    
+    return { startOfWeek, endOfWeek };
+  };
+  
   useEffect(() => {
-    const fetchFocusData = async () => {
+    const loadData = async () => {
+      if (!user?.id) return;
+      
       setIsLoading(true);
       
       try {
-        // Get current week's start and end dates
-        const now = new Date();
-        const dayOfWeek = now.getDay(); // 0 for Sunday, 1 for Monday, etc.
-        const startOfWeek = new Date(now);
-        // Adjust to get Monday as start of week (if dayOfWeek is 0/Sunday, go back 6 days)
-        startOfWeek.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-        startOfWeek.setHours(0, 0, 0, 0);
+        const { startOfWeek, endOfWeek } = getWeekBounds();
         
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-        endOfWeek.setHours(23, 59, 59, 999);
-        
-        // Check if we have a logged-in user
-        if (user && user.id) {
-          // Fetch focus sessions for the current week
-          const { data: focusSessions, error } = await supabase
-            .from('focus_sessions')
-            .select('*, tasks!focus_sessions_id_fkey(*)')
-            .eq('user_id', user.id)
-            .gte('start_time', startOfWeek.toISOString())
-            .lte('start_time', endOfWeek.toISOString());
-            
-          if (error) {
-            console.error('Error fetching focus sessions:', error);
-            setNoDataAvailable(true);
-          } else if (!focusSessions || focusSessions.length === 0) {
-            setNoDataAvailable(true);
-          } else {
-            // Get user tasks to extract unique categories/subjects
-            const { data: userTasks, error: tasksError } = await supabase
-              .from('tasks')
-              .select('title, description, priority')
-              .eq('user_id', user.id);
-              
-            if (tasksError) {
-              console.error('Error fetching user tasks:', tasksError);
-            }
-            
-            // Extract subjects/categories from tasks
-            const subjects = new Set<string>();
-            userTasks?.forEach(task => {
-              // Add priority as a category
-              if (task.priority) {
-                subjects.add(task.priority.charAt(0).toUpperCase() + task.priority.slice(1));
-              }
-              
-              // Try to extract subjects from description with #tags
-              if (task.description) {
-                const tags = task.description.match(/#(\w+)/g);
-                if (tags) {
-                  tags.forEach(tag => {
-                    subjects.add(tag.substring(1).charAt(0).toUpperCase() + tag.substring(1).slice(1));
-                  });
-                }
-              }
-            });
-            
-            // If no subjects found, use some defaults
-            if (subjects.size === 0) {
-              ['Study', 'Work', 'Personal', 'Other'].forEach(subject => subjects.add(subject));
-            }
-            
-            // Process the data for charts
-            const processedData = processSessionData(focusSessions, startOfWeek, Array.from(subjects));
-            setData(processedData.weeklyData);
-            setPieData(processedData.pieData);
-            setSubjectColors(processedData.subjectColors);
-            setNoDataAvailable(false);
-          }
+        // Get weekly focus time data
+        const { data: focusData, error: focusError } = await supabase
+          .from('focus_sessions')
+          .select('start_time, duration')
+          .eq('user_id', user.id)
+          .gte('start_time', startOfWeek.toISOString())
+          .lt('start_time', endOfWeek.toISOString());
+          
+        if (focusError) {
+          console.error('Error fetching focus data:', focusError);
         } else {
-          setNoDataAvailable(true);
+          // Initialize weekly focus data
+          const weeklyFocusData = {
+            "Mon": 0, "Tue": 0, "Wed": 0, "Thu": 0, "Fri": 0, "Sat": 0, "Sun": 0
+          };
+          
+          // Aggregate focus time by day
+          focusData?.forEach(session => {
+            const day = getDayOfWeek(session.start_time);
+            const durationHours = (session.duration || 0) / 60; // Convert minutes to hours
+            weeklyFocusData[day as keyof typeof weeklyFocusData] += durationHours;
+          });
+          
+          // Format data for chart
+          const formattedFocusData = Object.entries(weeklyFocusData).map(([day, total]) => ({
+            day,
+            total: parseFloat(total.toFixed(1))
+          }));
+          
+          setFocusTimeData(formattedFocusData);
+        }
+        
+        // Get weekly tasks data
+        const { data: tasksData, error: tasksError } = await supabase
+          .from('tasks')
+          .select('created_at, status')
+          .eq('user_id', user.id)
+          .gte('created_at', startOfWeek.toISOString())
+          .lt('created_at', endOfWeek.toISOString());
+          
+        if (tasksError) {
+          console.error('Error fetching tasks data:', tasksError);
+        } else {
+          // Initialize weekly tasks data
+          const weeklyTaskData = {
+            "Mon": 0, "Tue": 0, "Wed": 0, "Thu": 0, "Fri": 0, "Sat": 0, "Sun": 0
+          };
+          
+          // Count completed tasks by day
+          tasksData?.forEach(task => {
+            if (task.status === 'completed') {
+              const day = getDayOfWeek(task.created_at);
+              weeklyTaskData[day as keyof typeof weeklyTaskData] += 1;
+            }
+          });
+          
+          // Format data for chart
+          const formattedTaskData = Object.entries(weeklyTaskData).map(([day, total]) => ({
+            day,
+            total
+          }));
+          
+          setTaskData(formattedTaskData);
+          
+          // Aggregate task status data
+          const taskStatusCounts = {
+            "Completed": 0,
+            "In Progress": 0,
+            "Pending": 0
+          };
+          
+          tasksData?.forEach(task => {
+            if (task.status === 'completed') taskStatusCounts["Completed"]++;
+            else if (task.status === 'in_progress') taskStatusCounts["In Progress"]++;
+            else taskStatusCounts["Pending"]++;
+          });
+          
+          const formattedTaskStatusData = Object.entries(taskStatusCounts).map(([name, value]) => ({
+            name,
+            value
+          }));
+          
+          setTaskStatusData(formattedTaskStatusData);
+        }
+        
+        // Get subject distribution from focus sessions
+        const { data: focusSessions, error: subjectsError } = await supabase
+          .from('focus_sessions')
+          .select('id, tasks:tasks(title)')
+          .eq('user_id', user.id)
+          .gte('start_time', startOfWeek.toISOString())
+          .lt('start_time', endOfWeek.toISOString());
+          
+        if (subjectsError) {
+          console.error('Error fetching subjects data:', subjectsError);
+        } else {
+          // Extract subject data from tasks associated with focus sessions
+          const subjectCounts: Record<string, number> = {};
+          
+          focusSessions?.forEach(session => {
+            const tasks = session.tasks as any[];
+            if (Array.isArray(tasks)) {
+              tasks.forEach(task => {
+                // Use task title as subject
+                const subject = task.title || 'Untitled';
+                subjectCounts[subject] = (subjectCounts[subject] || 0) + 1;
+              });
+            }
+          });
+          
+          // Format for chart
+          const formattedSubjectData = Object.entries(subjectCounts)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 5); // Only show top 5 subjects
+          
+          setSubjectData(formattedSubjectData);
         }
       } catch (error) {
-        console.error('Error in fetchFocusData:', error);
-        setNoDataAvailable(true);
+        console.error('Error loading weekly tracker data:', error);
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchFocusData();
-  }, [user]);
-  
-  // Process session data for charts
-  const processSessionData = (sessions: any[], startOfWeek: Date, subjects: string[]) => {
-    const daysMap: Record<string, number> = {
-      0: 6, // Sunday -> index 6
-      1: 0, // Monday -> index 0
-      2: 1, // Tuesday -> index 1
-      3: 2, // Wednesday -> index 2
-      4: 3, // Thursday -> index 3
-      5: 4, // Friday -> index 4
-      6: 5, // Saturday -> index 5
+    loadData();
+    
+    // Set up real-time subscription for updates
+    const channel = supabase
+      .channel('weekly-tracker-changes')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'focus_sessions' }, 
+        () => loadData()
+      )
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'tasks' },
+        () => loadData()
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
     };
-    
-    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    
-    // Initialize data structures
-    const weeklyData = days.map(day => {
-      const dayObj: {[key: string]: any} = { day, total: 0 };
-      subjects.forEach(subject => {
-        dayObj[subject] = 0;
-      });
-      return dayObj;
-    });
-    
-    const subjectTotals: Record<string, number> = {};
-    subjects.forEach(subject => subjectTotals[subject] = 0);
-    
-    // Create colors for each subject
-    const colors = getColors();
-    const subjectColors: {[key: string]: string} = {};
-    subjects.forEach((subject, index) => {
-      subjectColors[subject] = colors[index % colors.length];
-    });
-    
-    // Process each session
-    sessions.forEach(session => {
-      // Determine which day of the week this session belongs to
-      const sessionDate = new Date(session.start_time);
-      const dayIndex = daysMap[sessionDate.getDay()];
-      
-      // If duration is available, use it; otherwise calculate from times
-      let duration = session.duration || 0;
-      if (!duration && session.end_time) {
-        duration = (new Date(session.end_time).getTime() - new Date(session.start_time).getTime()) / (1000 * 60);
-      }
-      
-      // Convert duration from minutes to hours for the chart
-      const durationHours = duration / 60;
-      weeklyData[dayIndex].total += durationHours;
-      
-      // If session has associated tasks, distribute time based on tasks
-      if (session.tasks && session.tasks.length > 0) {
-        const tasksWithSubjects = session.tasks.map((task: any) => {
-          // Try to determine subject from task
-          let taskSubject = 'Other';
-          
-          // Check priority first
-          if (task.priority) {
-            taskSubject = task.priority.charAt(0).toUpperCase() + task.priority.slice(1);
-          }
-          
-          // Then check for #tags in description
-          if (task.description) {
-            const tags = task.description.match(/#(\w+)/g);
-            if (tags && tags.length > 0) {
-              taskSubject = tags[0].substring(1).charAt(0).toUpperCase() + tags[0].substring(1).slice(1);
-            }
-          }
-          
-          return {
-            ...task,
-            subject: taskSubject
-          };
-        });
-        
-        // Distribute session time across task subjects
-        const timePerTask = durationHours / tasksWithSubjects.length;
-        
-        tasksWithSubjects.forEach((task: any) => {
-          if (subjects.includes(task.subject)) {
-            weeklyData[dayIndex][task.subject] += timePerTask;
-            subjectTotals[task.subject] += timePerTask * 60; // Store in minutes for pie chart
-          } else {
-            weeklyData[dayIndex]['Other'] = (weeklyData[dayIndex]['Other'] || 0) + timePerTask;
-            subjectTotals['Other'] = (subjectTotals['Other'] || 0) + timePerTask * 60;
-          }
-        });
-      } else {
-        // If no tasks associated, assign to "Other"
-        weeklyData[dayIndex]['Other'] = (weeklyData[dayIndex]['Other'] || 0) + durationHours;
-        subjectTotals['Other'] = (subjectTotals['Other'] || 0) + durationHours * 60;
-      }
-    });
-    
-    // Create pie data
-    const pieData = Object.entries(subjectTotals)
-      .filter(([_, value]) => value > 0)
-      .map(([name, value]) => ({
-        name,
-        value
-      }));
-    
-    return { weeklyData, pieData, subjectColors };
-  };
+  }, [user?.id]);
   
-  // Calculate total weekly time (in hours)
-  const totalWeeklyHours = data.reduce((total, day) => total + day.total, 0);
-  
-  // Get the user's weekly focus goal or use default
-  const weeklyFocusGoal = state.weeklyFocusGoal || 10;
-  
-  // Calculate daily focus goal (weekly goal divided by 7 days)
-  const dailyFocusGoal = weeklyFocusGoal / 7;
-  
-  // Calculate progress percentage
-  const progressPercentage = Math.min(100, (totalWeeklyHours / weeklyFocusGoal) * 100);
-  
-  // Environment-specific colors
-  const getColors = () => {
+  // Chart customization based on environment
+  const getChartColor = () => {
     switch (state.environment) {
-      case 'office':
-        return ['#4f46e5', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'];
-      case 'park':
-        return ['#10b981', '#34d399', '#6ee7b7', '#a7f3d0', '#d1fae5'];
-      case 'home':
-        return ['#f97316', '#fb923c', '#fdba74', '#fed7aa', '#ffedd5'];
-      case 'coffee-shop':
-        return ['#b45309', '#d97706', '#f59e0b', '#fbbf24', '#fcd34d'];
-      case 'library':
-        return ['#4b5563', '#6b7280', '#9ca3af', '#d1d5db', '#e5e7eb'];
-      default:
-        return ['#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe', '#ede9fe'];
+      case 'office': return "#3b82f6";
+      case 'park': return "#22c55e";
+      case 'home': return "#f97316";
+      case 'coffee-shop': return "#f59e0b";
+      case 'library': return "#6b7280";
+      default: return "#8b5cf6";
     }
   };
-
-  const colors = getColors();
   
-  // Show loading state
+  // Format data for tooltip
+  const formatTooltip = (value: number, name: string) => {
+    return [`${value} ${activeTab === "focus-time" ? "hrs" : "tasks"}`, name];
+  };
+  
   if (isLoading) {
     return (
-      <Card className="shadow-sm">
-        <CardContent className="p-6 flex items-center justify-center min-h-[300px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-triage-purple"></div>
+      <Card className="col-span-12 lg:col-span-7">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <BarChart2 className="w-5 h-5 text-triage-purple" />
+            Weekly Progress
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="animate-pulse">
+            <div className="h-6 bg-muted rounded w-36 mb-4"></div>
+            <div className="h-32 bg-muted/50 rounded"></div>
+          </div>
         </CardContent>
       </Card>
     );
   }
   
-  // Use empty data for new users with no history
-  const chartData = noDataAvailable ? generateEmptyData() : data;
-  const chartPieData = noDataAvailable ? generateEmptyPieData() : pieData;
-  
-  // Mobile optimizations
-  const getMobileChartHeight = () => {
-    if (!optimizeForMobile) return 300;
-    
-    switch (chartType) {
-      case 'pie': return 250;
-      case 'time': return 280;
-      default: return 220;
-    }
-  };
-  
-  const chartHeight = getMobileChartHeight();
-  
-  // Create simplified labels for mobile
-  const getMobileAxisTickFormatter = (value: string) => {
-    if (!optimizeForMobile) return value;
-    // Use first letter of day for mobile
-    return value.charAt(0);
-  };
-  
-  // Get unique subjects from data
-  const getSubjects = () => {
-    if (chartData.length === 0) return [];
-    
-    const firstDay = chartData[0];
-    return Object.keys(firstDay).filter(key => key !== 'day' && key !== 'total');
-  };
-  
-  const subjects = getSubjects();
-  
   return (
-    <Card className="shadow-sm">
-      <CardContent className={`p-${optimizeForMobile ? '2' : '6'}`}>
-        {noDataAvailable && (
-          <div className="text-center text-gray-500 mb-4 text-sm">
-            No focus sessions recorded yet. This chart will populate as you complete sessions.
-          </div>
-        )}
-        
-        {chartType === "bar" && (
-          <ResponsiveContainer width="100%" height={chartHeight}>
-            <BarChart data={chartData} margin={optimizeForMobile ? 
-              { top: 10, right: 5, left: -20, bottom: 0 } : 
-              { top: 20, right: 30, left: 0, bottom: 5 }
-            }>
-              <CartesianGrid strokeDasharray="3 3" vertical={!optimizeForMobile} />
-              <XAxis 
-                dataKey="day" 
-                tick={{ fontSize: optimizeForMobile ? 10 : 12 }}
-                tickFormatter={getMobileAxisTickFormatter}
-              />
-              <YAxis 
-                unit="hr" 
-                tick={{ fontSize: optimizeForMobile ? 10 : 12 }}
-                width={optimizeForMobile ? 25 : 30}
-              />
-              <Tooltip
-                formatter={(value: number) => [`${value.toFixed(2)} hr`, "Focus Time"]}
-                labelFormatter={(label) => `${label}`}
-              />
-              {!optimizeForMobile && <Legend />}
-              
-              {subjects.map((subject, index) => (
-                <Bar 
-                  key={subject} 
-                  dataKey={subject} 
-                  stackId="a" 
-                  fill={subjectColors[subject] || colors[index % colors.length]} 
+    <Card className="col-span-12 lg:col-span-7">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg flex items-center gap-2">
+          <BarChart2 className="w-5 h-5 text-triage-purple" />
+          Weekly Progress
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="focus-time" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              <span>Focus Time</span>
+            </TabsTrigger>
+            <TabsTrigger value="tasks" className="flex items-center gap-2">
+              <ListChecks className="h-4 w-4" />
+              <span>Tasks</span>
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="focus-time" className="h-[200px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={focusTimeData} barGap={8}>
+                <XAxis
+                  dataKey="day"
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={12}
                 />
-              ))}
-              
-              {/* Add reference line for daily goal */}
-              <ReferenceLine 
-                y={dailyFocusGoal} 
-                stroke="#ff4081" 
-                strokeDasharray="3 3" 
-                label={optimizeForMobile ? undefined : "Daily Goal"} 
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        )}
+                <Tooltip
+                  cursor={false}
+                  formatter={formatTooltip}
+                />
+                <Bar
+                  dataKey="total"
+                  fill={getChartColor()}
+                  radius={[4, 4, 0, 0]}
+                  name="Focus Hours"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </TabsContent>
+          
+          <TabsContent value="tasks" className="h-[200px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={taskData} barGap={8}>
+                <XAxis
+                  dataKey="day"
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={12}
+                />
+                <Tooltip
+                  cursor={false}
+                  formatter={formatTooltip}
+                />
+                <Bar
+                  dataKey="total"
+                  fill={getChartColor()}
+                  radius={[4, 4, 0, 0]}
+                  name="Completed Tasks"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </TabsContent>
+        </Tabs>
 
-        {chartType === "pie" && (
-          <ResponsiveContainer width="100%" height={chartHeight}>
-            <PieChart margin={optimizeForMobile ? { top: 10, right: 0, left: 0, bottom: 0 } : undefined}>
-              <Pie
-                data={chartPieData}
-                cx="50%"
-                cy="50%"
-                outerRadius={optimizeForMobile ? 80 : 100}
-                innerRadius={optimizeForMobile ? 40 : 60}
-                labelLine={!noDataAvailable && !optimizeForMobile}
-                label={!noDataAvailable && !optimizeForMobile ? 
-                  ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%` : 
-                  false}
-                dataKey="value"
-              >
-                {chartPieData.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={subjectColors[entry.name] || colors[index % colors.length]} 
-                  />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value: number) => [`${Math.round(value)} min`, "Focus Time"]} />
-              <Legend verticalAlign={optimizeForMobile ? "bottom" : "middle"} layout={optimizeForMobile ? "horizontal" : "vertical"} align={optimizeForMobile ? "center" : "right"} />
-            </PieChart>
-          </ResponsiveContainer>
-        )}
-
-        {chartType === "line" && (
-          <ResponsiveContainer width="100%" height={chartHeight}>
-            <LineChart 
-              data={chartData} 
-              margin={optimizeForMobile ? 
-                { top: 10, right: 5, left: -20, bottom: 0 } : 
-                { top: 20, right: 30, left: 0, bottom: 5 }
-              }
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="day" 
-                tick={{ fontSize: optimizeForMobile ? 10 : 12 }}
-                tickFormatter={getMobileAxisTickFormatter}
-              />
-              <YAxis 
-                unit="hr" 
-                tick={{ fontSize: optimizeForMobile ? 10 : 12 }}
-                width={optimizeForMobile ? 25 : 30}
-              />
-              <Tooltip
-                formatter={(value: number) => [`${value.toFixed(2)} hr`, "Focus Time"]}
-              />
-              <Line type="monotone" dataKey="total" stroke={colors[0]} strokeWidth={2} />
-              {/* Update to use dailyFocusGoal */}
-              <ReferenceLine 
-                y={dailyFocusGoal} 
-                stroke="#ff4081" 
-                strokeDasharray="3 3" 
-                label={optimizeForMobile ? undefined : "Daily Goal"} 
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-
-        {chartType === "time" && (
-          <div className="space-y-4 p-2">
-            <div className="flex justify-between">
-              <h3 className="text-sm font-medium">Focus Time Distribution</h3>
-              <div className="text-sm">
-                <span className="font-medium">{totalWeeklyHours.toFixed(1)} hrs</span>
-                <span className="text-muted-foreground"> / {weeklyFocusGoal} hrs goal</span>
-              </div>
-            </div>
-            
-            <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden mb-4">
-              <div
-                className="h-full rounded-full transition-all duration-500 ease-in-out"
-                style={{
-                  width: `${progressPercentage}%`,
-                  backgroundColor: progressPercentage >= 100 ? colors[0] : '#8b5cf6'
-                }}
-              ></div>
-            </div>
-            
-            {chartPieData.map((subject, index) => {
-              const percentOfWeek = totalWeeklyHours > 0 ? (subject.value / (totalWeeklyHours * 60)) * 100 : 0;
-              
-              return (
-                <div key={subject.name} className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span>{subject.name}</span>
-                    <span>{Math.round(subject.value)} min</span>
-                  </div>
-                  <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${percentOfWeek}%`,
-                        backgroundColor: subjectColors[subject.name] || colors[index % colors.length]
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              );
-            })}
+        <div className="mt-4 pt-4 border-t">
+          <div className="flex items-center gap-2 mb-3">
+            <Zap className="w-4 h-4 text-triage-purple" />
+            <p className="text-sm font-medium">
+              {activeTab === "focus-time" ? "Subject Distribution" : "Task Status"}
+            </p>
           </div>
-        )}
+          
+          <div className="space-y-2">
+            {(activeTab === "focus-time" ? subjectData : taskStatusData).map((item, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <span className="w-20 text-xs truncate">{item.name}</span>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.min(100, (item.value / 10) * 100)}%`,
+                      backgroundColor: getChartColor()
+                    }}
+                  ></div>
+                </div>
+                <span className="text-xs">{item.value}</span>
+              </div>
+            ))}
+            
+            {(activeTab === "focus-time" ? subjectData : taskStatusData).length === 0 && (
+              <div className="text-center py-2 text-sm text-muted-foreground">
+                No data available. Start creating {activeTab === "focus-time" ? "subjects" : "tasks"} to see your progress!
+              </div>
+            )}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
 };
 
 export default WeeklyTracker;
-

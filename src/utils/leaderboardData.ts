@@ -56,7 +56,7 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
     }
     
     // Extract friend IDs
-    const friendIds = followingData.map(connection => connection.following_id);
+    const friendIds = followingData?.map(connection => connection.following_id) || [];
     
     // Include current user's ID
     friendIds.push(user.id);
@@ -327,7 +327,7 @@ export const getCommunityActivityFeed = async (isNewUser = false): Promise<any[]
       const duration = session.duration || 0;
       const durationHours = Math.round(duration / 60 * 10) / 10; // Convert minutes to hours with 1 decimal
       
-      // Random timestamps for demo
+      // Calculate time ago
       const timestamp = new Date(session.created_at);
       const now = new Date();
       const diffMs = now.getTime() - timestamp.getTime();
