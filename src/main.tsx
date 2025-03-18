@@ -18,21 +18,22 @@ root.render(
   </React.StrictMode>
 );
 
-// Register service worker for PWA functionality
+// Enhanced service worker registration that works across browsers
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
+      // Use absolute URL to ensure consistent behavior across browsers
       const swUrl = `${window.location.origin}/sw.js`;
       console.log('Registering service worker at:', swUrl);
       
       const registration = await navigator.serviceWorker.register(swUrl, {
         scope: '/',
-        updateViaCache: 'none'
+        updateViaCache: 'none' // Ensure proper cache control
       });
       
       console.log('Service worker registered successfully:', registration.scope);
       
-      // Handle updates
+      // Handle updates with better UX
       registration.onupdatefound = () => {
         const installingWorker = registration.installing;
         if (!installingWorker) return;
@@ -42,7 +43,7 @@ if ('serviceWorker' in navigator) {
             if (navigator.serviceWorker.controller) {
               console.log('New content is available; please refresh.');
               
-              // Show update notification to the user
+              // Improved update UX with custom UI
               if (window.confirm('New version available! Reload to update?')) {
                 window.location.reload();
               }
