@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { X, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
@@ -14,21 +13,15 @@ interface BeforeInstallPromptEvent extends Event {
 const InstallPrompt = () => {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const isMobile = useIsMobile();
   const { toast } = useToast();
   
   useEffect(() => {
-    // Only show on mobile devices
-    if (!isMobile) return;
-    
     // Check if already installed
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
     if (isStandalone) {
       console.log('App is already installed and running in standalone mode');
       return;
     }
-    
-    console.log('App is not in standalone mode, can show install prompt');
     
     // Capture the beforeinstallprompt event
     const beforeInstallPromptHandler = (e: Event) => {
@@ -46,8 +39,6 @@ const InstallPrompt = () => {
         if (!lastPrompt || daysBetween(new Date(lastPrompt), new Date()) > 7) {
           console.log('Showing custom install prompt');
           setIsVisible(true);
-        } else {
-          console.log('Not showing prompt, was dismissed recently');
         }
       }, 2000);
     };
@@ -55,41 +46,11 @@ const InstallPrompt = () => {
     console.log('Adding beforeinstallprompt event listener');
     window.addEventListener('beforeinstallprompt', beforeInstallPromptHandler);
     
-    // Show install prompt after 3 seconds of interaction, if not already triggered
-    let interacted = false;
-    const interactionHandler = () => {
-      if (interacted) return;
-      interacted = true;
-      
-      // If we didn't capture the beforeinstallprompt event yet,
-      // we'll show instructions for iOS devices after some interaction
-      setTimeout(() => {
-        if (!installPrompt && !isStandalone) {
-          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-          if (isIOS) {
-            const lastPrompt = localStorage.getItem('installPromptDismissed');
-            if (!lastPrompt || daysBetween(new Date(lastPrompt), new Date()) > 7) {
-              console.log('Showing iOS install instructions');
-              setIsVisible(true);
-            }
-          }
-        }
-      }, 3000);
-      
-      window.removeEventListener('scroll', interactionHandler);
-      window.removeEventListener('click', interactionHandler);
-    };
-    
-    window.addEventListener('scroll', interactionHandler);
-    window.addEventListener('click', interactionHandler);
-    
     // Cleanup
     return () => {
       window.removeEventListener('beforeinstallprompt', beforeInstallPromptHandler);
-      window.removeEventListener('scroll', interactionHandler);
-      window.removeEventListener('click', interactionHandler);
     };
-  }, [isMobile]);
+  }, []);
   
   const handleInstallClick = async () => {
     if (!installPrompt) {
@@ -140,7 +101,7 @@ const InstallPrompt = () => {
     toast({
       title: "Install this app",
       description: "To install: tap the share icon, then 'Add to Home Screen'",
-      duration: 10000 // Added as a valid property in our updated type
+      duration: 10000
     });
     handleDismiss();
   };
@@ -151,8 +112,7 @@ const InstallPrompt = () => {
     return diffDays;
   };
   
-  // Only render for mobile and when visible
-  if (!isMobile || !isVisible) {
+  if (!isVisible) {
     return null;
   }
   
@@ -168,13 +128,13 @@ const InstallPrompt = () => {
         >
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h3 className="font-semibold text-lg mb-1">Install Triage App</h3>
+              <h3 className="font-semibold text-lg mb-1">Install Triagenius</h3>
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
                 Install our app for a better experience and offline access.
               </p>
               <Button 
                 onClick={handleInstallClick}
-                className="w-full bg-triage-purple hover:bg-triage-purple/90"
+                className="w-full bg-black hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
               >
                 <Download className="w-4 h-4 mr-2" /> Install App
               </Button>

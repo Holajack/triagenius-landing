@@ -1,13 +1,14 @@
 
 // Cache version identifier - change this when files are updated
-const CACHE_NAME = 'triage-app-v1';
+const CACHE_NAME = 'triagenius-v1';
 
 // Add list of files to cache for offline access
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/manifest.json'
-  // Note: Icon paths will be added dynamically
+  '/manifest.json',
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png'
 ];
 
 // App Shell - critical resources
@@ -118,7 +119,7 @@ self.addEventListener('push', event => {
     const options = {
       body: data.body || 'New notification',
       icon: '/icons/icon-192x192.png',
-      badge: '/icons/icon-72x72.png'
+      badge: '/icons/icon-192x192.png'
     };
     
     event.waitUntil(
