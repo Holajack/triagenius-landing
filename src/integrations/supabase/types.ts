@@ -705,14 +705,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_user_follows: {
-        Args: {
-          user_id_param: string
-        }
-        Returns: {
-          following_id: string
-        }[]
-      }
+      get_user_follows:
+        | {
+            Args: Record<PropertyKey, never>
+            Returns: {
+              user_id: string
+              follow_id: string
+            }[]
+          }
+        | {
+            Args: {
+              user_id_param: string
+            }
+            Returns: {
+              following_id: string
+            }[]
+          }
     }
     Enums: {
       [_ in never]: never
