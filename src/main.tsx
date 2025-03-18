@@ -25,7 +25,11 @@ if ('serviceWorker' in navigator) {
       const swUrl = `${window.location.origin}/sw.js`;
       console.log('Registering service worker at:', swUrl);
       
-      const registration = await navigator.serviceWorker.register(swUrl);
+      const registration = await navigator.serviceWorker.register(swUrl, {
+        scope: '/',
+        updateViaCache: 'none'
+      });
+      
       console.log('Service worker registered successfully:', registration.scope);
       
       // Handle updates
@@ -48,6 +52,19 @@ if ('serviceWorker' in navigator) {
           }
         };
       };
+      
+      // Log when the service worker takes control
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        console.log('Service worker controller changed');
+      });
+      
+      // Enable debugging in development
+      if (process.env.NODE_ENV === 'development') {
+        navigator.serviceWorker.addEventListener('message', event => {
+          console.log('[ServiceWorker Message]:', event.data);
+        });
+      }
+      
     } catch (error) {
       console.error('Error during service worker registration:', error);
     }

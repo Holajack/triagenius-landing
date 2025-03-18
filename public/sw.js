@@ -1,6 +1,6 @@
 
 // Cache version identifier - change this when files are updated
-const CACHE_NAME = 'triagenius-v2';
+const CACHE_NAME = 'triagenius-v3';
 
 // Add list of files to cache for offline access
 const STATIC_ASSETS = [
@@ -147,4 +147,9 @@ self.addEventListener('notificationclick', event => {
       }
     })
   );
+});
+
+// Add support for App Banner events
+self.addEventListener('appinstalled', (event) => {
+  console.log('App was installed', event);
 });

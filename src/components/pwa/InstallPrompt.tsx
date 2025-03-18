@@ -13,104 +13,140 @@ interface BeforeInstallPromptEvent extends Event {
 const InstallPrompt = () => {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+  const [browserInfo, setBrowserInfo] = useState<{
+    name: string;
+    isIOS: boolean;
+    isStandalone: boolean;
+  }>({
+    name: '',
+    isIOS: false,
+    isStandalone: false
+  });
   const { toast } = useToast();
   
   useEffect(() => {
-    // Check if already installed
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                        (window.navigator as any).standalone === true;
+    // Detect browser
+    const detectBrowser = () => {
+      const userAgent = navigator.userAgent;
+      let browserName = 'Unknown';
+      
+      if (userAgent.match(/chrome|chromium|crios/i)) {
+        browserName = 'Chrome';
+      } else if (userAgent.match(/firefox|fxios/i)) {
+        browserName = 'Firefox';
+      } else if (userAgent.match(/safari/i)) {
+        browserName = 'Safari';
+      } else if (userAgent.match(/opr\//i)) {
+        browserName = 'Opera';
+      } else if (userAgent.match(/edg/i)) {
+        browserName = 'Edge';
+      } else if (userAgent.match(/android/i)) {
+        browserName = 'Android';
+      } else if (userAgent.match(/iphone|ipad|ipod/i)) {
+        browserName = 'iOS';
+      }
+      
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                          (window.navigator as any).standalone === true;
+      
+      return { name: browserName, isIOS, isStandalone };
+    };
     
-    if (isStandalone) {
+    const browser = detectBrowser();
+    setBrowserInfo(browser);
+    
+    // If already installed/standalone mode, don't show the prompt
+    if (browser.isStandalone) {
       console.log('App is already installed and running in standalone mode');
       return;
     }
     
-    // Detect iOS device
-    const iosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-    setIsIOS(iosDevice);
-    
-    if (iosDevice) {
-      // For iOS, we'll show our custom prompt immediately after a delay
+    // For iOS Safari, we need a custom approach
+    if (browser.isIOS) {
+      // Check if we haven't shown the prompt recently
       const lastPrompt = localStorage.getItem('installPromptDismissed');
-      const currentDate = new Date().toISOString();
-      
       if (!lastPrompt || daysBetween(new Date(lastPrompt), new Date()) > 3) {
         setTimeout(() => setIsVisible(true), 2000);
       }
       return;
     }
     
-    // Capture the beforeinstallprompt event for Android/Chrome
-    const beforeInstallPromptHandler = (e: Event) => {
-      // Prevent Chrome 67 and earlier from automatically showing the prompt
+    // For Chrome and other browsers supporting BeforeInstallPromptEvent
+    const handleBeforeInstallPrompt = (e: Event) => {
+      // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
+      console.log('Captured beforeinstallprompt event', e);
       // Store the event so it can be triggered later
-      console.log('Captured beforeinstallprompt event');
       setInstallPrompt(e as BeforeInstallPromptEvent);
       
       // Show our custom prompt after a short delay
-      setTimeout(() => {
-        const lastPrompt = localStorage.getItem('installPromptDismissed');
-        const currentDate = new Date().toISOString();
-        
-        if (!lastPrompt || daysBetween(new Date(lastPrompt), new Date()) > 3) {
-          console.log('Showing custom install prompt');
-          setIsVisible(true);
-        }
-      }, 2000);
+      const lastPrompt = localStorage.getItem('installPromptDismissed');
+      if (!lastPrompt || daysBetween(new Date(lastPrompt), new Date()) > 3) {
+        setTimeout(() => setIsVisible(true), 2000);
+      }
     };
     
     console.log('Adding beforeinstallprompt event listener');
-    window.addEventListener('beforeinstallprompt', beforeInstallPromptHandler);
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     
-    // Check if we should show iOS instructions
-    if (!installPrompt && iosDevice) {
-      setTimeout(() => setIsVisible(true), 2000);
+    // Always show the prompt for browsers without beforeinstallprompt support
+    // but not iOS (handled separately) and not already in standalone mode
+    if (!browser.isIOS && !browser.isStandalone) {
+      const lastPrompt = localStorage.getItem('installPromptDismissed');
+      if (!lastPrompt || daysBetween(new Date(lastPrompt), new Date()) > 3) {
+        // Delay showing prompt slightly to avoid immediate popup
+        setTimeout(() => {
+          // If we haven't captured beforeinstallprompt, show custom instructions
+          if (!installPrompt) {
+            setIsVisible(true);
+          }
+        }, 3000);
+      }
     }
     
     // Cleanup
     return () => {
-      window.removeEventListener('beforeinstallprompt', beforeInstallPromptHandler);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
   }, []);
   
   const handleInstallClick = async () => {
-    if (isIOS) {
+    if (browserInfo.isIOS) {
       showIOSInstructions();
       return;
     }
     
-    if (!installPrompt) {
-      console.log('No install prompt available');
-      return;
-    }
-    
-    // Show the browser install prompt
-    console.log('Triggering browser install prompt');
-    installPrompt.prompt();
-    
-    try {
-      // Wait for the user to respond to the prompt
-      const choiceResult = await installPrompt.userChoice;
+    // For Chrome and other browsers that support the beforeinstallprompt event
+    if (installPrompt) {
+      console.log('Triggering browser install prompt');
+      installPrompt.prompt();
       
-      // User accepted installation
-      if (choiceResult.outcome === 'accepted') {
-        console.log('User accepted the install prompt');
-        toast({
-          title: "Installing App",
-          description: "Thank you for installing our app!"
-        });
-      } else {
-        console.log('User dismissed the install prompt');
+      try {
+        // Wait for the user to respond to the prompt
+        const choiceResult = await installPrompt.userChoice;
+        
+        if (choiceResult.outcome === 'accepted') {
+          console.log('User accepted the install prompt');
+          toast({
+            title: "Installing App",
+            description: "Thank you for installing our app!"
+          });
+        } else {
+          console.log('User dismissed the install prompt');
+        }
+      } catch (err) {
+        console.error('Error with install prompt:', err);
       }
-    } catch (err) {
-      console.error('Error with install prompt:', err);
+      
+      // Clear the saved prompt since it can't be used again
+      setInstallPrompt(null);
+      setIsVisible(false);
+    } else {
+      // For browsers that don't support beforeinstallprompt
+      // Show browser-specific installation instructions
+      showBrowserSpecificInstructions(browserInfo.name);
     }
-    
-    // Clear the saved prompt since it can't be used again
-    setInstallPrompt(null);
-    setIsVisible(false);
   };
   
   const handleDismiss = () => {
@@ -121,10 +157,37 @@ const InstallPrompt = () => {
   };
   
   const showIOSInstructions = () => {
-    // Instructions for iOS users to add to home screen
     toast({
       title: "Install this app",
       description: "To install: tap the share icon, then 'Add to Home Screen'",
+      duration: 10000
+    });
+  };
+  
+  const showBrowserSpecificInstructions = (browser: string) => {
+    let instructions = "Add this app to your home screen for a better experience.";
+    
+    switch(browser) {
+      case "Chrome":
+        instructions = "Click the menu (⋮) and select 'Install App' or 'Add to Home Screen'";
+        break;
+      case "Edge":
+        instructions = "Click the menu (...) and select 'Apps > Install this site as an app'";
+        break;
+      case "Firefox":
+        instructions = "Click the menu (≡) and select 'Install' or visit about:addons";
+        break;
+      case "Safari":
+        instructions = "Tap the share icon and select 'Add to Home Screen'";
+        break;
+      case "Opera":
+        instructions = "Click the menu and select 'Add to home screen'";
+        break;
+    }
+    
+    toast({
+      title: "Install Triagenius",
+      description: instructions,
       duration: 10000
     });
   };
@@ -134,12 +197,6 @@ const InstallPrompt = () => {
     const diffDays = Math.round(Math.abs((date1.getTime() - date2.getTime()) / oneDay));
     return diffDays;
   };
-  
-  // Force visibility for testing - remove in production
-  useEffect(() => {
-    // Uncomment the next line to force visibility for testing
-    // setTimeout(() => setIsVisible(true), 1000);
-  }, []);
   
   if (!isVisible) {
     return null;
@@ -159,7 +216,7 @@ const InstallPrompt = () => {
             <div className="flex-1">
               <h3 className="font-semibold text-lg mb-1">Install Triagenius</h3>
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-                {isIOS 
+                {browserInfo.isIOS 
                   ? "Install our app: tap the share icon then 'Add to Home Screen'"
                   : "Install our app for a better experience and offline access."}
               </p>
