@@ -116,7 +116,7 @@ export const useFocusSession = () => {
     };
   }, []);
   
-  const saveSessionData = (endingEarly = false) => {
+  const saveSessionData = async (endingEarly = false) => {
     if (operationInProgressRef.current) return;
     operationInProgressRef.current = true;
     
@@ -125,6 +125,7 @@ export const useFocusSession = () => {
       duration: currentMilestone * 45,
       timestamp: new Date().toISOString(),
       environment: localStorage.getItem('environment') || 'default',
+      completed: !endingEarly && currentMilestone >= 3
     };
     
     try {
@@ -146,29 +147,27 @@ export const useFocusSession = () => {
         operationInProgressRef.current = false;
       } else {
         // For non-PWA, use standard approach with optimized timing
-        setTimeout(async () => {
-          try {
-            const { error } = await supabase.from('focus_sessions').insert({
-              user_id: user.id,
-              duration: sessionData.duration,
-              milestone_count: sessionData.milestone,
-              environment: sessionData.environment,
-              end_time: new Date().toISOString(),
-              completed: !endingEarly
-            });
-            
-            if (error) throw error;
-            console.log("Session data saved to Supabase");
-          } catch (error) {
-            console.error("Error saving session:", error);
-          } finally {
-            operationInProgressRef.current = false;
-          }
-        }, 10);
+        try {
+          await supabase.from('focus_sessions').insert({
+            user_id: user.id,
+            duration: sessionData.duration,
+            milestone_count: sessionData.milestone,
+            environment: sessionData.environment,
+            end_time: new Date().toISOString(),
+            completed: !endingEarly && currentMilestone >= 3
+          });
+          console.log("Session data saved to Supabase");
+        } catch (error) {
+          console.error("Error saving session:", error);
+        } finally {
+          operationInProgressRef.current = false;
+        }
       }
     } else {
       operationInProgressRef.current = false;
     }
+    
+    return sessionData;
   };
   
   const handlePause = () => {
@@ -181,44 +180,75 @@ export const useFocusSession = () => {
     setShowMotivation(false);
   };
   
-  const handleSessionEnd = () => {
+  const handleSessionEnd = async () => {
     if (!isMountedRef.current || operationInProgressRef.current || navigationAttemptedRef.current) return;
     navigationAttemptedRef.current = true;
     operationInProgressRef.current = true;
     
     // Save session data first
-    saveSessionData(false);
+    const sessionData = await saveSessionData(false);
+    
+    // Make sure timer is stopped
+    if (timerRef.current) {
+      timerRef.current.stopTimer();
+    }
     
     // More reliable navigation for PWA
     if (isPwaRef.current) {
-      // Simplified approach for PWA to prevent freezing
-      navigate("/session-reflection", { replace: true });
+      // For mobile PWA, generate a session report immediately
+      const reportId = `session_${Date.now()}`;
+      
+      try {
+        // Save as a completed session report
+        const reportData = {
+          ...sessionData,
+          notes: "",
+          savedAt: new Date().toISOString()
+        };
+        
+        localStorage.setItem(`sessionReport_${reportId}`, JSON.stringify(reportData));
+        
+        // Clear temporary session data
+        localStorage.removeItem('sessionData');
+        
+        // Check if we're on a mobile device for special handling
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        
+        if (isMobile) {
+          // For mobile PWA, navigate directly to the report page for better performance
+          navigate(`/session-report/${reportId}`, { replace: true });
+        } else {
+          // For desktop PWA, go to reflection first
+          navigate("/session-reflection", { replace: true });
+        }
+      } catch (e) {
+        console.error("Error preparing session report:", e);
+        // Fallback to reflection
+        navigate("/session-reflection", { replace: true });
+      }
+      
       operationInProgressRef.current = false;
     } else {
       // Standard approach for non-PWA
-      setTimeout(() => {
-        if (isMountedRef.current) {
-          navigate("/session-reflection", { replace: true });
-          operationInProgressRef.current = false;
-        }
-      }, 50);
+      navigate("/session-reflection", { replace: true });
+      operationInProgressRef.current = false;
     }
   };
 
-  const handleEndSessionEarly = () => {
+  const handleEndSessionEarly = async () => {
     if (!isMountedRef.current || isEndingRef.current || operationInProgressRef.current || navigationAttemptedRef.current) return;
     isEndingRef.current = true;
     navigationAttemptedRef.current = true;
     operationInProgressRef.current = true;
     
+    // Stop timer first
+    if (timerRef.current) {
+      timerRef.current.stopTimer();
+    }
+    
     // For PWA, use a simplified approach to avoid freezing
     if (isPwaRef.current) {
       try {
-        // Stop timer immediately
-        if (timerRef.current) {
-          timerRef.current.stopTimer();
-        }
-        
         // Prepare session data for report
         const reportId = `session_${Date.now()}`;
         const reportKey = `sessionReport_${reportId}`;
@@ -227,6 +257,7 @@ export const useFocusSession = () => {
           duration: currentMilestone * 45,
           timestamp: new Date().toISOString(),
           environment: localStorage.getItem('environment') || 'default',
+          completed: false
         };
         
         // Save session data with minimal processing
@@ -236,6 +267,23 @@ export const useFocusSession = () => {
           notes: "",
           savedAt: new Date().toISOString()
         }));
+        
+        // Save to database if logged in
+        if (user?.id) {
+          try {
+            await supabase.from('focus_sessions').insert({
+              id: reportId,
+              user_id: user.id,
+              milestone_count: sessionData.milestone || 0,
+              duration: sessionData.duration || 0,
+              created_at: sessionData.timestamp,
+              environment: sessionData.environment,
+              completed: false
+            });
+          } catch (e) {
+            console.error('Error saving to database:', e);
+          }
+        }
         
         // Check if we're on a mobile device for special handling
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -259,24 +307,20 @@ export const useFocusSession = () => {
     }
     
     // Standard flow for non-PWA
-    saveSessionData(true);
+    const sessionData = await saveSessionData(true);
     
     const reportId = `session_${Date.now()}`;
     const reportKey = `sessionReport_${reportId}`;
     
     try {
-      const sessionDataStr = localStorage.getItem('sessionData');
-      if (sessionDataStr) {
-        const sessionData = JSON.parse(sessionDataStr);
-        
-        const reportData = {
-          ...sessionData,
-          notes: "",
-          savedAt: new Date().toISOString()
-        };
-        
-        localStorage.setItem(reportKey, JSON.stringify(reportData));
-      }
+      const reportData = {
+        ...sessionData,
+        notes: "",
+        savedAt: new Date().toISOString()
+      };
+      
+      localStorage.setItem(reportKey, JSON.stringify(reportData));
+      localStorage.removeItem('sessionData');
     } catch (e) {
       console.error("Error preparing session report:", e);
     }
@@ -291,9 +335,10 @@ export const useFocusSession = () => {
     }, 50);
   };
 
-  const handleEndSessionConfirm = () => {
+  const handleEndSessionConfirm = async () => {
     if (!isMountedRef.current || operationInProgressRef.current || navigationAttemptedRef.current) return;
     operationInProgressRef.current = true;
+    navigationAttemptedRef.current = true;
     
     // Stop timer first
     if (timerRef.current) {
@@ -317,21 +362,41 @@ export const useFocusSession = () => {
           timestamp: new Date().toISOString(),
           environment: localStorage.getItem('environment') || 'default',
           notes: "",
-          savedAt: new Date().toISOString()
+          savedAt: new Date().toISOString(),
+          completed: false
         };
         
         // Save session data directly to localStorage
         localStorage.setItem('sessionData', JSON.stringify(sessionData));
         localStorage.setItem(reportKey, JSON.stringify(sessionData));
         
+        // Save to database if logged in
+        if (user?.id) {
+          try {
+            await supabase.from('focus_sessions').insert({
+              id: reportId,
+              user_id: user.id,
+              milestone_count: sessionData.milestone || 0,
+              duration: sessionData.duration || 0,
+              created_at: sessionData.timestamp,
+              environment: sessionData.environment,
+              completed: false
+            });
+          } catch (e) {
+            console.error('Error saving to database:', e);
+          }
+        }
+        
         // Immediate navigation to session report
         navigate(`/session-report/${reportId}`, { replace: true });
         operationInProgressRef.current = false;
+        navigationAttemptedRef.current = false;
       } catch (e) {
         console.error("Error preparing session report:", e);
         // Emergency fallback navigation
         navigate("/dashboard", { replace: true });
         operationInProgressRef.current = false;
+        navigationAttemptedRef.current = false;
       }
     } else {
       // Standard flow for non-mobile-PWA

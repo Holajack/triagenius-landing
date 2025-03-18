@@ -12,6 +12,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Clock, AlertCircle } from "lucide-react";
+import { useUser } from "@/hooks/use-user";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ConfirmEndDialogProps {
   open: boolean;
@@ -27,6 +29,7 @@ export function ConfirmEndDialog({
   onCancel,
 }: ConfirmEndDialogProps) {
   const navigate = useNavigate();
+  const { user } = useUser();
   
   // Get PWA status
   const isPwa = localStorage.getItem('isPWA') === 'true' || window.matchMedia('(display-mode: standalone)').matches;
@@ -35,7 +38,7 @@ export function ConfirmEndDialog({
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   // Direct action handler for mobile PWA
-  const handleConfirm = (e: React.MouseEvent) => {
+  const handleConfirm = async (e: React.MouseEvent) => {
     // Prevent default behavior
     e.preventDefault();
     
@@ -50,11 +53,39 @@ export function ConfirmEndDialog({
       // Save session data - minimal approach for mobile
       try {
         // Get current session data if available
-        const sessionData = localStorage.getItem('sessionData');
-        if (sessionData) {
-          // Store it as a report
-          localStorage.setItem(`sessionReport_${reportId}`, sessionData);
+        const sessionDataStr = localStorage.getItem('sessionData');
+        if (sessionDataStr) {
+          const sessionData = JSON.parse(sessionDataStr);
+          
+          // Store it as a report with proper formatting
+          const reportData = {
+            ...sessionData,
+            notes: "",
+            savedAt: new Date().toISOString()
+          };
+          
+          localStorage.setItem(`sessionReport_${reportId}`, JSON.stringify(reportData));
+          
+          // Also save to Supabase if user is logged in
+          if (user?.id) {
+            try {
+              await supabase.from('focus_sessions').insert({
+                id: reportId,
+                user_id: user.id,
+                milestone_count: sessionData.milestone || 0,
+                duration: sessionData.duration || 0,
+                created_at: sessionData.timestamp || new Date().toISOString(),
+                environment: sessionData.environment || 'default',
+                completed: sessionData.milestone >= 3
+              });
+            } catch (e) {
+              console.error('Error saving session to database:', e);
+            }
+          }
         }
+        
+        // Clear session data since we're ending
+        localStorage.removeItem('sessionData');
       } catch (e) {
         console.error('Error saving session data', e);
       }

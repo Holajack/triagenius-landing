@@ -1,6 +1,6 @@
 
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,6 +12,8 @@ import PageHeader from '@/components/common/PageHeader';
 import { format } from 'date-fns';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { supabase } from '@/integrations/supabase/client';
+import { useUser } from '@/hooks/use-user';
 
 interface SessionData {
   milestone: number;
@@ -19,6 +21,7 @@ interface SessionData {
   timestamp: string;
   environment?: string;
   notes?: string;
+  completed?: boolean;
 }
 
 interface ReflectionData {
@@ -26,6 +29,8 @@ interface ReflectionData {
   learned: string;
   revisit: string;
   timestamp: string;
+  moodRating?: number;
+  productivityRating?: number;
 }
 
 const SessionReport = () => {
@@ -33,80 +38,149 @@ const SessionReport = () => {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const params = useParams();
+  const { user } = useUser();
   const [sessionNotes, setSessionNotes] = useState('');
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [reflectionData, setReflectionData] = useState<ReflectionData | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const isPwaRef = useRef(localStorage.getItem('isPWA') === 'true' || window.matchMedia('(display-mode: standalone)').matches);
 
   useEffect(() => {
-    // Check if we're viewing an existing report or a new one
-    if (params.id) {
-      // We're viewing an existing report
-      const reportKey = `sessionReport_${params.id}`;
-      const reportData = localStorage.getItem(reportKey);
-
-      if (reportData) {
-        try {
-          const data = JSON.parse(reportData);
-          setSessionData(data);
-          setSessionNotes(data.notes || '');
-          setSessionId(params.id);
+    const loadSessionData = async () => {
+      setIsLoading(true);
+      
+      try {
+        // Check if we're viewing an existing report or a new one
+        if (params.id) {
+          // First check localStorage for PWA users
+          const reportKey = `sessionReport_${params.id}`;
+          const localReportData = localStorage.getItem(reportKey);
           
-          // Try to find associated reflection data by timestamp
-          const reflectionData = localStorage.getItem("sessionReflection");
-          if (reflectionData) {
+          if (localReportData) {
             try {
-              const parsedReflection = JSON.parse(reflectionData) as ReflectionData;
+              const data = JSON.parse(localReportData);
+              setSessionData(data);
+              setSessionNotes(data.notes || '');
+              setSessionId(params.id);
               
-              // Use timestamp comparison to associate reflections with reports
-              const reportDate = new Date(data.timestamp);
-              const reflectionDate = new Date(parsedReflection.timestamp);
-              
-              // If the reflection was created within an hour of the session report,
-              // we'll associate them together
-              const timeDiff = Math.abs(reportDate.getTime() - reflectionDate.getTime());
-              if (timeDiff < 60 * 60 * 1000) { // 1 hour in milliseconds
-                setReflectionData(parsedReflection);
+              // If this is PWA, also try to find session in Supabase to ensure it's synced
+              if (isPwaRef.current && user?.id) {
+                try {
+                  const { data: dbSession } = await supabase
+                    .from('focus_sessions')
+                    .select('*')
+                    .eq('id', params.id)
+                    .single();
+                    
+                  // If session doesn't exist in database, create it
+                  if (!dbSession) {
+                    await supabase.from('focus_sessions').insert({
+                      id: params.id,
+                      user_id: user.id,
+                      milestone_count: data.milestone || 0,
+                      duration: data.duration || 0,
+                      created_at: data.timestamp || new Date().toISOString(),
+                      environment: data.environment || 'default',
+                      completed: data.milestone >= 3
+                    });
+                  }
+                } catch (e) {
+                  console.error('Error syncing session with database:', e);
+                }
               }
             } catch (e) {
-              console.error('Error parsing reflection data:', e);
+              console.error('Error parsing local session report data', e);
             }
-          }
-        } catch (e) {
-          console.error('Error parsing session report data', e);
-        }
-      } else {
-        // Report not found, redirect to dashboard
-        navigate('/dashboard', { replace: true });
-      }
-    } else {
-      // Retrieve session data from localStorage for a new report
-      const storedData = localStorage.getItem('sessionData');
-      if (storedData) {
-        try {
-          const data = JSON.parse(storedData);
-          setSessionData(data);
-          
-          // Generate a unique ID for this session
-          const id = `session_${Date.now()}`;
-          setSessionId(id);
-          
-          // Check for reflection data
-          const reflectionData = localStorage.getItem("sessionReflection");
-          if (reflectionData) {
+          } else if (user?.id) {
+            // Try to fetch from database
             try {
-              setReflectionData(JSON.parse(reflectionData));
+              const { data: dbSession, error } = await supabase
+                .from('focus_sessions')
+                .select('*')
+                .eq('id', params.id)
+                .single();
+                
+              if (error) {
+                throw error;
+              }
+              
+              if (dbSession) {
+                setSessionData({
+                  milestone: dbSession.milestone_count || 0,
+                  duration: dbSession.duration || 0,
+                  timestamp: dbSession.created_at,
+                  environment: dbSession.environment || 'default',
+                  notes: dbSession.notes || '',
+                  completed: dbSession.completed
+                });
+                setSessionNotes(dbSession.notes || '');
+                setSessionId(params.id);
+              } else {
+                // Session not found, redirect to dashboard
+                navigate('/dashboard', { replace: true });
+              }
             } catch (e) {
-              console.error('Error parsing reflection data', e);
+              console.error('Error fetching session from database:', e);
+              navigate('/dashboard', { replace: true });
+            }
+          } else {
+            // Report not found, redirect to dashboard
+            navigate('/dashboard', { replace: true });
+          }
+        } else {
+          // Retrieve session data from localStorage for a new report
+          const storedData = localStorage.getItem('sessionData');
+          if (storedData) {
+            try {
+              const data = JSON.parse(storedData);
+              setSessionData(data);
+              
+              // Generate a unique ID for this session
+              const id = `session_${Date.now()}`;
+              setSessionId(id);
+              
+              // Save to database if user is logged in
+              if (user?.id && isPwaRef.current) {
+                try {
+                  await supabase.from('focus_sessions').insert({
+                    id: id,
+                    user_id: user.id,
+                    milestone_count: data.milestone || 0,
+                    duration: data.duration || 0,
+                    created_at: data.timestamp || new Date().toISOString(),
+                    environment: data.environment || 'default',
+                    completed: data.milestone >= 3
+                  });
+                } catch (e) {
+                  console.error('Error saving session to database:', e);
+                }
+              }
+            } catch (e) {
+              console.error('Error parsing session data', e);
             }
           }
-        } catch (e) {
-          console.error('Error parsing session data', e);
         }
+        
+        // Check for reflection data
+        const reflectionData = localStorage.getItem("sessionReflection");
+        if (reflectionData) {
+          try {
+            setReflectionData(JSON.parse(reflectionData));
+          } catch (e) {
+            console.error('Error parsing reflection data', e);
+          }
+        }
+      } catch (e) {
+        console.error('Error loading session report:', e);
+      } finally {
+        setIsLoading(false);
       }
-    }
-  }, [params.id, navigate]);
+    };
+    
+    loadSessionData();
+  }, [params.id, navigate, user]);
 
   // Calculate stats based on milestone reached
   const getFocusScore = () => {
@@ -130,7 +204,7 @@ const SessionReport = () => {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
   
-  const handleSaveNotes = () => {
+  const handleSaveNotes = async () => {
     if (sessionData) {
       if (params.id) {
         // Update existing report
@@ -142,10 +216,24 @@ const SessionReport = () => {
           lastEdited: new Date().toISOString()
         };
         localStorage.setItem(reportKey, JSON.stringify(updatedData));
+        
+        // Update in database if user is logged in
+        if (user?.id) {
+          try {
+            await supabase
+              .from('focus_sessions')
+              .update({ notes: sessionNotes })
+              .eq('id', params.id);
+          } catch (e) {
+            console.error('Error updating session notes in database:', e);
+          }
+        }
+        
         setIsEditing(false);
       } else {
         // Save the session report to localStorage with a unique key
-        const reportKey = `sessionReport_${Date.now()}`;
+        const reportId = sessionId || `session_${Date.now()}`;
+        const reportKey = `sessionReport_${reportId}`;
         const reportData = {
           ...sessionData,
           notes: sessionNotes,
@@ -153,6 +241,24 @@ const SessionReport = () => {
         };
         
         localStorage.setItem(reportKey, JSON.stringify(reportData));
+        
+        // Save to database if user is logged in
+        if (user?.id) {
+          try {
+            await supabase.from('focus_sessions').upsert({
+              id: reportId,
+              user_id: user.id,
+              milestone_count: sessionData.milestone || 0,
+              duration: sessionData.duration || 0,
+              created_at: sessionData.timestamp || new Date().toISOString(),
+              environment: sessionData.environment || 'default',
+              notes: sessionNotes,
+              completed: sessionData.milestone >= 3
+            });
+          } catch (e) {
+            console.error('Error saving session to database:', e);
+          }
+        }
         
         // Clear the session data from localStorage
         localStorage.removeItem('sessionData');
@@ -175,6 +281,21 @@ const SessionReport = () => {
       navigate('/dashboard', { replace: true });
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className={cn(
+        "min-h-screen bg-background text-foreground flex flex-col items-center p-4",
+        `theme-${state.environment || 'default'} ${theme}`
+      )}>
+        <div className="w-full max-w-3xl space-y-6 animate-pulse">
+          <div className="h-8 bg-muted rounded w-48 mb-4"></div>
+          <div className="h-40 bg-muted rounded"></div>
+          <div className="h-40 bg-muted rounded"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn(
@@ -245,6 +366,15 @@ const SessionReport = () => {
                 <span className="font-medium mr-2">{sessionData?.milestone || 0}/3</span>
                 <Mountain className="h-4 w-4 text-primary" />
               </div>
+            </div>
+            
+            <div className="flex items-center justify-between py-2 border-b">
+              <span className="text-muted-foreground">Status</span>
+              <span className="font-medium">
+                {sessionData?.completed || sessionData?.milestone === 3 
+                  ? "Completed" 
+                  : "Ended Early"}
+              </span>
             </div>
             
             <div className="mt-4">
@@ -325,6 +455,30 @@ const SessionReport = () => {
                   <div className="p-3 bg-muted/50 rounded-md">
                     <p className="text-sm">{reflectionData.revisit}</p>
                   </div>
+                </div>
+              )}
+              
+              {(reflectionData.moodRating || reflectionData.productivityRating) && (
+                <div className="flex space-x-4">
+                  {reflectionData.productivityRating && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                        <CheckCheck className="h-4 w-4" />
+                        <span>Productivity</span>
+                      </div>
+                      <p className="text-sm pl-6">{reflectionData.productivityRating}/10</p>
+                    </div>
+                  )}
+                  
+                  {reflectionData.moodRating && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                        <RotateCcw className="h-4 w-4" />
+                        <span>Mood</span>
+                      </div>
+                      <p className="text-sm pl-6">{reflectionData.moodRating}/10</p>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

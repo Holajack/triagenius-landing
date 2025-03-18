@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Clock, Calendar, Target, Mountain, ScrollText, BookText, CheckCheck, RotateCcw } from "lucide-react";
@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useUser } from "@/hooks/use-user";
 
 interface SessionData {
   id: string;
@@ -19,6 +20,7 @@ interface SessionData {
   environment?: string;
   notes?: string;
   user_id: string;
+  completed?: boolean;
 }
 
 interface ReflectionData {
@@ -37,52 +39,133 @@ const SessionReportsList = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { user } = useUser();
+  const isPwaRef = useRef(localStorage.getItem('isPWA') === 'true' || window.matchMedia('(display-mode: standalone)').matches);
 
   useEffect(() => {
     const loadSessionReports = async () => {
       setIsLoading(true);
 
       try {
-        const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           setIsLoading(false);
           return;
         }
 
-        // Fetch session reports
-        const { data: reports, error: reportsError } = await supabase
+        // Check for any local storage reports first (this helps with PWA)
+        const localReports: SessionData[] = [];
+        
+        if (isPwaRef.current) {
+          // Scan localStorage for session reports
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('sessionReport_')) {
+              try {
+                const reportData = JSON.parse(localStorage.getItem(key) || '');
+                const reportId = key.replace('sessionReport_', '');
+                
+                // Convert localStorage format to database format
+                if (reportData) {
+                  localReports.push({
+                    id: reportId,
+                    milestone_count: reportData.milestone || 0,
+                    duration: reportData.duration || 0,
+                    created_at: reportData.timestamp || reportData.savedAt || new Date().toISOString(),
+                    environment: reportData.environment || 'default',
+                    notes: reportData.notes || '',
+                    user_id: user.id,
+                    completed: reportData.milestone >= 3
+                  });
+                }
+              } catch (e) {
+                console.error('Error parsing local session report:', e);
+              }
+            }
+          }
+        }
+
+        // Fetch session reports from database
+        const { data: dbReports, error: reportsError } = await supabase
           .from('focus_sessions')
-          .select('id, milestone_count, duration, created_at, environment, user_id')
+          .select('id, milestone_count, duration, created_at, environment, user_id, completed')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(10);
           
         if (reportsError) {
           console.error('Error fetching session reports:', reportsError);
-          setIsLoading(false);
-          return;
         }
 
+        // Combine reports from database and localStorage
+        // For PWA, we prioritize local reports as they might be more recent
+        const combinedReports: SessionData[] = [...localReports];
+        
+        // Add database reports that aren't already in local reports
+        if (dbReports) {
+          dbReports.forEach(dbReport => {
+            if (!combinedReports.some(r => r.id === dbReport.id)) {
+              combinedReports.push(dbReport);
+            }
+          });
+        }
+        
+        // Sort by created_at date (newest first)
+        combinedReports.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        
+        // Limit to 10 most recent
+        const recentReports = combinedReports.slice(0, 10);
+
         // Fetch session reflections
-        const { data: reflections, error: reflectionsError } = await supabase
+        let reflections: ReflectionData[] = [];
+        
+        // First check localStorage for reflections (for PWA)
+        if (isPwaRef.current) {
+          try {
+            const localReflectionData = localStorage.getItem("sessionReflection");
+            if (localReflectionData) {
+              const reflection = JSON.parse(localReflectionData);
+              // Associate reflection with most recent session if timestamp is close
+              const recentSession = recentReports[0];
+              if (recentSession) {
+                reflections.push({
+                  id: `local_${Date.now()}`,
+                  user_notes: reflection.accomplished || reflection.learned || reflection.revisit || '',
+                  mood_rating: reflection.moodRating || 5,
+                  productivity_rating: reflection.productivityRating || 5,
+                  session_id: recentSession.id,
+                  user_id: user.id,
+                  created_at: reflection.timestamp || new Date().toISOString()
+                });
+              }
+            }
+          } catch (e) {
+            console.error('Error parsing local reflection:', e);
+          }
+        }
+        
+        // Then fetch from database
+        const { data: dbReflections, error: reflectionsError } = await supabase
           .from('session_reflections')
           .select('id, user_notes, mood_rating, productivity_rating, session_id, user_id, created_at')
           .eq('user_id', user.id)
-          .in('session_id', reports?.map(r => r.id) || []);
+          .in('session_id', recentReports.map(r => r.id));
           
         if (reflectionsError) {
           console.error('Error fetching session reflections:', reflectionsError);
+        } else if (dbReflections) {
+          reflections = [...reflections, ...dbReflections];
         }
 
         // Map reflections to sessions
         const reflectionsMap: {[key: string]: ReflectionData} = {};
-        if (reflections) {
-          reflections.forEach(reflection => {
-            reflectionsMap[reflection.session_id] = reflection;
-          });
-        }
         
-        setSessionReports(reports || []);
+        reflections.forEach(reflection => {
+          reflectionsMap[reflection.session_id] = reflection;
+        });
+        
+        setSessionReports(recentReports);
         setReflectionData(reflectionsMap);
       } catch (e) {
         console.error('Error loading session reports:', e);
@@ -109,7 +192,7 @@ const SessionReportsList = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [user]);
 
   const getEmptyState = () => (
     <Card className="text-center p-8">
