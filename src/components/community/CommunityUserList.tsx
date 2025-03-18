@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,11 @@ import { UserPlus, UserCheck, Search, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from "@/hooks/use-mobile";
+
+interface CommunityUserListProps {
+  searchQuery?: string;
+  filters?: string[];
+}
 
 interface Profile {
   id: string;
@@ -29,9 +33,9 @@ interface FriendRequest {
   status: string;
 }
 
-const CommunityUserList = () => {
+const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserListProps) => {
   const { user } = useUser();
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(searchQuery);
   const [allUsers, setAllUsers] = useState<Profile[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<Profile[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
@@ -40,7 +44,14 @@ const CommunityUserList = () => {
   const [loading, setLoading] = useState(true);
   const isMobile = useIsMobile();
 
-  // Fetch all users
+  useEffect(() => {
+    setSearchTerm(searchQuery);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    console.log("Applying filters:", filters);
+  }, [filters]);
+
   useEffect(() => {
     const fetchAllUsers = async () => {
       if (!user) return;
@@ -48,7 +59,6 @@ const CommunityUserList = () => {
       try {
         setLoading(true);
         
-        // Fetch all profiles except current user
         const { data: profiles, error } = await supabase
           .from('profiles')
           .select('id, username, avatar_url, university, state, show_university, show_state')
@@ -72,13 +82,11 @@ const CommunityUserList = () => {
     fetchAllUsers();
   }, [user]);
   
-  // Fetch friend requests
   useEffect(() => {
     const fetchFriendRequests = async () => {
       if (!user) return;
       
       try {
-        // Fetch all friend requests for current user (sent and received)
         const { data, error } = await supabase.functions.invoke('get_friend_requests', {
           body: { userId: user.id }
         });
@@ -91,14 +99,12 @@ const CommunityUserList = () => {
         if (data && data.friendRequests) {
           setFriendRequests(data.friendRequests);
           
-          // Get IDs of all pending friend requests
           const pending = data.friendRequests
             .filter((req: FriendRequest) => req.status === 'pending')
             .map((req: FriendRequest) => 
               req.sender_id === user.id ? req.recipient_id : req.sender_id
             );
           
-          // Get IDs of all accepted friend requests (friends)
           const accepted = data.friendRequests
             .filter((req: FriendRequest) => req.status === 'accepted')
             .map((req: FriendRequest) => 
@@ -116,7 +122,6 @@ const CommunityUserList = () => {
     fetchFriendRequests();
   }, [user]);
   
-  // Filter users based on search term
   useEffect(() => {
     if (searchTerm.trim() === '') {
       setFilteredUsers(allUsers);
@@ -170,7 +175,6 @@ const CommunityUserList = () => {
       }
       
       if (data && data.friendRequest) {
-        // Update local state
         setFriendRequests([...friendRequests, data.friendRequest]);
         setPendingFriendIds([...pendingFriendIds, recipientId]);
         toast.success("Friend request sent!");
@@ -199,7 +203,6 @@ const CommunityUserList = () => {
       }
       
       if (data && data.friendRequest) {
-        // Update local state
         setFriendRequests(
           friendRequests.map(req => req.id === requestId ? data.friendRequest : req)
         );
@@ -303,16 +306,18 @@ const CommunityUserList = () => {
         <CardTitle>People</CardTitle>
         <CardDescription>Find and connect with other users</CardDescription>
         
-        <div className="relative mt-2">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search users..."
-            className="pl-8"
-            value={searchTerm}
-            onChange={handleSearch}
-          />
-        </div>
+        {!searchQuery && (
+          <div className="relative mt-2">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search users..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={handleSearch}
+            />
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="all" className="w-full">
