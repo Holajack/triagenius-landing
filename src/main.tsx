@@ -36,7 +36,7 @@ if ('serviceWorker' in navigator) {
         
         // Enable background sync for focus sessions
         if ('SyncManager' in window) {
-          // Use type assertion to safely access the sync property
+          // Use type assertion and optional chaining to safely access the sync property
           (registration as any).sync?.register('sync-focus-session')
             .catch(err => console.log('Background sync registration failed:', err));
         }

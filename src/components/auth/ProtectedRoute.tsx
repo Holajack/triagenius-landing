@@ -2,6 +2,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useUser } from "@/hooks/use-user";
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -11,6 +12,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
   const navigate = useNavigate();
+  const { user } = useUser();
   
   useEffect(() => {
     const checkAuth = async () => {
@@ -25,7 +27,13 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       }
     };
     
-    checkAuth();
+    // If we already have user data from the UserProvider, use that
+    if (user) {
+      setAuthenticated(true);
+      setLoading(false);
+    } else {
+      checkAuth();
+    }
     
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -36,7 +44,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, user]);
   
   if (loading) {
     return (
