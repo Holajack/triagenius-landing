@@ -1,3 +1,4 @@
+
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@/hooks/use-user';
+import { toast } from 'sonner';
 
 interface SessionData {
   milestone: number;
@@ -44,11 +46,13 @@ const SessionReport = () => {
   const [sessionId, setSessionId] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const isPwaRef = useRef(localStorage.getItem('isPWA') === 'true' || window.matchMedia('(display-mode: standalone)').matches);
 
   useEffect(() => {
     const loadSessionData = async () => {
       setIsLoading(true);
+      setLoadError(null);
       
       try {
         // Check if we're viewing an existing report or a new one
@@ -63,34 +67,9 @@ const SessionReport = () => {
               setSessionData(data);
               setSessionNotes(data.notes || '');
               setSessionId(params.id);
-              
-              // If this is PWA, also try to find session in Supabase to ensure it's synced
-              if (isPwaRef.current && user?.id) {
-                try {
-                  const { data: dbSession } = await supabase
-                    .from('focus_sessions')
-                    .select('*')
-                    .eq('id', params.id)
-                    .single();
-                    
-                  // If session doesn't exist in database, create it
-                  if (!dbSession) {
-                    await supabase.from('focus_sessions').insert({
-                      id: params.id,
-                      user_id: user.id,
-                      milestone_count: data.milestone || 0,
-                      duration: data.duration || 0,
-                      created_at: data.timestamp || new Date().toISOString(),
-                      environment: data.environment || 'default',
-                      completed: data.milestone >= 3
-                    });
-                  }
-                } catch (e) {
-                  console.error('Error syncing session with database:', e);
-                }
-              }
             } catch (e) {
               console.error('Error parsing local session report data', e);
+              setLoadError('Could not load session data. It may be corrupted.');
             }
           } else if (user?.id) {
             // Try to fetch from database
@@ -102,11 +81,25 @@ const SessionReport = () => {
                 .single();
                 
               if (error) {
-                throw error;
-              }
-              
-              if (dbSession) {
-                // Check if we have any notes stored separately in local storage for this session
+                // Try with non-UUID format handling
+                const fallbackReportKey = Object.keys(localStorage).find(key => 
+                  key.startsWith('sessionReport_') && key.includes(params.id.substring(0, 8))
+                );
+                
+                if (fallbackReportKey) {
+                  try {
+                    const fallbackData = JSON.parse(localStorage.getItem(fallbackReportKey) || '');
+                    setSessionData(fallbackData);
+                    setSessionNotes(fallbackData.notes || '');
+                    setSessionId(params.id);
+                  } catch (fallbackError) {
+                    throw error; // Revert to original error if fallback fails
+                  }
+                } else {
+                  throw error;
+                }
+              } else if (dbSession) {
+                // Extract notes from localStorage if available
                 let sessionNotes = '';
                 try {
                   const notesKey = `sessionNotes_${params.id}`;
@@ -130,15 +123,18 @@ const SessionReport = () => {
                 setSessionId(params.id);
               } else {
                 // Session not found, redirect to dashboard
-                navigate('/dashboard', { replace: true });
+                toast.error("Session report not found");
+                setTimeout(() => navigate('/dashboard', { replace: true }), 1000);
               }
             } catch (e) {
               console.error('Error fetching session from database:', e);
-              navigate('/dashboard', { replace: true });
+              setLoadError('Could not load session from database');
+              setTimeout(() => navigate('/dashboard', { replace: true }), 3000);
             }
           } else {
             // Report not found, redirect to dashboard
-            navigate('/dashboard', { replace: true });
+            toast.error("Session report not found");
+            setTimeout(() => navigate('/dashboard', { replace: true }), 1000);
           }
         } else {
           // Retrieve session data from localStorage for a new report
@@ -148,29 +144,17 @@ const SessionReport = () => {
               const data = JSON.parse(storedData);
               setSessionData(data);
               
-              // Generate a unique ID for this session
-              const id = `session_${Date.now()}`;
+              // Generate a UUID for this session for better database compatibility
+              const id = crypto.randomUUID ? crypto.randomUUID() : `session-${Date.now()}`;
               setSessionId(id);
-              
-              // Save to database if user is logged in
-              if (user?.id && isPwaRef.current) {
-                try {
-                  await supabase.from('focus_sessions').insert({
-                    id: id,
-                    user_id: user.id,
-                    milestone_count: data.milestone || 0,
-                    duration: data.duration || 0,
-                    created_at: data.timestamp || new Date().toISOString(),
-                    environment: data.environment || 'default',
-                    completed: data.milestone >= 3
-                  });
-                } catch (e) {
-                  console.error('Error saving session to database:', e);
-                }
-              }
             } catch (e) {
               console.error('Error parsing session data', e);
+              setLoadError('Could not load session data');
             }
+          } else {
+            // No session data, redirect to dashboard
+            toast.error("No session data found");
+            setTimeout(() => navigate('/dashboard', { replace: true }), 1000);
           }
         }
         
@@ -185,6 +169,7 @@ const SessionReport = () => {
         }
       } catch (e) {
         console.error('Error loading session report:', e);
+        setLoadError('Could not load session report');
       } finally {
         setIsLoading(false);
       }
@@ -311,6 +296,23 @@ const SessionReport = () => {
           <div className="h-8 bg-muted rounded w-48 mb-4"></div>
           <div className="h-40 bg-muted rounded"></div>
           <div className="h-40 bg-muted rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className={cn(
+        "min-h-screen bg-background text-foreground flex flex-col items-center p-4",
+        `theme-${state.environment || 'default'} ${theme}`
+      )}>
+        <div className="w-full max-w-3xl">
+          <PageHeader title="Error Loading Report" />
+          <Card className="p-6 text-center">
+            <div className="text-red-500 mb-4">{loadError}</div>
+            <Button onClick={() => navigate('/dashboard')}>Return to Dashboard</Button>
+          </Card>
         </div>
       </div>
     );

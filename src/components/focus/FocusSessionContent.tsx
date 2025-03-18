@@ -36,33 +36,39 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({
   isCelebrating,
   segmentProgress
 }) => {
-  const renderCountRef = useRef(0);
-  const lastRenderTimeRef = useRef(Date.now());
   const previousLowPowerRef = useRef(lowPowerMode);
+  const lastProgressUpdateRef = useRef(Date.now());
+  const throttleTimeRef = useRef(lowPowerMode ? 500 : 100);
   
-  // Track significant renders and low power mode changes
+  // Optimize progress updates and handle low power mode changes
   useEffect(() => {
-    renderCountRef.current++;
-    const now = Date.now();
-    const elapsed = now - lastRenderTimeRef.current;
-    
-    // Only log occasional renders to avoid flooding console
-    if (elapsed > 100 || renderCountRef.current % 10 === 0) {
-      console.log(`FocusSessionContent: Render #${renderCountRef.current} at ${now}, ${elapsed}ms since last render`);
-    }
-    
-    lastRenderTimeRef.current = now;
-    
-    // Specifically track low power mode changes
+    // Update throttle time based on low power mode
     if (previousLowPowerRef.current !== lowPowerMode) {
-      console.log(`FocusSessionContent: lowPowerMode changed from ${previousLowPowerRef.current} to ${lowPowerMode} at ${now}`);
+      throttleTimeRef.current = lowPowerMode ? 500 : 100;
       previousLowPowerRef.current = lowPowerMode;
     }
-  });
+  }, [lowPowerMode]);
   
-  // Track end session button clicks
+  // Optimized progress handler with throttling
+  const handleProgressUpdate = (progress: number) => {
+    const now = Date.now();
+    if (now - lastProgressUpdateRef.current >= throttleTimeRef.current) {
+      lastProgressUpdateRef.current = now;
+      onProgressUpdate(progress);
+    }
+  };
+  
+  // Handle end session clicks
   const handleEndClick = () => {
-    console.log(`FocusSessionContent: End session button clicked at ${Date.now()}`);
+    // Cancel any pending animations that might cause lag
+    if (window.cancelAnimationFrame) {
+      const maxId = 100; // Safety limit to prevent infinite loops
+      let id = window.requestAnimationFrame(() => {});
+      for (let i = id; i > id - maxId; i--) {
+        window.cancelAnimationFrame(i);
+      }
+    }
+    
     onEndSessionClick();
   };
   
@@ -80,13 +86,7 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({
         onResume={onResume}
         onComplete={onComplete}
         onMilestoneReached={onMilestoneReached}
-        onProgressUpdate={(progress) => {
-          // Occasionally log progress updates
-          if (Math.floor(progress * 100) % 10 === 0) {
-            console.log(`FocusSessionContent: Progress update ${progress.toFixed(2)} at ${Date.now()}`);
-          }
-          onProgressUpdate(progress);
-        }}
+        onProgressUpdate={handleProgressUpdate}
         isPaused={isPaused}
         autoStart={true}
         showControls={false}

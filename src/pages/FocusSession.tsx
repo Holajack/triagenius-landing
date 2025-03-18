@@ -9,23 +9,31 @@ import { MotivationalDialog } from "@/components/focus/MotivationalDialog";
 import { ConfirmEndDialog } from "@/components/focus/ConfirmEndDialog";
 import FocusSessionHeader from "@/components/focus/FocusSessionHeader";
 import FocusSessionContent from "@/components/focus/FocusSessionContent";
+import { toast } from "sonner";
 
 const FocusSession = () => {
   const { state } = useOnboarding();
   const { theme } = useTheme();
   const isMobile = useIsMobile();
-  const renderCountRef = useRef(0);
-  const lastOperationRef = useRef<{type: string, timestamp: number} | null>(null);
+  const operationInProgressRef = useRef(false);
   
-  // For tracking render performance
+  // Clean up animations when component unmounts
   useEffect(() => {
-    renderCountRef.current++;
-    console.log(`FocusSession: Render #${renderCountRef.current} at ${Date.now()}`);
+    document.body.style.overflow = 'hidden';
     
-    if (lastOperationRef.current) {
-      console.log(`FocusSession: Time since last operation (${lastOperationRef.current.type}): ${Date.now() - lastOperationRef.current.timestamp}ms`);
-    }
-  });
+    return () => {
+      document.body.style.overflow = 'auto';
+      
+      // Cancel any pending animations
+      if (window.cancelAnimationFrame) {
+        const maxId = 100; // Safety limit
+        let id = window.requestAnimationFrame(() => {});
+        for (let i = id; i > id - maxId; i--) {
+          window.cancelAnimationFrame(i);
+        }
+      }
+    };
+  }, []);
   
   const {
     // State
@@ -39,7 +47,6 @@ const FocusSession = () => {
     
     // Refs
     timerRef,
-    operationInProgressRef,
     
     // Handlers
     handlePause,
@@ -53,42 +60,36 @@ const FocusSession = () => {
     setShowMotivation,
     setShowEndConfirmation
   } = useFocusSession();
-
-  useEffect(() => {
-    console.log("FocusSession: Component mounted at", Date.now());
-    console.log("FocusSession: Initial state:", { 
-      isPaused, 
-      showEndConfirmation, 
-      currentMilestone,
-      environment: state.environment
-    });
-    
-    return () => {
-      console.log("FocusSession: Component unmounting at", Date.now());
-    };
-  }, []);
-
-  // Monitor end confirmation dialog state
-  useEffect(() => {
-    console.log(`FocusSession: showEndConfirmation changed to ${showEndConfirmation} at ${Date.now()}`);
-  }, [showEndConfirmation]);
-  
-  // Monitor low power mode changes
-  useEffect(() => {
-    console.log(`FocusSession: lowPowerMode changed to ${lowPowerMode} at ${Date.now()}`);
-  }, [lowPowerMode]);
   
   const handleLowPowerModeToggle = () => {
-    console.log(`FocusSession: Low power mode toggle requested at ${Date.now()}`);
-    lastOperationRef.current = {type: 'toggleLowPowerMode', timestamp: Date.now()};
-    toggleLowPowerMode();
+    if (operationInProgressRef.current) return;
+    
+    operationInProgressRef.current = true;
+    
+    // Small delay to prevent UI freezing
+    setTimeout(() => {
+      toggleLowPowerMode();
+      toast.info(lowPowerMode ? "Enhanced mode activated" : "Low power mode activated", {
+        duration: 2000
+      });
+      
+      // Release the lock after a short delay
+      setTimeout(() => {
+        operationInProgressRef.current = false;
+      }, 300);
+    }, 10);
   };
   
   const handleEndSessionClick = () => {
-    console.log(`FocusSession: End session button clicked at ${Date.now()}`);
-    lastOperationRef.current = {type: 'endSessionClick', timestamp: Date.now()};
-    console.log("FocusSession: End session button clicked, showing confirmation dialog");
-    setShowEndConfirmation(true);
+    if (operationInProgressRef.current) return;
+    
+    operationInProgressRef.current = true;
+    
+    // Small delay to prevent UI freezing
+    setTimeout(() => {
+      setShowEndConfirmation(true);
+      operationInProgressRef.current = false;
+    }, 10);
   };
 
   return (
@@ -128,7 +129,6 @@ const FocusSession = () => {
       <ConfirmEndDialog
         open={showEndConfirmation}
         onOpenChange={(open) => {
-          console.log(`FocusSession: ConfirmEndDialog onOpenChange called with ${open} at ${Date.now()}`);
           setShowEndConfirmation(open);
         }}
       />
