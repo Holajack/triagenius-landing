@@ -202,11 +202,11 @@ export const useFocusSession = () => {
         // Save as a completed session report
         const reportData = {
           ...sessionData,
-          notes: "",
           savedAt: new Date().toISOString()
         };
         
         localStorage.setItem(`sessionReport_${reportId}`, JSON.stringify(reportData));
+        localStorage.setItem(`sessionNotes_${reportId}`, "");
         
         // Clear temporary session data
         localStorage.removeItem('sessionData');
@@ -264,9 +264,11 @@ export const useFocusSession = () => {
         localStorage.setItem('sessionData', JSON.stringify(sessionData));
         localStorage.setItem(reportKey, JSON.stringify({
           ...sessionData,
-          notes: "",
           savedAt: new Date().toISOString()
         }));
+        
+        // Save notes separately
+        localStorage.setItem(`sessionNotes_${reportId}`, "");
         
         // Save to database if logged in
         if (user?.id) {
@@ -315,11 +317,11 @@ export const useFocusSession = () => {
     try {
       const reportData = {
         ...sessionData,
-        notes: "",
         savedAt: new Date().toISOString()
       };
       
       localStorage.setItem(reportKey, JSON.stringify(reportData));
+      localStorage.setItem(`sessionNotes_${reportId}`, "");
       localStorage.removeItem('sessionData');
     } catch (e) {
       console.error("Error preparing session report:", e);
@@ -361,7 +363,6 @@ export const useFocusSession = () => {
           duration: currentMilestone * 45,
           timestamp: new Date().toISOString(),
           environment: localStorage.getItem('environment') || 'default',
-          notes: "",
           savedAt: new Date().toISOString(),
           completed: false
         };
@@ -369,6 +370,7 @@ export const useFocusSession = () => {
         // Save session data directly to localStorage
         localStorage.setItem('sessionData', JSON.stringify(sessionData));
         localStorage.setItem(reportKey, JSON.stringify(sessionData));
+        localStorage.setItem(`sessionNotes_${reportId}`, "");
         
         // Save to database if logged in
         if (user?.id) {

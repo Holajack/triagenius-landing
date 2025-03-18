@@ -60,13 +60,12 @@ export function ConfirmEndDialog({
           // Store it as a report with proper formatting
           const reportData = {
             ...sessionData,
-            notes: "",
             savedAt: new Date().toISOString()
           };
           
           localStorage.setItem(`sessionReport_${reportId}`, JSON.stringify(reportData));
           
-          // Also save notes separately for better compatibility
+          // Save notes separately for better compatibility
           localStorage.setItem(`sessionNotes_${reportId}`, "");
           
           // Also save to Supabase if user is logged in
@@ -94,9 +93,7 @@ export function ConfirmEndDialog({
       }
       
       // Navigate directly to the session report page
-      requestAnimationFrame(() => {
-        navigate(`/session-report/${reportId}`, { replace: true });
-      });
+      navigate(`/session-report/${reportId}`, { replace: true });
     } else {
       // Standard behavior for non-PWA
       onConfirm();
