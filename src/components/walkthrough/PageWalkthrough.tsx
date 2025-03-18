@@ -1,14 +1,14 @@
 
 import React, { useEffect } from 'react';
-import { useWalkthrough, WalkthroughStep } from '@/contexts/WalkthroughContext';
-import WalkthroughStep from './WalkthroughStep';
+import { useWalkthrough, WalkthroughStep as WalkthroughStepType } from '@/contexts/WalkthroughContext';
+import WalkthroughStepComponent from './WalkthroughStep';
 import { Button } from '@/components/ui/button';
 import { Info } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 type PageWalkthroughProps = {
   pageName: string;
-  steps: WalkthroughStep[];
+  steps: WalkthroughStepType[];
   showHelpButton?: boolean;
 };
 
@@ -31,7 +31,7 @@ const PageWalkthrough = ({ pageName, steps, showHelpButton = true }: PageWalkthr
 
   return (
     <>
-      <WalkthroughStep />
+      <WalkthroughStepComponent />
       
       {/* Help button to restart the tutorial */}
       {showHelpButton && !state.isActive && (
