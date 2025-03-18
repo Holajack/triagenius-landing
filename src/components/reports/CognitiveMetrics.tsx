@@ -17,14 +17,19 @@ import {
 } from "recharts";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getLearningMetrics, CognitiveMetric, WeeklyMetric, GrowthMetric } from "@/utils/learningMetricsData";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const CognitiveMetrics = () => {
   const [hasData, setHasData] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [cognitiveData, setCognitiveData] = useState<CognitiveMetric[]>([]);
+  const [weeklyData, setWeeklyData] = useState<WeeklyMetric[]>([]);
+  const [growthData, setGrowthData] = useState<GrowthMetric[]>([]);
   
-  // Check if user has any focus session data
+  // Fetch metrics data
   useEffect(() => {
-    const checkForFocusData = async () => {
+    const loadMetricsData = async () => {
       try {
         setIsLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
@@ -35,75 +40,49 @@ const CognitiveMetrics = () => {
             .select('*', { count: 'exact', head: true })
             .eq('user_id', user.id);
             
-          setHasData(count !== null && count > 0);
+          const userHasData = count !== null && count > 0;
+          setHasData(userHasData);
+          
+          if (userHasData) {
+            const metrics = await getLearningMetrics();
+            setCognitiveData(metrics.cognitiveData);
+            setWeeklyData(metrics.weeklyData);
+            setGrowthData(metrics.growthData);
+          }
         }
       } catch (error) {
-        console.error('Error checking for focus data:', error);
+        console.error('Error loading metrics data:', error);
       } finally {
         setIsLoading(false);
       }
     };
     
-    checkForFocusData();
+    loadMetricsData();
+    
+    // Set up subscription for real-time updates
+    const channel = supabase
+      .channel('cognitive-metrics-changes')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'focus_sessions' }, 
+        () => loadMetricsData()
+      )
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'learning_metrics' },
+        () => loadMetricsData()
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
-
-  // Mock data for the charts
-  const cognitiveData = hasData ? [
-    { name: "Memory", value: 65, prevValue: 50, color: "#8884d8" },
-    { name: "Problem Solving", value: 85, prevValue: 78, color: "#82ca9d" },
-    { name: "Creativity", value: 45, prevValue: 42, color: "#ffc658" },
-    { name: "Analytical", value: 70, prevValue: 62, color: "#ff8042" },
-  ] : [
-    { name: "Memory", value: 0, prevValue: 0, color: "#8884d8" },
-    { name: "Problem Solving", value: 0, prevValue: 0, color: "#82ca9d" },
-    { name: "Creativity", value: 0, prevValue: 0, color: "#ffc658" },
-    { name: "Analytical", value: 0, prevValue: 0, color: "#ff8042" },
-  ];
-
-  const weeklyData = hasData ? [
-    { day: "Mon", memory: 30, problemSolving: 45, creativity: 20, analytical: 15 },
-    { day: "Tue", memory: 40, problemSolving: 35, creativity: 30, analytical: 25 },
-    { day: "Wed", memory: 20, problemSolving: 55, creativity: 15, analytical: 40 },
-    { day: "Thu", memory: 35, problemSolving: 25, creativity: 40, analytical: 30 },
-    { day: "Fri", memory: 50, problemSolving: 40, creativity: 30, analytical: 20 },
-    { day: "Sat", memory: 15, problemSolving: 20, creativity: 50, analytical: 10 },
-    { day: "Sun", memory: 25, problemSolving: 30, creativity: 35, analytical: 25 },
-  ] : [
-    { day: "Mon", memory: 0, problemSolving: 0, creativity: 0, analytical: 0 },
-    { day: "Tue", memory: 0, problemSolving: 0, creativity: 0, analytical: 0 },
-    { day: "Wed", memory: 0, problemSolving: 0, creativity: 0, analytical: 0 },
-    { day: "Thu", memory: 0, problemSolving: 0, creativity: 0, analytical: 0 },
-    { day: "Fri", memory: 0, problemSolving: 0, creativity: 0, analytical: 0 },
-    { day: "Sat", memory: 0, problemSolving: 0, creativity: 0, analytical: 0 },
-    { day: "Sun", memory: 0, problemSolving: 0, creativity: 0, analytical: 0 },
-  ];
-
-  const growthData = hasData ? [
-    { week: "W1", cognitive: 55 },
-    { week: "W2", cognitive: 63 },
-    { week: "W3", cognitive: 60 },
-    { week: "W4", cognitive: 75 },
-    { week: "W5", cognitive: 70 },
-    { week: "W6", cognitive: 80 },
-    { week: "W7", cognitive: 85 },
-    { week: "W8", cognitive: 90 },
-  ] : [
-    { week: "W1", cognitive: 0 },
-    { week: "W2", cognitive: 0 },
-    { week: "W3", cognitive: 0 },
-    { week: "W4", cognitive: 0 },
-    { week: "W5", cognitive: 0 },
-    { week: "W6", cognitive: 0 },
-    { week: "W7", cognitive: 0 },
-    { week: "W8", cognitive: 0 },
-  ];
 
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 animate-pulse">
-        <div className="h-80 bg-muted rounded-md"></div>
-        <div className="h-80 bg-muted rounded-md"></div>
-        <div className="h-60 bg-muted rounded-md md:col-span-2"></div>
+        <Skeleton className="h-80 w-full rounded-md" />
+        <Skeleton className="h-80 w-full rounded-md" />
+        <Skeleton className="h-60 w-full rounded-md md:col-span-2" />
       </div>
     );
   }

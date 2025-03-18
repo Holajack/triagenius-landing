@@ -14,14 +14,25 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
+import { getLearningMetrics, getFocusStatistics, FocusDistribution, FocusTrend, TimeOfDayMetric } from "@/utils/learningMetricsData";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const FocusBreakdown = () => {
   const [hasData, setHasData] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [focusDistribution, setFocusDistribution] = useState<FocusDistribution[]>([]);
+  const [focusTrends, setFocusTrends] = useState<FocusTrend[]>([]);
+  const [timeOfDay, setTimeOfDay] = useState<TimeOfDayMetric[]>([]);
+  const [stats, setStats] = useState({
+    totalHours: 0,
+    avgSession: 0,
+    focusScore: 0,
+    improvement: ""
+  });
   
-  // Check if user has any focus session data
+  // Fetch focus data
   useEffect(() => {
-    const checkForFocusData = async () => {
+    const loadFocusData = async () => {
       try {
         setIsLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
@@ -32,78 +43,54 @@ const FocusBreakdown = () => {
             .select('*', { count: 'exact', head: true })
             .eq('user_id', user.id);
             
-          setHasData(count !== null && count > 0);
+          const userHasData = count !== null && count > 0;
+          setHasData(userHasData);
+          
+          if (userHasData) {
+            // Get focus statistics
+            const statistics = await getFocusStatistics();
+            setStats(statistics);
+            
+            // Get learning metrics
+            const metrics = await getLearningMetrics();
+            setFocusDistribution(metrics.focusDistribution);
+            setFocusTrends(metrics.focusTrends);
+            setTimeOfDay(metrics.timeOfDay);
+          }
         }
       } catch (error) {
-        console.error('Error checking for focus data:', error);
+        console.error('Error loading focus data:', error);
       } finally {
         setIsLoading(false);
       }
     };
     
-    checkForFocusData();
+    loadFocusData();
+    
+    // Set up subscription for real-time updates
+    const channel = supabase
+      .channel('focus-breakdown-changes')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'focus_sessions' }, 
+        () => loadFocusData()
+      )
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'learning_metrics' },
+        () => loadFocusData()
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
-
-  // Mock data for the charts when user has data
-  const focusDistribution = hasData ? [
-    { name: "Deep Focus", value: 12, color: "#8884d8" },
-    { name: "Active Learning", value: 8, color: "#82ca9d" },
-    { name: "Review & Practice", value: 6, color: "#ffc658" },
-    { name: "Research & Reading", value: 5, color: "#ff8042" },
-  ] : [
-    { name: "Deep Focus", value: 0, color: "#8884d8" },
-    { name: "Active Learning", value: 0, color: "#82ca9d" },
-    { name: "Review & Practice", value: 0, color: "#ffc658" },
-    { name: "Research & Reading", value: 0, color: "#ff8042" },
-  ];
-
-  const focusTrends = hasData ? [
-    { week: "Week 1", hours: 18 },
-    { week: "Week 2", hours: 22 },
-    { week: "Week 3", hours: 20 },
-    { week: "Week 4", hours: 25 },
-    { week: "Week 5", hours: 28 },
-    { week: "Week 6", hours: 24 },
-    { week: "Week 7", hours: 31 },
-    { week: "Week 8", hours: 35 },
-  ] : [
-    { week: "Week 1", hours: 0 },
-    { week: "Week 2", hours: 0 },
-    { week: "Week 3", hours: 0 },
-    { week: "Week 4", hours: 0 },
-    { week: "Week 5", hours: 0 },
-    { week: "Week 6", hours: 0 },
-    { week: "Week 7", hours: 0 },
-    { week: "Week 8", hours: 0 },
-  ];
-
-  const timeOfDay = hasData ? [
-    { time: "Early Morning (5-8 AM)", score: 65 },
-    { time: "Morning (8-11 AM)", score: 85 },
-    { time: "Midday (11 AM-2 PM)", score: 60 },
-    { time: "Afternoon (2-5 PM)", score: 70 },
-    { time: "Evening (5-8 PM)", score: 75 },
-    { time: "Night (8-11 PM)", score: 50 },
-    { time: "Late Night (11 PM-5 AM)", score: 40 },
-  ] : [
-    { time: "Early Morning (5-8 AM)", score: 0 },
-    { time: "Morning (8-11 AM)", score: 0 },
-    { time: "Midday (11 AM-2 PM)", score: 0 },
-    { time: "Afternoon (2-5 PM)", score: 0 },
-    { time: "Evening (5-8 PM)", score: 0 },
-    { time: "Night (8-11 PM)", score: 0 },
-    { time: "Late Night (11 PM-5 AM)", score: 0 },
-  ];
-
-  // Calculate total focus hours
-  const totalHours = focusDistribution.reduce((sum, item) => sum + item.value, 0);
 
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 animate-pulse">
-        <div className="h-32 bg-muted rounded-md"></div>
-        <div className="h-32 bg-muted rounded-md"></div>
-        <div className="h-32 bg-muted rounded-md"></div>
+        <Skeleton className="h-32 w-full rounded-md" />
+        <Skeleton className="h-32 w-full rounded-md" />
+        <Skeleton className="h-32 w-full rounded-md" />
       </div>
     );
   }
@@ -117,10 +104,10 @@ const FocusBreakdown = () => {
           </CardHeader>
           <CardContent className="pt-2">
             <div className="flex flex-col items-center justify-center py-4">
-              <span className="text-5xl font-bold text-primary">{totalHours}</span>
+              <span className="text-5xl font-bold text-primary">{stats.totalHours}</span>
               <span className="text-sm text-muted-foreground mt-1">hours this month</span>
-              {hasData && (
-                <span className="text-sm font-medium mt-4 text-green-600">+18% vs. last month</span>
+              {hasData && stats.improvement && (
+                <span className="text-sm font-medium mt-4 text-green-600">{stats.improvement} vs. last month</span>
               )}
             </div>
           </CardContent>
@@ -132,7 +119,7 @@ const FocusBreakdown = () => {
           </CardHeader>
           <CardContent className="pt-2">
             <div className="flex flex-col items-center justify-center py-4">
-              <span className="text-5xl font-bold text-primary">{hasData ? 42 : 0}</span>
+              <span className="text-5xl font-bold text-primary">{stats.avgSession}</span>
               <span className="text-sm text-muted-foreground mt-1">minutes per session</span>
               {hasData && (
                 <span className="text-sm font-medium mt-4 text-green-600">+7 min vs. last month</span>
@@ -147,7 +134,7 @@ const FocusBreakdown = () => {
           </CardHeader>
           <CardContent className="pt-2">
             <div className="flex flex-col items-center justify-center py-4">
-              <span className="text-5xl font-bold text-primary">{hasData ? 83 : 0}</span>
+              <span className="text-5xl font-bold text-primary">{stats.focusScore}</span>
               <span className="text-sm text-muted-foreground mt-1">overall focus quality</span>
               {hasData && (
                 <span className="text-sm font-medium mt-4 text-green-600">+5 pts vs. last month</span>

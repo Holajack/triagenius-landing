@@ -8,22 +8,27 @@ import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { supabase } from "@/integrations/supabase/client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface SessionData {
   id: string;
-  milestone: number;
+  milestone_count: number;
   duration: number;
-  timestamp: string;
+  created_at: string;
   environment?: string;
   notes?: string;
-  savedAt?: string;
+  user_id: string;
 }
 
 interface ReflectionData {
-  accomplished: string;
-  learned: string;
-  revisit: string;
-  timestamp: string;
+  id: string;
+  user_notes: string;
+  mood_rating: number;
+  productivity_rating: number;
+  session_id: string;
+  user_id: string;
+  created_at: string;
 }
 
 const SessionReportsList = () => {
@@ -34,61 +39,51 @@ const SessionReportsList = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // In a real app, this would fetch from a database
-    // For now, we'll simulate by retrieving from localStorage
-    const loadSessionReports = () => {
+    const loadSessionReports = async () => {
       setIsLoading(true);
 
       try {
-        // Get all keys from localStorage
-        const keys = Object.keys(localStorage);
-        const reportKeys = keys.filter(key => key.startsWith('sessionReport_'));
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setIsLoading(false);
+          return;
+        }
+
+        // Fetch session reports
+        const { data: reports, error: reportsError } = await supabase
+          .from('focus_sessions')
+          .select('id, milestone_count, duration, created_at, environment, user_id')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
+          
+        if (reportsError) {
+          console.error('Error fetching session reports:', reportsError);
+          setIsLoading(false);
+          return;
+        }
+
+        // Fetch session reflections
+        const { data: reflections, error: reflectionsError } = await supabase
+          .from('session_reflections')
+          .select('id, user_notes, mood_rating, productivity_rating, session_id, user_id, created_at')
+          .eq('user_id', user.id)
+          .in('session_id', reports?.map(r => r.id) || []);
+          
+        if (reflectionsError) {
+          console.error('Error fetching session reflections:', reflectionsError);
+        }
+
+        // Map reflections to sessions
+        const reflectionsMap: {[key: string]: ReflectionData} = {};
+        if (reflections) {
+          reflections.forEach(reflection => {
+            reflectionsMap[reflection.session_id] = reflection;
+          });
+        }
         
-        const reports: SessionData[] = [];
-        const reflections: {[key: string]: ReflectionData} = {};
-        
-        // First load all session reports
-        reportKeys.forEach(key => {
-          try {
-            const reportData = JSON.parse(localStorage.getItem(key) || '');
-            const id = key.replace('sessionReport_', '');
-            reports.push({
-              id,
-              ...reportData
-            });
-            
-            // Try to find associated reflection data by timestamp
-            const reflectionData = localStorage.getItem("sessionReflection");
-            if (reflectionData) {
-              try {
-                const parsedReflection = JSON.parse(reflectionData) as ReflectionData;
-                // Use timestamp comparison to associate reflections with reports
-                // This is a simple approach - in a real app we'd have proper IDs
-                const reportDate = new Date(reportData.timestamp);
-                const reflectionDate = new Date(parsedReflection.timestamp);
-                
-                // If the reflection was created within an hour of the session report,
-                // we'll associate them together
-                const timeDiff = Math.abs(reportDate.getTime() - reflectionDate.getTime());
-                if (timeDiff < 60 * 60 * 1000) { // 1 hour in milliseconds
-                  reflections[id] = parsedReflection;
-                }
-              } catch (e) {
-                console.error('Error parsing reflection data:', e);
-              }
-            }
-          } catch (e) {
-            console.error('Error parsing session report:', e);
-          }
-        });
-        
-        // Sort reports by timestamp (newest first)
-        reports.sort((a, b) => {
-          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-        });
-        
-        setSessionReports(reports);
-        setReflectionData(reflections);
+        setSessionReports(reports || []);
+        setReflectionData(reflectionsMap);
       } catch (e) {
         console.error('Error loading session reports:', e);
       } finally {
@@ -97,6 +92,23 @@ const SessionReportsList = () => {
     };
 
     loadSessionReports();
+    
+    // Set up subscription for real-time updates
+    const channel = supabase
+      .channel('session-reports-changes')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'focus_sessions' }, 
+        () => loadSessionReports()
+      )
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'session_reflections' },
+        () => loadSessionReports()
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const getEmptyState = () => (
@@ -145,9 +157,9 @@ const SessionReportsList = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <div className="animate-pulse flex flex-col items-center">
-          <div className="h-4 w-32 bg-muted rounded mb-4"></div>
-          <div className="h-32 w-full max-w-2xl bg-muted rounded"></div>
+        <div className="animate-pulse flex flex-col items-center w-full">
+          <Skeleton className="h-4 w-32 rounded mb-4" />
+          <Skeleton className="h-32 w-full max-w-2xl rounded" />
         </div>
       </div>
     );
@@ -181,38 +193,31 @@ const SessionReportsList = () => {
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
                 <CardTitle className="text-lg">
-                  Session on {format(new Date(report.timestamp), 'PPP')}
+                  Session on {format(new Date(report.created_at), 'PPP')}
                 </CardTitle>
-                <Badge variant={report.milestone === 3 ? "default" : "outline"}>
-                  {report.milestone === 3 ? "Completed" : `${report.milestone}/3 Milestones`}
+                <Badge variant={report.milestone_count === 3 ? "default" : "outline"}>
+                  {report.milestone_count === 3 ? "Completed" : `${report.milestone_count}/3 Milestones`}
                 </Badge>
               </div>
               <CardDescription>
-                {format(new Date(report.timestamp), 'p')} in {report.environment || 'Default'} environment
+                {format(new Date(report.created_at), 'p')} in {report.environment || 'Default'} environment
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                 <div className="flex items-center">
                   <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <span className="text-sm">Duration: {getFormattedDuration(report.duration)}</span>
+                  <span className="text-sm">Duration: {getFormattedDuration(report.duration || 0)}</span>
                 </div>
                 <div className="flex items-center">
                   <Target className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <span className="text-sm">Focus Score: {getFocusScore(report.milestone)}%</span>
+                  <span className="text-sm">Focus Score: {getFocusScore(report.milestone_count || 0)}%</span>
                 </div>
                 <div className="flex items-center">
                   <Mountain className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <span className="text-sm">Milestones: {report.milestone}/3</span>
+                  <span className="text-sm">Milestones: {report.milestone_count}/3</span>
                 </div>
               </div>
-              
-              {report.notes && (
-                <div className="mt-2 p-3 bg-muted/50 rounded-md">
-                  <p className="text-sm text-muted-foreground font-medium mb-1">Notes:</p>
-                  <p className="text-sm">{report.notes}</p>
-                </div>
-              )}
 
               <CollapsibleTrigger asChild>
                 <Button 
@@ -232,35 +237,33 @@ const SessionReportsList = () => {
                   <div className="space-y-4">
                     <h3 className="text-sm font-medium">Session Reflection</h3>
                     
-                    {reflectionData[report.id].accomplished && (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-                          <CheckCheck className="h-4 w-4" />
-                          <span>Accomplishments</span>
-                        </div>
-                        <p className="text-sm pl-6">{reflectionData[report.id].accomplished}</p>
-                      </div>
-                    )}
-                    
-                    {reflectionData[report.id].learned && (
+                    {reflectionData[report.id].user_notes && (
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                           <BookText className="h-4 w-4" />
-                          <span>Learnings</span>
+                          <span>Notes</span>
                         </div>
-                        <p className="text-sm pl-6">{reflectionData[report.id].learned}</p>
+                        <p className="text-sm pl-6">{reflectionData[report.id].user_notes}</p>
                       </div>
                     )}
                     
-                    {reflectionData[report.id].revisit && (
+                    <div className="flex space-x-4">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                          <CheckCheck className="h-4 w-4" />
+                          <span>Productivity</span>
+                        </div>
+                        <p className="text-sm pl-6">{reflectionData[report.id].productivity_rating}/10</p>
+                      </div>
+                      
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                           <RotateCcw className="h-4 w-4" />
-                          <span>Topics to Revisit</span>
+                          <span>Mood</span>
                         </div>
-                        <p className="text-sm pl-6">{reflectionData[report.id].revisit}</p>
+                        <p className="text-sm pl-6">{reflectionData[report.id].mood_rating}/10</p>
                       </div>
-                    )}
+                    </div>
                   </div>
                 ) : (
                   <div className="text-center py-2 text-sm text-muted-foreground">

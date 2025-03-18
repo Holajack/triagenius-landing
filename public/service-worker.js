@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'triage-system-v1';
+const CACHE_NAME = 'triage-system-v2';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -20,6 +20,11 @@ self.addEventListener('install', event => {
 
 // Cache and return requests
 self.addEventListener('fetch', event => {
+  // Skip Supabase API requests to ensure live data
+  if (event.request.url.includes('supabase.co')) {
+    return fetch(event.request);
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then(response => {
@@ -64,3 +69,21 @@ self.addEventListener('activate', event => {
     })
   );
 });
+
+// Periodically sync data in the background
+self.addEventListener('sync', event => {
+  if (event.tag === 'sync-learning-data') {
+    event.waitUntil(syncLearningData());
+  }
+});
+
+// Background sync function
+async function syncLearningData() {
+  try {
+    // This would typically make API calls to refresh data
+    console.log('Background sync: Refreshing learning data');
+    // In a real implementation, we would call our API endpoints here
+  } catch (error) {
+    console.error('Background sync failed:', error);
+  }
+}
