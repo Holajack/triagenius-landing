@@ -11,6 +11,7 @@ import { Brain, Book, PencilLine, Headphones, Eye, Hand, Lightbulb } from "lucid
 import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/hooks/use-user";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 type LearningStyle = 'Physical' | 'Auditory' | 'Visual' | 'Logical' | 'Vocal';
 
@@ -32,6 +33,7 @@ interface QuizResults {
 
 const LearningStyleQuiz = () => {
   const { user } = useUser();
+  const navigate = useNavigate();
   const [isStartDialogOpen, setIsStartDialogOpen] = useState(false);
   const [isQuizActive, setIsQuizActive] = useState(false);
   const [currentStyle, setCurrentStyle] = useState<LearningStyle | null>(null);
@@ -53,13 +55,13 @@ const LearningStyleQuiz = () => {
   const [startTime, setStartTime] = useState<number | null>(null);
   
   const startQuiz = async () => {
-    setIsStartDialogOpen(false);
-    setIsQuizActive(true);
+    if (!user) {
+      toast.error("Please log in to take the quiz");
+      return;
+    }
     
-    // Start with the first learning style in the order
-    const firstStyle = styleOrder[0];
-    setCurrentStyle(firstStyle);
-    await fetchQuestionsForStyle(firstStyle);
+    // Navigate to quiz page instead of showing dialog
+    navigate("/learning-quiz");
   };
   
   const fetchQuestionsForStyle = async (style: LearningStyle) => {
@@ -145,7 +147,7 @@ const LearningStyleQuiz = () => {
           setIsQuizActive(false);
           setIsResultsDialogOpen(true);
           
-          // Save results to database (you could implement this)
+          // Save results to database
           saveQuizResults();
         }
       }
@@ -181,37 +183,6 @@ const LearningStyleQuiz = () => {
     ? ((completedStyles.length * 100) + ((currentQuestionIndex / currentQuestions.length) * 20)) / 5 
     : 0;
   
-  // Get the dominant learning style
-  const getDominantStyle = () => {
-    return Object.entries(quizResults)
-      .sort((a, b) => b[1] - a[1])[0][0] as LearningStyle;
-  };
-  
-  // Get normalized percentages
-  const getNormalizedResults = () => {
-    const total = Object.values(quizResults).reduce((sum, val) => sum + val, 0);
-    return Object.entries(quizResults).reduce((obj, [key, value]) => {
-      obj[key as LearningStyle] = Math.round((value / total) * 100);
-      return obj;
-    }, {} as Record<LearningStyle, number>);
-  };
-  
-  // Get learning style recommendations
-  const getRecommendations = (style: LearningStyle) => {
-    switch(style) {
-      case 'Physical':
-        return "Try hands-on activities, movement while studying, and tactile learning tools.";
-      case 'Auditory':
-        return "Use recordings, participate in discussions, and read aloud when studying.";
-      case 'Visual':
-        return "Use charts, mind maps, color-coding, and watch educational videos.";
-      case 'Logical':
-        return "Organize information in systems, use problem-solving approaches, and find patterns.";
-      case 'Vocal':
-        return "Explain concepts to others, participate in group discussions, and use verbal repetition.";
-    }
-  };
-  
   // Learning style icons
   const getStyleIcon = (style: LearningStyle) => {
     switch(style) {
@@ -230,7 +201,7 @@ const LearningStyleQuiz = () => {
         <Button 
           size="lg" 
           className="gap-2"
-          onClick={() => setIsStartDialogOpen(true)}
+          onClick={startQuiz}
           disabled={isQuizActive}
         >
           <Book className="h-4 w-4" />
@@ -240,147 +211,6 @@ const LearningStyleQuiz = () => {
           Takes approximately 15 minutes to complete
         </p>
       </div>
-      
-      {/* Quiz Start Dialog */}
-      <Dialog open={isStartDialogOpen} onOpenChange={setIsStartDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Start Learning Style Quiz</DialogTitle>
-            <DialogDescription>
-              This AI-powered quiz will help determine your optimal learning style by testing you in five different ways: Physical, Auditory, Visual, Logical, and Vocal.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <p>The quiz consists of 5 sections with 5 questions each. It will take approximately 15-20 minutes to complete.</p>
-            <p>Your results will help customize your learning experience in our system.</p>
-          </div>
-          
-          <DialogFooter>
-            <Button type="button" onClick={() => setIsStartDialogOpen(false)} variant="outline">
-              Cancel
-            </Button>
-            <Button type="button" onClick={startQuiz}>
-              Begin Quiz
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Active Quiz */}
-      {isQuizActive && currentStyle && (
-        <div className="mt-6 space-y-6">
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium flex items-center gap-2">
-                {getStyleIcon(currentStyle)}
-                {currentStyle} Learning Section
-              </h3>
-              <span className="text-sm text-muted-foreground">
-                Question {currentQuestionIndex + 1} of {currentQuestions.length}
-              </span>
-            </div>
-            <Progress value={progressPercentage} className="h-2" />
-          </div>
-          
-          {isLoading ? (
-            <div className="h-64 flex items-center justify-center">
-              <p>Loading questions...</p>
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="pt-6">
-                {currentQuestions[currentQuestionIndex] && (
-                  <div className="space-y-6">
-                    <h4 className="text-xl font-medium">{currentQuestions[currentQuestionIndex].question}</h4>
-                    
-                    <RadioGroup value={selectedAnswer || ""} onValueChange={handleAnswerSelect}>
-                      {currentQuestions[currentQuestionIndex].options.map((option, index) => (
-                        <div key={index} className="flex items-center space-x-2 py-2">
-                          <RadioGroupItem value={option} id={`option-${index}`} />
-                          <Label htmlFor={`option-${index}`} className="flex-1">{option}</Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                    
-                    <Button 
-                      onClick={handleNextQuestion} 
-                      disabled={selectedAnswer === null}
-                      className="w-full"
-                    >
-                      {currentQuestionIndex < currentQuestions.length - 1 ? "Next Question" : 
-                        completedStyles.length < 4 ? "Next Section" : "Complete Quiz"}
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
-      
-      {/* Results Dialog */}
-      <Dialog open={isResultsDialogOpen} onOpenChange={setIsResultsDialogOpen}>
-        <DialogContent className="sm:max-w-3xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Brain className="h-5 w-5" />
-              Your Learning Style Results
-            </DialogTitle>
-            <DialogDescription>
-              Based on your responses, we've determined your optimal learning styles and preferences.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6 py-4">
-            <div className="grid gap-6 sm:grid-cols-2">
-              <div>
-                <h3 className="text-lg font-medium mb-2">Primary Learning Style</h3>
-                <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/10">
-                  {getStyleIcon(getDominantStyle())}
-                  <div>
-                    <p className="font-medium">{getDominantStyle()} Learner</p>
-                    <p className="text-sm text-muted-foreground">
-                      {getNormalizedResults()[getDominantStyle()]}% preference
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <h3 className="text-lg font-medium mb-2">Recommendations</h3>
-                <p className="text-sm">{getRecommendations(getDominantStyle())}</p>
-              </div>
-            </div>
-            
-            <div>
-              <h3 className="text-lg font-medium mb-3">Learning Style Breakdown</h3>
-              <div className="space-y-3">
-                {Object.entries(getNormalizedResults())
-                  .sort(([, a], [, b]) => b - a)
-                  .map(([style, percentage]) => (
-                    <div key={style} className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          {getStyleIcon(style as LearningStyle)}
-                          <span>{style}</span>
-                        </div>
-                        <span>{percentage}%</span>
-                      </div>
-                      <Progress value={percentage} className="h-2" />
-                    </div>
-                  ))}
-              </div>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button type="button" onClick={() => setIsResultsDialogOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

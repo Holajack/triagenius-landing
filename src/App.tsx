@@ -1,81 +1,84 @@
-
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { OnboardingProvider } from './contexts/OnboardingContext';
-import { ThemeProvider } from './contexts/ThemeContext';
-import { TaskProvider } from './contexts/TaskContext';
-import { WalkthroughProvider } from './contexts/WalkthroughContext';
-import { UserProvider } from './hooks/use-user';
-import ErrorBoundary from './components/ErrorBoundary';
-import ProtectedRoute from './components/auth/ProtectedRoute';
-import PWADetector from './components/pwa/PWADetector';
-
-// Pages
-import Index from './pages/Index';
-import Auth from './pages/Auth';
-import Dashboard from './pages/Dashboard';
-import FocusSession from './pages/FocusSession';
-import SessionReport from './pages/SessionReport';
-import SessionReflection from './pages/SessionReflection';
-import BreakTimer from './pages/BreakTimer';
-import Reports from './pages/Reports';
-import Onboarding from './pages/Onboarding';
-import Profile from './pages/Profile';
-import Settings from './pages/Settings';
-import NotFound from './pages/NotFound';
-import Community from './pages/Community';
-import StudyRoom from './pages/StudyRoom';
-import Leaderboard from './pages/Leaderboard';
-import Chat from './pages/Chat';
-import Bonuses from './pages/Bonuses';
-import Nora from './pages/Nora';
+import { useState, useEffect } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Toaster } from "sonner";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import Index from "./pages/Index";
+import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard";
+import FocusSession from "./pages/FocusSession";
+import BreakTimer from "./pages/BreakTimer";
+import SessionReflection from "./pages/SessionReflection";
+import SessionReport from "./pages/SessionReport";
+import Reports from "./pages/Reports";
+import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
+import Community from "./pages/Community";
+import Onboarding from "./pages/Onboarding";
+import Leaderboard from "./pages/Leaderboard";
+import Chat from "./pages/Chat";
+import StudyRoom from "./pages/StudyRoom";
+import Bonuses from "./pages/Bonuses";
+import LearningQuiz from "./pages/LearningQuiz";
+import NotFound from "./pages/NotFound";
+import Nora from "./pages/Nora";
+import PWADetector from "./components/pwa/PWADetector";
+import InstallPrompt from "./components/pwa/InstallPrompt";
+import { register } from "./components/ServiceWorker";
 
 function App() {
-  // Check if running as a PWA to optimize the mobile experience
-  const isPWA = localStorage.getItem('isPWA') === 'true' || 
-                window.matchMedia('(display-mode: standalone)').matches || 
-                (window.navigator as any).standalone === true;
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   return (
     <ErrorBoundary>
       <ThemeProvider>
-        <UserProvider>
-          <OnboardingProvider>
-            <TaskProvider>
-              <WalkthroughProvider>
-                <Router>
-                  <Routes>
-                    {/* Public routes */}
-                    <Route path="/" element={<Index />} />
-                    <Route path="/auth" element={<Auth />} />
-                    <Route path="/onboarding" element={<Onboarding />} />
-                    
-                    {/* Protected routes */}
-                    <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                    <Route path="/focus-session" element={<ProtectedRoute><FocusSession /></ProtectedRoute>} />
-                    <Route path="/session-report/:id" element={<ProtectedRoute><SessionReport /></ProtectedRoute>} />
-                    <Route path="/session-reflection/:id" element={<ProtectedRoute><SessionReflection /></ProtectedRoute>} />
-                    <Route path="/break-timer" element={<ProtectedRoute><BreakTimer /></ProtectedRoute>} />
-                    <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-                    <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                    <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-                    <Route path="/community" element={<ProtectedRoute><Community /></ProtectedRoute>} />
-                    <Route path="/community/room/:id" element={<ProtectedRoute><StudyRoom /></ProtectedRoute>} />
-                    <Route path="/community/chat/:id" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
-                    <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
-                    <Route path="/bonuses" element={<ProtectedRoute><Bonuses /></ProtectedRoute>} />
-                    <Route path="/nora" element={<ProtectedRoute><Nora /></ProtectedRoute>} />
-                    
-                    {/* Fallback route */}
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                  
-                  {/* PWA Installation Prompt */}
-                  <PWADetector />
-                </Router>
-              </WalkthroughProvider>
-            </TaskProvider>
-          </OnboardingProvider>
-        </UserProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/onboarding" element={<Onboarding />} />
+            
+            {/* Protected routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/focus-session" element={<FocusSession />} />
+              <Route path="/break-timer" element={<BreakTimer />} />
+              <Route path="/session-reflection" element={<SessionReflection />} />
+              <Route path="/session-report/:id" element={<SessionReport />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/community" element={<Community />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/bonuses" element={<Bonuses />} />
+              <Route path="/study-room/:id?" element={<StudyRoom />} />
+              <Route path="/nora" element={<Nora />} />
+              <Route path="/learning-quiz" element={<LearningQuiz />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          
+          <Toaster richColors position="top-center" />
+          
+          {/* PWA components */}
+          <PWADetector />
+          <InstallPrompt />
+        </BrowserRouter>
       </ThemeProvider>
     </ErrorBoundary>
   );

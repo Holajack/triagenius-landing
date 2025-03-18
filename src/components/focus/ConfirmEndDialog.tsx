@@ -25,10 +25,42 @@ export function ConfirmEndDialog({
   onConfirm,
   onCancel,
 }: ConfirmEndDialogProps) {
-  // Handle confirm action
-  const handleConfirm = () => {
-    // Call the onConfirm callback
-    onConfirm();
+  // Use a more optimized approach for handling confirm action
+  const handleConfirm = (e: React.MouseEvent) => {
+    // Prevent any default behavior
+    e.preventDefault();
+    
+    // Call onConfirm in the next frame to prevent UI jank
+    if (window.requestAnimationFrame) {
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          onConfirm();
+        }, 0);
+      });
+    } else {
+      // Fallback for older browsers
+      setTimeout(() => {
+        onConfirm();
+      }, 0);
+    }
+  };
+
+  // Optimized cancel handler
+  const handleCancel = (e: React.MouseEvent) => {
+    // Prevent any default behavior
+    e.preventDefault();
+    
+    // Call onCancel in the next frame
+    if (window.requestAnimationFrame) {
+      requestAnimationFrame(() => {
+        onCancel();
+      });
+    } else {
+      // Fallback for older browsers
+      setTimeout(() => {
+        onCancel();
+      }, 0);
+    }
   };
 
   return (
@@ -55,7 +87,7 @@ export function ConfirmEndDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex-col space-y-2 sm:space-y-0">
-          <AlertDialogCancel onClick={onCancel} className="w-full sm:w-auto">
+          <AlertDialogCancel onClick={handleCancel} className="w-full sm:w-auto">
             Continue Focusing
           </AlertDialogCancel>
           <AlertDialogAction onClick={handleConfirm} className="w-full sm:w-auto">

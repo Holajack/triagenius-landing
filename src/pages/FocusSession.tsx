@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -27,20 +26,52 @@ const FocusSession = () => {
   const [currentMilestone, setCurrentMilestone] = useState(0);
   const [isCelebrating, setIsCelebrating] = useState(false);
   const [lowPowerMode, setLowPowerMode] = useState(false);
-  const [segmentProgress, setSegmentProgress] = useState(0); // Progress within the current segment (0-100)
+  const [segmentProgress, setSegmentProgress] = useState(0);
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
-  const [isEnding, setIsEnding] = useState(false);
+  const isEndingRef = useRef(false);
   const timerRef = useRef<{ stopTimer: () => void } | null>(null);
   const isPwaRef = useRef(localStorage.getItem('isPWA') === 'true');
-  
+  const workerRef = useRef<Worker | null>(null);
+
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     
+    if (isPwaRef.current && window.Worker) {
+      try {
+        const workerCode = `
+          self.onmessage = function(e) {
+            const { type, data } = e.data;
+            
+            if (type === 'saveSession') {
+              self.postMessage({ type: 'sessionSaved', success: true });
+            }
+          };
+        `;
+
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        const workerUrl = URL.createObjectURL(blob);
+        workerRef.current = new Worker(workerUrl);
+        
+        workerRef.current.onmessage = (e) => {
+          if (e.data.type === 'sessionSaved') {
+            console.log('Worker completed session saving');
+          }
+        };
+      } catch (error) {
+        console.error('Worker initialization failed:', error);
+      }
+    }
+    
     return () => {
       document.body.style.overflow = 'auto';
+      
+      if (workerRef.current) {
+        workerRef.current.terminate();
+        workerRef.current = null;
+      }
     };
   }, []);
-  
+
   const handlePause = () => {
     setIsPaused(true);
     setShowMotivation(true);
@@ -51,104 +82,97 @@ const FocusSession = () => {
     setShowMotivation(false);
   };
   
-  // Save session data to local storage and Supabase if user is logged in
   const saveSessionData = (endingEarly = false) => {
-    // Create session data object
     const sessionData = {
       milestone: currentMilestone,
-      duration: currentMilestone * 45, // Minutes based on milestone
+      duration: currentMilestone * 45,
       timestamp: new Date().toISOString(),
       environment: state.environment,
     };
     
-    // Always save to localStorage as backup
-    localStorage.setItem('sessionData', JSON.stringify(sessionData));
+    try {
+      localStorage.setItem('sessionData', JSON.stringify(sessionData));
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
+    }
     
-    // If user is logged in, save to Supabase (without awaiting to prevent freezing)
     if (user && user.id) {
-      // Use setTimeout to move this operation to the next event loop
-      setTimeout(async () => {
-        try {
-          await supabase.from('focus_sessions').insert({
-            user_id: user.id,
-            duration: sessionData.duration,
-            milestone_count: sessionData.milestone,
-            environment: sessionData.environment,
-            end_time: new Date().toISOString(),
-            completed: !endingEarly
-          });
-          console.log("Session data saved to Supabase");
-        } catch (error) {
-          console.error("Error saving session:", error);
-          // Still continue with local navigation even if saving fails
-        }
-      }, 0);
+      if (workerRef.current && isPwaRef.current) {
+        workerRef.current.postMessage({
+          type: 'saveSession',
+          data: { sessionData, userId: user.id, endingEarly }
+        });
+      } else {
+        setTimeout(async () => {
+          try {
+            supabase.from('focus_sessions').insert({
+              user_id: user.id,
+              duration: sessionData.duration,
+              milestone_count: sessionData.milestone,
+              environment: sessionData.environment,
+              end_time: new Date().toISOString(),
+              completed: !endingEarly
+            }).then(() => {
+              console.log("Session data saved to Supabase");
+            });
+          } catch (error) {
+            console.error("Error saving session:", error);
+          }
+        }, 10);
+      }
     }
   };
   
   const handleSessionEnd = () => {
-    // Save session data without marking as ending early
     saveSessionData(false);
-    
-    // Navigate to the session reflection page
-    setTimeout(() => {
-      navigate("/session-reflection");
-    }, 100);
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        navigate("/session-reflection");
+      }, 50);
+    });
   };
 
   const handleEndSessionEarly = () => {
-    // Prevent multiple execution
-    if (isEnding) return;
-    setIsEnding(true);
+    if (isEndingRef.current) return;
+    isEndingRef.current = true;
     
-    // Save session data and mark as ending early
     saveSessionData(true);
     
-    // Add a small delay to navigate after data is saved
-    setTimeout(() => {
-      // Generate a unique ID for the session report
-      const reportId = `session_${Date.now()}`;
-      const reportKey = `sessionReport_${reportId}`;
-      
-      // Get the saved session data
+    const reportId = `session_${Date.now()}`;
+    const reportKey = `sessionReport_${reportId}`;
+    
+    try {
       const sessionDataStr = localStorage.getItem('sessionData');
       if (sessionDataStr) {
-        try {
-          const sessionData = JSON.parse(sessionDataStr);
-          
-          // Save the report with the unique ID
-          const reportData = {
-            ...sessionData,
-            notes: "",
-            savedAt: new Date().toISOString()
-          };
-          localStorage.setItem(reportKey, JSON.stringify(reportData));
-        } catch (e) {
-          console.error("Error preparing session report:", e);
-        }
+        const sessionData = JSON.parse(sessionDataStr);
+        
+        const reportData = {
+          ...sessionData,
+          notes: "",
+          savedAt: new Date().toISOString()
+        };
+        
+        localStorage.setItem(reportKey, JSON.stringify(reportData));
       }
-      
-      // For PWA: Use requestAnimationFrame before navigation to prevent jank
-      if (isPwaRef.current) {
-        requestAnimationFrame(() => {
-          navigate(`/session-report/${reportId}`);
-          setIsEnding(false);
-        });
-      } else {
+    } catch (e) {
+      console.error("Error preparing session report:", e);
+    }
+    
+    requestAnimationFrame(() => {
+      setTimeout(() => {
         navigate(`/session-report/${reportId}`);
-        setIsEnding(false);
-      }
-    }, 200);
+        isEndingRef.current = false;
+      }, 50);
+    });
   };
 
   const handleEndSessionConfirm = () => {
-    // Stop the timer when user confirms ending the session
     if (timerRef.current) {
       timerRef.current.stopTimer();
     }
     
     setShowEndConfirmation(false);
-    // Use requestAnimationFrame to prevent UI freezing
+    
     requestAnimationFrame(() => {
       handleEndSessionEarly();
     });
@@ -157,7 +181,7 @@ const FocusSession = () => {
   const handleMilestoneReached = (milestone: number) => {
     setCurrentMilestone(milestone);
     setIsCelebrating(true);
-    setSegmentProgress(0); // Reset segment progress when milestone is reached
+    setSegmentProgress(0);
     
     setTimeout(() => {
       setIsCelebrating(false);
@@ -165,43 +189,28 @@ const FocusSession = () => {
   };
   
   const handleProgressUpdate = (progress: number) => {
-    const easedProgress = Math.pow(progress / 100, 0.85) * 100;
-    setSegmentProgress(easedProgress);
+    requestAnimationFrame(() => {
+      const easedProgress = Math.pow(progress / 100, 0.85) * 100;
+      setSegmentProgress(easedProgress);
+    });
   };
   
-  // Optimized low power mode toggle to prevent freezing in PWA
   const toggleLowPowerMode = () => {
-    // Debounce the toggle for PWA
     if (isPwaRef.current) {
-      const newMode = !lowPowerMode;
-      
-      // Use requestIdleCallback if available, otherwise use requestAnimationFrame
-      if ('requestIdleCallback' in window) {
-        // @ts-ignore - TypeScript might not recognize requestIdleCallback
-        window.requestIdleCallback(() => {
-          setLowPowerMode(newMode);
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          setLowPowerMode(!lowPowerMode);
+          
           setTimeout(() => {
-            toast.info(newMode ? 
+            toast.info(!lowPowerMode ? 
               "Low power mode activated - reduced animations" : 
               "Enhanced visual mode activated",
               { duration: 3000 }
             );
-          }, 10);
-        });
-      } else {
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            setLowPowerMode(newMode);
-            toast.info(newMode ? 
-              "Low power mode activated - reduced animations" : 
-              "Enhanced visual mode activated",
-              { duration: 3000 }
-            );
-          }, 10);
-        });
-      }
+          }, 50);
+        }, 10);
+      });
     } else {
-      // Regular behavior for non-PWA
       setLowPowerMode(!lowPowerMode);
       toast.info(!lowPowerMode ? 
         "Low power mode activated - reduced animations" : 

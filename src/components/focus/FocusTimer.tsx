@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -44,11 +45,28 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
   const notificationShownRef = useRef(false);
   const lastMilestoneTimeRef = useRef(0);
   const rafId = useRef<number | null>(null);
+  const isUpdatingUIRef = useRef(false);
   
   // Calculate elapsed time based on the original time and current time
   // This is used for milestone tracking
   const initialTimeRef = useRef(0);
   const elapsedTimeRef = useRef(0);
+  const isPwaRef = useRef(localStorage.getItem('isPWA') === 'true');
+
+  // Throttle UI updates
+  const throttleUIUpdates = (callback: () => void) => {
+    if (isUpdatingUIRef.current) return;
+    
+    isUpdatingUIRef.current = true;
+    rafId.current = requestAnimationFrame(() => {
+      callback();
+      
+      // Reset the flag after a short delay
+      setTimeout(() => {
+        isUpdatingUIRef.current = false;
+      }, 50); // Adjust the throttle delay as needed
+    });
+  };
 
   // Expose stopTimer method to parent component
   useImperativeHandle(ref, () => ({
@@ -95,7 +113,10 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
         setTimeout(() => {
           setIsActive(true);
           if (!notificationShownRef.current) {
-            toast.success("Focus session started!");
+            // Delay toast to prevent UI jank
+            setTimeout(() => {
+              toast.success("Focus session started!");
+            }, 100);
             notificationShownRef.current = true;
           }
         }, 500);
@@ -146,38 +167,71 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
               setMilestoneReached(newMilestone);
               
               if (newMilestone > 0 && onMilestoneReached) {
-                // Use RAF for smoother UI updates
-                requestAnimationFrame(() => {
-                  onMilestoneReached(newMilestone);
-                  
-                  // Show milestone celebration
-                  const milestoneMessages = [
-                    "Great job! You've made it to the first checkpoint—keep going!",
-                    "You're halfway up the mountain—stay focused!",
-                    "Final push! Reach the peak and complete today's session!"
-                  ];
-                  
-                  if (newMilestone <= milestoneMessages.length) {
-                    setTimeout(() => {
+                // Use RAF for smoother UI updates with debounce for PWA
+                if (isPwaRef.current) {
+                  throttleUIUpdates(() => {
+                    onMilestoneReached(newMilestone);
+                    
+                    // Show milestone celebration with delay
+                    const milestoneMessages = [
+                      "Great job! You've made it to the first checkpoint—keep going!",
+                      "You're halfway up the mountain—stay focused!",
+                      "Final push! Reach the peak and complete today's session!"
+                    ];
+                    
+                    if (newMilestone <= milestoneMessages.length) {
+                      setTimeout(() => {
+                        toast.success(milestoneMessages[newMilestone - 1], {
+                          duration: 5000,
+                        });
+                      }, 50);
+                    }
+                  });
+                } else {
+                  // Non-PWA can use standard RAF
+                  requestAnimationFrame(() => {
+                    onMilestoneReached(newMilestone);
+                    
+                    const milestoneMessages = [
+                      "Great job! You've made it to the first checkpoint—keep going!",
+                      "You're halfway up the mountain—stay focused!",
+                      "Final push! Reach the peak and complete today's session!"
+                    ];
+                    
+                    if (newMilestone <= milestoneMessages.length) {
                       toast.success(milestoneMessages[newMilestone - 1], {
                         duration: 5000,
                       });
-                    }, 0);
-                  }
-                });
+                    }
+                  });
+                }
               }
               
               // If we've completed all milestones (3 hours)
               if (milestonesCompleted >= 3) {
-                setTimeout(() => {
-                  toast.success("Congratulations! You've completed your 3-hour focus session!", {
-                    duration: 5000,
+                if (isPwaRef.current) {
+                  // Use throttled updates for PWA
+                  throttleUIUpdates(() => {
+                    toast.success("Congratulations! You've completed your 3-hour focus session!", {
+                      duration: 5000,
+                    });
+                    
+                    // Use setTimeout with longer delay to prevent UI blocking
+                    setTimeout(() => {
+                      onComplete();
+                    }, 100);
                   });
-                  // Use setTimeout to prevent UI blocking
+                } else {
                   setTimeout(() => {
-                    onComplete();
+                    toast.success("Congratulations! You've completed your 3-hour focus session!", {
+                      duration: 5000,
+                    });
+                    
+                    setTimeout(() => {
+                      onComplete();
+                    }, 0);
                   }, 0);
-                }, 0);
+                }
                 return 0;
               }
               
@@ -189,12 +243,22 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
               // Full session completed
               clearInterval(timerRef.current);
               setIsActive(false);
-              // Use requestAnimationFrame to prevent UI blocking
-              requestAnimationFrame(() => {
-                setTimeout(() => {
-                  onComplete();
-                }, 0);
-              });
+              
+              // Use throttled updates for PWA
+              if (isPwaRef.current) {
+                throttleUIUpdates(() => {
+                  setTimeout(() => {
+                    onComplete();
+                  }, 100);
+                });
+              } else {
+                // Standard approach for non-PWA
+                requestAnimationFrame(() => {
+                  setTimeout(() => {
+                    onComplete();
+                  }, 0);
+                });
+              }
               return 0;
             }
           }
@@ -203,42 +267,75 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
           const currentElapsedTime = elapsedTimeRef.current + (initialTimeRef.current - prevTime);
           const currentMilestone = Math.floor(currentElapsedTime / MILESTONE_TIME);
           
+          // Handle progress updates with throttling for PWA
           if (onProgressUpdate) {
             const segmentElapsedTime = currentElapsedTime % MILESTONE_TIME;
             const segmentProgress = (segmentElapsedTime / MILESTONE_TIME) * 100;
-            // Use RAF to ensure smooth progress updates without jank
-            if (rafId.current) {
-              cancelAnimationFrame(rafId.current);
+            
+            // Skip some updates in PWA mode to reduce UI pressure
+            if (isPwaRef.current) {
+              // Only update every ~500ms in PWA mode to reduce jank
+              if (!isUpdatingUIRef.current) {
+                throttleUIUpdates(() => {
+                  onProgressUpdate(segmentProgress);
+                });
+              }
+            } else {
+              // Regular updates for non-PWA
+              if (rafId.current) {
+                cancelAnimationFrame(rafId.current);
+              }
+              rafId.current = requestAnimationFrame(() => {
+                onProgressUpdate(segmentProgress);
+                rafId.current = null;
+              });
             }
-            rafId.current = requestAnimationFrame(() => {
-              onProgressUpdate(segmentProgress);
-              rafId.current = null;
-            });
           }
           
+          // Handle milestone reached
           if (currentMilestone > milestoneReached && currentMilestone <= 3) {
             setMilestoneReached(currentMilestone);
             
             if (onMilestoneReached) {
-              // Use RAF to keep UI responsive
-              requestAnimationFrame(() => {
-                onMilestoneReached(currentMilestone);
-                
-                // Show milestone celebration
-                const milestoneMessages = [
-                  "Great job! You've made it to the first checkpoint—keep going!",
-                  "You're halfway up the mountain—stay focused!",
-                  "Final push! Reach the peak and complete today's session!"
-                ];
-                
-                if (currentMilestone <= milestoneMessages.length) {
-                  setTimeout(() => {
+              // Use throttled updates for milestone celebration in PWA
+              if (isPwaRef.current) {
+                throttleUIUpdates(() => {
+                  onMilestoneReached(currentMilestone);
+                  
+                  // Show milestone celebration
+                  const milestoneMessages = [
+                    "Great job! You've made it to the first checkpoint—keep going!",
+                    "You're halfway up the mountain—stay focused!",
+                    "Final push! Reach the peak and complete today's session!"
+                  ];
+                  
+                  if (currentMilestone <= milestoneMessages.length) {
+                    setTimeout(() => {
+                      toast.success(milestoneMessages[currentMilestone - 1], {
+                        duration: 5000,
+                      });
+                    }, 50);
+                  }
+                });
+              } else {
+                // Regular approach for non-PWA
+                requestAnimationFrame(() => {
+                  onMilestoneReached(currentMilestone);
+                  
+                  // Show milestone celebration
+                  const milestoneMessages = [
+                    "Great job! You've made it to the first checkpoint—keep going!",
+                    "You're halfway up the mountain—stay focused!",
+                    "Final push! Reach the peak and complete today's session!"
+                  ];
+                  
+                  if (currentMilestone <= milestoneMessages.length) {
                     toast.success(milestoneMessages[currentMilestone - 1], {
                       duration: 5000,
                     });
-                  }, 0);
-                }
-              });
+                  }
+                });
+              }
             }
           }
           
@@ -257,8 +354,16 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
   }, [isActive, isPaused, onComplete, onMilestoneReached, milestoneReached, onProgressUpdate]);
   
   useEffect(() => {
-    const totalTime = minutes * 60 + seconds;
-    setProgress((time / totalTime) * 100);
+    // Use throttled progress updates
+    if (isPwaRef.current) {
+      throttleUIUpdates(() => {
+        const totalTime = minutes * 60 + seconds;
+        setProgress((time / totalTime) * 100);
+      });
+    } else {
+      const totalTime = minutes * 60 + seconds;
+      setProgress((time / totalTime) * 100);
+    }
   }, [time, minutes, seconds]);
   
   const formatTime = (seconds: number) => {
@@ -272,7 +377,14 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
     setIsActive(true);
     initialTimeRef.current = time;
     if (!notificationShownRef.current) {
-      toast.success("Focus session started!");
+      if (isPwaRef.current) {
+        // Delay toast in PWA mode
+        setTimeout(() => {
+          toast.success("Focus session started!");
+        }, 100);
+      } else {
+        toast.success("Focus session started!");
+      }
       notificationShownRef.current = true;
     }
   };
@@ -290,29 +402,54 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
   const handleEndSessionClick = () => {
     if (time > 0 && isActive) {
       if (onEndSessionClick) {
-        // Use requestAnimationFrame to prevent UI blocking
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            onEndSessionClick();
-          }, 0);
-        });
+        // Prevent UI freezing with requestAnimationFrame and throttling for PWA
+        if (isPwaRef.current) {
+          throttleUIUpdates(() => {
+            setTimeout(() => {
+              onEndSessionClick();
+            }, 50);
+          });
+        } else {
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              onEndSessionClick();
+            }, 0);
+          });
+        }
       } else {
-        // In case there's no external handler, directly call onComplete
+        // Direct completion with timer cleanup
         if (timerRef.current) {
           clearInterval(timerRef.current);
           timerRef.current = undefined;
         }
         setIsActive(false);
-        // Use setTimeout to prevent UI freezing
+        
+        // Use throttling for PWA
+        if (isPwaRef.current) {
+          throttleUIUpdates(() => {
+            setTimeout(() => {
+              onComplete();
+            }, 50);
+          });
+        } else {
+          setTimeout(() => {
+            onComplete();
+          }, 0);
+        }
+      }
+    } else {
+      // Use throttling for PWA
+      if (isPwaRef.current) {
+        throttleUIUpdates(() => {
+          setTimeout(() => {
+            onComplete();
+          }, 50);
+        });
+      } else {
         setTimeout(() => {
           onComplete();
         }, 0);
       }
-    } else {
-      // Use setTimeout to prevent UI freezing
-      setTimeout(() => {
-        onComplete();
-      }, 0);
     }
   };
 

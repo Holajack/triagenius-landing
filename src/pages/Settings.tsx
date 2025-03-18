@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,8 +8,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import NavigationBar from "@/components/dashboard/NavigationBar";
-import { BellIcon, EyeIcon, MoonIcon, VolumeIcon } from "lucide-react";
+import { BellIcon, EyeIcon, MoonIcon, VolumeIcon, Info } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Settings = () => {
   // Notification settings
@@ -35,20 +36,196 @@ const Settings = () => {
   const [focusSounds, setFocusSounds] = useState(true);
 
   const isMobile = useIsMobile();
+  const isPwa = localStorage.getItem('isPWA') === 'true';
   
-  const handleSettingChange = (
+  // Check for existing permissions
+  const [hasNotificationPermission, setHasNotificationPermission] = useState(false);
+  
+  useEffect(() => {
+    // Check if we have notification permission
+    if ('Notification' in window) {
+      setHasNotificationPermission(Notification.permission === 'granted');
+    }
+    
+    // Load saved settings from localStorage
+    const loadSavedSettings = () => {
+      const settings = [
+        { key: 'notificationsEnabled', setter: setNotificationsEnabled },
+        { key: 'sessionCompletionNotifications', setter: setSessionCompletionNotifications },
+        { key: 'breakReminderNotifications', setter: setBreakReminderNotifications },
+        { key: 'friendRequestNotifications', setter: setFriendRequestNotifications },
+        { key: 'messageNotifications', setter: setMessageNotifications },
+        { key: 'dndEnabled', setter: setDndEnabled },
+        { key: 'dndDuringFocus', setter: setDndDuringFocus },
+        { key: 'dndDuringBreaks', setter: setDndDuringBreaks },
+        { key: 'darkModeEnabled', setter: setDarkModeEnabled },
+        { key: 'highContrastMode', setter: setHighContrastMode },
+        { key: 'reducedAnimations', setter: setReducedAnimations },
+        { key: 'soundEnabled', setter: setSoundEnabled },
+        { key: 'focusSounds', setter: setFocusSounds },
+      ];
+      
+      settings.forEach(({ key, setter }) => {
+        const savedValue = localStorage.getItem(`setting_${key}`);
+        if (savedValue !== null) {
+          try {
+            setter(JSON.parse(savedValue));
+          } catch (e) {
+            console.error(`Error parsing saved setting for ${key}:`, e);
+          }
+        }
+      });
+      
+      const savedVolume = localStorage.getItem('setting_volume');
+      if (savedVolume) {
+        try {
+          setVolume(JSON.parse(savedVolume));
+        } catch (e) {
+          console.error('Error parsing saved volume setting:', e);
+        }
+      }
+    };
+    
+    loadSavedSettings();
+  }, []);
+  
+  // Request notification permission
+  const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) {
+      toast.error("Notifications are not supported by your browser");
+      return false;
+    }
+    
+    try {
+      const permission = await Notification.requestPermission();
+      setHasNotificationPermission(permission === 'granted');
+      return permission === 'granted';
+    } catch (error) {
+      console.error('Error requesting notification permission:', error);
+      toast.error("Failed to request notification permission");
+      return false;
+    }
+  };
+
+  // Request Do Not Disturb permission (Not available in all browsers)
+  const requestDNDPermission = async () => {
+    // This is only available in some browsers/devices
+    // For this example, we'll simulate requesting it
+    if ('permissions' in navigator && 'query' in navigator.permissions) {
+      try {
+        // Request audio output permissions as a proxy for DND
+        await requestPermission('notifications');
+        return true;
+      } catch (error) {
+        console.error('Error requesting DND permission:', error);
+        toast.error("Your device doesn't support Do Not Disturb control");
+        return false;
+      }
+    } else {
+      toast.error("Your device doesn't support Do Not Disturb control");
+      return false;
+    }
+  };
+  
+  // Request display settings permission
+  const requestDisplayPermission = async () => {
+    // This is a simulated permission since browser APIs don't directly control system display
+    if ('permissions' in navigator && 'query' in navigator.permissions) {
+      try {
+        // Request wake lock as a proxy for display settings
+        await requestPermission('screen-wake-lock');
+        return true;
+      } catch (error) {
+        console.error('Error requesting display permission:', error);
+        toast.error("Your device doesn't support display setting control");
+        return false;
+      }
+    } else {
+      toast.error("Your device doesn't support display setting control");
+      return false;
+    }
+  };
+  
+  // Request audio permission
+  const requestAudioPermission = async () => {
+    if ('mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices) {
+      try {
+        // Request microphone access as a proxy for audio settings
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Stop all tracks immediately after getting permission
+        stream.getTracks().forEach(track => track.stop());
+        return true;
+      } catch (error) {
+        console.error('Error requesting audio permission:', error);
+        toast.error("Failed to get audio permissions");
+        return false;
+      }
+    } else {
+      toast.error("Your device doesn't support audio control");
+      return false;
+    }
+  };
+  
+  // Generic permission request helper
+  const requestPermission = async (permissionName: PermissionName) => {
+    if ('permissions' in navigator && 'query' in navigator.permissions) {
+      try {
+        const result = await navigator.permissions.query({ name: permissionName });
+        
+        if (result.state === 'granted') {
+          return true;
+        } else if (result.state === 'prompt') {
+          // This will trigger the permission prompt
+          return false;
+        } else {
+          toast.error(`Permission for ${permissionName} was denied`);
+          return false;
+        }
+      } catch (error) {
+        console.error(`Error checking ${permissionName} permission:`, error);
+        return false;
+      }
+    }
+    return false;
+  };
+  
+  const handleSettingChange = async (
     setting: string, 
     value: boolean | string,
-    updateFunction: (value: any) => void
+    updateFunction: (value: any) => void,
+    permissionType?: 'notification' | 'dnd' | 'display' | 'audio'
   ) => {
-    // Call the update function with the new value
-    updateFunction(value);
+    // Request appropriate permission if needed
+    let permissionGranted = true;
     
-    // Save to local storage (could be extended to save to database)
-    localStorage.setItem(`setting_${setting}`, JSON.stringify(value));
+    if (value === true && permissionType && isPwa) {
+      switch (permissionType) {
+        case 'notification':
+          permissionGranted = await requestNotificationPermission();
+          break;
+        case 'dnd':
+          permissionGranted = await requestDNDPermission();
+          break;
+        case 'display':
+          permissionGranted = await requestDisplayPermission();
+          break;
+        case 'audio':
+          permissionGranted = await requestAudioPermission();
+          break;
+      }
+    }
     
-    // Show success notification
-    toast.success(`Updated ${setting} setting`);
+    // Only update if permission was granted or if turning off the setting
+    if (permissionGranted || value === false) {
+      // Call the update function with the new value
+      updateFunction(value);
+      
+      // Save to local storage
+      localStorage.setItem(`setting_${setting}`, JSON.stringify(value));
+      
+      // Show success notification
+      toast.success(`Updated ${setting} setting`);
+    }
   };
   
   return (
@@ -58,6 +235,15 @@ const Settings = () => {
         <p className="text-muted-foreground">
           Manage your app preferences and permissions
         </p>
+        
+        {isPwa && (
+          <Alert variant="default" className="bg-primary/10 border-0">
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              This app will request device permissions when enabling certain settings to provide the best experience on your device.
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
       
       <Tabs defaultValue="notifications" className="mb-24">
@@ -77,6 +263,13 @@ const Settings = () => {
               </div>
               <CardDescription>
                 Control how and when you receive notifications
+                {isPwa && (
+                  <span className="block mt-1 text-xs">
+                    {hasNotificationPermission ? 
+                      "✓ Permission granted" : 
+                      "⚠️ Permission required to enable notifications"}
+                  </span>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -90,7 +283,7 @@ const Settings = () => {
                 <Switch 
                   checked={notificationsEnabled}
                   onCheckedChange={(checked) => 
-                    handleSettingChange("notificationsEnabled", checked, setNotificationsEnabled)
+                    handleSettingChange("notificationsEnabled", checked, setNotificationsEnabled, "notification")
                   }
                 />
               </div>
@@ -107,7 +300,7 @@ const Settings = () => {
                   <Switch 
                     checked={sessionCompletionNotifications}
                     onCheckedChange={(checked) => 
-                      handleSettingChange("sessionCompletionNotifications", checked, setSessionCompletionNotifications)
+                      handleSettingChange("sessionCompletionNotifications", checked, setSessionCompletionNotifications, "notification")
                     }
                     disabled={!notificationsEnabled}
                   />
@@ -120,7 +313,7 @@ const Settings = () => {
                   <Switch 
                     checked={breakReminderNotifications}
                     onCheckedChange={(checked) => 
-                      handleSettingChange("breakReminderNotifications", checked, setBreakReminderNotifications)
+                      handleSettingChange("breakReminderNotifications", checked, setBreakReminderNotifications, "notification")
                     }
                     disabled={!notificationsEnabled}
                   />
@@ -133,7 +326,7 @@ const Settings = () => {
                   <Switch 
                     checked={friendRequestNotifications}
                     onCheckedChange={(checked) => 
-                      handleSettingChange("friendRequestNotifications", checked, setFriendRequestNotifications)
+                      handleSettingChange("friendRequestNotifications", checked, setFriendRequestNotifications, "notification")
                     }
                     disabled={!notificationsEnabled}
                   />
@@ -146,7 +339,7 @@ const Settings = () => {
                   <Switch 
                     checked={messageNotifications}
                     onCheckedChange={(checked) => 
-                      handleSettingChange("messageNotifications", checked, setMessageNotifications)
+                      handleSettingChange("messageNotifications", checked, setMessageNotifications, "notification")
                     }
                     disabled={!notificationsEnabled}
                   />
@@ -165,6 +358,11 @@ const Settings = () => {
               </div>
               <CardDescription>
                 Control when notifications are silenced
+                {isPwa && (
+                  <span className="block mt-1 text-xs">
+                    Enabling this may request system-level permissions
+                  </span>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -178,7 +376,7 @@ const Settings = () => {
                 <Switch 
                   checked={dndEnabled}
                   onCheckedChange={(checked) => 
-                    handleSettingChange("dndEnabled", checked, setDndEnabled)
+                    handleSettingChange("dndEnabled", checked, setDndEnabled, "dnd")
                   }
                 />
               </div>
@@ -196,7 +394,7 @@ const Settings = () => {
                   <Switch 
                     checked={dndDuringFocus}
                     onCheckedChange={(checked) => 
-                      handleSettingChange("dndDuringFocus", checked, setDndDuringFocus)
+                      handleSettingChange("dndDuringFocus", checked, setDndDuringFocus, "dnd")
                     }
                   />
                 </div>
@@ -209,7 +407,7 @@ const Settings = () => {
                   <Switch 
                     checked={dndDuringBreaks}
                     onCheckedChange={(checked) => 
-                      handleSettingChange("dndDuringBreaks", checked, setDndDuringBreaks)
+                      handleSettingChange("dndDuringBreaks", checked, setDndDuringBreaks, "dnd")
                     }
                   />
                 </div>
@@ -227,6 +425,11 @@ const Settings = () => {
               </div>
               <CardDescription>
                 Customize how the app looks
+                {isPwa && (
+                  <span className="block mt-1 text-xs">
+                    Some settings may affect your device's display
+                  </span>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -240,7 +443,7 @@ const Settings = () => {
                 <Switch 
                   checked={darkModeEnabled}
                   onCheckedChange={(checked) => 
-                    handleSettingChange("darkModeEnabled", checked, setDarkModeEnabled)
+                    handleSettingChange("darkModeEnabled", checked, setDarkModeEnabled, "display")
                   }
                 />
               </div>
@@ -255,7 +458,7 @@ const Settings = () => {
                 <Switch 
                   checked={highContrastMode}
                   onCheckedChange={(checked) => 
-                    handleSettingChange("highContrastMode", checked, setHighContrastMode)
+                    handleSettingChange("highContrastMode", checked, setHighContrastMode, "display")
                   }
                 />
               </div>
@@ -270,7 +473,7 @@ const Settings = () => {
                 <Switch 
                   checked={reducedAnimations}
                   onCheckedChange={(checked) => 
-                    handleSettingChange("reducedAnimations", checked, setReducedAnimations)
+                    handleSettingChange("reducedAnimations", checked, setReducedAnimations, "display")
                   }
                 />
               </div>
@@ -287,6 +490,11 @@ const Settings = () => {
               </div>
               <CardDescription>
                 Configure audio preferences
+                {isPwa && (
+                  <span className="block mt-1 text-xs">
+                    Enabling sounds may request audio permissions
+                  </span>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -300,7 +508,7 @@ const Settings = () => {
                 <Switch 
                   checked={soundEnabled}
                   onCheckedChange={(checked) => 
-                    handleSettingChange("soundEnabled", checked, setSoundEnabled)
+                    handleSettingChange("soundEnabled", checked, setSoundEnabled, "audio")
                   }
                 />
               </div>
@@ -312,7 +520,7 @@ const Settings = () => {
                 <RadioGroup 
                   value={volume} 
                   onValueChange={(value) => 
-                    handleSettingChange("volume", value, setVolume)
+                    handleSettingChange("volume", value, setVolume, "audio")
                   }
                   disabled={!soundEnabled}
                   className="flex flex-row space-x-4"
@@ -342,7 +550,7 @@ const Settings = () => {
                 <Switch 
                   checked={focusSounds}
                   onCheckedChange={(checked) => 
-                    handleSettingChange("focusSounds", checked, setFocusSounds)
+                    handleSettingChange("focusSounds", checked, setFocusSounds, "audio")
                   }
                   disabled={!soundEnabled}
                 />
