@@ -1,44 +1,18 @@
 
 {
-  "name": "Triagenius Landing",
-  "short_name": "Triagenius",
+  "name": "Lux Aquinmata",
+  "short_name": "Lux Aquinmata",
   "description": "Boost concentration, track progress, and level up your productivity with gamified work sessions",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any", 
-  "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "background_color": "#221F26",
+  "theme_color": "#221F26",
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/icons/icon-72x72.png",
-      "sizes": "72x72",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-96x96.png",
-      "sizes": "96x96",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-128x128.png",
-      "sizes": "128x128",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-144x144.png",
-      "sizes": "144x144",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-512x512.png",
+      "src": "/lovable-uploads/298f5dd5-723c-4333-9008-33d6b981ccfb.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -64,14 +38,14 @@
       "short_name": "Focus",
       "description": "Start a new focus session",
       "url": "/focus-session",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/lovable-uploads/298f5dd5-723c-4333-9008-33d6b981ccfb.png", "sizes": "192x192" }]
     },
     {
       "name": "View Dashboard",
       "short_name": "Dashboard",
       "description": "Go to your dashboard",
       "url": "/dashboard",
-      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/lovable-uploads/298f5dd5-723c-4333-9008-33d6b981ccfb.png", "sizes": "192x192" }]
     }
   ],
   "categories": ["productivity", "education", "utilities"]

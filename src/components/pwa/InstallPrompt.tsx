@@ -215,7 +215,7 @@ const InstallPrompt = () => {
       localStorage.setItem('appInstalled', 'true');
       toast({
         title: "Installation Complete",
-        description: "Triagenius has been successfully installed!"
+        description: "Lux Aquinmata has been successfully installed!"
       });
     });
     
@@ -226,7 +226,7 @@ const InstallPrompt = () => {
         setTimeout(() => {
           toast({
             title: "Open in Installed App",
-            description: "You've installed Triagenius. Would you like to open it?",
+            description: "You've installed Lux Aquinmata. Would you like to open it?",
             action: <Button size="sm" onClick={() => {
               window.location.href = "/";
             }}>Open App</Button>
@@ -259,7 +259,7 @@ const InstallPrompt = () => {
           console.log('User accepted the install prompt');
           localStorage.setItem('appInstalled', 'true');
           toast({
-            title: "Installing Triagenius",
+            title: "Installing Lux Aquinmata",
             description: "Thank you for installing our app!"
           });
           setIsVisible(false);
@@ -334,7 +334,7 @@ const InstallPrompt = () => {
             return;
           }
         } else {
-          instructions = "1. Click the menu button (⋮) in the top right\n2. Select 'Install Triagenius...'\n3. Click 'Install' in the prompt";
+          instructions = "1. Click the menu button (⋮) in the top right\n2. Select 'Install Lux Aquinmata...'\n3. Click 'Install' in the prompt";
         }
         break;
       case "edge":
@@ -389,16 +389,16 @@ const InstallPrompt = () => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 50 }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className="fixed bottom-4 left-4 right-4 mx-auto max-w-md bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg z-50 border border-gray-200 dark:border-gray-700"
+          className="fixed bottom-4 left-4 right-4 mx-auto max-w-md bg-[#221F26] p-4 rounded-lg shadow-lg z-50 border border-[#403E43]"
         >
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h3 className="font-semibold text-lg mb-1">Install Triagenius</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+              <h3 className="font-semibold text-lg mb-1 text-white">Install Lux Aquinmata</h3>
+              <p className="text-sm text-gray-300 mb-3">
                 {browserInfo.isIOS 
                   ? "Install our app on your iPhone for the best experience"
                   : browserInfo.isAndroid && browserInfo.name === "Chrome"
-                    ? "Add Triagenius to your home screen for fast access"
+                    ? "Add Lux Aquinmata to your home screen for fast access"
                     : browserInfo.isMobile
                       ? "Get our app on your home screen for quick access"
                       : "Install for a faster experience with offline access"}
@@ -407,16 +407,16 @@ const InstallPrompt = () => {
               <div className="flex flex-col sm:flex-row gap-2">
                 <Button 
                   onClick={handleInstallClick}
-                  className="flex-1 bg-black hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
+                  className="flex-1 bg-[#bfaa4a] hover:bg-[#bfaa4a]/90 text-black"
                 >
                   <Download className="w-4 h-4 mr-2" /> 
-                  Install Triagenius
+                  Install App
                 </Button>
                 
                 <Button 
                   variant="outline"
                   onClick={() => showBrowserSpecificInstructions(browserInfo.name, browserInfo.isIOS, browserInfo.isAndroid)}
-                  className="flex-1"
+                  className="flex-1 border-[#bfaa4a] text-[#bfaa4a]"
                 >
                   <Info className="w-4 h-4 mr-2" /> 
                   Show Instructions
@@ -426,16 +426,16 @@ const InstallPrompt = () => {
             
             <button 
               onClick={handleDismiss}
-              className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="p-1 rounded-full hover:bg-gray-700"
               aria-label="Close"
             >
-              <X className="w-5 h-5 text-gray-500" />
+              <X className="w-5 h-5 text-gray-300" />
             </button>
           </div>
           
           {/* Browser-specific tips */}
-          <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
+          <div className="mt-3 pt-2 border-t border-[#403E43]">
+            <p className="text-xs text-gray-400 flex items-center">
               <Info className="w-3 h-3 mr-1 inline" />
               {browserInfo.isIOS && browserInfo.name === 'Safari' 
                 ? "Tap the share icon (📤) then 'Add to Home Screen'"

@@ -1,26 +1,33 @@
 
 // Cache version identifier - change this when files are updated
-const CACHE_NAME = 'triagenius-v4';
+const CACHE_NAME = 'lux-aquinmata-v1';
 
 // Add list of files to cache for offline access
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icons/icon-72x72.png',
-  '/icons/icon-96x96.png',
-  '/icons/icon-128x128.png',
-  '/icons/icon-144x144.png',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
-  '/screenshot1.png',
-  '/screenshot2.png',
+  '/lovable-uploads/298f5dd5-723c-4333-9008-33d6b981ccfb.png',
   '/favicon.ico'
 ];
 
 // Create a cache of dynamic assets - CSS, JS, etc.
 // This will be populated as the user navigates the app
-const DYNAMIC_CACHE = 'triagenius-dynamic-v2';
+const DYNAMIC_CACHE = 'lux-aquinmata-dynamic-v1';
+
+// List of routes that should serve the index.html file (for SPA navigation)
+const APP_ROUTES = [
+  '/',
+  '/dashboard',
+  '/focus-session',
+  '/reports',
+  '/profile',
+  '/settings',
+  '/community',
+  '/study-room',
+  '/auth',
+  '/onboarding'
+];
 
 // Install event - cache static resources
 self.addEventListener('install', event => {
@@ -69,7 +76,22 @@ const isApiRequest = (url) => {
 
 // Helper function to determine if a request is for an HTML page
 const isHtmlRequest = (request) => {
-  return request.headers.get('accept').includes('text/html');
+  return request.headers.get('accept')?.includes('text/html');
+};
+
+// Helper function to determine if a URL is an SPA route that should serve index.html
+const isSpaRoute = (url) => {
+  const pathname = url.pathname;
+  
+  // Check if the pathname exactly matches one of our app routes
+  if (APP_ROUTES.includes(pathname)) {
+    return true;
+  }
+  
+  // Check if the pathname starts with any of our app routes (to handle nested routes)
+  return APP_ROUTES.some(route => 
+    route !== '/' && pathname.startsWith(route + '/')
+  );
 };
 
 // Fetch event handler using network-first strategy for API/dynamic content
@@ -90,6 +112,17 @@ self.addEventListener('fetch', event => {
       !url.pathname.endsWith('.png') && 
       !url.pathname.endsWith('.jpg') && 
       !url.pathname.endsWith('.svg')) return;
+  
+  // Special handling for SPA routes - always serve index.html
+  if (isSpaRoute(url)) {
+    event.respondWith(
+      fetch(event.request)
+        .catch(() => {
+          return caches.match('/index.html');
+        })
+    );
+    return;
+  }
   
   // Optimization: For API requests or external resources, prefer network
   if (isApiRequest(url)) {
@@ -225,8 +258,8 @@ self.addEventListener('push', event => {
     
     const options = {
       body: data.body || 'New notification',
-      icon: '/icons/icon-192x192.png',
-      badge: '/icons/icon-72x72.png',
+      icon: '/lovable-uploads/298f5dd5-723c-4333-9008-33d6b981ccfb.png',
+      badge: '/lovable-uploads/298f5dd5-723c-4333-9008-33d6b981ccfb.png',
       vibrate: [100, 50, 100],
       data: {
         dateOfArrival: Date.now(),
@@ -237,13 +270,13 @@ self.addEventListener('push', event => {
         {
           action: 'open',
           title: 'Open App',
-          icon: '/icons/icon-72x72.png'
+          icon: '/lovable-uploads/298f5dd5-723c-4333-9008-33d6b981ccfb.png'
         }
       ]
     };
     
     event.waitUntil(
-      self.registration.showNotification(data.title || 'Triagenius Notification', options)
+      self.registration.showNotification(data.title || 'Lux Aquinmata Notification', options)
     );
   } catch (error) {
     console.error('Push notification error:', error);

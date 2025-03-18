@@ -33,7 +33,7 @@ if ('serviceWorker' in navigator) {
       
       console.log('Service worker registered successfully:', registration.scope);
       
-      // Handle updates with better UX
+      // Handle updates with better UX for standalone mode
       registration.onupdatefound = () => {
         const installingWorker = registration.installing;
         if (!installingWorker) return;
@@ -43,9 +43,21 @@ if ('serviceWorker' in navigator) {
             if (navigator.serviceWorker.controller) {
               console.log('New content is available; please refresh.');
               
-              // Improved update UX with custom UI
-              if (window.confirm('New version available! Reload to update?')) {
-                window.location.reload();
+              // Check if running in standalone mode (PWA installed)
+              const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                                  (window.navigator as any).standalone === true;
+              
+              // Improved update UX with custom UI based on mode
+              if (isStandalone) {
+                // For installed PWA, use a less intrusive update notification
+                // that doesn't disrupt the app-like experience
+                const event = new CustomEvent('pwa-update-available');
+                window.dispatchEvent(event);
+              } else {
+                // For browser mode, we can use a more direct approach
+                if (window.confirm('New version available! Reload to update?')) {
+                  window.location.reload();
+                }
               }
             } else {
               console.log('Content is cached for offline use.');
@@ -79,6 +91,37 @@ if ('serviceWorker' in navigator) {
           }
         }, 2000);
       }
+      
+      // Listen for standalone mode changes (for analytics and UX adjustments)
+      window.matchMedia('(display-mode: standalone)').addEventListener('change', (e) => {
+        console.log('Display mode changed to:', e.matches ? 'standalone' : 'browser');
+        if (e.matches) {
+          // The app has been launched as a standalone PWA
+          localStorage.setItem('runningAsStandalone', 'true');
+          // Dispatch event for components to adjust their UI accordingly
+          window.dispatchEvent(new CustomEvent('standalone-mode-changed', {
+            detail: { isStandalone: true }
+          }));
+        }
+      });
+      
+      // Check on load if we're in standalone mode
+      const checkStandaloneMode = () => {
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                            (window.navigator as any).standalone === true;
+        
+        if (isStandalone) {
+          console.log('App running in standalone mode (installed as PWA)');
+          localStorage.setItem('runningAsStandalone', 'true');
+          // Let components know they should adjust their UI for standalone mode
+          window.dispatchEvent(new CustomEvent('standalone-mode-changed', {
+            detail: { isStandalone: true }
+          }));
+        }
+      };
+      
+      // Check standalone mode when the page loads
+      checkStandaloneMode();
       
       // Register for periodic background sync (if supported)
       if ('periodicSync' in registration) {
