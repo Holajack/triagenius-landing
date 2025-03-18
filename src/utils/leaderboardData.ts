@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 // Types for leaderboard data
@@ -55,7 +54,7 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
     let friendIds: string[] = [];
     try {
       // Make a direct RPC call to get friend IDs
-      const { data: followingData, error: followingError } = await supabase.rpc<UserFollow[]>('get_user_follows', {
+      const { data: followingData, error: followingError } = await supabase.rpc<UserFollow>('get_user_follows', {
         user_id_param: user.id
       });
       
@@ -369,4 +368,3 @@ export const getCommunityActivityFeed = async (isNewUser = false): Promise<any[]
     return [];
   }
 };
-

@@ -1,4 +1,12 @@
-import React from 'react';
+
+import React, { useState, useEffect } from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip } from "recharts";
+import { BarChart2, Clock, ListChecks, Zap } from "lucide-react";
+import { useOnboarding } from "@/contexts/OnboardingContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useUser } from "@/hooks/use-user";
 
 interface WeeklyTrackerProps {
   chartType: string;
