@@ -30,7 +30,6 @@ import NotFound from "./pages/NotFound";
 import Nora from "./pages/Nora";
 import PWADetector from "./components/pwa/PWADetector";
 import InstallPrompt from "./components/pwa/InstallPrompt";
-import FirstVisitInstall from "./components/pwa/FirstVisitInstall";
 import { register } from "./components/ServiceWorker";
 
 function App() {
@@ -88,7 +87,6 @@ function App() {
                   {/* PWA components */}
                   <PWADetector />
                   <InstallPrompt />
-                  <FirstVisitInstall />
                 </BrowserRouter>
               </TaskProvider>
             </WalkthroughProvider>
