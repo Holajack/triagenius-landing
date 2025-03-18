@@ -1,21 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { BarChart, Bar, ResponsiveContainer, XAxis, Tooltip } from "recharts";
-import { useOnboarding } from "@/contexts/OnboardingContext";
-import { BarChart2, Clock, ListChecks, Zap } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useUser } from "@/hooks/use-user";
+import React from 'react';
 
 interface WeeklyTrackerProps {
-  chartType?: 'bar' | 'pie' | 'line' | 'time';
-  optimizeForMobile?: boolean;
+  chartType: string;
+  optimizeForMobile: boolean;
 }
 
-const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ 
-  chartType = 'bar',
-  optimizeForMobile = false 
-}) => {
+const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMobile }) => {
   const { state } = useOnboarding();
   const [activeTab, setActiveTab] = useState("focus-time");
   const { user } = useUser();

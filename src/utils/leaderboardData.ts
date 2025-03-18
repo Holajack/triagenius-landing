@@ -1,3 +1,6 @@
+
+import { supabase } from "@/integrations/supabase/client";
+
 // Types for leaderboard data
 export interface LeaderboardUser {
   rank: number;
@@ -52,12 +55,12 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
     let friendIds: string[] = [];
     try {
       // Make a direct RPC call to get friend IDs
-      const { data: followingData, error: followingError } = await supabase.rpc('get_user_follows', {
+      const { data: followingData, error: followingError } = await supabase.rpc<UserFollow[]>('get_user_follows', {
         user_id_param: user.id
       });
       
       if (!followingError && followingData) {
-        friendIds = (followingData as UserFollow[]).map(connection => connection.following_id);
+        friendIds = followingData.map(connection => connection.following_id);
       }
     } catch (error) {
       console.error('Error fetching friend IDs:', error);
