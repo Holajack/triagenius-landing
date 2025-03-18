@@ -31,6 +31,7 @@ const FocusSession = () => {
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const timerRef = useRef<{ stopTimer: () => void } | null>(null);
+  const isPwaRef = useRef(localStorage.getItem('isPWA') === 'true');
   
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -127,9 +128,16 @@ const FocusSession = () => {
         }
       }
       
-      // Navigate to session report with the ID
-      navigate(`/session-report/${reportId}`);
-      setIsEnding(false);
+      // For PWA: Use requestAnimationFrame before navigation to prevent jank
+      if (isPwaRef.current) {
+        requestAnimationFrame(() => {
+          navigate(`/session-report/${reportId}`);
+          setIsEnding(false);
+        });
+      } else {
+        navigate(`/session-report/${reportId}`);
+        setIsEnding(false);
+      }
     }, 200);
   };
 
@@ -140,10 +148,10 @@ const FocusSession = () => {
     }
     
     setShowEndConfirmation(false);
-    // Use setTimeout to prevent UI freezing
-    setTimeout(() => {
+    // Use requestAnimationFrame to prevent UI freezing
+    requestAnimationFrame(() => {
       handleEndSessionEarly();
-    }, 0);
+    });
   };
   
   const handleMilestoneReached = (milestone: number) => {
@@ -161,18 +169,46 @@ const FocusSession = () => {
     setSegmentProgress(easedProgress);
   };
   
+  // Optimized low power mode toggle to prevent freezing in PWA
   const toggleLowPowerMode = () => {
-    // Use RAF and setTimeout to prevent UI thread blocking
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        setLowPowerMode(prevMode => !prevMode);
-        toast.info(!lowPowerMode ? 
-          "Low power mode activated - reduced animations" : 
-          "Enhanced visual mode activated",
-          { duration: 3000 }
-        );
-      }, 0);
-    });
+    // Debounce the toggle for PWA
+    if (isPwaRef.current) {
+      const newMode = !lowPowerMode;
+      
+      // Use requestIdleCallback if available, otherwise use requestAnimationFrame
+      if ('requestIdleCallback' in window) {
+        // @ts-ignore - TypeScript might not recognize requestIdleCallback
+        window.requestIdleCallback(() => {
+          setLowPowerMode(newMode);
+          setTimeout(() => {
+            toast.info(newMode ? 
+              "Low power mode activated - reduced animations" : 
+              "Enhanced visual mode activated",
+              { duration: 3000 }
+            );
+          }, 10);
+        });
+      } else {
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            setLowPowerMode(newMode);
+            toast.info(newMode ? 
+              "Low power mode activated - reduced animations" : 
+              "Enhanced visual mode activated",
+              { duration: 3000 }
+            );
+          }, 10);
+        });
+      }
+    } else {
+      // Regular behavior for non-PWA
+      setLowPowerMode(!lowPowerMode);
+      toast.info(!lowPowerMode ? 
+        "Low power mode activated - reduced animations" : 
+        "Enhanced visual mode activated",
+        { duration: 3000 }
+      );
+    }
   };
 
   return (

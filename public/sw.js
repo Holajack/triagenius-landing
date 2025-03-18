@@ -1,6 +1,6 @@
 
 // Cache version identifier - change this when files are updated
-const CACHE_NAME = 'triage-system-v1';
+const CACHE_NAME = 'triage-system-v2';
 const APP_NAME = 'The Triage System';
 
 // Add list of files to cache for offline access
@@ -55,11 +55,10 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch event handler using network-first strategy for dynamic content
-// and cache-first for static assets
+// Optimized fetch event handler
 self.addEventListener('fetch', event => {
-  // Skip cross-origin requests
-  if (!event.request.url.startsWith(self.location.origin)) {
+  // Skip cross-origin requests and non-GET requests
+  if (!event.request.url.startsWith(self.location.origin) || event.request.method !== 'GET') {
     return;
   }
   
@@ -69,10 +68,12 @@ self.addEventListener('fetch', event => {
       fetch(event.request)
         .then(response => {
           // Cache a copy of the response
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, responseToCache);
-          });
+          if (response.ok) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, responseToCache);
+            });
+          }
           return response;
         })
         .catch(() => {
@@ -98,21 +99,30 @@ self.addEventListener('fetch', event => {
       caches.match(event.request).then(cachedResponse => {
         return cachedResponse || fetch(event.request).then(networkResponse => {
           // Cache the network response for future
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, responseToCache);
-          });
+          if (networkResponse.ok) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, responseToCache);
+            });
+          }
           return networkResponse;
+        }).catch(error => {
+          console.error('Fetch failed for static asset:', error);
+          // Return a default response if both cache and network fail
+          return new Response('Network error occurred', {
+            status: 408,
+            headers: { 'Content-Type': 'text/plain' }
+          });
         });
       })
     );
     return;
   }
   
-  // For all other requests, use network-first strategy
+  // For all other requests, use network-first strategy with fast timeout
   event.respondWith(
-    fetch(event.request)
-      .then(response => {
+    Promise.race([
+      fetch(event.request).then(response => {
         // Cache a copy of the response
         if (response.ok && response.type === 'basic') {
           const responseToCache = response.clone();
@@ -121,11 +131,19 @@ self.addEventListener('fetch', event => {
           });
         }
         return response;
+      }),
+      // Timeout after 3s - fall back to cache
+      new Promise(resolve => {
+        setTimeout(() => {
+          caches.match(event.request).then(cachedResponse => {
+            if (cachedResponse) resolve(cachedResponse);
+          });
+        }, 3000);
       })
-      .catch(() => {
-        // If network fails, try to serve from cache
-        return caches.match(event.request);
-      })
+    ]).catch(() => {
+      // If race fails, try to serve from cache as last resort
+      return caches.match(event.request);
+    })
   );
 });
 
@@ -138,7 +156,7 @@ self.addEventListener('push', event => {
     
     const options = {
       body: data.body || 'New notification from The Triage System',
-      icon: '/lovable-uploads/95f9c287-86ca-4428-bbc4-b9c9b75478b9.png',
+      icon: '/icons/icon-192x192.png',
       badge: '/icons/icon-192x192.png',
       vibrate: [100, 50, 100],
       data: {
@@ -162,7 +180,7 @@ self.addEventListener('notificationclick', event => {
     clients.matchAll({ type: 'window' }).then(clientList => {
       // Check if there's already an open window
       for (const client of clientList) {
-        if (client.url === '/' && 'focus' in client) {
+        if ('focus' in client) {
           return client.focus();
         }
       }
@@ -177,25 +195,39 @@ self.addEventListener('notificationclick', event => {
 // Background sync for offline actions
 self.addEventListener('sync', event => {
   if (event.tag === 'sync-focus-session') {
-    event.waitUntil(syncFocusSession());
+    event.waitUntil(syncFocusSession().catch(error => {
+      console.error('Sync failed:', error);
+    }));
   }
 });
 
-// Function to sync offline focus session data
+// Function to sync offline focus session data with improved error handling
 async function syncFocusSession() {
   try {
     const offlineData = await getOfflineData('focus-sessions');
     if (offlineData && offlineData.length > 0) {
-      // Process each offline session
-      for (const session of offlineData) {
-        await submitSession(session);
+      // Process each offline session with timeout protection
+      const results = await Promise.allSettled(
+        offlineData.map(session => 
+          Promise.race([
+            submitSession(session),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+          ])
+        )
+      );
+      
+      // Only clear data that was successfully synced
+      const successfulSyncs = results
+        .filter(result => result.status === 'fulfilled')
+        .map((_, index) => offlineData[index]);
+      
+      if (successfulSyncs.length > 0) {
+        await clearSuccessfulSyncs('focus-sessions', successfulSyncs);
       }
-      // Clear synced data
-      await clearOfflineData('focus-sessions');
     }
   } catch (error) {
     console.error('Failed to sync focus sessions:', error);
-    throw error; // Rethrow to trigger retry
+    // Don't rethrow to prevent infinite retries that could drain battery
   }
 }
 
@@ -203,16 +235,25 @@ async function syncFocusSession() {
 async function getOfflineData(storeName) {
   // Implementation would use IndexedDB
   // Placeholder implementation
-  return [];
+  return JSON.parse(localStorage.getItem(storeName) || '[]');
 }
 
-async function clearOfflineData(storeName) {
+async function clearSuccessfulSyncs(storeName, successfulItems) {
   // Implementation would use IndexedDB
   // Placeholder implementation
+  try {
+    const currentData = JSON.parse(localStorage.getItem(storeName) || '[]');
+    const remainingData = currentData.filter(item => 
+      !successfulItems.some(syncedItem => syncedItem.id === item.id)
+    );
+    localStorage.setItem(storeName, JSON.stringify(remainingData));
+  } catch (error) {
+    console.error('Error clearing synced data:', error);
+  }
 }
 
 async function submitSession(session) {
   // Implementation would send data to server
   // Placeholder implementation
-  return true;
+  return new Promise(resolve => setTimeout(resolve, 100));
 }

@@ -233,6 +233,54 @@ export type Database = {
           },
         ]
       }
+      learning_metrics: {
+        Row: {
+          cognitive_analytical: Json | null
+          cognitive_creativity: Json | null
+          cognitive_memory: Json | null
+          cognitive_problem_solving: Json | null
+          created_at: string
+          focus_distribution: Json | null
+          focus_trends: Json | null
+          growth_data: Json | null
+          id: string
+          time_of_day_data: Json | null
+          updated_at: string
+          user_id: string
+          weekly_data: Json | null
+        }
+        Insert: {
+          cognitive_analytical?: Json | null
+          cognitive_creativity?: Json | null
+          cognitive_memory?: Json | null
+          cognitive_problem_solving?: Json | null
+          created_at?: string
+          focus_distribution?: Json | null
+          focus_trends?: Json | null
+          growth_data?: Json | null
+          id?: string
+          time_of_day_data?: Json | null
+          updated_at?: string
+          user_id: string
+          weekly_data?: Json | null
+        }
+        Update: {
+          cognitive_analytical?: Json | null
+          cognitive_creativity?: Json | null
+          cognitive_memory?: Json | null
+          cognitive_problem_solving?: Json | null
+          created_at?: string
+          focus_distribution?: Json | null
+          focus_trends?: Json | null
+          growth_data?: Json | null
+          id?: string
+          time_of_day_data?: Json | null
+          updated_at?: string
+          user_id?: string
+          weekly_data?: Json | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
