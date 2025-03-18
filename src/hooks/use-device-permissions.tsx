@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 
-type PermissionType = 'notifications' | 'dnd' | 'display' | 'audio';
+export type PermissionType = 'notifications' | 'dnd' | 'display' | 'audio';
 
 interface UseDevicePermissionsResult {
   permissionStatus: Record<PermissionType, PermissionState>;

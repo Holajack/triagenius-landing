@@ -33,7 +33,7 @@ export interface ToggleProps extends
   React.ComponentPropsWithoutRef<typeof TogglePrimitive.Root>,
   VariantProps<typeof toggleVariants> {
     permission?: "granted" | "denied" | "prompt" | null;
-    permissionType?: "notification" | "dnd" | "display" | "audio";
+    permissionType?: "notifications" | "dnd" | "display" | "audio";
   }
 
 const Toggle = React.forwardRef<
@@ -41,11 +41,11 @@ const Toggle = React.forwardRef<
   ToggleProps
 >(({ className, variant, size, permission, permissionType, ...props }, ref) => {
   // Used to debounce rapid toggle actions
-  const handleChange = (checked: boolean) => {
-    if (props.onCheckedChange) {
+  const handleChange = (pressed: boolean) => {
+    if (props.onPressedChange) {
       // Use requestAnimationFrame to prevent UI thread blocking
       requestAnimationFrame(() => {
-        props.onCheckedChange?.(checked);
+        props.onPressedChange?.(pressed);
       });
     }
   };
@@ -60,7 +60,7 @@ const Toggle = React.forwardRef<
         className
       )}
       {...props}
-      onCheckedChange={handleChange}
+      onPressedChange={handleChange}
       data-permission-type={permissionType}
       data-permission-status={permission}
     >

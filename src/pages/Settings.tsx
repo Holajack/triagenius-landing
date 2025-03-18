@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -11,7 +10,7 @@ import NavigationBar from "@/components/dashboard/NavigationBar";
 import { BellIcon, EyeIcon, MoonIcon, VolumeIcon, Info, ShieldAlert } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useDevicePermissions } from "@/hooks/use-device-permissions";
+import { useDevicePermissions, PermissionType } from "@/hooks/use-device-permissions";
 import { Button } from "@/components/ui/button";
 
 const Settings = () => {
@@ -92,7 +91,7 @@ const Settings = () => {
     setting: string, 
     value: boolean | string,
     updateFunction: (value: any) => void,
-    permissionType?: 'notification' | 'dnd' | 'display' | 'audio'
+    permissionType?: PermissionType
   ) => {
     // Update app's internal setting state
     updateFunction(value);
@@ -129,7 +128,7 @@ const Settings = () => {
   };
 
   // Handle manual permission request
-  const handleRequestPermission = async (type: 'notification' | 'dnd' | 'display' | 'audio') => {
+  const handleRequestPermission = async (type: PermissionType) => {
     const granted = await requestPermission(type);
     
     if (granted) {
@@ -193,7 +192,7 @@ const Settings = () => {
                   variant="outline" 
                   size="sm" 
                   className="mt-2"
-                  onClick={() => handleRequestPermission('notification')}
+                  onClick={() => handleRequestPermission('notifications')}
                 >
                   <ShieldAlert className="h-4 w-4 mr-2" />
                   Request Notification Permission
@@ -211,7 +210,7 @@ const Settings = () => {
                 <Switch 
                   checked={notificationsEnabled}
                   onCheckedChange={(checked) => 
-                    handleSettingChange("notificationsEnabled", checked, setNotificationsEnabled, "notification")
+                    handleSettingChange("notificationsEnabled", checked, setNotificationsEnabled, "notifications")
                   }
                   disabled={isPwa && permissionStatus.notifications === 'denied'}
                 />
@@ -229,7 +228,7 @@ const Settings = () => {
                   <Switch 
                     checked={sessionCompletionNotifications}
                     onCheckedChange={(checked) => 
-                      handleSettingChange("sessionCompletionNotifications", checked, setSessionCompletionNotifications, "notification")
+                      handleSettingChange("sessionCompletionNotifications", checked, setSessionCompletionNotifications, "notifications")
                     }
                     disabled={!notificationsEnabled || (isPwa && permissionStatus.notifications === 'denied')}
                   />
@@ -242,7 +241,7 @@ const Settings = () => {
                   <Switch 
                     checked={breakReminderNotifications}
                     onCheckedChange={(checked) => 
-                      handleSettingChange("breakReminderNotifications", checked, setBreakReminderNotifications, "notification")
+                      handleSettingChange("breakReminderNotifications", checked, setBreakReminderNotifications, "notifications")
                     }
                     disabled={!notificationsEnabled || (isPwa && permissionStatus.notifications === 'denied')}
                   />
@@ -255,7 +254,7 @@ const Settings = () => {
                   <Switch 
                     checked={friendRequestNotifications}
                     onCheckedChange={(checked) => 
-                      handleSettingChange("friendRequestNotifications", checked, setFriendRequestNotifications, "notification")
+                      handleSettingChange("friendRequestNotifications", checked, setFriendRequestNotifications, "notifications")
                     }
                     disabled={!notificationsEnabled || (isPwa && permissionStatus.notifications === 'denied')}
                   />
@@ -268,7 +267,7 @@ const Settings = () => {
                   <Switch 
                     checked={messageNotifications}
                     onCheckedChange={(checked) => 
-                      handleSettingChange("messageNotifications", checked, setMessageNotifications, "notification")
+                      handleSettingChange("messageNotifications", checked, setMessageNotifications, "notifications")
                     }
                     disabled={!notificationsEnabled || (isPwa && permissionStatus.notifications === 'denied')}
                   />
