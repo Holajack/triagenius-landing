@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,37 +52,37 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     console.log("Applying filters:", filters);
   }, [filters]);
 
-  useEffect(() => {
-    const fetchAllUsers = async () => {
-      if (!user) return;
-      
-      try {
-        setLoading(true);
-        
-        const { data: profiles, error } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url, university, state, show_university, show_state')
-          .neq('id', user.id);
-        
-        if (error) {
-          console.error('Error fetching users:', error);
-          toast.error("Failed to load users");
-          return;
-        }
-        
-        setAllUsers(profiles || []);
-        setFilteredUsers(profiles || []);
-        
-      } catch (error) {
-        console.error('Error in fetchAllUsers:', error);
-        toast.error("Failed to load users");
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchAllUsers = useCallback(async () => {
+    if (!user) return;
     
-    fetchAllUsers();
+    try {
+      setLoading(true);
+      
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('id, username, avatar_url, university, state, show_university, show_state')
+        .neq('id', user.id);
+      
+      if (error) {
+        console.error('Error fetching users:', error);
+        toast.error("Failed to load users");
+        return;
+      }
+      
+      setAllUsers(profiles || []);
+      setFilteredUsers(profiles || []);
+      
+    } catch (error) {
+      console.error('Error in fetchAllUsers:', error);
+      toast.error("Failed to load users");
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
+  
+  useEffect(() => {
+    fetchAllUsers();
+  }, [fetchAllUsers]);
   
   useEffect(() => {
     const fetchFriendRequests = async () => {
@@ -124,7 +123,6 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     
     fetchFriendRequests();
 
-    // Set up realtime subscription to profile changes
     const channel = supabase
       .channel('schema-db-changes')
       .on(
@@ -135,17 +133,15 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
           table: 'profiles'
         },
         (payload) => {
-          // Refresh user list when profiles change
           fetchAllUsers();
         }
       )
       .subscribe();
 
-    // Cleanup function
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, fetchAllUsers]);
   
   useEffect(() => {
     if (searchTerm.trim() === '') {
