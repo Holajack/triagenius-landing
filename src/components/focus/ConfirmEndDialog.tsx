@@ -27,14 +27,18 @@ export function ConfirmEndDialog({
 }: ConfirmEndDialogProps) {
   // Get PWA status
   const isPwa = localStorage.getItem('isPWA') === 'true';
+  
+  // Get additional mobile detection
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   // Optimized confirm handler with PWA-specific paths
   const handleConfirm = (e: React.MouseEvent) => {
     // Prevent default behavior
     e.preventDefault();
     
-    // For PWA, we need to be extra careful to avoid UI freezing
-    if (isPwa) {
+    // For mobile PWA, we need to be extra careful to avoid UI freezing
+    // and ensure proper navigation to Session Report
+    if (isPwa && isMobile) {
       // Close dialog immediately first to prevent UI blocking
       onOpenChange(false);
       
@@ -53,7 +57,7 @@ export function ConfirmEndDialog({
   const handleCancel = (e: React.MouseEvent) => {
     e.preventDefault();
     
-    if (isPwa) {
+    if (isPwa && isMobile) {
       // Close dialog first for better mobile performance
       onOpenChange(false);
       requestAnimationFrame(() => {
