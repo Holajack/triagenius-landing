@@ -13,17 +13,35 @@ interface BeforeInstallPromptEvent extends Event {
 const InstallPrompt = () => {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
   const { toast } = useToast();
   
   useEffect(() => {
     // Check if already installed
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                        (window.navigator as any).standalone === true;
+    
     if (isStandalone) {
       console.log('App is already installed and running in standalone mode');
       return;
     }
     
-    // Capture the beforeinstallprompt event
+    // Detect iOS device
+    const iosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    setIsIOS(iosDevice);
+    
+    if (iosDevice) {
+      // For iOS, we'll show our custom prompt immediately after a delay
+      const lastPrompt = localStorage.getItem('installPromptDismissed');
+      const currentDate = new Date().toISOString();
+      
+      if (!lastPrompt || daysBetween(new Date(lastPrompt), new Date()) > 3) {
+        setTimeout(() => setIsVisible(true), 2000);
+      }
+      return;
+    }
+    
+    // Capture the beforeinstallprompt event for Android/Chrome
     const beforeInstallPromptHandler = (e: Event) => {
       // Prevent Chrome 67 and earlier from automatically showing the prompt
       e.preventDefault();
@@ -36,7 +54,7 @@ const InstallPrompt = () => {
         const lastPrompt = localStorage.getItem('installPromptDismissed');
         const currentDate = new Date().toISOString();
         
-        if (!lastPrompt || daysBetween(new Date(lastPrompt), new Date()) > 7) {
+        if (!lastPrompt || daysBetween(new Date(lastPrompt), new Date()) > 3) {
           console.log('Showing custom install prompt');
           setIsVisible(true);
         }
@@ -46,6 +64,11 @@ const InstallPrompt = () => {
     console.log('Adding beforeinstallprompt event listener');
     window.addEventListener('beforeinstallprompt', beforeInstallPromptHandler);
     
+    // Check if we should show iOS instructions
+    if (!installPrompt && iosDevice) {
+      setTimeout(() => setIsVisible(true), 2000);
+    }
+    
     // Cleanup
     return () => {
       window.removeEventListener('beforeinstallprompt', beforeInstallPromptHandler);
@@ -53,12 +76,13 @@ const InstallPrompt = () => {
   }, []);
   
   const handleInstallClick = async () => {
+    if (isIOS) {
+      showIOSInstructions();
+      return;
+    }
+    
     if (!installPrompt) {
-      // Show iOS instructions instead
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      if (isIOS) {
-        showIOSInstructions();
-      }
+      console.log('No install prompt available');
       return;
     }
     
@@ -103,7 +127,6 @@ const InstallPrompt = () => {
       description: "To install: tap the share icon, then 'Add to Home Screen'",
       duration: 10000
     });
-    handleDismiss();
   };
   
   const daysBetween = (date1: Date, date2: Date) => {
@@ -111,6 +134,12 @@ const InstallPrompt = () => {
     const diffDays = Math.round(Math.abs((date1.getTime() - date2.getTime()) / oneDay));
     return diffDays;
   };
+  
+  // Force visibility for testing - remove in production
+  useEffect(() => {
+    // Uncomment the next line to force visibility for testing
+    // setTimeout(() => setIsVisible(true), 1000);
+  }, []);
   
   if (!isVisible) {
     return null;
@@ -130,7 +159,9 @@ const InstallPrompt = () => {
             <div className="flex-1">
               <h3 className="font-semibold text-lg mb-1">Install Triagenius</h3>
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-                Install our app for a better experience and offline access.
+                {isIOS 
+                  ? "Install our app: tap the share icon then 'Add to Home Screen'"
+                  : "Install our app for a better experience and offline access."}
               </p>
               <Button 
                 onClick={handleInstallClick}

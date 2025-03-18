@@ -1,72 +1,41 @@
-
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from '@/contexts/ThemeContext';
-import { OnboardingProvider } from '@/contexts/OnboardingContext';
-import { TaskProvider } from '@/contexts/TaskContext';
-import { WalkthroughProvider } from '@/contexts/WalkthroughContext';
-import { UserProvider } from '@/hooks/use-user';
-import Index from '@/pages/Index';
-import Auth from '@/pages/Auth';
-import Dashboard from '@/pages/Dashboard';
-import FocusSession from '@/pages/FocusSession';
-import BreakTimer from '@/pages/BreakTimer';
-import Reports from '@/pages/Reports';
-import SessionReport from '@/pages/SessionReport';
-import SessionReflection from '@/pages/SessionReflection';
-import Community from '@/pages/Community';
-import StudyRoom from '@/pages/StudyRoom';
-import Chat from '@/pages/Chat';
-import Profile from '@/pages/Profile';
-import Settings from '@/pages/Settings';
-import Leaderboard from '@/pages/Leaderboard';
-import Bonuses from '@/pages/Bonuses';
-import Nora from '@/pages/Nora';
-import Onboarding from '@/pages/Onboarding';
-import NotFound from '@/pages/NotFound';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import './App.css';
+import { Suspense, lazy } from 'react';
 import InstallPrompt from '@/components/pwa/InstallPrompt';
-import ErrorBoundary from '@/components/ErrorBoundary';
 
-function App() {
+// Import your main pages
+import Index from './pages/Index';
+
+// Import other components
+const FocusSession = lazy(() => import('./pages/FocusSession'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Settings = lazy(() => import('./pages/Settings'));
+const TaskList = lazy(() => import('./components/tasks/TaskList'));
+const Statistics = lazy(() => import('./pages/Statistics'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+import ProtectedRoute from './components/ProtectedRoute';
+
+const App = () => {
   return (
-    <ErrorBoundary>
-      <ThemeProvider>
-        <UserProvider>
-          <TaskProvider>
-            <WalkthroughProvider>
-              <OnboardingProvider>
-                <Router>
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/auth" element={<Auth />} />
-                    <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-                    <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                    <Route path="/focus-session" element={<ProtectedRoute><FocusSession /></ProtectedRoute>} />
-                    <Route path="/break-timer" element={<ProtectedRoute><BreakTimer /></ProtectedRoute>} />
-                    <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-                    <Route path="/session-report/:id" element={<ProtectedRoute><SessionReport /></ProtectedRoute>} />
-                    <Route path="/session-reflection" element={<ProtectedRoute><SessionReflection /></ProtectedRoute>} />
-                    <Route path="/community" element={<ProtectedRoute><Community /></ProtectedRoute>} />
-                    <Route path="/study-room/:id" element={<ProtectedRoute><StudyRoom /></ProtectedRoute>} />
-                    <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
-                    <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-                    <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-                    <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
-                    <Route path="/bonuses" element={<ProtectedRoute><Bonuses /></ProtectedRoute>} />
-                    <Route path="/nora" element={<ProtectedRoute><Nora /></ProtectedRoute>} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                  <InstallPrompt />
-                </Router>
-              </OnboardingProvider>
-            </WalkthroughProvider>
-          </TaskProvider>
-        </UserProvider>
-      </ThemeProvider>
-    </ErrorBoundary>
+    <ThemeProvider>
+      <Router>
+        <InstallPrompt />
+        <Suspense fallback={<div>Loading...</div>}>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/focus-session" element={<ProtectedRoute><FocusSession /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/tasklist" element={<ProtectedRoute><TaskList /></ProtectedRoute>} />
+             <Route path="/statistics" element={<ProtectedRoute><Statistics /></ProtectedRoute>} />
+          </Routes>
+        </Suspense>
+      </Router>
+    </ThemeProvider>
   );
-}
+};
 
 export default App;
