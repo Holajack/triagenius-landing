@@ -393,12 +393,12 @@ const InstallPrompt = () => {
         >
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h3 className="font-semibold text-lg mb-1 text-white">Install Lux Aquinmata</h3>
+              <h3 className="font-semibold text-lg mb-1 text-white">Install The Triage System</h3>
               <p className="text-sm text-gray-300 mb-3">
                 {browserInfo.isIOS 
                   ? "Install our app on your iPhone for the best experience"
                   : browserInfo.isAndroid && browserInfo.name === "Chrome"
-                    ? "Add Lux Aquinmata to your home screen for fast access"
+                    ? "Add The Triage System to your home screen for fast access"
                     : browserInfo.isMobile
                       ? "Get our app on your home screen for quick access"
                       : "Install for a faster experience with offline access"}
