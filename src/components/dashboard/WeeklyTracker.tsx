@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -8,6 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/hooks/use-user";
 import { useTasks } from "@/contexts/TaskContext";
 import { PriorityLevel } from "@/types/tasks";
+
+// Define the COLORS array for chart visualizations
+const COLORS = ['#9b87f5', '#7E69AB', '#6E59A5', '#D6BCFA', '#E5DEFF'];
 
 interface WeeklyTrackerProps {
   chartType: string;
