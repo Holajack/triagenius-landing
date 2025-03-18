@@ -1,9 +1,10 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 // Types for leaderboard data
 export interface LeaderboardUser {
   rank: number;
-  id: string;
+  id: string | number;
   name: string;
   avatar: string;
   points: number;
@@ -109,7 +110,7 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
       
       return {
         rank: index + 1,
-        id: stat.id,
+        id: stat.user_id, // Using user_id as the id
         name: isCurrentUser ? "You" : username,
         avatar: avatarUrl,
         points: stat.points || 0,
@@ -124,7 +125,7 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
     if (!result.some(user => user.isCurrentUser)) {
       result.push({
         rank: result.length + 1,
-        id: currentUserStats.id,
+        id: user.id, // Using user.id as the id
         name: "You",
         avatar: "/placeholder.svg",
         points: currentUserStats.points || 0,
@@ -199,7 +200,16 @@ export const getGlobalLeaderboardData = async (isEmpty = false): Promise<Leaderb
     // If current user is not in top 10, include them and a few nearby users
     if (userRank >= 10) {
       // Add separator
-      displayStats.push({ isSeparator: true });
+      displayStats.push({ 
+        isSeparator: true,
+        rank: -1,
+        id: "separator", // Adding a string ID for the separator
+        name: "...",
+        avatar: "",
+        points: 0,
+        focusHours: 0,
+        streak: 0
+      });
       
       // Add user above current user (if there is one)
       if (userRank > 0) {
@@ -216,19 +226,19 @@ export const getGlobalLeaderboardData = async (isEmpty = false): Promise<Leaderb
     }
     
     // Format data for the leaderboard
-    return displayStats.map((stat, index) => {
+    return displayStats.map((stat) => {
       // Handle separator
       if (stat.isSeparator) {
         return {
           isSeparator: true,
           rank: -1,
+          id: "separator",
           name: "...",
           avatar: "",
           points: 0,
           focusHours: 0,
-          streak: 0,
-          isCurrentUser: false
-        };
+          streak: 0
+        } as LeaderboardUser;
       }
       
       const realRank = allStats.findIndex(s => s.id === stat.id) + 1;
@@ -247,7 +257,7 @@ export const getGlobalLeaderboardData = async (isEmpty = false): Promise<Leaderb
       
       return {
         rank: realRank,
-        id: stat.id,
+        id: stat.id || stat.user_id,
         name: isCurrentUser ? "You" : username,
         avatar: avatarUrl,
         points: stat.points || 0,
@@ -255,7 +265,7 @@ export const getGlobalLeaderboardData = async (isEmpty = false): Promise<Leaderb
         streak: stat.current_streak || 0,
         isCurrentUser,
         badge
-      };
+      } as LeaderboardUser;
     });
   } catch (error) {
     console.error('Error in getGlobalLeaderboardData:', error);

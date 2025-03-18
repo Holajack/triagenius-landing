@@ -167,6 +167,7 @@ const Community = () => {
         </TabsList>
         
         <TabsContent value="people" className="space-y-4">
+          {/* Pass searchQuery and selectedFilters as props */}
           <CommunityUserList searchQuery={searchQuery} filters={selectedFilters} />
         </TabsContent>
         
