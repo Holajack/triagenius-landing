@@ -417,7 +417,10 @@ const LearningQuiz = () => {
                 <h3 className="text-lg font-medium mb-2">Primary Learning Style</h3>
                 <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/10">
                   <div className="text-primary">
-                    <styleConfigs[getDominantStyle()].icon size={24} />
+                    {(() => {
+                      const DominantIcon = styleConfigs[getDominantStyle()].icon;
+                      return <DominantIcon size={24} />;
+                    })()}
                   </div>
                   <div>
                     <p className="font-medium">{getDominantStyle()} Learner</p>
