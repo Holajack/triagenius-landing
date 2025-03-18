@@ -45,74 +45,68 @@ export function ConfirmEndDialog({
     console.log("ConfirmEndDialog: handleConfirm called");
     console.log("ConfirmEndDialog: isPwa =", isPwa, "isMobile =", isMobile);
     
-    // For mobile PWA, navigate directly to Session Report
-    if (isPwa && isMobile) {
-      console.log("ConfirmEndDialog: Direct mobile PWA path triggered");
-      
-      // Close dialog immediately first to prevent UI blocking
-      onOpenChange(false);
-      
-      // Generate a session report ID
-      const reportId = `session_${Date.now()}`;
-      console.log("ConfirmEndDialog: Generated reportId =", reportId);
-      
-      // Save session data - minimal approach for mobile
-      try {
-        // Get current session data if available
-        const sessionDataStr = localStorage.getItem('sessionData');
-        if (sessionDataStr) {
-          console.log("ConfirmEndDialog: Found sessionData in localStorage");
-          const sessionData = JSON.parse(sessionDataStr);
-          
-          // Store it as a report with proper formatting
-          const reportData = {
-            ...sessionData,
-            savedAt: new Date().toISOString()
-          };
-          
-          localStorage.setItem(`sessionReport_${reportId}`, JSON.stringify(reportData));
-          
-          // Save notes separately for better compatibility
-          localStorage.setItem(`sessionNotes_${reportId}`, "");
-          
-          // Also save to Supabase if user is logged in
-          if (user?.id) {
-            try {
-              console.log("ConfirmEndDialog: Saving to Supabase for user", user.id);
-              await supabase.from('focus_sessions').insert({
-                id: reportId,
-                user_id: user.id,
-                milestone_count: sessionData.milestone || 0,
-                duration: sessionData.duration || 0,
-                created_at: sessionData.timestamp || new Date().toISOString(),
-                environment: sessionData.environment || 'default',
-                completed: sessionData.milestone >= 3
-              });
-              console.log("ConfirmEndDialog: Successfully saved to Supabase");
-            } catch (e) {
-              console.error('ConfirmEndDialog: Error saving session to database:', e);
-            }
+    // Close dialog immediately to prevent UI blocking
+    onOpenChange(false);
+    
+    // Generate a session report ID
+    const reportId = `session_${Date.now()}`;
+    console.log("ConfirmEndDialog: Generated reportId =", reportId);
+    
+    // Save session data - minimal approach
+    try {
+      // Get current session data if available
+      const sessionDataStr = localStorage.getItem('sessionData');
+      if (sessionDataStr) {
+        console.log("ConfirmEndDialog: Found sessionData in localStorage");
+        const sessionData = JSON.parse(sessionDataStr);
+        
+        // Store it as a report with proper formatting
+        const reportData = {
+          ...sessionData,
+          savedAt: new Date().toISOString()
+        };
+        
+        localStorage.setItem(`sessionReport_${reportId}`, JSON.stringify(reportData));
+        
+        // Save notes separately for better compatibility
+        localStorage.setItem(`sessionNotes_${reportId}`, "");
+        
+        // Also save to Supabase if user is logged in
+        if (user?.id) {
+          try {
+            console.log("ConfirmEndDialog: Saving to Supabase for user", user.id);
+            await supabase.from('focus_sessions').insert({
+              id: reportId,
+              user_id: user.id,
+              milestone_count: sessionData.milestone || 0,
+              duration: sessionData.duration || 0,
+              created_at: sessionData.timestamp || new Date().toISOString(),
+              environment: sessionData.environment || 'default',
+              completed: sessionData.milestone >= 3
+            });
+            console.log("ConfirmEndDialog: Successfully saved to Supabase");
+          } catch (e) {
+            console.error('ConfirmEndDialog: Error saving session to database:', e);
           }
         }
-        
-        // Clear session data since we're ending
-        localStorage.removeItem('sessionData');
-      } catch (e) {
-        console.error('ConfirmEndDialog: Error saving session data', e);
       }
       
-      // Navigate directly to the session report page
-      console.log("ConfirmEndDialog: Navigating to", `/session-report/${reportId}`);
-      // Use a timeout to ensure dialog is fully closed
-      setTimeout(() => {
-        console.log("ConfirmEndDialog: Executing navigation now");
-        navigate(`/session-report/${reportId}`, { replace: true });
-      }, 50);
-    } else {
-      // Standard behavior for non-PWA
-      console.log("ConfirmEndDialog: Standard non-PWA path triggered, calling onConfirm()");
-      onConfirm();
+      // Clear session data since we're ending
+      localStorage.removeItem('sessionData');
+    } catch (e) {
+      console.error('ConfirmEndDialog: Error saving session data', e);
     }
+    
+    // Navigate directly to the session report page
+    console.log("ConfirmEndDialog: Navigating to", `/session-report/${reportId}`);
+    
+    // Force immediate navigation
+    navigate(`/session-report/${reportId}`, { replace: true });
+    
+    // Call onConfirm after navigation
+    setTimeout(() => {
+      onConfirm();
+    }, 100);
   };
 
   // Optimized cancel handler
@@ -157,4 +151,3 @@ export function ConfirmEndDialog({
     </AlertDialog>
   );
 }
-

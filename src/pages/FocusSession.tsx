@@ -43,7 +43,6 @@ const FocusSession = () => {
     setShowEndConfirmation
   } = useFocusSession();
 
-  // Debug logging for component initialization and prop status
   useEffect(() => {
     console.log("FocusSession: Component mounted");
     console.log("FocusSession: Initial state:", { 
@@ -58,7 +57,7 @@ const FocusSession = () => {
     };
   }, []);
 
-  // Debug logging for dialog state changes
+  // Monitor end confirmation dialog state
   useEffect(() => {
     console.log("FocusSession: showEndConfirmation changed to", showEndConfirmation);
   }, [showEndConfirmation]);
@@ -108,6 +107,8 @@ const FocusSession = () => {
         }}
         onConfirm={() => {
           console.log("FocusSession: ConfirmEndDialog onConfirm called");
+          // The navigation is now handled directly in ConfirmEndDialog
+          // This just handles any cleanup needed
           handleEndSessionConfirm();
         }}
         onCancel={() => {
