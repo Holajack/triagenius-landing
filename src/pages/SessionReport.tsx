@@ -54,9 +54,7 @@ const SessionReport = () => {
       setLoadError(null);
       
       try {
-        // Check if we're viewing an existing report or a new one
         if (params.id) {
-          // First check localStorage for PWA users
           const reportKey = `sessionReport_${params.id}`;
           const localReportData = localStorage.getItem(reportKey);
           
@@ -71,94 +69,61 @@ const SessionReport = () => {
               setLoadError('Could not load session data. It may be corrupted.');
             }
           } else if (user?.id) {
-            // Try to fetch from database - improved error handling for UUID issues
-            try {
-              // First, check if the ID is a valid UUID
-              const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.id);
-              
-              if (isUuid) {
-                // If it's a valid UUID, fetch from Supabase
-                const { data: dbSession, error } = await supabase
-                  .from('focus_sessions')
-                  .select('*')
-                  .eq('id', params.id)
-                  .single();
-                  
-                if (error) {
-                  throw error;
-                } else if (dbSession) {
-                  // Extract notes from localStorage if available
-                  let sessionNotes = '';
-                  try {
-                    const notesKey = `sessionNotes_${params.id}`;
-                    const storedNotes = localStorage.getItem(notesKey);
-                    if (storedNotes) {
-                      sessionNotes = storedNotes;
-                    }
-                  } catch (e) {
-                    console.error('Error retrieving notes from localStorage:', e);
-                  }
-                  
-                  setSessionData({
-                    milestone: dbSession.milestone_count || 0,
-                    duration: dbSession.duration || 0,
-                    timestamp: dbSession.created_at,
-                    environment: dbSession.environment || 'default',
-                    notes: sessionNotes,
-                    completed: dbSession.completed
-                  });
-                  setSessionNotes(sessionNotes);
-                  setSessionId(params.id);
-                } else {
-                  throw new Error("Session not found");
-                }
-              } else {
-                // Not a UUID, try to find a matching key in localStorage
-                const matchingKey = Object.keys(localStorage).find(key => 
-                  key.startsWith('sessionReport_') && key.includes(params.id)
-                );
+            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.id);
+            
+            if (isUuid) {
+              const { data: dbSession, error } = await supabase
+                .from('focus_sessions')
+                .select('*')
+                .eq('id', params.id)
+                .single();
                 
-                if (matchingKey) {
-                  try {
-                    const matchingData = JSON.parse(localStorage.getItem(matchingKey) || '');
-                    setSessionData(matchingData);
-                    setSessionNotes(matchingData.notes || '');
-                    setSessionId(params.id);
-                  } catch (err) {
-                    throw new Error("Invalid session data format");
+              if (error) {
+                throw error;
+              } else if (dbSession) {
+                let sessionNotes = '';
+                try {
+                  const notesKey = `sessionNotes_${params.id}`;
+                  const storedNotes = localStorage.getItem(notesKey);
+                  if (storedNotes) {
+                    sessionNotes = storedNotes;
                   }
-                } else {
-                  throw new Error("Session not found");
+                } catch (e) {
+                  console.error('Error retrieving notes from localStorage:', e);
                 }
+                
+                setSessionData({
+                  milestone: dbSession.milestone_count || 0,
+                  duration: dbSession.duration || 0,
+                  timestamp: dbSession.created_at,
+                  environment: dbSession.environment || 'default',
+                  notes: sessionNotes,
+                  completed: dbSession.completed
+                });
+                setSessionNotes(sessionNotes);
+                setSessionId(params.id);
+              } else {
+                throw new Error("Session not found");
               }
-            } catch (e) {
-              console.error('Error fetching session from database:', e);
-              // Don't navigate away immediately, try checking localStorage first
-              // Check for any key that might contain part of the ID
-              const fuzzyMatchKey = Object.keys(localStorage).find(key => 
-                key.startsWith('sessionReport_') && (
-                  key.includes(params.id.substring(0, 8)) || 
-                  params.id.includes(key.split('_')[1]?.substring(0, 8) || '')
-                )
+            } else {
+              const matchingKey = Object.keys(localStorage).find(key => 
+                key.startsWith('sessionReport_') && key.includes(params.id)
               );
               
-              if (fuzzyMatchKey) {
+              if (matchingKey) {
                 try {
-                  const fuzzyData = JSON.parse(localStorage.getItem(fuzzyMatchKey) || '');
-                  setSessionData(fuzzyData);
-                  setSessionNotes(fuzzyData.notes || '');
+                  const matchingData = JSON.parse(localStorage.getItem(matchingKey) || '');
+                  setSessionData(matchingData);
+                  setSessionNotes(matchingData.notes || '');
                   setSessionId(params.id);
-                } catch (fallbackError) {
-                  setLoadError('Could not load session data');
-                  setTimeout(() => navigate('/dashboard', { replace: true }), 3000);
+                } catch (err) {
+                  throw new Error("Invalid session data format");
                 }
               } else {
-                setLoadError('Could not load session from database');
-                setTimeout(() => navigate('/dashboard', { replace: true }), 3000);
+                throw new Error("Session not found");
               }
             }
           } else {
-            // Try a more forgiving local storage search before giving up
             const fuzzyMatchKey = Object.keys(localStorage).find(key => 
               key.startsWith('sessionReport_') && (
                 key.includes(params.id.substring(0, 8)) || 
@@ -182,14 +147,12 @@ const SessionReport = () => {
             }
           }
         } else {
-          // Retrieve session data from localStorage for a new report
           const storedData = localStorage.getItem('sessionData');
           if (storedData) {
             try {
               const data = JSON.parse(storedData);
               setSessionData(data);
               
-              // Generate a proper UUID for this session
               let id;
               if (crypto.randomUUID) {
                 id = crypto.randomUUID();
@@ -202,13 +165,11 @@ const SessionReport = () => {
               setLoadError('Could not load session data');
             }
           } else {
-            // No session data, redirect to dashboard
             toast.error("No session data found");
             setTimeout(() => navigate('/dashboard', { replace: true }), 1000);
           }
         }
         
-        // Check for reflection data
         const reflectionData = localStorage.getItem("sessionReflection");
         if (reflectionData) {
           try {
@@ -228,50 +189,39 @@ const SessionReport = () => {
     loadSessionData();
   }, [params.id, navigate, user]);
 
-  // Calculate stats based on milestone reached and actual session duration
   const getFocusScore = () => {
-    if (!sessionData) return 0;
+    if (!sessionData) return null;
     
-    // Base calculation using milestone as a percentage of completion
     let baseScore = Math.min((sessionData.milestone / 3) * 100, 100);
     
-    // Add a small random variation for interest (1-5%)
     const variation = Math.floor(Math.random() * 5) + 1;
     
-    // If session was completed fully, ensure minimum score of 85
     if (sessionData.completed || sessionData.milestone >= 3) {
       baseScore = Math.max(baseScore, 85);
     }
     
-    // Cap the score at 100
     return Math.min(Math.floor(baseScore + variation), 100);
   };
   
   const getSessionTime = () => {
     if (!sessionData) return '00:00';
     
-    // Handle case where duration might be undefined or zero
     const duration = sessionData.duration || 0;
     
-    // Calculate hours and minutes from duration (in minutes)
     const hours = Math.floor(duration / 60);
     const minutes = duration % 60;
     
-    // Format as HH:MM
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
   
   const handleSaveNotes = async () => {
     if (sessionData) {
       if (params.id) {
-        // Update existing report
         const reportKey = `sessionReport_${params.id}`;
         const notesKey = `sessionNotes_${params.id}`;
         
-        // Save notes to localStorage
         localStorage.setItem(notesKey, sessionNotes);
         
-        // Update report data in localStorage if available
         const currentReportData = localStorage.getItem(reportKey);
         if (currentReportData) {
           try {
@@ -287,19 +237,14 @@ const SessionReport = () => {
           }
         }
         
-        // No need to update notes in database as it doesn't have a notes field
-        
         setIsEditing(false);
       } else {
-        // Save the session report to localStorage with a unique key
         const reportId = sessionId || `session_${Date.now()}`;
         const reportKey = `sessionReport_${reportId}`;
         const notesKey = `sessionNotes_${reportId}`;
         
-        // Save notes separately
         localStorage.setItem(notesKey, sessionNotes);
         
-        // Save session report data
         const reportData = {
           ...sessionData,
           notes: sessionNotes,
@@ -308,7 +253,6 @@ const SessionReport = () => {
         
         localStorage.setItem(reportKey, JSON.stringify(reportData));
         
-        // Save to database if user is logged in
         if (user?.id) {
           try {
             await supabase.from('focus_sessions').upsert({
@@ -325,24 +269,19 @@ const SessionReport = () => {
           }
         }
         
-        // Clear the session data from localStorage
         localStorage.removeItem('sessionData');
         
-        // Navigate to reports page after saving
         navigate('/reports', { replace: true });
       }
     } else {
-      // If no session data, just go back to dashboard
       navigate('/dashboard', { replace: true });
     }
   };
 
   const handleBackToDashboard = () => {
     if (params.id) {
-      // If viewing an existing report, go back to reports page
       navigate('/reports', { replace: true });
     } else {
-      // If this is a new report, go to dashboard
       navigate('/dashboard', { replace: true });
     }
   };
@@ -379,6 +318,8 @@ const SessionReport = () => {
     );
   }
 
+  const focusScore = getFocusScore();
+
   return (
     <div className={cn(
       "min-h-screen bg-background text-foreground flex flex-col items-center p-4",
@@ -411,10 +352,21 @@ const SessionReport = () => {
           <Card className="p-6 flex flex-col items-center">
             <Target className="h-8 w-8 mb-2 text-primary" />
             <h3 className="text-lg font-semibold">Focus Score</h3>
-            <p className="text-3xl font-mono">{getFocusScore()}%</p>
-            <div className="w-full mt-2">
-              <Progress value={getFocusScore()} className="h-2" />
-            </div>
+            {focusScore !== null ? (
+              <>
+                <p className="text-3xl font-mono">{focusScore}%</p>
+                <div className="w-full mt-2">
+                  <Progress value={focusScore} className="h-2" />
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-3xl font-mono text-muted-foreground">No Score Given</p>
+                <div className="w-full mt-2">
+                  <Progress value={0} className="h-2" />
+                </div>
+              </>
+            )}
           </Card>
         </div>
 
@@ -606,3 +558,4 @@ const SessionReport = () => {
 };
 
 export default SessionReport;
+
