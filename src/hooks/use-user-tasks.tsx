@@ -21,11 +21,18 @@ export function useUserTasks() {
       const { data, error } = await supabase
         .from('user_tasks')
         .select('*')
-        .order('due_date', { ascending: true, nullsLast: true });
+        .order('due_date', { ascending: true });
         
       if (error) throw error;
       
-      setTasks(data || []);
+      // Cast the data to ensure it conforms to our UserTask type
+      const typedTasks = data?.map(task => ({
+        ...task,
+        status: (task.status || 'pending') as UserTask['status'],
+        priority: (task.priority || 'medium') as UserTask['priority']
+      })) || [];
+      
+      setTasks(typedTasks);
     } catch (err: any) {
       console.error('Error fetching tasks:', err);
       setError(err);
@@ -55,9 +62,16 @@ export function useUserTasks() {
         
       if (error) throw error;
       
-      setTasks(prev => [data as UserTask, ...prev]);
+      // Ensure the returned data matches our UserTask type
+      const typedTask: UserTask = {
+        ...data,
+        status: (data.status || 'pending') as UserTask['status'],
+        priority: (data.priority || 'medium') as UserTask['priority']
+      };
+      
+      setTasks(prev => [typedTask, ...prev]);
       toast.success('Task added successfully');
-      return data as UserTask;
+      return typedTask;
     } catch (err: any) {
       console.error('Error adding task:', err);
       toast.error(err.message || 'Failed to add task');
