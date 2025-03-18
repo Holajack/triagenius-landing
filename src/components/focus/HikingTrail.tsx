@@ -63,21 +63,5 @@ export const HikingTrail = ({
         </div>
       </div>;
   };
-  return <div className="w-full h-full relative overflow-hidden rounded-lg border">
-      {/* Sky image background */}
-      <div className="absolute inset-0">
-        {skyImages.map((src, index) => {})}
-      </div>
-      
-      {/* Draw the milestone indicators */}
-      {renderMilestoneIndicators()}
-      
-      {/* Hiker position indicator */}
-      
-      
-      {/* Celebration indicator */}
-      {isCelebrating && <div className="absolute bottom-[20%] left-1/2 -translate-x-1/2 bg-white px-4 py-2 rounded-lg text-black font-bold">
-          {milestone === 0 ? "First milestone!" : milestone === 1 ? "Halfway there!" : milestone === 2 ? "Almost done!" : "Summit reached!"}
-        </div>}
-    </div>;
+  return;
 };
