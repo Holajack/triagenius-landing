@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, MoreVertical, Phone, Video } from "lucide-react";
@@ -71,7 +70,7 @@ const Chat = () => {
         const online = new Set<string>();
         
         Object.values(state).forEach(presence => {
-          const presences = presence as Array<{user_id: string}>;
+          const presences = presence as Array<{[key: string]: any}>;
           presences.forEach(p => {
             if (p.user_id) online.add(p.user_id);
           });

@@ -31,8 +31,9 @@ export function useRoomMessages(roomId: string) {
     const fetchMessages = async () => {
       try {
         setLoading(true);
+        // Use the 'messages' table instead of 'room_messages'
         const { data, error } = await supabase
-          .from('room_messages')
+          .from('messages')
           .select(`
             *,
             sender:sender_id(id, username, avatar_url)
@@ -42,7 +43,8 @@ export function useRoomMessages(roomId: string) {
 
         if (error) throw error;
 
-        setMessages(data || []);
+        // Cast the data to RoomMessage[] to ensure TypeScript compatibility
+        setMessages(data as RoomMessage[] || []);
       } catch (err) {
         console.error('Error fetching room messages:', err);
         setError(err instanceof Error ? err : new Error('Failed to fetch room messages'));
@@ -61,7 +63,7 @@ export function useRoomMessages(roomId: string) {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'room_messages',
+          table: 'messages',
           filter: `room_id=eq.${roomId}`,
         },
         async (payload) => {
@@ -97,8 +99,9 @@ export function useRoomMessages(roomId: string) {
     }
 
     try {
+      // Use the 'messages' table instead of 'room_messages'
       const { data, error } = await supabase
-        .from('room_messages')
+        .from('messages')
         .insert({
           room_id: roomId,
           sender_id: user.id,

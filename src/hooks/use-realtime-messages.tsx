@@ -33,8 +33,9 @@ export function useRealtimeMessages() {
     const fetchMessages = async () => {
       try {
         setLoading(true);
+        // Use the 'messages' table instead of 'chat_messages' since that's what we have in the DB schema
         const { data, error } = await supabase
-          .from('chat_messages')
+          .from('messages')
           .select(`
             *,
             sender:sender_id(id, username, avatar_url)
@@ -44,7 +45,8 @@ export function useRealtimeMessages() {
 
         if (error) throw error;
 
-        setMessages(data || []);
+        // Cast the data to Message[] to ensure TypeScript compatibility
+        setMessages(data as Message[] || []);
       } catch (err) {
         console.error('Error fetching messages:', err);
         setError(err instanceof Error ? err : new Error('Failed to fetch messages'));
@@ -67,7 +69,7 @@ export function useRealtimeMessages() {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'chat_messages',
+          table: 'messages',
           filter: `recipient_id=eq.${user.id}`,
         },
         async (payload) => {
@@ -116,8 +118,9 @@ export function useRealtimeMessages() {
     }
 
     try {
+      // Use the 'messages' table instead of 'chat_messages'
       const { data, error } = await supabase
-        .from('chat_messages')
+        .from('messages')
         .insert({
           sender_id: user.id,
           recipient_id: recipientId,
@@ -136,7 +139,7 @@ export function useRealtimeMessages() {
           username: user.username || '',
           avatar_url: user.avatarUrl,
         },
-      };
+      } as Message;
 
       setMessages((prev) => [newMessage, ...prev]);
       return data;
@@ -151,7 +154,7 @@ export function useRealtimeMessages() {
   const markAsRead = async (messageId: string) => {
     try {
       const { error } = await supabase
-        .from('chat_messages')
+        .from('messages')
         .update({ is_read: true })
         .eq('id', messageId)
         .eq('recipient_id', user?.id);

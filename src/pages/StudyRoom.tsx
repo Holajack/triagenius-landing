@@ -22,6 +22,14 @@ import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
 import { requestMediaPermissions } from "@/components/pwa/ServiceWorker";
 
+interface StudyRoomMessage {
+  id: string;
+  sender: string;
+  content: string;
+  timestamp: string;
+  avatar: string;
+}
+
 const StudyRoom = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -37,9 +45,22 @@ const StudyRoom = () => {
   const [loading, setLoading] = useState(true);
   const [participants, setParticipants] = useState<any[]>([]);
   const [resources, setResources] = useState<any[]>([]);
+  const [formattedMessages, setFormattedMessages] = useState<StudyRoomMessage[]>([]);
   
   // Get room messages if ID exists
   const { messages: roomMessages, sendMessage: sendRoomMessage } = useRoomMessages(id || "");
+
+  // Format room messages for the chat component
+  useEffect(() => {
+    const formatted = roomMessages.map(msg => ({
+      id: msg.id,
+      sender: msg.sender?.username || 'Unknown',
+      content: msg.content,
+      timestamp: new Date(msg.created_at).toLocaleTimeString(),
+      avatar: msg.sender?.avatar_url || '/placeholder.svg'
+    }));
+    setFormattedMessages(formatted);
+  }, [roomMessages]);
 
   useEffect(() => {
     const loadRoomData = async () => {
@@ -86,11 +107,18 @@ const StudyRoom = () => {
           await joinRoom(id);
         }
         
-        setRoom({
+        // Add missing properties from SQL schema to make it compatible with StudyRoom interface
+        const enrichedRoomData = {
           ...roomData,
-          activeSession: false // We'll set this with room state
-        });
+          activeSession: false, // We'll set this with room state
+          topic: roomData.description || 'General Study', // Use description as topic if not provided
+          is_active: true,
+          schedule: null,
+          duration: null,
+          subjects: [],
+        };
         
+        setRoom(enrichedRoomData);
         setParticipants(mappedParticipants);
         
         // These would come from database in a real implementation
@@ -122,7 +150,8 @@ const StudyRoom = () => {
         const online = new Set<string>();
         
         Object.values(state).forEach(presence => {
-          const presences = presence as Array<{user_id: string}>;
+          // Fix: Properly type and handle presence data
+          const presences = presence as Array<{[key: string]: any}>;
           presences.forEach(p => {
             if (p.user_id) online.add(p.user_id);
           });
@@ -346,13 +375,7 @@ const StudyRoom = () => {
           
           <TabsContent value="chat">
             <StudyRoomChat 
-              messages={roomMessages.map(msg => ({
-                id: msg.id,
-                sender: msg.sender?.username || 'Unknown',
-                content: msg.content,
-                timestamp: new Date(msg.created_at).toLocaleTimeString(),
-                avatar: msg.sender?.avatar_url || '/placeholder.svg'
-              }))} 
+              messages={formattedMessages}
               onSendMessage={handleSendMessage}
               message={message}
               setMessage={setMessage}

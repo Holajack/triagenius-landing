@@ -4,17 +4,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUser } from './use-user';
 import { toast } from 'sonner';
 
+// Update the StudyRoom interface to match the actual data structure from Supabase
 interface StudyRoom {
   id: string;
   name: string;
   description: string | null;
-  topic: string;
+  topic: string;  // This is derived from description if needed
   creator_id: string;
   is_active: boolean;
+  is_private: boolean | null;
   schedule: string | null;
   duration: string | null;
   subjects: string[];
   max_participants: number;
+  current_participants: number | null;
+  room_code: string | null;
   created_at: string;
   updated_at: string;
   creator?: {
@@ -76,12 +80,21 @@ export function useStudyRooms() {
 
         if (error) throw error;
 
-        const roomsWithCounts = data?.map(room => ({
-          ...room,
-          participant_count: room.participants?.length || 0
-        })) || [];
+        // Process the data to match our StudyRoom interface
+        const processedRooms = data?.map(room => {
+          // Map the fields from the database to our interface
+          return {
+            ...room,
+            // Use description as topic if we don't have a dedicated topic field
+            topic: room.description || 'General Study',
+            // Default for fields that might be missing in the database
+            is_active: true,
+            subjects: [],
+            participant_count: room.participants?.length || 0
+          } as StudyRoom;
+        }) || [];
 
-        setRooms(roomsWithCounts);
+        setRooms(processedRooms);
       } catch (err) {
         console.error('Error fetching study rooms:', err);
         setError(err instanceof Error ? err : new Error('Failed to fetch study rooms'));
@@ -156,12 +169,9 @@ export function useStudyRooms() {
         .insert({
           name: data.name,
           description: data.description || null,
-          topic: data.topic,
           creator_id: user.id,
-          schedule: data.schedule || null,
-          duration: data.duration || null,
-          subjects: data.subjects,
           max_participants: data.max_participants || 10,
+          // Set any other fields that are in the database schema
         })
         .select()
         .single();

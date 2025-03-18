@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -96,7 +95,7 @@ export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityU
         const online = new Set<string>();
         
         Object.values(state).forEach(presence => {
-          const presences = presence as Array<{user_id: string}>;
+          const presences = presence as Array<{[key: string]: any}>;
           presences.forEach(p => {
             if (p.user_id) online.add(p.user_id);
           });

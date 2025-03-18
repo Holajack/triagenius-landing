@@ -1,5 +1,5 @@
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -14,9 +14,18 @@ interface MessageInboxProps {
   onMessageClick?: (messageId: string) => void;
 }
 
+interface ConversationWithUser {
+  userId: string;
+  lastMessage: any;
+  username: string;
+  avatarUrl: string | null;
+}
+
 export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxProps) => {
   const { getConversations, loading } = useRealtimeMessages();
   const { user } = useUser();
+  const [conversationsWithUsers, setConversationsWithUsers] = useState<ConversationWithUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
   
   // Request notification permission on component mount
   useEffect(() => {
@@ -34,21 +43,60 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
     requestNotificationPermission();
   }, []);
   
-  const conversations = getConversations();
+  // Load user details for conversations
+  useEffect(() => {
+    const loadConversationUsers = async () => {
+      const conversations = getConversations();
+      if (conversations.length === 0) {
+        setLoadingUsers(false);
+        return;
+      }
+      
+      try {
+        setLoadingUsers(true);
+        const conversationsWithUserDetails: ConversationWithUser[] = [];
+        
+        for (const convo of conversations) {
+          // Get user profile
+          const { data: otherUser } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', convo.userId)
+            .single();
+          
+          if (otherUser) {
+            conversationsWithUserDetails.push({
+              userId: convo.userId,
+              lastMessage: convo.lastMessage,
+              username: otherUser.username || `User-${convo.userId.substring(0, 4)}`,
+              avatarUrl: otherUser.avatar_url
+            });
+          }
+        }
+        
+        setConversationsWithUsers(conversationsWithUserDetails);
+      } catch (error) {
+        console.error('Error loading conversation users:', error);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+    
+    loadConversationUsers();
+  }, [getConversations]);
   
   // Filter conversations based on search query
-  const filteredConversations = conversations.filter(convo => {
+  const filteredConversations = conversationsWithUsers.filter(convo => {
     if (!searchQuery) return true;
     
-    // We need to fetch user details for each conversation
-    const otherUserId = convo.userId;
-    // Can check message content
+    const username = convo.username.toLowerCase();
     const messageContent = convo.lastMessage.content.toLowerCase();
     
-    return messageContent.includes(searchQuery.toLowerCase());
+    return username.includes(searchQuery.toLowerCase()) || 
+           messageContent.includes(searchQuery.toLowerCase());
   });
   
-  if (loading) {
+  if (loading || loadingUsers) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
@@ -59,14 +107,7 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
   
   return (
     <div className="space-y-4">
-      {filteredConversations.map(async (conversation) => {
-        // Get user profile
-        const { data: otherUser } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', conversation.userId)
-          .single();
-        
+      {filteredConversations.map((conversation) => {
         const { lastMessage } = conversation;
         const isUnread = lastMessage.recipient_id === user?.id && !lastMessage.is_read;
         const messageTime = formatDistanceToNow(new Date(lastMessage.created_at), { addSuffix: true });
@@ -80,8 +121,8 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
             <div className="flex items-center gap-4">
               <div className="relative">
                 <Avatar>
-                  <AvatarImage src={otherUser?.avatar_url || ""} alt={otherUser?.username || "User"} />
-                  <AvatarFallback>{otherUser?.username?.[0] || "U"}</AvatarFallback>
+                  <AvatarImage src={conversation.avatarUrl || ""} alt={conversation.username || "User"} />
+                  <AvatarFallback>{conversation.username?.[0] || "U"}</AvatarFallback>
                 </Avatar>
               </div>
               
@@ -89,7 +130,7 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <h3 className={`font-medium ${isUnread ? 'font-semibold' : ''}`}>
-                      {otherUser?.username || `User-${conversation.userId.substring(0, 4)}`}
+                      {conversation.username}
                     </h3>
                   </div>
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
