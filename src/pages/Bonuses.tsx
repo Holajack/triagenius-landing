@@ -1,155 +1,137 @@
-
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Brain, Book, PencilLine, Headphones, Eye, Hand, Lightbulb, BadgePercent } from "lucide-react";
-import NavigationBar from "@/components/dashboard/NavigationBar";
-import LearningStyleQuiz from "@/components/bonuses/LearningStyleQuiz";
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Brain, Zap, BookOpen } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import PageHeader from '@/components/common/PageHeader';
+import NavigationBar from '@/components/dashboard/NavigationBar';
+import LearningStyleQuiz from '@/components/bonuses/LearningStyleQuiz';
+import TerrainVisualization from '@/components/reports/terrain/TerrainVisualization';
+import BonusesWalkthrough from '@/components/walkthrough/BonusesWalkthrough';
 
 const Bonuses = () => {
-  const [activeTab, setActiveTab] = useState("quiz");
-  
+  const navigate = useNavigate();
+  const [showBrainMapping, setShowBrainMapping] = useState(false);
+
+  const handleShowBrainMapping = () => {
+    setShowBrainMapping(true);
+  };
+
+  const handleCloseBrainMapping = () => {
+    setShowBrainMapping(false);
+  };
+
   return (
-    <div className="container mx-auto px-4 py-6 pb-20">
-      <h1 className="text-3xl font-bold mb-6 mt-2">Learning Bonuses</h1>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <PageHeader
+        title="Bonus Features"
+        subtitle="Explore additional tools and resources"
+        data-walkthrough="bonuses-header"
+      />
       
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
-          <TabsTrigger value="quiz" className="flex items-center gap-2">
-            <BadgePercent className="w-4 h-4" />
-            <span>How You Learn Quiz</span>
-          </TabsTrigger>
-          <TabsTrigger value="brain" className="flex items-center gap-2">
-            <Brain className="w-4 h-4" />
-            <span>Brain Mapping</span>
-          </TabsTrigger>
-        </TabsList>
-        
-        {/* How You Learn Quiz */}
-        <TabsContent value="quiz">
-          <Card>
-            <CardHeader>
-              <CardTitle>Discover Your Learning Style</CardTitle>
-              <CardDescription>
-                Complete this AI-powered assessment to identify your optimal learning methods
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
-                {/* Learning Style Cards */}
-                <LearningStyleCard 
-                  title="Auditory" 
-                  description="Learn by listening and speaking" 
-                  icon={<Headphones className="h-6 w-6" />} 
-                  color="bg-blue-100 dark:bg-blue-900"
-                />
-                
-                <LearningStyleCard 
-                  title="Visual" 
-                  description="Learn through images and spatial understanding" 
-                  icon={<Eye className="h-6 w-6" />} 
-                  color="bg-green-100 dark:bg-green-900"
-                />
-                
-                <LearningStyleCard 
-                  title="Physical" 
-                  description="Learn by doing and interacting" 
-                  icon={<Hand className="h-6 w-6" />} 
-                  color="bg-amber-100 dark:bg-amber-900"
-                />
-                
-                <LearningStyleCard 
-                  title="Logical" 
-                  description="Learn through reasoning and systems" 
-                  icon={<Lightbulb className="h-6 w-6" />} 
-                  color="bg-purple-100 dark:bg-purple-900"
-                />
-                
-                <LearningStyleCard 
-                  title="Vocal" 
-                  description="Learn by speaking and explaining concepts" 
-                  icon={<PencilLine className="h-6 w-6" />} 
-                  color="bg-rose-100 dark:bg-rose-900"
-                />
+      {/* Main content */}
+      <div className="container mx-auto px-4 py-8 pb-24">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Learning Style Quiz Card */}
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
+            data-walkthrough="learning-quiz"
+          >
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center mr-3">
+                  <Brain className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Learning Style Quiz</h3>
               </div>
               
-              {/* Quiz Component */}
-              <LearningStyleQuiz />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        {/* Brain Mapping */}
-        <TabsContent value="brain">
-          <Card>
-            <CardHeader>
-              <CardTitle>Brain Mapping for Study Subjects</CardTitle>
-              <CardDescription>
-                Explore how different subjects engage various regions of your brain
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-6">
-                <div className="h-[400px] rounded-lg overflow-hidden border bg-background flex items-center justify-center">
-                  <div className="text-center p-6">
-                    <Brain className="h-16 w-16 text-primary mx-auto mb-4" />
-                    <h3 className="font-medium text-xl mb-2">Brain Region Mapping</h3>
-                    <p className="text-muted-foreground">Visualize how different subjects affect brain activity</p>
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-lg font-medium mb-4">
-                    Brain Learning Regions
-                  </h3>
-                  
-                  <div className="space-y-4">
-                    <p className="text-muted-foreground">
-                      Each region of the brain specializes in processing different types of information.
-                      Understanding these specializations can help you optimize your learning approach.
-                    </p>
-                    
-                    <h4 className="font-medium mt-4">Key Brain Regions for Learning:</h4>
-                    <ul className="list-disc pl-5 space-y-1">
-                      <li>Frontal Lobe: Planning & Decision-Making</li>
-                      <li>Temporal Lobe: Memory Formation</li>
-                      <li>Limbic System: Emotional Learning</li>
-                      <li>Cerebellum: Skill Mastery</li>
-                      <li>Parietal Lobe: Problem Solving</li>
-                    </ul>
-                  </div>
-                </div>
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
+                Discover your personal learning style and get study recommendations tailored to your cognitive preferences.
+              </p>
+              
+              <div className="mt-auto">
+                <Button
+                  onClick={() => navigate('/learning-quiz')}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                >
+                  Take Quiz
+                </Button>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </div>
+          </div>
+          
+          {/* Brain Mapping Visualization Card */}
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
+            data-walkthrough="brain-mapping"
+          >
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center mr-3">
+                  <Zap className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Neural Pathway Mapping</h3>
+              </div>
+              
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
+                Visualize how your learning and focus techniques are strengthening connections in your brain.
+              </p>
+              
+              <div className="mt-auto">
+                <Button
+                  onClick={handleShowBrainMapping}
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  View Brain Map
+                </Button>
+              </div>
+            </div>
+          </div>
+          
+          {/* Study Technique Guides Card */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="w-10 h-10 rounded-full bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center mr-3">
+                  <BookOpen className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Study Technique Guides</h3>
+              </div>
+              
+              <p className="text-gray-600 dark:text-gray-300 mb-4">
+                Explore a variety of effective study techniques to optimize your learning sessions.
+              </p>
+              
+              <div className="mt-auto">
+                <Button
+                  onClick={() => alert('Coming Soon!')}
+                  className="bg-teal-600 hover:bg-teal-700 text-white"
+                >
+                  Explore Guides
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Brain Mapping Dialog */}
+        <Dialog open={showBrainMapping} onOpenChange={setShowBrainMapping}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+            <TerrainVisualization />
+            <Button onClick={handleCloseBrainMapping} className="mt-4">Close</Button>
+          </DialogContent>
+        </Dialog>
+      </div>
       
-      <NavigationBar />
+      {/* Add navigation bar with data-walkthrough attribute */}
+      <div data-walkthrough="navigation-bar">
+        <NavigationBar />
+      </div>
+      
+      {/* Add the bonuses walkthrough component */}
+      <BonusesWalkthrough />
     </div>
   );
 };
-
-// Learning Style Card Component
-const LearningStyleCard = ({ 
-  title, 
-  description, 
-  icon, 
-  color 
-}: { 
-  title: string; 
-  description: string; 
-  icon: React.ReactNode; 
-  color: string;
-}) => (
-  <div className={`rounded-lg p-4 flex flex-col items-center text-center ${color}`}>
-    <div className="rounded-full bg-background p-3 mb-3">
-      {icon}
-    </div>
-    <h3 className="font-medium">{title}</h3>
-    <p className="text-sm text-muted-foreground">{description}</p>
-  </div>
-);
 
 export default Bonuses;

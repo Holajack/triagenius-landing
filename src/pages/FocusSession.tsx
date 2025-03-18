@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -9,6 +8,7 @@ import { MotivationalDialog } from "@/components/focus/MotivationalDialog";
 import { ConfirmEndDialog } from "@/components/focus/ConfirmEndDialog";
 import FocusSessionHeader from "@/components/focus/FocusSessionHeader";
 import FocusSessionContent from "@/components/focus/FocusSessionContent";
+import FocusSessionWalkthrough from '@/components/walkthrough/FocusSessionWalkthrough';
 import { toast } from "sonner";
 
 const FocusSession = () => {
@@ -19,7 +19,6 @@ const FocusSession = () => {
   const operationTimeoutRef = useRef<number | null>(null);
   const isMountedRef = useRef(true);
   
-  // Set mounted flag and clean up animations when component unmounts
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     isMountedRef.current = true;
@@ -28,14 +27,12 @@ const FocusSession = () => {
       isMountedRef.current = false;
       document.body.style.overflow = 'auto';
       
-      // Cancel any pending timeouts
       if (operationTimeoutRef.current) {
         window.clearTimeout(operationTimeoutRef.current);
       }
       
-      // Cancel any pending animations
       if (window.cancelAnimationFrame) {
-        const maxId = 100; // Safety limit
+        const maxId = 100;
         const currentId = window.requestAnimationFrame(() => {});
         for (let i = currentId; i > currentId - maxId; i--) {
           window.cancelAnimationFrame(i);
@@ -45,7 +42,6 @@ const FocusSession = () => {
   }, []);
   
   const {
-    // State
     isPaused,
     showMotivation,
     currentMilestone,
@@ -54,10 +50,8 @@ const FocusSession = () => {
     segmentProgress,
     showEndConfirmation,
     
-    // Refs
     timerRef,
     
-    // Handlers
     handlePause,
     handleResume,
     handleSessionEnd,
@@ -67,7 +61,6 @@ const FocusSession = () => {
     handleProgressUpdate,
     toggleLowPowerMode,
     
-    // Setters
     setShowMotivation,
     setShowEndConfirmation
   } = useFocusSession();
@@ -77,12 +70,10 @@ const FocusSession = () => {
     
     operationInProgressRef.current = true;
     
-    // Clear any existing timeout
     if (operationTimeoutRef.current) {
       window.clearTimeout(operationTimeoutRef.current);
     }
     
-    // Small delay to prevent UI freezing
     operationTimeoutRef.current = window.setTimeout(() => {
       if (isMountedRef.current) {
         toggleLowPowerMode();
@@ -91,7 +82,6 @@ const FocusSession = () => {
         });
       }
       
-      // Release the lock after a short delay
       operationTimeoutRef.current = window.setTimeout(() => {
         operationInProgressRef.current = false;
         operationTimeoutRef.current = null;
@@ -104,12 +94,10 @@ const FocusSession = () => {
     
     operationInProgressRef.current = true;
     
-    // Clear any existing timeout
     if (operationTimeoutRef.current) {
       window.clearTimeout(operationTimeoutRef.current);
     }
     
-    // Small delay to prevent UI freezing
     operationTimeoutRef.current = window.setTimeout(() => {
       if (isMountedRef.current) {
         setShowEndConfirmation(true);

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { StudyEnvironment } from "@/types/onboarding";
 interface HikingTrailProps {
@@ -63,5 +64,16 @@ export const HikingTrail = ({
         </div>
       </div>;
   };
-  return;
+  
+  // Return JSX to fix the component
+  return (
+    <div className="relative w-full h-full">
+      <img 
+        src={skyImages[currentImageIndex]} 
+        alt="Hiking trail environment" 
+        className="w-full h-full object-cover"
+      />
+      {renderMilestoneIndicators()}
+    </div>
+  );
 };

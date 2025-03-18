@@ -16,6 +16,7 @@ type WalkthroughState = {
   steps: WalkthroughStep[];
   currentStepIndex: number;
   hasCompletedTutorial: boolean;
+  visitedPages: Record<string, boolean>;
 };
 
 // Action types
@@ -25,7 +26,8 @@ type WalkthroughAction =
   | { type: 'PREVIOUS_STEP' }
   | { type: 'END_WALKTHROUGH' }
   | { type: 'SKIP_WALKTHROUGH' }
-  | { type: 'SET_COMPLETED' };
+  | { type: 'SET_COMPLETED' }
+  | { type: 'MARK_PAGE_VISITED'; payload: string };
 
 // Initial state
 const initialState: WalkthroughState = {
@@ -33,6 +35,7 @@ const initialState: WalkthroughState = {
   steps: [],
   currentStepIndex: 0,
   hasCompletedTutorial: false,
+  visitedPages: {},
 };
 
 // Reducer function
@@ -81,6 +84,14 @@ function walkthroughReducer(state: WalkthroughState, action: WalkthroughAction):
         ...state,
         hasCompletedTutorial: true,
       };
+    case 'MARK_PAGE_VISITED':
+      return {
+        ...state,
+        visitedPages: {
+          ...state.visitedPages,
+          [action.payload]: true
+        }
+      };
     default:
       return state;
   }
@@ -90,6 +101,9 @@ function walkthroughReducer(state: WalkthroughState, action: WalkthroughAction):
 type WalkthroughContextType = {
   state: WalkthroughState;
   dispatch: React.Dispatch<WalkthroughAction>;
+  hasVisitedPage: (pageName: string) => boolean;
+  markPageVisited: (pageName: string) => void;
+  startWalkthrough: (steps: WalkthroughStep[]) => void;
 };
 
 // Create context
@@ -99,12 +113,21 @@ const WalkthroughContext = createContext<WalkthroughContextType | undefined>(und
 export const WalkthroughProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(walkthroughReducer, initialState);
 
-  // Load completed status from localStorage
+  // Load completed status and visited pages from localStorage
   React.useEffect(() => {
     try {
       const hasCompleted = localStorage.getItem('hasCompletedTutorial');
       if (hasCompleted === 'true') {
         dispatch({ type: 'SET_COMPLETED' });
+      }
+      
+      // Load visited pages
+      const visitedPagesString = localStorage.getItem('visitedPages');
+      if (visitedPagesString) {
+        const visitedPages = JSON.parse(visitedPagesString);
+        Object.keys(visitedPages).forEach(page => {
+          dispatch({ type: 'MARK_PAGE_VISITED', payload: page });
+        });
       }
     } catch (error) {
       console.error('Error accessing localStorage:', error);
@@ -117,13 +140,35 @@ export const WalkthroughProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (state.hasCompletedTutorial) {
         localStorage.setItem('hasCompletedTutorial', 'true');
       }
+      
+      // Save visited pages
+      localStorage.setItem('visitedPages', JSON.stringify(state.visitedPages));
     } catch (error) {
       console.error('Error saving to localStorage:', error);
     }
-  }, [state.hasCompletedTutorial]);
+  }, [state.hasCompletedTutorial, state.visitedPages]);
+
+  // Helper functions to check and mark pages as visited
+  const hasVisitedPage = (pageName: string): boolean => {
+    return !!state.visitedPages[pageName];
+  };
+
+  const markPageVisited = (pageName: string) => {
+    dispatch({ type: 'MARK_PAGE_VISITED', payload: pageName });
+  };
+  
+  const startWalkthrough = (steps: WalkthroughStep[]) => {
+    dispatch({ type: 'START_WALKTHROUGH', payload: steps });
+  };
 
   return (
-    <WalkthroughContext.Provider value={{ state, dispatch }}>
+    <WalkthroughContext.Provider value={{ 
+      state, 
+      dispatch, 
+      hasVisitedPage, 
+      markPageVisited,
+      startWalkthrough 
+    }}>
       {children}
     </WalkthroughContext.Provider>
   );

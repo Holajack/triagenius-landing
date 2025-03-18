@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -28,6 +27,7 @@ import RecommendationsCard from "@/components/reports/RecommendationsCard";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import TerrainMapping from "@/components/reports/terrain/TerrainMapping";
 import SessionReportsList from "@/components/reports/SessionReportsList";
+import ReportsWalkthrough from '@/components/walkthrough/ReportsWalkthrough';
 
 const Reports = () => {
   const { state } = useOnboarding();
