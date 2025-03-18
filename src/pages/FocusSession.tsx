@@ -33,7 +33,6 @@ const FocusSession = () => {
     handlePause,
     handleResume,
     handleSessionEnd,
-    handleEndSessionConfirm,
     handleMilestoneReached,
     handleProgressUpdate,
     toggleLowPowerMode,
@@ -104,15 +103,6 @@ const FocusSession = () => {
         onOpenChange={(open) => {
           console.log("FocusSession: ConfirmEndDialog onOpenChange called with", open);
           setShowEndConfirmation(open);
-        }}
-        onConfirm={() => {
-          console.log("FocusSession: ConfirmEndDialog onConfirm called");
-          // Navigation is now handled directly in ConfirmEndDialog
-          handleEndSessionConfirm();
-        }}
-        onCancel={() => {
-          console.log("FocusSession: ConfirmEndDialog onCancel called");
-          setShowEndConfirmation(false);
         }}
       />
     </div>

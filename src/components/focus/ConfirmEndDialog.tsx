@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AlertDialog,
@@ -19,41 +19,36 @@ import { toast } from "sonner";
 interface ConfirmEndDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: () => void;
-  onCancel: () => void;
 }
 
 export function ConfirmEndDialog({
   open,
   onOpenChange,
-  onConfirm,
-  onCancel,
 }: ConfirmEndDialogProps) {
   const navigate = useNavigate();
   const { user } = useUser();
-  const navigationAttemptedRef = React.useRef(false);
+  const navigationAttemptedRef = useRef(false);
   
-  // Enhanced PWA detection covering more scenarios
+  // Enhanced PWA detection
   const isPwa = React.useMemo(() => {
     try {
-      // More comprehensive PWA detection
-      return localStorage.getItem('isPWA') === 'true' || 
-             window.matchMedia('(display-mode: standalone)').matches ||
-             (window.navigator as any).standalone === true;
+      return (
+        localStorage.getItem('isPWA') === 'true' || 
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true
+      );
     } catch (e) {
       console.error("ConfirmEndDialog: PWA detection error:", e);
       return false;
     }
   }, []);
   
-  // Enhanced mobile detection including tablets
+  // Enhanced mobile detection
   const isMobile = React.useMemo(() => {
     return /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   }, []);
 
-  // Direct action handler with improved offline support
   const handleConfirm = async (e: React.MouseEvent) => {
-    // Prevent default behavior
     e.preventDefault();
     
     // Prevent multiple navigation attempts
@@ -69,34 +64,33 @@ export function ConfirmEndDialog({
     // Close dialog immediately for better UX
     onOpenChange(false);
     
-    // Generate a session report ID with timestamp and random component for uniqueness
-    // Format: session_timestamp_random - this helps with indexedDB storage and offline sync
+    // Generate a session report ID 
     const reportId = `session_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     console.log("ConfirmEndDialog: Generated reportId =", reportId);
     
-    // Save session data - enhanced for offline usage
     try {
-      // Get current session data if available
+      // Get current session data
       const sessionDataStr = localStorage.getItem('sessionData');
       if (sessionDataStr) {
         console.log("ConfirmEndDialog: Found sessionData in localStorage");
         const sessionData = JSON.parse(sessionDataStr);
         
-        // Prepare report data with metadata for better offline handling
+        // Prepare report data
         const reportData = {
           ...sessionData,
           savedAt: new Date().toISOString(),
-          deviceId: localStorage.getItem('deviceId') || 'unknown', // Track device for better offline sync
-          offlineGenerated: !navigator.onLine, // Flag if generated while offline
+          deviceId: localStorage.getItem('deviceId') || 'unknown',
+          offlineGenerated: !navigator.onLine,
           pwaMode: isPwa,
           completed: false // It was ended early
         };
         
-        // Store in localStorage with robust error handling
+        // Store in localStorage
         try {
           localStorage.setItem(`sessionReport_${reportId}`, JSON.stringify(reportData));
+          localStorage.setItem(`sessionNotes_${reportId}`, "");
           
-          // Add to sync queue if offline for later synchronization
+          // Add to sync queue if offline 
           if (!navigator.onLine && isPwa) {
             const syncQueue = JSON.parse(localStorage.getItem('syncQueue') || '[]');
             syncQueue.push({
@@ -109,40 +103,52 @@ export function ConfirmEndDialog({
           }
         } catch (storageError) {
           console.error('ConfirmEndDialog: Storage error:', storageError);
-          // Fall back to session storage if localStorage is full
-          sessionStorage.setItem(`sessionReport_${reportId}`, JSON.stringify(reportData));
           toast.error("Storage limit reached. Some data may not be saved when offline.");
         }
         
-        // Save notes separately (empty for now)
-        try {
-          localStorage.setItem(`sessionNotes_${reportId}`, "");
-        } catch (e) {
-          console.error('ConfirmEndDialog: Error saving notes:', e);
-        }
-        
-        // Try to save to Supabase if online and user is logged in
+        // Save to Supabase if online and user is logged in
         if (navigator.onLine && user?.id) {
           try {
             console.log("ConfirmEndDialog: Saving to Supabase for user", user.id);
+            // Format ID as UUID for database compatibility
+            const dbSessionId = reportId.replace(/[^a-zA-Z0-9-]/g, '');
+            
             const { error } = await supabase.from('focus_sessions').insert({
-              id: reportId,
+              id: dbSessionId,
               user_id: user.id,
               milestone_count: sessionData.milestone || 0,
               duration: sessionData.duration || 0,
               created_at: sessionData.timestamp || new Date().toISOString(),
               environment: sessionData.environment || 'default',
-              completed: false // Since session ended early
+              completed: false
             });
             
             if (error) {
-              throw error;
+              // Non-UUID format error handling
+              if (error.code === '22P02') {
+                console.log("ConfirmEndDialog: Using alternative ID format for database");
+                const { error: retryError } = await supabase.from('focus_sessions').insert({
+                  // Generate a proper UUID format
+                  id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                  user_id: user.id,
+                  milestone_count: sessionData.milestone || 0,
+                  duration: sessionData.duration || 0,
+                  created_at: sessionData.timestamp || new Date().toISOString(),
+                  environment: sessionData.environment || 'default',
+                  completed: false,
+                  metadata: { original_id: reportId } // Store original ID in metadata
+                });
+                
+                if (retryError) throw retryError;
+              } else {
+                throw error;
+              }
             }
             console.log("ConfirmEndDialog: Successfully saved to Supabase");
           } catch (e) {
             console.error('ConfirmEndDialog: Error saving session to database:', e);
             
-            // For PWA, add to database sync queue to retry later when online
+            // For PWA, add to database sync queue
             if (isPwa) {
               try {
                 const dbSyncQueue = JSON.parse(localStorage.getItem('dbSyncQueue') || '[]');
@@ -150,13 +156,14 @@ export function ConfirmEndDialog({
                   operation: 'insert',
                   table: 'focus_sessions',
                   data: {
-                    id: reportId,
+                    id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                     user_id: user.id,
                     milestone_count: sessionData.milestone || 0,
                     duration: sessionData.duration || 0,
                     created_at: sessionData.timestamp || new Date().toISOString(),
                     environment: sessionData.environment || 'default',
-                    completed: false
+                    completed: false,
+                    metadata: { original_id: reportId }
                   },
                   timestamp: Date.now()
                 });
@@ -170,76 +177,57 @@ export function ConfirmEndDialog({
         }
       }
       
-      // Clear session data since we're ending
+      // Clear session data
       localStorage.removeItem('sessionData');
     } catch (e) {
       console.error('ConfirmEndDialog: Error saving session data', e);
     }
     
-    // Use a reliable navigation approach based on platform
-    console.log("ConfirmEndDialog: About to navigate to session report");
-    
-    // For mobile PWA, use immediate navigation with fallbacks
+    // Select navigation strategy based on platform
     if (isPwa && isMobile) {
-      console.log("ConfirmEndDialog: Using optimized mobile PWA navigation");
+      // Mobile PWA approach with progressive enhancement
+      navigateWithFallbacks(`/session-report/${reportId}`, true);
+    } else {
+      // Standard web approach
+      navigateWithFallbacks(`/session-report/${reportId}`, false);
+    }
+  };
+  
+  // Helper function for navigation with fallbacks
+  const navigateWithFallbacks = (destination: string, isMobilePwa: boolean) => {
+    console.log(`ConfirmEndDialog: Navigating to ${destination}, isMobilePwa=${isMobilePwa}`);
+    
+    try {
+      // Primary navigation with state
+      navigate(destination, { 
+        replace: true,
+        state: { 
+          fromFocusSession: true,
+          timestamp: Date.now()
+        }
+      });
       
-      try {
-        // Primary navigation - direct with state
-        navigate(`/session-report/${reportId}`, { 
-          replace: true,
-          state: { 
-            fromPwa: true,
-            offlineMode: !navigator.onLine,
-            timestamp: Date.now()
-          }
-        });
-        
-        // Backup navigation in case primary fails (happens on some devices)
+      // Set a fallback for mobile PWAs which sometimes have navigation issues
+      if (isMobilePwa) {
         setTimeout(() => {
-          // Only trigger if we're still on the same page
+          // Check if we're still on the same page
           if (window.location.pathname.includes('focus-session')) {
-            console.log("ConfirmEndDialog: Backup navigation triggered");
-            window.location.href = `/session-report/${reportId}`;
+            console.log("ConfirmEndDialog: Primary navigation failed, using fallback");
+            window.location.href = destination;
           }
         }, 300);
-      } catch (navError) {
-        console.error("ConfirmEndDialog: Navigation error", navError);
-        // Last resort fallback
-        window.location.href = `/session-report/${reportId}`;
       }
-    } else {
-      // Standard navigation for web app
-      console.log("ConfirmEndDialog: Using standard navigation");
-      
-      try {
-        // Use navigate with replace to prevent back navigation to session
-        navigate(`/session-report/${reportId}`, { replace: true });
-        
-        // Fallback if react-router navigation fails
-        setTimeout(() => {
-          if (window.location.pathname.includes('focus-session')) {
-            console.log("ConfirmEndDialog: Fallback navigation triggered");
-            window.location.href = `/session-report/${reportId}`;
-          }
-        }, 200);
-      } catch (e) {
-        console.error("ConfirmEndDialog: Navigation error", e);
-        // Direct location change as last resort
-        window.location.href = `/session-report/${reportId}`;
-      }
+    } catch (navError) {
+      console.error("ConfirmEndDialog: Navigation error", navError);
+      // Last resort fallback
+      window.location.href = destination;
     }
-    
-    // Call onConfirm after navigation for any parent component cleanup
-    setTimeout(() => {
-      onConfirm();
-    }, 100);
   };
 
-  // Optimized cancel handler
   const handleCancel = (e: React.MouseEvent) => {
     e.preventDefault();
     console.log("ConfirmEndDialog: handleCancel called");
-    onCancel();
+    onOpenChange(false);
   };
 
   return (
