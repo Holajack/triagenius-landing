@@ -3,13 +3,15 @@ import { supabase } from "@/integrations/supabase/client";
 // Types for leaderboard data
 export interface LeaderboardUser {
   rank: number;
+  id: string;
   name: string;
   avatar: string;
   points: number;
   focusHours: number;
   streak: number;
-  isCurrentUser: boolean;
   badge?: string;
+  isCurrentUser?: boolean;
+  isSeparator?: boolean;
 }
 
 // Type for the RPC response
@@ -23,6 +25,7 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
     return [
       { 
         rank: 1, 
+        id: "1", 
         name: "You", 
         avatar: "/placeholder.svg", 
         points: 0, 
@@ -106,6 +109,7 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
       
       return {
         rank: index + 1,
+        id: stat.id,
         name: isCurrentUser ? "You" : username,
         avatar: avatarUrl,
         points: stat.points || 0,
@@ -120,6 +124,7 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
     if (!result.some(user => user.isCurrentUser)) {
       result.push({
         rank: result.length + 1,
+        id: currentUserStats.id,
         name: "You",
         avatar: "/placeholder.svg",
         points: currentUserStats.points || 0,
@@ -143,6 +148,7 @@ export const getGlobalLeaderboardData = async (isEmpty = false): Promise<Leaderb
     return [
       { 
         rank: 1, 
+        id: "1", 
         name: "You", 
         avatar: "/placeholder.svg", 
         points: 0, 
@@ -241,6 +247,7 @@ export const getGlobalLeaderboardData = async (isEmpty = false): Promise<Leaderb
       
       return {
         rank: realRank,
+        id: stat.id,
         name: isCurrentUser ? "You" : username,
         avatar: avatarUrl,
         points: stat.points || 0,

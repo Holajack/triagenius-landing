@@ -29,11 +29,12 @@ import {
   getFriendsLeaderboardData, 
   getGlobalLeaderboardData, 
   getUserRankingMessage,
-  getCommunityActivityFeed
+  getCommunityActivityFeed,
+  LeaderboardUser
 } from "@/utils/leaderboardData";
 import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
-import { LeaderboardUser } from "@/utils/leaderboardData";
+import LeaderboardSkeletonList from "@/components/leaderboard/LeaderboardSkeletonList";
 
 const Leaderboard = () => {
   const { state } = useOnboarding();

@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Search, Filter, User, Users, MessageSquare, Bell } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { CommunityUserList } from "@/components/community/CommunityUserList";
+import CommunityUserList from "@/components/community/CommunityUserList";
 import { MessageInbox } from "@/components/community/MessageInbox";
 import { StudyRooms } from "@/components/community/StudyRooms";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
