@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Brain, Book, PencilLine, Headphones, Eye, Hand, Lightbulb, BadgePercent } from "lucide-react";
 import NavigationBar from "@/components/dashboard/NavigationBar";
+import LearningStyleQuiz from "@/components/bonuses/LearningStyleQuiz";
 
 const Bonuses = () => {
   const [activeTab, setActiveTab] = useState("quiz");
@@ -73,15 +74,8 @@ const Bonuses = () => {
                 />
               </div>
               
-              <div className="mt-8 text-center">
-                <Button size="lg" className="gap-2">
-                  <Book className="h-4 w-4" />
-                  <span>Start The Quiz</span>
-                </Button>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Takes approximately 15 minutes to complete
-                </p>
-              </div>
+              {/* Quiz Component */}
+              <LearningStyleQuiz />
             </CardContent>
           </Card>
         </TabsContent>
