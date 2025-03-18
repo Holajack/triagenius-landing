@@ -23,6 +23,8 @@ export default defineConfig(({ mode }) => ({
   build: {
     sourcemap: true,
     // Ensure PWA assets are processed correctly
+    assetsInlineLimit: 0, // Don't inline assets as base64 to ensure they're cached by the service worker
+    // Improve chunk strategy for mobile
     rollupOptions: {
       output: {
         manualChunks: {
@@ -36,7 +38,7 @@ export default defineConfig(({ mode }) => ({
       }
     }
   },
-  // Optimize chunk size for better performance
+  // Optimize chunk size for better performance on mobile
   optimizeDeps: {
     include: ['react', 'react-dom', 'react-router-dom', 'framer-motion']
   }
