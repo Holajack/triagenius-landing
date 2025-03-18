@@ -13,11 +13,27 @@ type TaskAction =
   | { type: 'ADD_SUBTASK'; payload: { taskId: string; title: string } }
   | { type: 'REMOVE_SUBTASK'; payload: { taskId: string; subtaskId: string } }
   | { type: 'TOGGLE_SUBTASK'; payload: { taskId: string; subtaskId: string } }
-  | { type: 'CLEAR_COMPLETED_TASKS' };
+  | { type: 'CLEAR_COMPLETED_TASKS' }
+  | { type: 'LOAD_TASKS'; payload: { tasks: Task[] } };
 
-const initialState: TaskState = {
-  tasks: []
+// Try to load initial state from localStorage
+const loadInitialState = (): TaskState => {
+  try {
+    const savedTasks = localStorage.getItem('userTasks');
+    if (savedTasks) {
+      const parsedTasks = JSON.parse(savedTasks);
+      if (Array.isArray(parsedTasks)) {
+        return { tasks: parsedTasks };
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load tasks from localStorage', e);
+  }
+  
+  return { tasks: [] };
 };
+
+const initialState: TaskState = loadInitialState();
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
@@ -25,6 +41,12 @@ function generateId(): string {
 
 const taskReducer = (state: TaskState, action: TaskAction): TaskState => {
   switch (action.type) {
+    case 'LOAD_TASKS':
+      return {
+        ...state,
+        tasks: action.payload.tasks
+      };
+      
     case 'ADD_TASK':
       return {
         ...state,

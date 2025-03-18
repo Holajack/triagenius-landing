@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -14,13 +15,19 @@ import { PieChartIcon, BarChart4, LineChart, Clock } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import DashboardWalkthrough from "@/components/walkthrough/DashboardWalkthrough";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { supabase } from "@/integrations/supabase/client";
+import { useUser } from "@/hooks/use-user";
 
 const Dashboard = () => {
   const { state } = useOnboarding();
   const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
+  const { theme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
+  const [preferredChartType, setPreferredChartType] = useState(() => {
+    return localStorage.getItem('preferredChartType') || 'bar';
+  });
   const isMobile = useIsMobile();
+  const { user } = useUser();
 
   // Modified redirection logic to only redirect if explicitly coming from the index page
   useEffect(() => {
@@ -32,6 +39,16 @@ const Dashboard = () => {
       return () => clearTimeout(timer);
     }
   }, [state, navigate]);
+
+  // Save preferred chart type when it changes
+  useEffect(() => {
+    localStorage.setItem('preferredChartType', preferredChartType);
+  }, [preferredChartType]);
+
+  // Handle tab change
+  const handleTabChange = (value: string) => {
+    setPreferredChartType(value);
+  };
 
   // Get theme variables based on environment
   const getEnvTheme = () => {
@@ -49,7 +66,7 @@ const Dashboard = () => {
 
   const renderTaskList = () => (
     <div className="mb-6">
-      <TaskList />
+      <TaskList persistToSupabase={true} />
     </div>
   );
 
@@ -64,7 +81,7 @@ const Dashboard = () => {
           {/* Left column - Weekly tracker */}
           <div className="md:col-span-2 space-y-4">
             <div data-walkthrough="weekly-tracker">
-              <Tabs defaultValue="bar" className="w-full">
+              <Tabs defaultValue={preferredChartType} className="w-full" onValueChange={handleTabChange}>
                 <div className="flex justify-between items-center mb-2">
                   <h2 className="text-xl font-semibold">Weekly Progress</h2>
                   <TabsList className="grid grid-cols-4 w-52">
@@ -84,16 +101,16 @@ const Dashboard = () => {
                 </div>
 
                 <TabsContent value="bar" className="mt-0">
-                  <WeeklyTracker chartType="bar" />
+                  <WeeklyTracker chartType="bar" optimizeForMobile={isMobile} />
                 </TabsContent>
                 <TabsContent value="pie" className="mt-0">
-                  <WeeklyTracker chartType="pie" />
+                  <WeeklyTracker chartType="pie" optimizeForMobile={isMobile} />
                 </TabsContent>
                 <TabsContent value="line" className="mt-0">
-                  <WeeklyTracker chartType="line" />
+                  <WeeklyTracker chartType="line" optimizeForMobile={isMobile} />
                 </TabsContent>
                 <TabsContent value="time" className="mt-0">
-                  <WeeklyTracker chartType="time" />
+                  <WeeklyTracker chartType="time" optimizeForMobile={isMobile} />
                 </TabsContent>
               </Tabs>
             </div>

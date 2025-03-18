@@ -14,11 +14,14 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Battery, BatteryLow } from "lucide-react";
 import { ConfirmEndDialog } from "@/components/focus/ConfirmEndDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useUser } from "@/hooks/use-user";
 
 const FocusSession = () => {
   const navigate = useNavigate();
   const { state } = useOnboarding();
   const { theme } = useTheme();
+  const { user } = useUser();
   const [isPaused, setIsPaused] = useState(false);
   const [showMotivation, setShowMotivation] = useState(false);
   const [currentMilestone, setCurrentMilestone] = useState(0);
@@ -26,6 +29,7 @@ const FocusSession = () => {
   const [lowPowerMode, setLowPowerMode] = useState(false);
   const [segmentProgress, setSegmentProgress] = useState(0); // Progress within the current segment (0-100)
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
+  const [isEnding, setIsEnding] = useState(false);
   const timerRef = useRef<{ stopTimer: () => void } | null>(null);
   
   useEffect(() => {
@@ -46,30 +50,62 @@ const FocusSession = () => {
     setShowMotivation(false);
   };
   
-  const handleSessionEnd = () => {
-    // Save session data to localStorage before navigation
-    localStorage.setItem('sessionData', JSON.stringify({
+  // Save session data to local storage and Supabase if user is logged in
+  const saveSessionData = (endingEarly = false) => {
+    // Create session data object
+    const sessionData = {
       milestone: currentMilestone,
       duration: currentMilestone * 45, // Minutes based on milestone
       timestamp: new Date().toISOString(),
       environment: state.environment,
-    }));
+    };
+    
+    // Always save to localStorage as backup
+    localStorage.setItem('sessionData', JSON.stringify(sessionData));
+    
+    // If user is logged in, save to Supabase (without awaiting to prevent freezing)
+    if (user && user.id) {
+      try {
+        // Use setTimeout to move this operation to the next event loop
+        setTimeout(async () => {
+          await supabase.from('focus_sessions').insert({
+            user_id: user.id,
+            duration: sessionData.duration,
+            milestone_count: sessionData.milestone,
+            environment: sessionData.environment,
+            end_time: new Date().toISOString(),
+            completed: !endingEarly
+          });
+        }, 0);
+      } catch (error) {
+        console.error("Error saving session:", error);
+      }
+    }
+  };
+  
+  const handleSessionEnd = () => {
+    // Save session data without marking as ending early
+    saveSessionData(false);
     
     // Navigate to the session reflection page
-    navigate("/session-reflection");
+    setTimeout(() => {
+      navigate("/session-reflection");
+    }, 100);
   };
 
   const handleEndSessionEarly = () => {
-    // Save session data to localStorage before navigation
-    localStorage.setItem('sessionData', JSON.stringify({
-      milestone: currentMilestone,
-      duration: currentMilestone * 45, // Minutes based on milestone
-      timestamp: new Date().toISOString(),
-      environment: state.environment,
-    }));
+    // Prevent multiple execution
+    if (isEnding) return;
+    setIsEnding(true);
     
-    // Navigate directly to the session report page when ending early
-    navigate("/session-report");
+    // Save session data and mark as ending early
+    saveSessionData(true);
+    
+    // Add a small delay to navigate after data is saved
+    setTimeout(() => {
+      navigate("/session-report");
+      setIsEnding(false);
+    }, 200);
   };
 
   const handleEndSessionConfirm = () => {
@@ -79,12 +115,7 @@ const FocusSession = () => {
     }
     
     setShowEndConfirmation(false);
-    
-    // Add a small delay to allow React to process state updates
-    // before navigation occurs, preventing the freeze
-    setTimeout(() => {
-      handleEndSessionEarly();
-    }, 100);
+    handleEndSessionEarly();
   };
   
   const handleMilestoneReached = (milestone: number) => {
@@ -103,12 +134,15 @@ const FocusSession = () => {
   };
   
   const toggleLowPowerMode = () => {
-    setLowPowerMode(!lowPowerMode);
-    toast.info(lowPowerMode ? 
-      "Enhanced visual mode activated" : 
-      "Low power mode activated - reduced animations",
-      { duration: 3000 }
-    );
+    // Use RAF to prevent UI thread blocking
+    requestAnimationFrame(() => {
+      setLowPowerMode(prevMode => !prevMode);
+      toast.info(!lowPowerMode ? 
+        "Low power mode activated - reduced animations" : 
+        "Enhanced visual mode activated",
+        { duration: 3000 }
+      );
+    });
   };
 
   return (

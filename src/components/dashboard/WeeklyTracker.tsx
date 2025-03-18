@@ -16,11 +16,18 @@ import {
   ResponsiveContainer,
   Cell,
   ReferenceLine,
+  Legend,
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/hooks/use-user";
 
 type ChartType = "bar" | "pie" | "line" | "time";
+
+interface WeeklyTrackerProps {
+  chartType: ChartType;
+  hasData?: boolean;
+  optimizeForMobile?: boolean;
+}
 
 // Generate empty data for the weekly tracker
 const generateEmptyData = () => {
@@ -47,22 +54,41 @@ const generateEmptyPieData = () => {
   }));
 };
 
-const WeeklyTracker = ({ chartType, hasData = true }: { chartType: ChartType, hasData?: boolean }) => {
+const WeeklyTracker = ({ chartType, hasData = true, optimizeForMobile = false }: WeeklyTrackerProps) => {
   const { state } = useOnboarding();
   const { user } = useUser();
-  const [data, setData] = useState(() => generateEmptyData());
-  const [pieData, setPieData] = useState(() => generateEmptyPieData());
+  const [data, setData] = useState(() => {
+    // First try to load from localStorage
+    const savedData = localStorage.getItem('weeklyTrackerData');
+    if (savedData) {
+      try {
+        return JSON.parse(savedData);
+      } catch (e) {
+        console.error('Error parsing saved weekly data', e);
+      }
+    }
+    return generateEmptyData();
+  });
+  
+  const [pieData, setPieData] = useState(() => {
+    // First try to load from localStorage
+    const savedPieData = localStorage.getItem('weeklyPieData');
+    if (savedPieData) {
+      try {
+        return JSON.parse(savedPieData);
+      } catch (e) {
+        console.error('Error parsing saved pie data', e);
+      }
+    }
+    return generateEmptyPieData();
+  });
+  
   const [isLoading, setIsLoading] = useState(true);
   const [noDataAvailable, setNoDataAvailable] = useState(false);
   
   // Fetch real focus session data
   useEffect(() => {
     const fetchFocusData = async () => {
-      if (!user) {
-        setIsLoading(false);
-        return;
-      }
-      
       setIsLoading(true);
       
       try {
@@ -78,36 +104,79 @@ const WeeklyTracker = ({ chartType, hasData = true }: { chartType: ChartType, ha
         endOfWeek.setDate(startOfWeek.getDate() + 6);
         endOfWeek.setHours(23, 59, 59, 999);
         
-        // Fetch focus sessions for the current week
-        const { data: focusSessions, error } = await supabase
-          .from('focus_sessions')
-          .select('*')
-          .eq('user_id', user.id)
-          .gte('start_time', startOfWeek.toISOString())
-          .lte('start_time', endOfWeek.toISOString());
+        // Check if we have a logged-in user
+        if (user && user.id) {
+          // Fetch focus sessions for the current week
+          const { data: focusSessions, error } = await supabase
+            .from('focus_sessions')
+            .select('*')
+            .eq('user_id', user.id)
+            .gte('start_time', startOfWeek.toISOString())
+            .lte('start_time', endOfWeek.toISOString());
+            
+          if (error) {
+            console.error('Error fetching focus sessions:', error);
+            // Use cached data if available
+            const cachedData = localStorage.getItem('weeklyTrackerData');
+            const cachedPieData = localStorage.getItem('weeklyPieData');
+            
+            if (cachedData && cachedPieData) {
+              setData(JSON.parse(cachedData));
+              setPieData(JSON.parse(cachedPieData));
+              setNoDataAvailable(false);
+            } else {
+              setNoDataAvailable(true);
+            }
+          } else if (!focusSessions || focusSessions.length === 0) {
+            // If no focus sessions yet, use cached data or empty data
+            const cachedData = localStorage.getItem('weeklyTrackerData');
+            const cachedPieData = localStorage.getItem('weeklyPieData');
+            
+            if (cachedData && cachedPieData) {
+              setData(JSON.parse(cachedData));
+              setPieData(JSON.parse(cachedPieData));
+              setNoDataAvailable(false);
+            } else {
+              setNoDataAvailable(true);
+            }
+          } else {
+            // Process the data for charts
+            const processedData = processSessionData(focusSessions, startOfWeek);
+            setData(processedData.weeklyData);
+            setPieData(processedData.pieData);
+            
+            // Cache the data
+            localStorage.setItem('weeklyTrackerData', JSON.stringify(processedData.weeklyData));
+            localStorage.setItem('weeklyPieData', JSON.stringify(processedData.pieData));
+            
+            setNoDataAvailable(false);
+          }
+        } else {
+          // No user logged in, use cached data if available
+          const cachedData = localStorage.getItem('weeklyTrackerData');
+          const cachedPieData = localStorage.getItem('weeklyPieData');
           
-        if (error) {
-          console.error('Error fetching focus sessions:', error);
-          setNoDataAvailable(true);
-          setIsLoading(false);
-          return;
+          if (cachedData && cachedPieData) {
+            setData(JSON.parse(cachedData));
+            setPieData(JSON.parse(cachedPieData));
+            setNoDataAvailable(false);
+          } else {
+            setNoDataAvailable(true);
+          }
         }
-        
-        // If no focus sessions yet, use empty data
-        if (!focusSessions || focusSessions.length === 0) {
-          setNoDataAvailable(true);
-          setIsLoading(false);
-          return;
-        }
-        
-        // Process the data for charts
-        const processedData = processSessionData(focusSessions, startOfWeek);
-        setData(processedData.weeklyData);
-        setPieData(processedData.pieData);
-        setNoDataAvailable(false);
       } catch (error) {
         console.error('Error in fetchFocusData:', error);
-        setNoDataAvailable(true);
+        // Use cached data if available
+        const cachedData = localStorage.getItem('weeklyTrackerData');
+        const cachedPieData = localStorage.getItem('weeklyPieData');
+        
+        if (cachedData && cachedPieData) {
+          setData(JSON.parse(cachedData));
+          setPieData(JSON.parse(cachedPieData));
+          setNoDataAvailable(false);
+        } else {
+          setNoDataAvailable(true);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -226,9 +295,29 @@ const WeeklyTracker = ({ chartType, hasData = true }: { chartType: ChartType, ha
   const chartData = noDataAvailable ? generateEmptyData() : data;
   const chartPieData = noDataAvailable ? generateEmptyPieData() : pieData;
   
+  // Mobile optimizations
+  const getMobileChartHeight = () => {
+    if (!optimizeForMobile) return 300;
+    
+    switch (chartType) {
+      case 'pie': return 250;
+      case 'time': return 280;
+      default: return 220;
+    }
+  };
+  
+  const chartHeight = getMobileChartHeight();
+  
+  // Create simplified labels for mobile
+  const getMobileAxisTickFormatter = (value: string) => {
+    if (!optimizeForMobile) return value;
+    // Use first letter of day for mobile
+    return value.charAt(0);
+  };
+  
   return (
     <Card className="shadow-sm">
-      <CardContent className="p-6">
+      <CardContent className={`p-${optimizeForMobile ? '2' : '6'}`}>
         {noDataAvailable && (
           <div className="text-center text-gray-500 mb-4 text-sm">
             No focus sessions recorded yet. This chart will populate as you complete sessions.
@@ -236,37 +325,56 @@ const WeeklyTracker = ({ chartType, hasData = true }: { chartType: ChartType, ha
         )}
         
         {chartType === "bar" && (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="day" />
-              <YAxis unit="hr" />
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <BarChart data={chartData} margin={optimizeForMobile ? 
+              { top: 10, right: 5, left: -20, bottom: 0 } : 
+              { top: 20, right: 30, left: 0, bottom: 5 }
+            }>
+              <CartesianGrid strokeDasharray="3 3" vertical={!optimizeForMobile} />
+              <XAxis 
+                dataKey="day" 
+                tick={{ fontSize: optimizeForMobile ? 10 : 12 }}
+                tickFormatter={getMobileAxisTickFormatter}
+              />
+              <YAxis 
+                unit="hr" 
+                tick={{ fontSize: optimizeForMobile ? 10 : 12 }}
+                width={optimizeForMobile ? 25 : 30}
+              />
               <Tooltip
                 formatter={(value: number) => [`${value.toFixed(2)} hr`, "Focus Time"]}
                 labelFormatter={(label) => `${label}`}
               />
+              {!optimizeForMobile && <Legend />}
               <Bar dataKey="Math" stackId="a" fill={colors[0]} />
               <Bar dataKey="Physics" stackId="a" fill={colors[1]} />
               <Bar dataKey="History" stackId="a" fill={colors[2]} />
               <Bar dataKey="English" stackId="a" fill={colors[3]} />
               <Bar dataKey="Chemistry" stackId="a" fill={colors[4]} />
               {/* Add reference line for daily goal */}
-              <ReferenceLine y={dailyFocusGoal} stroke="#ff4081" strokeDasharray="3 3" label="Daily Goal" />
+              <ReferenceLine 
+                y={dailyFocusGoal} 
+                stroke="#ff4081" 
+                strokeDasharray="3 3" 
+                label={optimizeForMobile ? undefined : "Daily Goal"} 
+              />
             </BarChart>
           </ResponsiveContainer>
         )}
 
         {chartType === "pie" && (
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <PieChart margin={optimizeForMobile ? { top: 10, right: 0, left: 0, bottom: 0 } : undefined}>
               <Pie
                 data={chartPieData}
                 cx="50%"
                 cy="50%"
-                outerRadius={100}
-                innerRadius={60}
-                labelLine={!noDataAvailable}
-                label={!noDataAvailable ? ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%` : false}
+                outerRadius={optimizeForMobile ? 80 : 100}
+                innerRadius={optimizeForMobile ? 40 : 60}
+                labelLine={!noDataAvailable && !optimizeForMobile}
+                label={!noDataAvailable && !optimizeForMobile ? 
+                  ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%` : 
+                  false}
                 dataKey="value"
               >
                 {chartPieData.map((entry, index) => (
@@ -274,28 +382,48 @@ const WeeklyTracker = ({ chartType, hasData = true }: { chartType: ChartType, ha
                 ))}
               </Pie>
               <Tooltip formatter={(value: number) => [`${Math.round(value)} min`, "Focus Time"]} />
+              <Legend verticalAlign={optimizeForMobile ? "bottom" : "middle"} layout={optimizeForMobile ? "horizontal" : "vertical"} align={optimizeForMobile ? "center" : "right"} />
             </PieChart>
           </ResponsiveContainer>
         )}
 
         {chartType === "line" && (
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <LineChart 
+              data={chartData} 
+              margin={optimizeForMobile ? 
+                { top: 10, right: 5, left: -20, bottom: 0 } : 
+                { top: 20, right: 30, left: 0, bottom: 5 }
+              }
+            >
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="day" />
-              <YAxis unit="hr" />
+              <XAxis 
+                dataKey="day" 
+                tick={{ fontSize: optimizeForMobile ? 10 : 12 }}
+                tickFormatter={getMobileAxisTickFormatter}
+              />
+              <YAxis 
+                unit="hr" 
+                tick={{ fontSize: optimizeForMobile ? 10 : 12 }}
+                width={optimizeForMobile ? 25 : 30}
+              />
               <Tooltip
                 formatter={(value: number) => [`${value.toFixed(2)} hr`, "Focus Time"]}
               />
               <Line type="monotone" dataKey="total" stroke={colors[0]} strokeWidth={2} />
               {/* Update to use dailyFocusGoal */}
-              <ReferenceLine y={dailyFocusGoal} stroke="#ff4081" strokeDasharray="3 3" label="Daily Goal" />
+              <ReferenceLine 
+                y={dailyFocusGoal} 
+                stroke="#ff4081" 
+                strokeDasharray="3 3" 
+                label={optimizeForMobile ? undefined : "Daily Goal"} 
+              />
             </LineChart>
           </ResponsiveContainer>
         )}
 
         {chartType === "time" && (
-          <div className="space-y-4 p-4">
+          <div className="space-y-4 p-2">
             <div className="flex justify-between">
               <h3 className="text-sm font-medium">Focus Time Distribution</h3>
               <div className="text-sm">
