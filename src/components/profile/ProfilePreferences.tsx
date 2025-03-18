@@ -17,6 +17,7 @@ const ProfilePreferences = () => {
   const { state, dispatch, saveOnboardingState } = useOnboarding();
   const [isEditing, setIsEditing] = useState(false);
   const [editedState, setEditedState] = useState({ ...state });
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleEditStart = () => {
@@ -31,6 +32,7 @@ const ProfilePreferences = () => {
 
   const handleSave = async () => {
     try {
+      setIsLoading(true);
       // Update context state
       Object.entries(editedState).forEach(([key, value]) => {
         switch (key) {
@@ -56,10 +58,11 @@ const ProfilePreferences = () => {
       await saveOnboardingState();
       
       setIsEditing(false);
-      toast.success("Preferences updated successfully");
     } catch (error) {
       console.error("Error updating preferences:", error);
       toast.error("Failed to update preferences");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -89,9 +92,9 @@ const ProfilePreferences = () => {
               <Button onClick={handleCancel} variant="outline" size="sm">
                 Cancel
               </Button>
-              <Button onClick={handleSave} size="sm">
+              <Button onClick={handleSave} size="sm" disabled={isLoading}>
                 <SaveIcon className="h-4 w-4 mr-2" />
-                Save
+                {isLoading ? 'Saving...' : 'Save'}
               </Button>
             </div>
           )}

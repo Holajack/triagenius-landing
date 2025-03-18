@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { OnboardingState, UserGoal, WorkStyle, StudyEnvironment, SoundPreference } from '@/types/onboarding';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 type OnboardingAction = 
   | { type: 'SET_STEP'; payload: number }
@@ -64,50 +64,67 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        toast({
-          title: "Error",
-          description: "You must be logged in to save preferences",
-          duration: 5000,
-        });
+        toast.error("You must be logged in to save preferences");
         return;
       }
       
-      const { error } = await supabase
+      // Check if a record exists for this user
+      const { data: existingData, error: fetchError } = await supabase
         .from('onboarding_preferences')
-        .upsert({
-          user_id: user.id,
-          user_goal: state.userGoal,
-          work_style: state.workStyle,
-          learning_environment: state.environment,
-          sound_preference: state.soundPreference,
-          weekly_focus_goal: state.weeklyFocusGoal,
-          is_onboarding_complete: state.isComplete,
-        }, { 
-          onConflict: 'user_id',
-        });
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
         
-      if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to save preferences",
-          duration: 5000,
-        });
-        console.error('Error saving onboarding state:', error);
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        console.error('Error checking for existing preferences:', fetchError);
+        toast.error("Failed to save preferences");
         return;
       }
       
-      toast({
-        title: "Success",
-        description: "Preferences saved successfully",
-        duration: 5000,
-      });
+      let saveError;
+      
+      if (existingData) {
+        // Update existing record
+        const { error } = await supabase
+          .from('onboarding_preferences')
+          .update({
+            user_goal: state.userGoal,
+            work_style: state.workStyle,
+            learning_environment: state.environment,
+            sound_preference: state.soundPreference,
+            weekly_focus_goal: state.weeklyFocusGoal,
+            is_onboarding_complete: state.isComplete,
+          })
+          .eq('user_id', user.id);
+          
+        saveError = error;
+      } else {
+        // Insert new record
+        const { error } = await supabase
+          .from('onboarding_preferences')
+          .insert({
+            user_id: user.id,
+            user_goal: state.userGoal,
+            work_style: state.workStyle,
+            learning_environment: state.environment,
+            sound_preference: state.soundPreference,
+            weekly_focus_goal: state.weeklyFocusGoal,
+            is_onboarding_complete: state.isComplete,
+          });
+          
+        saveError = error;
+      }
+        
+      if (saveError) {
+        console.error('Error saving onboarding state:', saveError);
+        toast.error("Failed to save preferences");
+        return;
+      }
+      
+      toast.success("Preferences saved successfully");
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "An error occurred while saving preferences",
-        duration: 5000,
-      });
       console.error('Error in saveOnboardingState:', error);
+      toast.error("An error occurred while saving preferences");
     }
   };
   
@@ -122,9 +139,9 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
             .from('onboarding_preferences')
             .select('*')
             .eq('user_id', user.id)
-            .single();
+            .maybeSingle();
             
-          if (error) {
+          if (error && error.code !== 'PGRST116') {
             console.error('Error loading onboarding state:', error);
             return;
           }
