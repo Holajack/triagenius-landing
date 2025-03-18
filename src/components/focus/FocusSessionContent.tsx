@@ -1,7 +1,7 @@
 
 import React, { useRef, useEffect } from "react";
 import { FocusTimer } from "@/components/focus/FocusTimer";
-import { HikingTrail } from "@/components/focus/HikingTrail";
+import { SimpleLandscapeAnimation } from "@/components/focus/SimpleLandscapeAnimation";
 import SessionGoals from "@/components/focus/SessionGoals";
 import { StudyEnvironment } from "@/types/onboarding";
 
@@ -134,21 +134,19 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({
         onEndSessionClick={handleEndClick}
       />
       
-      {/* Only render the HikingTrail when not in low power mode */}
-      {!lowPowerMode && (
-        <div 
-          className="relative w-full aspect-[3/1] rounded-lg overflow-hidden" 
-          aria-hidden={lowPowerMode}
-          style={{ display: lowPowerMode ? 'none' : 'block' }} // Force DOM removal for PWA performance
-        >
-          <HikingTrail 
-            environment={safeEnvironment}
-            milestone={currentMilestone}
-            isCelebrating={isCelebrating}
-            progress={segmentProgress}
-          />
-        </div>
-      )}
+      {/* Using SimpleLandscapeAnimation instead of HikingTrail */}
+      <div 
+        className="relative w-full aspect-[3/1] rounded-lg overflow-hidden shadow-md" 
+        aria-hidden={lowPowerMode}
+        style={{ display: lowPowerMode ? 'none' : 'block' }} // Force DOM removal for PWA performance
+      >
+        <SimpleLandscapeAnimation 
+          environment={safeEnvironment}
+          milestone={currentMilestone}
+          isCelebrating={isCelebrating}
+          progress={segmentProgress}
+        />
+      </div>
       
       <SessionGoals />
     </div>

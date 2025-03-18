@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
@@ -13,7 +14,7 @@ import { StudyRoomResources } from "@/components/studyroom/StudyRoomResources";
 import { StudyRoomMember } from "@/components/studyroom/StudyRoomMember";
 import { StartFocusDialog } from "@/components/studyroom/StartFocusDialog";
 import { useOnboarding } from "@/contexts/OnboardingContext";
-import { HikingTrail } from "@/components/focus/HikingTrail";
+import { SimpleLandscapeAnimation } from "@/components/focus/SimpleLandscapeAnimation";
 import { FocusTimer } from "@/components/focus/FocusTimer";
 import { useStudyRooms } from "@/hooks/use-study-rooms";
 import { useRoomMessages } from "@/hooks/use-room-messages";
@@ -326,7 +327,7 @@ const StudyRoom = () => {
           />
           
           <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden">
-            <HikingTrail environment={state.environment} milestone={0} />
+            <SimpleLandscapeAnimation environment={state.environment} milestone={0} />
           </div>
           
           <div className="text-center">
