@@ -36,12 +36,6 @@ export function ConfirmEndDialog({
     }
   }, [open]);
   
-  const isPwa = window.matchMedia('(display-mode: standalone)').matches || 
-               (window.navigator as any).standalone === true || 
-               localStorage.getItem('isPWA') === 'true';
-  
-  const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
   const handleConfirm = async (e: React.MouseEvent) => {
     e.preventDefault();
     
@@ -61,8 +55,14 @@ export function ConfirmEndDialog({
       if (sessionDataStr) {
         const sessionData = JSON.parse(sessionDataStr);
         
-        // Generate a UUID compatible report ID
-        const reportId = crypto.randomUUID ? crypto.randomUUID() : `session-${Date.now()}`;
+        // Generate a proper UUID for database compatibility
+        let reportId = '';
+        if (crypto.randomUUID) {
+          reportId = crypto.randomUUID();
+        } else {
+          // Fallback to a timestamp-based ID if randomUUID isn't available
+          reportId = `session-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        }
         
         // Prepare report data
         const reportData = {
@@ -72,32 +72,44 @@ export function ConfirmEndDialog({
           completed: false
         };
         
-        // Store in localStorage
+        // Store in localStorage first before any async operations
         localStorage.setItem(`sessionReport_${reportId}`, JSON.stringify(reportData));
         localStorage.setItem(`sessionNotes_${reportId}`, "");
         localStorage.removeItem('sessionData');
         
-        // Save to Supabase if online and user is logged in
+        // Navigate to the report page immediately
+        setTimeout(() => {
+          try {
+            navigate(`/session-report/${reportId}`, { replace: true });
+          } catch (error) {
+            console.error("Navigation error:", error);
+            navigate("/dashboard", { replace: true });
+          }
+        }, 50);
+        
+        // Save to Supabase if online and user is logged in (after navigation to avoid blocking)
         if (navigator.onLine && user?.id) {
           try {
-            await supabase.from('focus_sessions').insert({
-              id: reportId,
-              user_id: user.id,
-              milestone_count: sessionData.milestone || 0,
-              duration: sessionData.duration || 0,
-              created_at: sessionData.timestamp || new Date().toISOString(),
-              environment: sessionData.environment || 'default',
-              completed: false
-            });
+            // The database operation happens after navigation for better UX
+            setTimeout(async () => {
+              try {
+                await supabase.from('focus_sessions').insert({
+                  id: reportId,
+                  user_id: user.id,
+                  milestone_count: sessionData.milestone || 0,
+                  duration: sessionData.duration || 0,
+                  created_at: sessionData.timestamp || new Date().toISOString(),
+                  environment: sessionData.environment || 'default',
+                  completed: false
+                });
+              } catch (error) {
+                console.error("Error saving session to database:", error);
+              }
+            }, 100);
           } catch (error) {
-            console.error("Error saving session to database:", error);
+            console.error("Error scheduling database save:", error);
           }
         }
-        
-        // Navigate to the report page with a delay to ensure dialog is properly closed
-        setTimeout(() => {
-          navigate(`/session-report/${reportId}`, { replace: true });
-        }, 50);
       } else {
         // No session data, redirect to dashboard
         setTimeout(() => {

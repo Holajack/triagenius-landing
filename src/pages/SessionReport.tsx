@@ -1,4 +1,3 @@
-
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -72,69 +71,115 @@ const SessionReport = () => {
               setLoadError('Could not load session data. It may be corrupted.');
             }
           } else if (user?.id) {
-            // Try to fetch from database
+            // Try to fetch from database - improved error handling for UUID issues
             try {
-              const { data: dbSession, error } = await supabase
-                .from('focus_sessions')
-                .select('*')
-                .eq('id', params.id)
-                .single();
-                
-              if (error) {
-                // Try with non-UUID format handling
-                const fallbackReportKey = Object.keys(localStorage).find(key => 
-                  key.startsWith('sessionReport_') && key.includes(params.id.substring(0, 8))
+              // First, check if the ID is a valid UUID
+              const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.id);
+              
+              if (isUuid) {
+                // If it's a valid UUID, fetch from Supabase
+                const { data: dbSession, error } = await supabase
+                  .from('focus_sessions')
+                  .select('*')
+                  .eq('id', params.id)
+                  .single();
+                  
+                if (error) {
+                  throw error;
+                } else if (dbSession) {
+                  // Extract notes from localStorage if available
+                  let sessionNotes = '';
+                  try {
+                    const notesKey = `sessionNotes_${params.id}`;
+                    const storedNotes = localStorage.getItem(notesKey);
+                    if (storedNotes) {
+                      sessionNotes = storedNotes;
+                    }
+                  } catch (e) {
+                    console.error('Error retrieving notes from localStorage:', e);
+                  }
+                  
+                  setSessionData({
+                    milestone: dbSession.milestone_count || 0,
+                    duration: dbSession.duration || 0,
+                    timestamp: dbSession.created_at,
+                    environment: dbSession.environment || 'default',
+                    notes: sessionNotes,
+                    completed: dbSession.completed
+                  });
+                  setSessionNotes(sessionNotes);
+                  setSessionId(params.id);
+                } else {
+                  throw new Error("Session not found");
+                }
+              } else {
+                // Not a UUID, try to find a matching key in localStorage
+                const matchingKey = Object.keys(localStorage).find(key => 
+                  key.startsWith('sessionReport_') && key.includes(params.id)
                 );
                 
-                if (fallbackReportKey) {
+                if (matchingKey) {
                   try {
-                    const fallbackData = JSON.parse(localStorage.getItem(fallbackReportKey) || '');
-                    setSessionData(fallbackData);
-                    setSessionNotes(fallbackData.notes || '');
+                    const matchingData = JSON.parse(localStorage.getItem(matchingKey) || '');
+                    setSessionData(matchingData);
+                    setSessionNotes(matchingData.notes || '');
                     setSessionId(params.id);
-                  } catch (fallbackError) {
-                    throw error; // Revert to original error if fallback fails
+                  } catch (err) {
+                    throw new Error("Invalid session data format");
                   }
                 } else {
-                  throw error;
+                  throw new Error("Session not found");
                 }
-              } else if (dbSession) {
-                // Extract notes from localStorage if available
-                let sessionNotes = '';
-                try {
-                  const notesKey = `sessionNotes_${params.id}`;
-                  const storedNotes = localStorage.getItem(notesKey);
-                  if (storedNotes) {
-                    sessionNotes = storedNotes;
-                  }
-                } catch (e) {
-                  console.error('Error retrieving notes from localStorage:', e);
-                }
-                
-                setSessionData({
-                  milestone: dbSession.milestone_count || 0,
-                  duration: dbSession.duration || 0,
-                  timestamp: dbSession.created_at,
-                  environment: dbSession.environment || 'default',
-                  notes: sessionNotes,
-                  completed: dbSession.completed
-                });
-                setSessionNotes(sessionNotes);
-                setSessionId(params.id);
-              } else {
-                // Session not found, redirect to dashboard
-                toast.error("Session report not found");
-                setTimeout(() => navigate('/dashboard', { replace: true }), 1000);
               }
             } catch (e) {
               console.error('Error fetching session from database:', e);
-              setLoadError('Could not load session from database');
-              setTimeout(() => navigate('/dashboard', { replace: true }), 3000);
+              // Don't navigate away immediately, try checking localStorage first
+              // Check for any key that might contain part of the ID
+              const fuzzyMatchKey = Object.keys(localStorage).find(key => 
+                key.startsWith('sessionReport_') && (
+                  key.includes(params.id.substring(0, 8)) || 
+                  params.id.includes(key.split('_')[1]?.substring(0, 8) || '')
+                )
+              );
+              
+              if (fuzzyMatchKey) {
+                try {
+                  const fuzzyData = JSON.parse(localStorage.getItem(fuzzyMatchKey) || '');
+                  setSessionData(fuzzyData);
+                  setSessionNotes(fuzzyData.notes || '');
+                  setSessionId(params.id);
+                } catch (fallbackError) {
+                  setLoadError('Could not load session data');
+                  setTimeout(() => navigate('/dashboard', { replace: true }), 3000);
+                }
+              } else {
+                setLoadError('Could not load session from database');
+                setTimeout(() => navigate('/dashboard', { replace: true }), 3000);
+              }
             }
           } else {
-            // Report not found, redirect to dashboard
-            toast.error("Session report not found");
-            setTimeout(() => navigate('/dashboard', { replace: true }), 1000);
+            // Try a more forgiving local storage search before giving up
+            const fuzzyMatchKey = Object.keys(localStorage).find(key => 
+              key.startsWith('sessionReport_') && (
+                key.includes(params.id.substring(0, 8)) || 
+                params.id.includes(key.split('_')[1]?.substring(0, 8) || '')
+              )
+            );
+            
+            if (fuzzyMatchKey) {
+              try {
+                const fuzzyData = JSON.parse(localStorage.getItem(fuzzyMatchKey) || '');
+                setSessionData(fuzzyData);
+                setSessionNotes(fuzzyData.notes || '');
+                setSessionId(params.id);
+              } catch (e) {
+                toast.error("Session report not found");
+                setTimeout(() => navigate('/dashboard', { replace: true }), 1000);
+              }
+            } else {
+              toast.error("Session report not found");
+              setTimeout(() => navigate('/dashboard', { replace: true }), 1000);
+            }
           }
         } else {
           // Retrieve session data from localStorage for a new report
@@ -144,8 +189,13 @@ const SessionReport = () => {
               const data = JSON.parse(storedData);
               setSessionData(data);
               
-              // Generate a UUID for this session for better database compatibility
-              const id = crypto.randomUUID ? crypto.randomUUID() : `session-${Date.now()}`;
+              // Generate a proper UUID for this session
+              let id;
+              if (crypto.randomUUID) {
+                id = crypto.randomUUID();
+              } else {
+                id = `session-${Date.now()}`;
+              }
               setSessionId(id);
             } catch (e) {
               console.error('Error parsing session data', e);

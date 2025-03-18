@@ -16,6 +16,7 @@ const FocusSession = () => {
   const { theme } = useTheme();
   const isMobile = useIsMobile();
   const operationInProgressRef = useRef(false);
+  const operationTimeoutRef = useRef<number | null>(null);
   
   // Clean up animations when component unmounts
   useEffect(() => {
@@ -24,11 +25,16 @@ const FocusSession = () => {
     return () => {
       document.body.style.overflow = 'auto';
       
+      // Cancel any pending timeouts
+      if (operationTimeoutRef.current) {
+        window.clearTimeout(operationTimeoutRef.current);
+      }
+      
       // Cancel any pending animations
       if (window.cancelAnimationFrame) {
         const maxId = 100; // Safety limit
-        let id = window.requestAnimationFrame(() => {});
-        for (let i = id; i > id - maxId; i--) {
+        const currentId = window.requestAnimationFrame(() => {});
+        for (let i = currentId; i > currentId - maxId; i--) {
           window.cancelAnimationFrame(i);
         }
       }
@@ -66,16 +72,22 @@ const FocusSession = () => {
     
     operationInProgressRef.current = true;
     
+    // Clear any existing timeout
+    if (operationTimeoutRef.current) {
+      window.clearTimeout(operationTimeoutRef.current);
+    }
+    
     // Small delay to prevent UI freezing
-    setTimeout(() => {
+    operationTimeoutRef.current = window.setTimeout(() => {
       toggleLowPowerMode();
       toast.info(lowPowerMode ? "Enhanced mode activated" : "Low power mode activated", {
         duration: 2000
       });
       
       // Release the lock after a short delay
-      setTimeout(() => {
+      operationTimeoutRef.current = window.setTimeout(() => {
         operationInProgressRef.current = false;
+        operationTimeoutRef.current = null;
       }, 300);
     }, 10);
   };
@@ -85,10 +97,16 @@ const FocusSession = () => {
     
     operationInProgressRef.current = true;
     
+    // Clear any existing timeout
+    if (operationTimeoutRef.current) {
+      window.clearTimeout(operationTimeoutRef.current);
+    }
+    
     // Small delay to prevent UI freezing
-    setTimeout(() => {
+    operationTimeoutRef.current = window.setTimeout(() => {
       setShowEndConfirmation(true);
       operationInProgressRef.current = false;
+      operationTimeoutRef.current = null;
     }, 10);
   };
 

@@ -34,6 +34,7 @@ const FocusSessionHeader: React.FC<FocusSessionHeaderProps> = ({
   
   const handleLowPowerToggle = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation(); // Prevent event bubbling
     
     // Prevent multiple rapid clicks
     if (isToggling || operationInProgress) {
@@ -42,17 +43,20 @@ const FocusSessionHeader: React.FC<FocusSessionHeaderProps> = ({
     
     setIsToggling(true);
     
-    // Cancel any pending animations
+    // Cancel any pending animations for smoother transitions
     if (window.cancelAnimationFrame) {
       const maxId = 100; // Safety limit
-      let id = window.requestAnimationFrame(() => {});
-      for (let i = id; i > id - maxId; i--) {
+      const currentId = window.requestAnimationFrame(() => {});
+      for (let i = currentId; i > currentId - maxId; i--) {
         window.cancelAnimationFrame(i);
       }
     }
     
-    // Call the toggle function
-    toggleLowPowerMode();
+    // Small delay to ensure UI is ready for state change
+    setTimeout(() => {
+      // Call the toggle function
+      toggleLowPowerMode();
+    }, 5);
   };
 
   return (
@@ -64,6 +68,7 @@ const FocusSessionHeader: React.FC<FocusSessionHeaderProps> = ({
         onClick={handleLowPowerToggle}
         title={lowPowerMode ? "Switch to enhanced mode" : "Switch to low power mode"}
         disabled={isToggling || operationInProgress}
+        className="relative" // Add relative positioning for better click handling
       >
         {lowPowerMode ? <Battery className="h-5 w-5" /> : <BatteryLow className="h-5 w-5" />}
       </Button>

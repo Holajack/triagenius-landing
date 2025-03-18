@@ -39,6 +39,7 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({
   const previousLowPowerRef = useRef(lowPowerMode);
   const lastProgressUpdateRef = useRef(Date.now());
   const throttleTimeRef = useRef(lowPowerMode ? 500 : 100);
+  const animationFramesRef = useRef<number[]>([]);
   
   // Optimize progress updates and handle low power mode changes
   useEffect(() => {
@@ -49,6 +50,17 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({
     }
   }, [lowPowerMode]);
   
+  // Cleanup animation frames on unmount
+  useEffect(() => {
+    return () => {
+      // Cancel all stored animation frames to prevent memory leaks
+      animationFramesRef.current.forEach(id => {
+        if (id) window.cancelAnimationFrame(id);
+      });
+      animationFramesRef.current = [];
+    };
+  }, []);
+  
   // Optimized progress handler with throttling
   const handleProgressUpdate = (progress: number) => {
     const now = Date.now();
@@ -58,18 +70,27 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({
     }
   };
   
-  // Handle end session clicks
+  // Handle end session clicks with proper animation cleanup
   const handleEndClick = () => {
     // Cancel any pending animations that might cause lag
+    animationFramesRef.current.forEach(id => {
+      if (id) window.cancelAnimationFrame(id);
+    });
+    animationFramesRef.current = [];
+    
+    // Also cancel any other potentially running animations
     if (window.cancelAnimationFrame) {
       const maxId = 100; // Safety limit to prevent infinite loops
-      let id = window.requestAnimationFrame(() => {});
-      for (let i = id; i > id - maxId; i--) {
+      const currentId = window.requestAnimationFrame(() => {});
+      for (let i = currentId; i > currentId - maxId; i--) {
         window.cancelAnimationFrame(i);
       }
     }
     
-    onEndSessionClick();
+    // Introduce a very small delay before navigation to ensure UI is stable
+    setTimeout(() => {
+      onEndSessionClick();
+    }, 10);
   };
   
   // Cast the environment string to StudyEnvironment or use a default value if it's not valid
