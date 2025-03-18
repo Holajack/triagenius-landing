@@ -44,19 +44,21 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
       return [];
     }
     
-    // Get users the current user follows (friends)
-    const { data: followingData, error: followingError } = await supabase
-      .from('user_connections')
-      .select('following_id')
-      .eq('follower_id', user.id);
+    // Get friends list - avoiding the user_connections table query if it's not available yet
+    let friendIds: string[] = [];
+    try {
+      // Make a direct RPC call to get friend IDs
+      const { data: followingData, error: followingError } = await supabase.rpc('get_user_follows', {
+        user_id_param: user.id
+      });
       
-    if (followingError) {
-      console.error('Error fetching following data:', followingError);
-      return [];
+      if (!followingError && followingData) {
+        friendIds = followingData.map((connection: any) => connection.following_id);
+      }
+    } catch (error) {
+      console.error('Error fetching friend IDs:', error);
+      // Continue with empty friend list if there's an error
     }
-    
-    // Extract friend IDs
-    const friendIds = followingData?.map(connection => connection.following_id) || [];
     
     // Include current user's ID
     friendIds.push(user.id);
