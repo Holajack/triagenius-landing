@@ -107,8 +107,7 @@ const FocusSession = () => {
         }}
         onConfirm={() => {
           console.log("FocusSession: ConfirmEndDialog onConfirm called");
-          // The navigation is now handled directly in ConfirmEndDialog
-          // This just handles any cleanup needed
+          // Navigation is now handled directly in ConfirmEndDialog
           handleEndSessionConfirm();
         }}
         onCancel={() => {
