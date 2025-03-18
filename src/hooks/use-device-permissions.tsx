@@ -48,7 +48,7 @@ export function useDevicePermissions(): UseDevicePermissionsResult {
         return 'screen-wake-lock';
       case 'audio':
         // Use microphone as a proxy for audio permissions
-        return 'microphone';
+        return 'microphone' as PermissionName;
       default:
         return null;
     }
