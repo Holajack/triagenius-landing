@@ -34,16 +34,16 @@ const InstallPrompt = () => {
   const { toast } = useToast();
   
   useEffect(() => {
-    // Force the prompt to appear on all browsers for development/testing
+    // Force the prompt to appear for testing/debugging
     const forcePrompt = new URLSearchParams(window.location.search).get('pwa-prompt');
     
-    // Detect browser and device info with improved detection
+    // Enhanced browser and device detection
     const detectBrowser = () => {
       const userAgent = navigator.userAgent.toLowerCase();
       let browserName = 'Unknown';
       let version = '';
       
-      // Detect browser with more precision
+      // More precise browser detection
       if (userAgent.includes('edg/') || userAgent.includes('edge/')) {
         browserName = 'Edge';
         version = userAgent.match(/edg?\/([0-9]+)/) ? 
@@ -90,7 +90,7 @@ const InstallPrompt = () => {
         browserName = 'Brave';
       }
       
-      // Detect OS and device type with more precision
+      // Enhanced OS and device detection
       const isIOS = /ipad|iphone|ipod/.test(userAgent) && !(window as any).MSStream;
       const isAndroid = /android/.test(userAgent);
       const isMobile = /mobi|tablet|ipad|iphone|ipod|android/.test(userAgent) || 
@@ -114,29 +114,58 @@ const InstallPrompt = () => {
     setBrowserInfo(browser);
     console.log('Browser detected:', browser);
     
-    // Don't show the prompt if already installed/standalone mode
+    // Don't show if already in standalone mode (unless forced)
     if (browser.isStandalone && !forcePrompt) {
       console.log('App is already installed and running in standalone mode');
       return;
     }
     
-    // Check if we've prompted recently
+    // Enhanced install prompt timing logic
     const shouldPrompt = () => {
       const lastPrompt = localStorage.getItem('installPromptDismissed');
-      // Show prompt if we haven't shown it before or if it's been more than 3 days
-      return !lastPrompt || daysBetween(new Date(lastPrompt), new Date()) > 3 || forcePrompt;
+      const hasVisitedBefore = localStorage.getItem('hasVisitedBefore');
+      
+      // First-time visitor: set flag but don't show immediately
+      if (!hasVisitedBefore) {
+        localStorage.setItem('hasVisitedBefore', 'true');
+        return false;
+      }
+      
+      // Force prompt for testing
+      if (forcePrompt) return true;
+      
+      // Show if we haven't prompted before or it's been more than 3 days
+      return !lastPrompt || daysBetween(new Date(lastPrompt), new Date()) > 3;
     };
     
-    // For iOS devices, show the prompt after a delay with custom instructions
+    // Chrome on Android specific handler
+    const handleAndroidChrome = () => {
+      // For Chrome on Android, we need to be more aggressive with the install prompt
+      if (browser.isAndroid && browser.name === 'Chrome') {
+        // Always check if app is already installed via display-mode
+        if (!browser.isStandalone && shouldPrompt()) {
+          console.log('Chrome on Android detected - showing install prompt');
+          // For Chrome on Android, we'll show our prompt after a short delay
+          // even if the beforeinstallprompt event never fires
+          setTimeout(() => {
+            if (!installPrompt && !isVisible) {
+              setIsVisible(true);
+            }
+          }, 3000);
+        }
+      }
+    };
+    
+    // Specific handling for iOS browsers
     if (browser.isIOS) {
       if (shouldPrompt()) {
-        // Show prompt after a few seconds of user engagement
+        // Show prompt after a delay for better UX
         setTimeout(() => setIsVisible(true), 3000);
       }
       return;
     }
     
-    // For browsers that might not support BeforeInstallPrompt natively but still support PWAs
+    // Browsers without standard beforeinstallprompt but that support PWAs
     if ((browser.isAndroid && (browser.name === 'Samsung Internet' || browser.name === 'UC Browser')) || 
         browser.name === 'Firefox' || 
         browser.name === 'DuckDuckGo') {
@@ -146,37 +175,44 @@ const InstallPrompt = () => {
       return;
     }
     
-    // For Chrome, Edge, Opera and other browsers that support BeforeInstallPrompt
+    // Handle Chrome on Android (most common PWA install scenario)
+    handleAndroidChrome();
+    
+    // Standard beforeinstallprompt handler for Chrome, Edge, etc.
     const handleBeforeInstallPrompt = (e: Event) => {
-      // Prevent the mini-infobar from appearing on mobile
+      // Always prevent default to disable mini-infobar
       e.preventDefault();
       console.log('Captured beforeinstallprompt event', e);
       
-      // Store the event so it can be triggered later
+      // Store event for later use
       setInstallPrompt(e as BeforeInstallPromptEvent);
       
-      // Show our custom prompt after a delay for better user experience
+      // Show our custom prompt if appropriate
       if (shouldPrompt()) {
-        setTimeout(() => setIsVisible(true), 3000);
+        setTimeout(() => setIsVisible(true), 2000);
       }
     };
     
+    // Add prompt handler and explicitly log it
     console.log('Adding beforeinstallprompt event listener');
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     
-    // For browsers where we haven't detected the beforeinstallprompt event 
+    // Fallback installer for browsers where beforeinstallprompt might not fire consistently
     if (shouldPrompt()) {
+      // Backup check after 5 seconds in case beforeinstallprompt never fired
       setTimeout(() => {
         if (!installPrompt && !isVisible) {
+          console.log('beforeinstallprompt never fired, showing prompt anyway');
           setIsVisible(true);
         }
       }, 5000);
     }
     
-    // Track app installed event
+    // Track successful installs
     window.addEventListener('appinstalled', (e) => {
       console.log('PWA was installed', e);
       setIsVisible(false);
+      localStorage.setItem('appInstalled', 'true');
       toast({
         title: "Installation Complete",
         description: "Triagenius has been successfully installed!"
@@ -201,7 +237,7 @@ const InstallPrompt = () => {
     
     checkReturnVisit();
     
-    // Cleanup event listener
+    // Cleanup
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
@@ -209,10 +245,11 @@ const InstallPrompt = () => {
   
   const handleInstallClick = async () => {
     // Track that the user initiated an install attempt
+    console.log('Install button clicked');
     try {
       // For browsers with native install prompt
       if (installPrompt) {
-        console.log('Triggering browser install prompt');
+        console.log('Triggering native browser install prompt');
         await installPrompt.prompt();
         
         // Wait for the user to respond to the prompt
@@ -228,22 +265,23 @@ const InstallPrompt = () => {
           setIsVisible(false);
         } else {
           console.log('User dismissed the install prompt');
-          // Save the dismissal time so we don't prompt again too soon
+          // Save the dismissal time
           localStorage.setItem('installPromptDismissed', new Date().toISOString());
         }
         
         // Clear the saved prompt since it can't be used again
         setInstallPrompt(null);
       } else {
-        // For browsers without beforeinstallprompt support
+        // For browsers without beforeinstallprompt support or if it failed
+        console.log('No native install prompt available, showing browser-specific instructions');
         setShowInstructions(true);
-        showBrowserSpecificInstructions(browserInfo.name, browserInfo.isIOS);
+        showBrowserSpecificInstructions(browserInfo.name, browserInfo.isIOS, browserInfo.isAndroid);
       }
     } catch (error) {
       console.error('Error during install attempt:', error);
-      // Fallback to manual instructions 
+      // Fallback to manual instructions
       setShowInstructions(true);
-      showBrowserSpecificInstructions(browserInfo.name, browserInfo.isIOS);
+      showBrowserSpecificInstructions(browserInfo.name, browserInfo.isIOS, browserInfo.isAndroid);
     }
   };
   
@@ -252,12 +290,12 @@ const InstallPrompt = () => {
     setIsVisible(false);
     setShowInstructions(false);
     
-    // Save the current time to localStorage so we don't prompt again for a while
+    // Save the current time to localStorage
     localStorage.setItem('installPromptDismissed', new Date().toISOString());
   };
   
   const showIOSInstructions = () => {
-    // Show iOS-specific instructions
+    // iOS-specific instructions
     toast({
       title: "Install on iOS",
       description: "1. Tap the Share button (📤) at the bottom of your screen\n2. Scroll down and tap 'Add to Home Screen'\n3. Tap 'Add' in the top right corner",
@@ -265,7 +303,7 @@ const InstallPrompt = () => {
     });
   };
   
-  const showBrowserSpecificInstructions = (browser: string, isIOS: boolean) => {
+  const showBrowserSpecificInstructions = (browser: string, isIOS: boolean, isAndroid: boolean) => {
     if (isIOS) {
       showIOSInstructions();
       return;
@@ -274,10 +312,30 @@ const InstallPrompt = () => {
     let title = `Install on ${browser}`;
     let instructions = "";
     
-    // Specific instructions for each browser
+    // Enhanced browser-specific instructions
     switch(browser.toLowerCase()) {
       case "chrome":
-        instructions = "1. Tap the menu button (⋮) in the top right\n2. Select 'Install App' or 'Add to Home Screen'\n3. Tap 'Install' in the prompt";
+        if (isAndroid) {
+          // Most common case - Chrome on Android
+          instructions = "1. Tap the menu button (⋮) in the top right\n2. Select 'Install App' or 'Add to Home Screen'\n3. Tap 'Install' in the prompt\n\nIf you don't see 'Install App', try refreshing the page and waiting a moment.";
+          
+          // For Chrome on Android, we can try to retrigger the install prompt via reload
+          // This can help in cases where Chrome didn't show the prompt initially
+          if (!localStorage.getItem('hasTriedReload')) {
+            localStorage.setItem('hasTriedReload', 'true');
+            toast({
+              title: "Install on Chrome",
+              description: instructions,
+              action: <Button size="sm" onClick={() => {
+                window.location.reload();
+              }}>Reload & Try Again</Button>,
+              duration: 15000
+            });
+            return;
+          }
+        } else {
+          instructions = "1. Click the menu button (⋮) in the top right\n2. Select 'Install Triagenius...'\n3. Click 'Install' in the prompt";
+        }
         break;
       case "edge":
         instructions = "1. Tap the menu button (...) in the bottom\n2. Select 'Add to Phone'\n3. Tap 'Install' in the prompt";
@@ -299,7 +357,7 @@ const InstallPrompt = () => {
         instructions = "1. Tap the menu button (...) in the top right\n2. Select 'Add to Home Screen'\n3. Tap 'Add' to confirm";
         break;
       default:
-        if (browserInfo.isAndroid) {
+        if (isAndroid) {
           instructions = "1. Look for a 'Add to Home Screen' or 'Install App' option in your browser's menu\n2. Follow the on-screen instructions to complete installation";
         } else {
           instructions = "Most desktop browsers support PWA installation. Look for an install icon in the address bar or in the browser's menu.";
@@ -339,9 +397,11 @@ const InstallPrompt = () => {
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
                 {browserInfo.isIOS 
                   ? "Install our app on your iPhone for the best experience"
-                  : browserInfo.isMobile
-                    ? "Get our app on your home screen for quick access"
-                    : "Install for a faster experience with offline access"}
+                  : browserInfo.isAndroid && browserInfo.name === "Chrome"
+                    ? "Add Triagenius to your home screen for fast access"
+                    : browserInfo.isMobile
+                      ? "Get our app on your home screen for quick access"
+                      : "Install for a faster experience with offline access"}
               </p>
               
               <div className="flex flex-col sm:flex-row gap-2">
@@ -355,7 +415,7 @@ const InstallPrompt = () => {
                 
                 <Button 
                   variant="outline"
-                  onClick={() => showBrowserSpecificInstructions(browserInfo.name, browserInfo.isIOS)}
+                  onClick={() => showBrowserSpecificInstructions(browserInfo.name, browserInfo.isIOS, browserInfo.isAndroid)}
                   className="flex-1"
                 >
                   <Info className="w-4 h-4 mr-2" /> 
@@ -379,8 +439,8 @@ const InstallPrompt = () => {
               <Info className="w-3 h-3 mr-1 inline" />
               {browserInfo.isIOS && browserInfo.name === 'Safari' 
                 ? "Tap the share icon (📤) then 'Add to Home Screen'"
-                : browserInfo.name === 'Chrome' 
-                  ? "Look for 'Install' in Chrome's menu (⋮)"
+                : browserInfo.isAndroid && browserInfo.name === 'Chrome'
+                  ? "Open Chrome menu (⋮), then tap 'Install App'"
                   : browserInfo.isAndroid && browserInfo.name === 'Samsung Internet'
                     ? "Tap menu (⋮) then 'Add page to' → 'Home screen'"
                     : "Install to get the full app experience"}

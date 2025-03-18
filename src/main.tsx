@@ -18,7 +18,7 @@ root.render(
   </React.StrictMode>
 );
 
-// Enhanced service worker registration that works across browsers
+// Enhanced service worker registration with improved cross-browser support
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
     try {
@@ -49,6 +49,8 @@ if ('serviceWorker' in navigator) {
               }
             } else {
               console.log('Content is cached for offline use.');
+              // Set flag for PWA installation
+              localStorage.setItem('pwaInstallable', 'true');
             }
           }
         };
@@ -59,6 +61,24 @@ if ('serviceWorker' in navigator) {
         registration.update();
         console.log('Checking for service worker updates');
       }, 30 * 60 * 1000);
+      
+      // For Chrome on Android, specifically check if conditions are right for PWA
+      const isChrome = /chrome/i.test(navigator.userAgent);
+      const isAndroid = /android/i.test(navigator.userAgent);
+      if (isChrome && isAndroid) {
+        // Force a check for beforeinstallprompt conditions
+        setTimeout(() => {
+          if (registration.active) {
+            console.log('Chrome on Android: Verifying PWA installability');
+            // Signal to InstallPrompt that conditions are met
+            localStorage.setItem('chromeAndroidInstallable', 'true');
+            // Dispatch a custom event that InstallPrompt can listen for
+            window.dispatchEvent(new CustomEvent('pwa-installable', {
+              detail: { browser: 'Chrome', platform: 'Android' }
+            }));
+          }
+        }, 2000);
+      }
       
       // Register for periodic background sync (if supported)
       if ('periodicSync' in registration) {
