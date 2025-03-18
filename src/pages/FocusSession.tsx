@@ -1,166 +1,54 @@
-
-import { useState, useEffect, useRef } from "react";
-import { cn } from "@/lib/utils";
-import { useTheme } from "@/contexts/ThemeContext";
-import { useOnboarding } from "@/contexts/OnboardingContext";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useFocusSession } from "@/hooks/use-focus-session";
-import { MotivationalDialog } from "@/components/focus/MotivationalDialog";
-import { ConfirmEndDialog } from "@/components/focus/ConfirmEndDialog";
-import FocusSessionHeader from "@/components/focus/FocusSessionHeader";
-import FocusSessionContent from "@/components/focus/FocusSessionContent";
-import { toast } from "sonner";
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import FocusSessionHeader from '@/components/focus/FocusSessionHeader';
+import FocusSessionContent from '@/components/focus/FocusSessionContent';
+import NavigationBar from '@/components/dashboard/NavigationBar';
+import { useFocusSession } from '@/hooks/use-focus-session';
+import FocusSessionWalkthrough from '@/components/walkthrough/FocusSessionWalkthrough';
 
 const FocusSession = () => {
-  const { state } = useOnboarding();
-  const { theme } = useTheme();
-  const isMobile = useIsMobile();
-  const operationInProgressRef = useRef(false);
-  const operationTimeoutRef = useRef<number | null>(null);
-  const isMountedRef = useRef(true);
-  
-  // Set mounted flag and clean up animations when component unmounts
+  const navigate = useNavigate();
+  const { sessionData, startSession, endSession, breakTime, setBreakTime } = useFocusSession();
+  const [isBreak, setIsBreak] = useState(false);
+
   useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    isMountedRef.current = true;
-    
-    return () => {
-      isMountedRef.current = false;
-      document.body.style.overflow = 'auto';
-      
-      // Cancel any pending timeouts
-      if (operationTimeoutRef.current) {
-        window.clearTimeout(operationTimeoutRef.current);
-      }
-      
-      // Cancel any pending animations
-      if (window.cancelAnimationFrame) {
-        const maxId = 100; // Safety limit
-        const currentId = window.requestAnimationFrame(() => {});
-        for (let i = currentId; i > currentId - maxId; i--) {
-          window.cancelAnimationFrame(i);
-        }
-      }
-    };
-  }, []);
-  
-  const {
-    // State
-    isPaused,
-    showMotivation,
-    currentMilestone,
-    isCelebrating,
-    lowPowerMode,
-    segmentProgress,
-    showEndConfirmation,
-    
-    // Refs
-    timerRef,
-    
-    // Handlers
-    handlePause,
-    handleResume,
-    handleSessionEnd,
-    handleEndSessionEarly,
-    handleEndSessionConfirm,
-    handleMilestoneReached,
-    handleProgressUpdate,
-    toggleLowPowerMode,
-    
-    // Setters
-    setShowMotivation,
-    setShowEndConfirmation
-  } = useFocusSession();
-  
-  const handleLowPowerModeToggle = () => {
-    if (operationInProgressRef.current || !isMountedRef.current) return;
-    
-    operationInProgressRef.current = true;
-    
-    // Clear any existing timeout
-    if (operationTimeoutRef.current) {
-      window.clearTimeout(operationTimeoutRef.current);
+    if (!sessionData) {
+      navigate('/dashboard');
     }
-    
-    // Small delay to prevent UI freezing
-    operationTimeoutRef.current = window.setTimeout(() => {
-      if (isMountedRef.current) {
-        toggleLowPowerMode();
-        toast.info(lowPowerMode ? "Enhanced mode activated" : "Low power mode activated", {
-          duration: 2000
-        });
-      }
-      
-      // Release the lock after a short delay
-      operationTimeoutRef.current = window.setTimeout(() => {
-        operationInProgressRef.current = false;
-        operationTimeoutRef.current = null;
-      }, 300);
-    }, 10);
+  }, [sessionData, navigate]);
+
+  const handleEndSession = () => {
+    endSession();
+    navigate(`/session-reflection`);
   };
-  
-  const handleEndSessionClick = () => {
-    if (operationInProgressRef.current || !isMountedRef.current) return;
-    
-    operationInProgressRef.current = true;
-    
-    // Clear any existing timeout
-    if (operationTimeoutRef.current) {
-      window.clearTimeout(operationTimeoutRef.current);
-    }
-    
-    // Small delay to prevent UI freezing
-    operationTimeoutRef.current = window.setTimeout(() => {
-      if (isMountedRef.current) {
-        setShowEndConfirmation(true);
-      }
-      
-      operationInProgressRef.current = false;
-      operationTimeoutRef.current = null;
-    }, 10);
-  };
+
+  if (!sessionData) {
+    return null;
+  }
 
   return (
-    <div className={cn(
-      "min-h-screen bg-background text-foreground flex flex-col items-center p-4 overflow-hidden",
-      `theme-${state.environment || 'default'} ${theme}`
-    )}>
-      <div className="w-full max-w-4xl">
-        <FocusSessionHeader 
-          lowPowerMode={lowPowerMode}
-          toggleLowPowerMode={handleLowPowerModeToggle}
-          operationInProgress={operationInProgressRef.current}
-        />
-        
-        <FocusSessionContent 
-          timerRef={timerRef}
-          onPause={handlePause}
-          onResume={handleResume}
-          onComplete={handleSessionEnd}
-          onMilestoneReached={handleMilestoneReached}
-          onProgressUpdate={handleProgressUpdate}
-          isPaused={isPaused}
-          onEndSessionClick={handleEndSessionClick}
-          lowPowerMode={lowPowerMode}
-          environment={state.environment}
-          currentMilestone={currentMilestone}
-          isCelebrating={isCelebrating}
-          segmentProgress={segmentProgress}
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 relative overflow-hidden">
+      <div data-walkthrough="focus-header">
+        <FocusSessionHeader
+          title={sessionData.task?.title || 'Focus Session'}
+          description={sessionData.task?.description || 'Time to focus'}
+          onEndSession={handleEndSession}
         />
       </div>
-
-      <MotivationalDialog
-        open={showMotivation}
-        onClose={() => setShowMotivation(false)}
-      />
-
-      <ConfirmEndDialog
-        open={showEndConfirmation}
-        onOpenChange={(open) => {
-          setShowEndConfirmation(open);
-        }}
-        onConfirmEnd={handleEndSessionConfirm}
-      />
+      
+      <div className="flex-grow flex flex-col">
+        <FocusSessionContent 
+          sessionData={sessionData}
+          onEndSession={handleEndSession}
+          data-walkthrough="focus-content"
+        />
+      </div>
+      
+      <div data-walkthrough="navigation-bar">
+        <NavigationBar />
+      </div>
+      
+      <FocusSessionWalkthrough />
     </div>
   );
 };
