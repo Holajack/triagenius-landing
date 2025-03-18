@@ -100,23 +100,23 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
           setFocusTimeData(formattedFocusData);
         }
         
-        // Fetch user's tasks
+        // Fetch user's tasks - Use only columns that exist in the tasks table
         const { data: tasksData, error: tasksError } = await supabase
           .from('tasks')
-          .select('created_at, status, title, subject')
+          .select('id, title, status, priority, created_at')
           .eq('user_id', user.id)
           .gte('created_at', startOfWeek.toISOString())
           .lt('created_at', endOfWeek.toISOString());
           
         if (tasksError) {
           console.error('Error fetching tasks data:', tasksError);
-        } else {
+        } else if (tasksData) {
           // Process task completion by day
           const weeklyTaskData = {
             "Mon": 0, "Tue": 0, "Wed": 0, "Thu": 0, "Fri": 0, "Sat": 0, "Sun": 0
           };
           
-          tasksData?.forEach(task => {
+          tasksData.forEach(task => {
             if (task.status === 'completed') {
               const day = getDayOfWeek(task.created_at);
               weeklyTaskData[day as keyof typeof weeklyTaskData] += 1;
@@ -137,7 +137,7 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
             "Pending": 0
           };
           
-          tasksData?.forEach(task => {
+          tasksData.forEach(task => {
             if (task.status === 'completed') taskStatusCounts["Completed"]++;
             else if (task.status === 'in_progress') taskStatusCounts["In Progress"]++;
             else taskStatusCounts["Pending"]++;
@@ -150,15 +150,16 @@ const WeeklyTracker: React.FC<WeeklyTrackerProps> = ({ chartType, optimizeForMob
           
           setTaskStatusData(formattedTaskStatusData);
           
-          // Process subject distribution
-          const subjectCounts: Record<string, number> = {};
+          // Process subject distribution using task titles since 'subject' is not available
+          const titleCounts: Record<string, number> = {};
           
-          tasksData?.forEach(task => {
-            const subject = task.subject || task.title || 'Untitled';
-            subjectCounts[subject] = (subjectCounts[subject] || 0) + 1;
+          tasksData.forEach(task => {
+            // Use title as the subject
+            const subject = task.title || 'Untitled';
+            titleCounts[subject] = (titleCounts[subject] || 0) + 1;
           });
           
-          const formattedSubjectData = Object.entries(subjectCounts)
+          const formattedSubjectData = Object.entries(titleCounts)
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value)
             .slice(0, 5);
