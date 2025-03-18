@@ -3,6 +3,7 @@ import React from "react";
 import { FocusTimer } from "@/components/focus/FocusTimer";
 import { HikingTrail } from "@/components/focus/HikingTrail";
 import SessionGoals from "@/components/focus/SessionGoals";
+import { StudyEnvironment } from "@/types/onboarding";
 
 interface FocusSessionContentProps {
   timerRef: React.MutableRefObject<{ stopTimer: () => void } | null>;
@@ -35,6 +36,12 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({
   isCelebrating,
   segmentProgress
 }) => {
+  // Cast the environment string to StudyEnvironment or use a default value if it's not valid
+  const validEnvironments: StudyEnvironment[] = ['office', 'park', 'home', 'coffee-shop', 'library'];
+  const safeEnvironment: StudyEnvironment = validEnvironments.includes(environment as StudyEnvironment) 
+    ? (environment as StudyEnvironment) 
+    : 'office'; // Default to 'office' if the environment is not valid
+
   return (
     <div className="flex flex-col items-center space-y-8 mt-4">
       <FocusTimer
@@ -53,7 +60,7 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({
       {!lowPowerMode && (
         <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden">
           <HikingTrail 
-            environment={environment} 
+            environment={safeEnvironment}
             milestone={currentMilestone}
             isCelebrating={isCelebrating}
             progress={segmentProgress}
