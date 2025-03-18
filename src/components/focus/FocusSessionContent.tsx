@@ -1,8 +1,14 @@
+
 import React from 'react';
-import FocusTimer from '@/components/focus/FocusTimer';
+import { FocusTimer } from '@/components/focus/FocusTimer';
 import SessionGoals from '@/components/focus/SessionGoals';
 
-const FocusSessionContent = ({ sessionData, onEndSession }) => {
+interface FocusSessionContentProps {
+  sessionData: any;
+  onEndSession: () => void;
+}
+
+const FocusSessionContent: React.FC<FocusSessionContentProps> = ({ sessionData, onEndSession }) => {
   const handleEndSession = () => {
     onEndSession();
   };
@@ -17,6 +23,12 @@ const FocusSessionContent = ({ sessionData, onEndSession }) => {
           <FocusTimer 
             initialTime={sessionData?.duration || 25 * 60} 
             onSessionEnd={onEndSession}
+            onPause={() => {}}
+            onResume={() => {}}
+            onComplete={onEndSession}
+            isPaused={false}
+            autoStart={false}
+            showControls={true}
           />
         </div>
         <div className="text-center">
@@ -33,9 +45,7 @@ const FocusSessionContent = ({ sessionData, onEndSession }) => {
         className="w-full md:w-1/3"
         data-walkthrough="session-goals"
       >
-        <SessionGoals 
-          goals={sessionData?.goals || []}
-        />
+        <SessionGoals />
       </div>
     </div>
   );

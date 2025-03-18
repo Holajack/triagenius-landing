@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FocusSessionHeader from '@/components/focus/FocusSessionHeader';
@@ -8,17 +9,42 @@ import FocusSessionWalkthrough from '@/components/walkthrough/FocusSessionWalkth
 
 const FocusSession = () => {
   const navigate = useNavigate();
-  const { sessionData, startSession, endSession, breakTime, setBreakTime } = useFocusSession();
+  const focusSessionHook = useFocusSession();
   const [isBreak, setIsBreak] = useState(false);
+  const [sessionData, setSessionData] = useState<any>(null);
 
   useEffect(() => {
-    if (!sessionData) {
-      navigate('/dashboard');
+    // Retrieve session data from localStorage or other sources
+    const savedSelection = localStorage.getItem('selectedTasksForFocus');
+    if (savedSelection) {
+      try {
+        const parsedData = JSON.parse(savedSelection);
+        setSessionData({
+          task: {
+            title: parsedData.title || 'Focus Session',
+            description: parsedData.description || 'Time to focus'
+          },
+          duration: 25 * 60, // Default to 25 minutes
+          goals: parsedData.tasks || []
+        });
+      } catch (error) {
+        console.error("Error loading saved task selections:", error);
+        navigate('/dashboard');
+      }
+    } else {
+      // Fallback session data if nothing was selected
+      setSessionData({
+        task: {
+          title: 'Focus Session',
+          description: 'Time to focus'
+        },
+        duration: 25 * 60,
+        goals: []
+      });
     }
-  }, [sessionData, navigate]);
+  }, [navigate]);
 
   const handleEndSession = () => {
-    endSession();
     navigate(`/session-reflection`);
   };
 
@@ -30,8 +56,6 @@ const FocusSession = () => {
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 relative overflow-hidden">
       <div data-walkthrough="focus-header">
         <FocusSessionHeader
-          title={sessionData.task?.title || 'Focus Session'}
-          description={sessionData.task?.description || 'Time to focus'}
           onEndSession={handleEndSession}
         />
       </div>

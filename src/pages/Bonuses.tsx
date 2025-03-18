@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import PageHeader from '@/components/common/PageHeader';
 import LearningStyleQuiz from '@/components/bonuses/LearningStyleQuiz';
@@ -8,10 +9,6 @@ import BonusesWalkthrough from '@/components/walkthrough/BonusesWalkthrough';
 const Bonuses = () => {
   const [isQuizCompleted, setIsQuizCompleted] = useState(false);
 
-  const handleQuizComplete = () => {
-    setIsQuizCompleted(true);
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div data-walkthrough="bonuses-header">
@@ -21,7 +18,7 @@ const Bonuses = () => {
       <div className="container mx-auto px-4 pb-24">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div data-walkthrough="learning-style-quiz">
-            <LearningStyleQuiz onQuizComplete={handleQuizComplete} />
+            <LearningStyleQuiz />
           </div>
           <div data-walkthrough="brain-mapping">
             <div className="bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-sm border border-gray-200 dark:border-gray-700">

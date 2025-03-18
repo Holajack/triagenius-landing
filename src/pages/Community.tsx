@@ -1,8 +1,9 @@
+
 import { useEffect, useState } from 'react';
 import PageHeader from '@/components/common/PageHeader';
-import StudyRooms from '@/components/community/StudyRooms';
+import { StudyRooms } from '@/components/community/StudyRooms';
 import CommunityUserList from '@/components/community/CommunityUserList';
-import MessageInbox from '@/components/community/MessageInbox';
+import { MessageInbox } from '@/components/community/MessageInbox';
 import NavigationBar from '@/components/dashboard/NavigationBar';
 import CommunityWalkthrough from '@/components/walkthrough/CommunityWalkthrough';
 

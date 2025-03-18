@@ -13,7 +13,7 @@ import { StudyRoomResources } from "@/components/studyroom/StudyRoomResources";
 import { StudyRoomMember } from "@/components/studyroom/StudyRoomMember";
 import { StartFocusDialog } from "@/components/studyroom/StartFocusDialog";
 import { useOnboarding } from "@/contexts/OnboardingContext";
-import { HikingTrail } from "@/components/focus/HikingTrail";
+import HikingTrail from "@/components/focus/HikingTrail";
 import { FocusTimer } from "@/components/focus/FocusTimer";
 import { useStudyRooms } from "@/hooks/use-study-rooms";
 import { useRoomMessages } from "@/hooks/use-room-messages";
