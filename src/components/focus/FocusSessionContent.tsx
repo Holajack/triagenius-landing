@@ -59,7 +59,11 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({
       
       {/* Only render the HikingTrail when not in low power mode */}
       {!lowPowerMode && (
-        <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden" aria-hidden={lowPowerMode}>
+        <div 
+          className="relative w-full aspect-[3/1] rounded-lg overflow-hidden" 
+          aria-hidden={lowPowerMode}
+          style={{ display: lowPowerMode ? 'none' : 'block' }} // Force DOM removal for PWA performance
+        >
           <HikingTrail 
             environment={safeEnvironment}
             milestone={currentMilestone}

@@ -35,7 +35,7 @@ export function ConfirmEndDialog({
     
     // For PWA, apply special handling to prevent freezing
     if (isPwa) {
-      // Close dialog immediately
+      // Close dialog immediately first to prevent UI blocking
       onOpenChange(false);
       
       // Use a minimal timeout for mobile PWA to prevent UI thread blocking
@@ -44,9 +44,7 @@ export function ConfirmEndDialog({
       }, 10);
     } else {
       // Standard behavior for non-PWA
-      requestAnimationFrame(() => {
-        onConfirm();
-      });
+      onConfirm();
     }
   };
 

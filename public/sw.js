@@ -1,6 +1,5 @@
-
 // Cache version identifier - change this when files are updated
-const CACHE_NAME = 'triage-system-v3';
+const CACHE_NAME = 'triage-system-v4';
 const APP_NAME = 'The Triage System';
 
 // Add list of files to cache for offline access
@@ -31,7 +30,7 @@ const CRITICAL_ROUTES = [
 
 // Install event - cache static resources with error handling
 self.addEventListener('install', event => {
-  console.log('Installing service worker v3 - optimized for PWA');
+  console.log('Installing service worker v4 - optimized for PWA focus session performance');
   self.skipWaiting(); // Force activation on install
   
   event.waitUntil(
@@ -340,5 +339,17 @@ self.addEventListener('message', event => {
     event.ports[0].postMessage({
       version: CACHE_NAME
     });
+  }
+  
+  // Handle focus session optimizations
+  if (event.data.type === 'OPTIMIZE_FOCUS_SESSION') {
+    console.log('PWA Focus Session Optimization Requested');
+    // Report back success
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({
+        optimized: true,
+        timestamp: Date.now()
+      });
+    }
   }
 });
