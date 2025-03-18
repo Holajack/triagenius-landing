@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'triage-system-v2';
+const CACHE_NAME = 'triage-system-v5';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -66,6 +66,16 @@ self.addEventListener('activate', event => {
           }
         })
       );
+    }).then(() => {
+      // Notify clients about the update
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'UPDATE_AVAILABLE',
+            version: CACHE_NAME
+          });
+        });
+      });
     })
   );
 });
@@ -87,3 +97,26 @@ async function syncLearningData() {
     console.error('Background sync failed:', error);
   }
 }
+
+// Handle messages from the main thread
+self.addEventListener('message', event => {
+  if (event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  
+  if (event.data.type === 'GET_VERSION') {
+    event.ports[0].postMessage({
+      version: CACHE_NAME
+    });
+  }
+  
+  // Handle update check requests
+  if (event.data.type === 'CHECK_UPDATE') {
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({
+        version: CACHE_NAME,
+        timestamp: Date.now()
+      });
+    }
+  }
+});

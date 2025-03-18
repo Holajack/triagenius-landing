@@ -1,5 +1,6 @@
+
 // Cache version identifier - change this when files are updated
-const CACHE_NAME = 'triage-system-v4';
+const CACHE_NAME = 'triage-system-v5';
 const APP_NAME = 'The Triage System';
 
 // Add list of files to cache for offline access
@@ -30,7 +31,7 @@ const CRITICAL_ROUTES = [
 
 // Install event - cache static resources with error handling
 self.addEventListener('install', event => {
-  console.log('Installing service worker v4 - optimized for PWA focus session performance');
+  console.log('Installing service worker v5 - with update notification system');
   self.skipWaiting(); // Force activation on install
   
   event.waitUntil(
@@ -64,6 +65,17 @@ self.addEventListener('activate', event => {
       );
     }).then(() => {
       console.log('Service Worker: Now ready to handle fetches!');
+      
+      // Notify clients about the update
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'UPDATE_AVAILABLE',
+            version: CACHE_NAME
+          });
+        });
+      });
+      
       return self.clients.claim(); // Take control immediately
     })
   );
@@ -348,6 +360,16 @@ self.addEventListener('message', event => {
     if (event.ports && event.ports[0]) {
       event.ports[0].postMessage({
         optimized: true,
+        timestamp: Date.now()
+      });
+    }
+  }
+  
+  // Handle update check requests
+  if (event.data.type === 'CHECK_UPDATE') {
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({
+        version: CACHE_NAME,
         timestamp: Date.now()
       });
     }
