@@ -43,6 +43,7 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
   const timerRef = useRef<number>();
   const notificationShownRef = useRef(false);
   const lastMilestoneTimeRef = useRef(0);
+  const rafId = useRef<number | null>(null);
   
   // Calculate elapsed time based on the original time and current time
   // This is used for milestone tracking
@@ -55,6 +56,10 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = undefined;
+      }
+      if (rafId.current) {
+        cancelAnimationFrame(rafId.current);
+        rafId.current = null;
       }
       setIsActive(false);
     }
@@ -85,14 +90,24 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
     }
     
     if (autoStart) {
-      setTimeout(() => {
-        setIsActive(true);
-        if (!notificationShownRef.current) {
-          toast.success("Focus session started!");
-          notificationShownRef.current = true;
-        }
-      }, 500);
+      // Use RAF for smoother animation and to prevent jank
+      rafId.current = requestAnimationFrame(() => {
+        setTimeout(() => {
+          setIsActive(true);
+          if (!notificationShownRef.current) {
+            toast.success("Focus session started!");
+            notificationShownRef.current = true;
+          }
+        }, 500);
+      });
     }
+    
+    return () => {
+      if (rafId.current) {
+        cancelAnimationFrame(rafId.current);
+        rafId.current = null;
+      }
+    };
   }, [autoStart]);
   
   const adjustTime = (type: 'minutes' | 'seconds', increment: boolean) => {
@@ -131,28 +146,38 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
               setMilestoneReached(newMilestone);
               
               if (newMilestone > 0 && onMilestoneReached) {
-                onMilestoneReached(newMilestone);
-                
-                // Show milestone celebration
-                const milestoneMessages = [
-                  "Great job! You've made it to the first checkpoint—keep going!",
-                  "You're halfway up the mountain—stay focused!",
-                  "Final push! Reach the peak and complete today's session!"
-                ];
-                
-                if (newMilestone <= milestoneMessages.length) {
-                  toast.success(milestoneMessages[newMilestone - 1], {
-                    duration: 5000,
-                  });
-                }
+                // Use RAF for smoother UI updates
+                requestAnimationFrame(() => {
+                  onMilestoneReached(newMilestone);
+                  
+                  // Show milestone celebration
+                  const milestoneMessages = [
+                    "Great job! You've made it to the first checkpoint—keep going!",
+                    "You're halfway up the mountain—stay focused!",
+                    "Final push! Reach the peak and complete today's session!"
+                  ];
+                  
+                  if (newMilestone <= milestoneMessages.length) {
+                    setTimeout(() => {
+                      toast.success(milestoneMessages[newMilestone - 1], {
+                        duration: 5000,
+                      });
+                    }, 0);
+                  }
+                });
               }
               
               // If we've completed all milestones (3 hours)
               if (milestonesCompleted >= 3) {
-                toast.success("Congratulations! You've completed your 3-hour focus session!", {
-                  duration: 5000,
-                });
-                onComplete();
+                setTimeout(() => {
+                  toast.success("Congratulations! You've completed your 3-hour focus session!", {
+                    duration: 5000,
+                  });
+                  // Use setTimeout to prevent UI blocking
+                  setTimeout(() => {
+                    onComplete();
+                  }, 0);
+                }, 0);
                 return 0;
               }
               
@@ -164,7 +189,12 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
               // Full session completed
               clearInterval(timerRef.current);
               setIsActive(false);
-              onComplete();
+              // Use requestAnimationFrame to prevent UI blocking
+              requestAnimationFrame(() => {
+                setTimeout(() => {
+                  onComplete();
+                }, 0);
+              });
               return 0;
             }
           }
@@ -176,27 +206,39 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
           if (onProgressUpdate) {
             const segmentElapsedTime = currentElapsedTime % MILESTONE_TIME;
             const segmentProgress = (segmentElapsedTime / MILESTONE_TIME) * 100;
-            onProgressUpdate(segmentProgress);
+            // Use RAF to ensure smooth progress updates without jank
+            if (rafId.current) {
+              cancelAnimationFrame(rafId.current);
+            }
+            rafId.current = requestAnimationFrame(() => {
+              onProgressUpdate(segmentProgress);
+              rafId.current = null;
+            });
           }
           
           if (currentMilestone > milestoneReached && currentMilestone <= 3) {
             setMilestoneReached(currentMilestone);
             
             if (onMilestoneReached) {
-              onMilestoneReached(currentMilestone);
-              
-              // Show milestone celebration
-              const milestoneMessages = [
-                "Great job! You've made it to the first checkpoint—keep going!",
-                "You're halfway up the mountain—stay focused!",
-                "Final push! Reach the peak and complete today's session!"
-              ];
-              
-              if (currentMilestone <= milestoneMessages.length) {
-                toast.success(milestoneMessages[currentMilestone - 1], {
-                  duration: 5000,
-                });
-              }
+              // Use RAF to keep UI responsive
+              requestAnimationFrame(() => {
+                onMilestoneReached(currentMilestone);
+                
+                // Show milestone celebration
+                const milestoneMessages = [
+                  "Great job! You've made it to the first checkpoint—keep going!",
+                  "You're halfway up the mountain—stay focused!",
+                  "Final push! Reach the peak and complete today's session!"
+                ];
+                
+                if (currentMilestone <= milestoneMessages.length) {
+                  setTimeout(() => {
+                    toast.success(milestoneMessages[currentMilestone - 1], {
+                      duration: 5000,
+                    });
+                  }, 0);
+                }
+              });
             }
           }
           
@@ -207,6 +249,10 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
     
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (rafId.current) {
+        cancelAnimationFrame(rafId.current);
+        rafId.current = null;
+      }
     };
   }, [isActive, isPaused, onComplete, onMilestoneReached, milestoneReached, onProgressUpdate]);
   
@@ -244,7 +290,12 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
   const handleEndSessionClick = () => {
     if (time > 0 && isActive) {
       if (onEndSessionClick) {
-        onEndSessionClick();
+        // Use requestAnimationFrame to prevent UI blocking
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            onEndSessionClick();
+          }, 0);
+        });
       } else {
         // In case there's no external handler, directly call onComplete
         if (timerRef.current) {
@@ -252,10 +303,16 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
           timerRef.current = undefined;
         }
         setIsActive(false);
-        onComplete();
+        // Use setTimeout to prevent UI freezing
+        setTimeout(() => {
+          onComplete();
+        }, 0);
       }
     } else {
-      onComplete();
+      // Use setTimeout to prevent UI freezing
+      setTimeout(() => {
+        onComplete();
+      }, 0);
     }
   };
 

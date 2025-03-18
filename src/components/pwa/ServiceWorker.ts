@@ -31,18 +31,20 @@ export function register() {
           };
         };
         
-        // Enable background sync if supported
+        // Enable background sync if supported - with improved error handling
         if ('SyncManager' in window) {
-          try {
-            // Use optional chaining to safely check if sync exists
-            if ('sync' in registration) {
-              // Use type assertion for safety
-              await (registration as any).sync?.register('sync-focus-session');
-              console.log('Background sync registered');
+          setTimeout(async () => {
+            try {
+              // Use optional chaining to safely check if sync exists
+              if ('sync' in registration) {
+                // Use type assertion for safety
+                await (registration as any).sync?.register('sync-focus-sessions');
+                console.log('Background sync registered');
+              }
+            } catch (err) {
+              console.log('Background sync registration failed:', err);
             }
-          } catch (err) {
-            console.log('Background sync registration failed:', err);
-          }
+          }, 0); // Use setTimeout to prevent blocking main thread
         }
         
       } catch (error) {

@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { Task, SubTask, PriorityLevel } from '@/types/tasks';
 
 interface TaskState {
@@ -40,15 +40,18 @@ function generateId(): string {
 }
 
 const taskReducer = (state: TaskState, action: TaskAction): TaskState => {
+  let newState: TaskState;
+  
   switch (action.type) {
     case 'LOAD_TASKS':
-      return {
+      newState = {
         ...state,
         tasks: action.payload.tasks
       };
+      break;
       
     case 'ADD_TASK':
-      return {
+      newState = {
         ...state,
         tasks: [
           ...state.tasks,
@@ -61,15 +64,17 @@ const taskReducer = (state: TaskState, action: TaskAction): TaskState => {
           }
         ]
       };
+      break;
       
     case 'REMOVE_TASK':
-      return {
+      newState = {
         ...state,
         tasks: state.tasks.filter(task => task.id !== action.payload.taskId)
       };
+      break;
       
     case 'UPDATE_TASK':
-      return {
+      newState = {
         ...state,
         tasks: state.tasks.map(task => 
           task.id === action.payload.taskId
@@ -82,9 +87,10 @@ const taskReducer = (state: TaskState, action: TaskAction): TaskState => {
             : task
         )
       };
+      break;
       
     case 'ADD_SUBTASK':
-      return {
+      newState = {
         ...state,
         tasks: state.tasks.map(task => 
           task.id === action.payload.taskId
@@ -102,9 +108,10 @@ const taskReducer = (state: TaskState, action: TaskAction): TaskState => {
             : task
         )
       };
+      break;
       
     case 'REMOVE_SUBTASK':
-      return {
+      newState = {
         ...state,
         tasks: state.tasks.map(task => 
           task.id === action.payload.taskId
@@ -117,9 +124,10 @@ const taskReducer = (state: TaskState, action: TaskAction): TaskState => {
             : task
         )
       };
+      break;
       
     case 'TOGGLE_SUBTASK':
-      return {
+      newState = {
         ...state,
         tasks: state.tasks.map(task => 
           task.id === action.payload.taskId
@@ -134,16 +142,27 @@ const taskReducer = (state: TaskState, action: TaskAction): TaskState => {
             : task
         )
       };
+      break;
       
     case 'CLEAR_COMPLETED_TASKS':
-      return {
+      newState = {
         ...state,
         tasks: state.tasks.filter(task => !task.completed)
       };
+      break;
       
     default:
       return state;
   }
+  
+  // Save to localStorage after each action
+  try {
+    localStorage.setItem('userTasks', JSON.stringify(newState.tasks));
+  } catch (e) {
+    console.error('Failed to save tasks to localStorage', e);
+  }
+  
+  return newState;
 };
 
 type TaskContextType = {
@@ -155,6 +174,15 @@ const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
 export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(taskReducer, initialState);
+  
+  // Sync with localStorage when state changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('userTasks', JSON.stringify(state.tasks));
+    } catch (e) {
+      console.error('Failed to sync tasks to localStorage', e);
+    }
+  }, [state.tasks]);
 
   return (
     <TaskContext.Provider value={{ state, dispatch }}>

@@ -65,9 +65,9 @@ const FocusSession = () => {
     
     // If user is logged in, save to Supabase (without awaiting to prevent freezing)
     if (user && user.id) {
-      try {
-        // Use setTimeout to move this operation to the next event loop
-        setTimeout(async () => {
+      // Use setTimeout to move this operation to the next event loop
+      setTimeout(async () => {
+        try {
           await supabase.from('focus_sessions').insert({
             user_id: user.id,
             duration: sessionData.duration,
@@ -76,10 +76,12 @@ const FocusSession = () => {
             end_time: new Date().toISOString(),
             completed: !endingEarly
           });
-        }, 0);
-      } catch (error) {
-        console.error("Error saving session:", error);
-      }
+          console.log("Session data saved to Supabase");
+        } catch (error) {
+          console.error("Error saving session:", error);
+          // Still continue with local navigation even if saving fails
+        }
+      }, 0);
     }
   };
   
@@ -103,7 +105,30 @@ const FocusSession = () => {
     
     // Add a small delay to navigate after data is saved
     setTimeout(() => {
-      navigate("/session-report");
+      // Generate a unique ID for the session report
+      const reportId = `session_${Date.now()}`;
+      const reportKey = `sessionReport_${reportId}`;
+      
+      // Get the saved session data
+      const sessionDataStr = localStorage.getItem('sessionData');
+      if (sessionDataStr) {
+        try {
+          const sessionData = JSON.parse(sessionDataStr);
+          
+          // Save the report with the unique ID
+          const reportData = {
+            ...sessionData,
+            notes: "",
+            savedAt: new Date().toISOString()
+          };
+          localStorage.setItem(reportKey, JSON.stringify(reportData));
+        } catch (e) {
+          console.error("Error preparing session report:", e);
+        }
+      }
+      
+      // Navigate to session report with the ID
+      navigate(`/session-report/${reportId}`);
       setIsEnding(false);
     }, 200);
   };
@@ -115,7 +140,10 @@ const FocusSession = () => {
     }
     
     setShowEndConfirmation(false);
-    handleEndSessionEarly();
+    // Use setTimeout to prevent UI freezing
+    setTimeout(() => {
+      handleEndSessionEarly();
+    }, 0);
   };
   
   const handleMilestoneReached = (milestone: number) => {
@@ -134,14 +162,16 @@ const FocusSession = () => {
   };
   
   const toggleLowPowerMode = () => {
-    // Use RAF to prevent UI thread blocking
+    // Use RAF and setTimeout to prevent UI thread blocking
     requestAnimationFrame(() => {
-      setLowPowerMode(prevMode => !prevMode);
-      toast.info(!lowPowerMode ? 
-        "Low power mode activated - reduced animations" : 
-        "Enhanced visual mode activated",
-        { duration: 3000 }
-      );
+      setTimeout(() => {
+        setLowPowerMode(prevMode => !prevMode);
+        toast.info(!lowPowerMode ? 
+          "Low power mode activated - reduced animations" : 
+          "Enhanced visual mode activated",
+          { duration: 3000 }
+        );
+      }, 0);
     });
   };
 
