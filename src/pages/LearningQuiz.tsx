@@ -12,8 +12,8 @@ import {
   Lightbulb, 
   PencilLine, 
   Brain, 
-  ArrowRight, 
-  LucideIcon 
+  ArrowRight,
+  type LucideIcon 
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -416,7 +416,9 @@ const LearningQuiz = () => {
               <div>
                 <h3 className="text-lg font-medium mb-2">Primary Learning Style</h3>
                 <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/10">
-                  {styleConfigs[getDominantStyle()].icon({ className: "h-6 w-6 text-primary" })}
+                  <div className="text-primary">
+                    <styleConfigs[getDominantStyle()].icon size={24} />
+                  </div>
                   <div>
                     <p className="font-medium">{getDominantStyle()} Learner</p>
                     <p className="text-sm text-muted-foreground">
@@ -437,18 +439,21 @@ const LearningQuiz = () => {
               <div className="space-y-3">
                 {Object.entries(getNormalizedResults())
                   .sort(([, a], [, b]) => b - a)
-                  .map(([style, percentage]) => (
-                    <div key={style} className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          {styleConfigs[style as LearningStyle].icon({ className: "h-5 w-5" })}
-                          <span>{style}</span>
+                  .map(([style, percentage]) => {
+                    const StyleIcon = styleConfigs[style as LearningStyle].icon;
+                    return (
+                      <div key={style} className="space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <StyleIcon className="h-5 w-5" />
+                            <span>{style}</span>
+                          </div>
+                          <span>{percentage}%</span>
                         </div>
-                        <span>{percentage}%</span>
+                        <Progress value={percentage} className="h-2" />
                       </div>
-                      <Progress value={percentage} className="h-2" />
-                    </div>
-                  ))}
+                    );
+                  })}
               </div>
             </div>
           </div>
