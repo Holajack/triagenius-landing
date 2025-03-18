@@ -25,41 +25,47 @@ export function ConfirmEndDialog({
   onConfirm,
   onCancel,
 }: ConfirmEndDialogProps) {
-  // Use a more optimized approach for handling confirm action
+  // Use a more reliable approach for handling confirm action with PWA detection
   const handleConfirm = (e: React.MouseEvent) => {
-    // Prevent any default behavior
+    // Prevent default behavior
     e.preventDefault();
     
-    // Call onConfirm in the next frame to prevent UI jank
-    if (window.requestAnimationFrame) {
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          onConfirm();
-        }, 0);
-      });
-    } else {
-      // Fallback for older browsers
+    // Get PWA status
+    const isPwa = localStorage.getItem('isPWA') === 'true';
+    
+    // For PWA, apply special handling to prevent freezing
+    if (isPwa) {
+      // Close dialog immediately
+      onOpenChange(false);
+      
+      // Use a minimal timeout for mobile PWA to prevent UI thread blocking
       setTimeout(() => {
         onConfirm();
-      }, 0);
+      }, 10);
+    } else {
+      // Standard behavior for non-PWA
+      requestAnimationFrame(() => {
+        onConfirm();
+      });
     }
   };
 
-  // Optimized cancel handler
+  // Optimized cancel handler with PWA-specific handling
   const handleCancel = (e: React.MouseEvent) => {
-    // Prevent any default behavior
     e.preventDefault();
     
-    // Call onCancel in the next frame
-    if (window.requestAnimationFrame) {
-      requestAnimationFrame(() => {
-        onCancel();
-      });
-    } else {
-      // Fallback for older browsers
+    // Get PWA status
+    const isPwa = localStorage.getItem('isPWA') === 'true';
+    
+    if (isPwa) {
+      // Close dialog first for better mobile performance
+      onOpenChange(false);
       setTimeout(() => {
         onCancel();
-      }, 0);
+      }, 10);
+    } else {
+      // Standard behavior for browsers
+      onCancel();
     }
   };
 

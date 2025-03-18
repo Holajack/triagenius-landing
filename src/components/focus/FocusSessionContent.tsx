@@ -57,8 +57,9 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({
         onEndSessionClick={onEndSessionClick}
       />
       
+      {/* Only render the HikingTrail when not in low power mode */}
       {!lowPowerMode && (
-        <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden">
+        <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden" aria-hidden={lowPowerMode}>
           <HikingTrail 
             environment={safeEnvironment}
             milestone={currentMilestone}

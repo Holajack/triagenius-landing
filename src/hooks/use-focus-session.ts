@@ -20,6 +20,8 @@ export const useFocusSession = () => {
   const isPwaRef = useRef(localStorage.getItem('isPWA') === 'true');
   const workerRef = useRef<Worker | null>(null);
   const operationInProgressRef = useRef(false);
+  const lowPowerToggleInProgressRef = useRef(false);
+  const navigationAttemptedRef = useRef(false);
   
   // Track whether component is mounted to prevent state updates after unmount
   const isMountedRef = useRef(true);
@@ -28,6 +30,22 @@ export const useFocusSession = () => {
     document.body.style.overflow = 'hidden';
     // Set mounted flag
     isMountedRef.current = true;
+    
+    // Enhanced PWA detection that handles more edge cases
+    try {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                          (window.navigator as any).standalone === true;
+      isPwaRef.current = isStandalone || localStorage.getItem('isPWA') === 'true';
+      
+      if (isPwaRef.current) {
+        // For PWA version, default to low power mode on mobile devices for better performance
+        if (navigator.userAgent.match(/Android|iPhone|iPad|iPod/i)) {
+          setLowPowerMode(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error detecting PWA state:', error);
+    }
     
     // Only initialize worker in PWA mode to save resources
     if (isPwaRef.current && window.Worker) {
@@ -78,6 +96,7 @@ export const useFocusSession = () => {
             console.log('Worker completed session saving');
           } else if (e.data.type === 'lowPowerToggled') {
             console.log('Worker completed low power toggle');
+            lowPowerToggleInProgressRef.current = false;
           }
         };
       } catch (error) {
@@ -123,7 +142,7 @@ export const useFocusSession = () => {
           data: { sessionData, userId: user.id, endingEarly }
         });
         
-        // Don't wait for worker, allow UI to continue
+        // PWA mode should continue without waiting for worker
         operationInProgressRef.current = false;
       } else {
         // For non-PWA, use standard approach with optimized timing
@@ -163,26 +182,74 @@ export const useFocusSession = () => {
   };
   
   const handleSessionEnd = () => {
-    if (!isMountedRef.current || operationInProgressRef.current) return;
+    if (!isMountedRef.current || operationInProgressRef.current || navigationAttemptedRef.current) return;
+    navigationAttemptedRef.current = true;
     operationInProgressRef.current = true;
     
     // Save session data first
     saveSessionData(false);
     
-    // Use a more reliable approach for navigation that works in PWA context
-    setTimeout(() => {
-      if (isMountedRef.current) {
-        navigate("/session-reflection", { replace: true });
-        operationInProgressRef.current = false;
-      }
-    }, isPwaRef.current ? 100 : 50);
+    // More reliable navigation for PWA
+    if (isPwaRef.current) {
+      // Simplified approach for PWA to prevent freezing
+      navigate("/session-reflection", { replace: true });
+      operationInProgressRef.current = false;
+    } else {
+      // Standard approach for non-PWA
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          navigate("/session-reflection", { replace: true });
+          operationInProgressRef.current = false;
+        }
+      }, 50);
+    }
   };
 
   const handleEndSessionEarly = () => {
-    if (!isMountedRef.current || isEndingRef.current || operationInProgressRef.current) return;
+    if (!isMountedRef.current || isEndingRef.current || operationInProgressRef.current || navigationAttemptedRef.current) return;
     isEndingRef.current = true;
+    navigationAttemptedRef.current = true;
     operationInProgressRef.current = true;
     
+    // For PWA, use a simplified approach to avoid freezing
+    if (isPwaRef.current) {
+      try {
+        // Stop timer immediately
+        if (timerRef.current) {
+          timerRef.current.stopTimer();
+        }
+        
+        // Prepare minimal data
+        const reportId = `session_${Date.now()}`;
+        const reportKey = `sessionReport_${reportId}`;
+        const sessionData = {
+          milestone: currentMilestone,
+          duration: currentMilestone * 45,
+          timestamp: new Date().toISOString(),
+          environment: localStorage.getItem('environment') || 'default',
+        };
+        
+        // Save session data with minimal processing
+        localStorage.setItem('sessionData', JSON.stringify(sessionData));
+        localStorage.setItem(reportKey, JSON.stringify({
+          ...sessionData,
+          notes: "",
+          savedAt: new Date().toISOString()
+        }));
+        
+        // Navigate immediately without animations
+        navigate(`/session-report/${reportId}`, { replace: true });
+        isEndingRef.current = false;
+        operationInProgressRef.current = false;
+      } catch (e) {
+        console.error("Error in PWA session end:", e);
+        // Emergency fallback if error
+        navigate("/dashboard", { replace: true });
+      }
+      return;
+    }
+    
+    // Standard flow for non-PWA
     saveSessionData(true);
     
     const reportId = `session_${Date.now()}`;
@@ -205,33 +272,44 @@ export const useFocusSession = () => {
       console.error("Error preparing session report:", e);
     }
     
-    // Use a more reliable PWA-compatible navigation approach
+    // Standard approach for non-PWA
     setTimeout(() => {
       if (isMountedRef.current) {
         navigate(`/session-report/${reportId}`, { replace: true });
         isEndingRef.current = false;
         operationInProgressRef.current = false;
       }
-    }, isPwaRef.current ? 150 : 50);
+    }, 50);
   };
 
   const handleEndSessionConfirm = () => {
-    if (!isMountedRef.current || operationInProgressRef.current) return;
+    if (!isMountedRef.current || operationInProgressRef.current || navigationAttemptedRef.current) return;
     operationInProgressRef.current = true;
     
-    // Stop timer first to prevent further updates
+    // For PWA, use a simplified direct approach
+    if (isPwaRef.current) {
+      // Stop timer first
+      if (timerRef.current) {
+        timerRef.current.stopTimer();
+      }
+      
+      setShowEndConfirmation(false);
+      handleEndSessionEarly();
+      return;
+    }
+    
+    // Standard flow for non-PWA
     if (timerRef.current) {
       timerRef.current.stopTimer();
     }
     
     setShowEndConfirmation(false);
     
-    // Use setTimeout for smoother transition in PWA
     setTimeout(() => {
       if (isMountedRef.current) {
         handleEndSessionEarly();
       }
-    }, isPwaRef.current ? 50 : 0);
+    }, 0);
   };
   
   const handleMilestoneReached = (milestone: number) => {
@@ -250,29 +328,19 @@ export const useFocusSession = () => {
     // Skip updates if unmounted or if in PWA and updates are too frequent
     if (!isMountedRef.current || (isPwaRef.current && operationInProgressRef.current)) return;
     
-    // Only set progress if value has changed significantly (reduce UI updates)
-    if (Math.abs(progress - segmentProgress) > 1) {
-      // Use requestAnimationFrame but with optimized timing for PWA
-      if (isPwaRef.current && navigator.userAgent.includes('Mobile')) {
-        // Less frequent updates for mobile PWA to reduce jank
-        if (!operationInProgressRef.current) {
-          operationInProgressRef.current = true;
-          setTimeout(() => {
-            requestAnimationFrame(() => {
-              if (isMountedRef.current) {
-                const easedProgress = Math.pow(progress / 100, 0.85) * 100;
-                setSegmentProgress(easedProgress);
-              }
-              operationInProgressRef.current = false;
-            });
-          }, 100); // Throttle updates for PWA
-        }
-      } else {
-        // Normal web app can handle more frequent updates
+    // For PWA, update less frequently to improve performance
+    if (isPwaRef.current && navigator.userAgent.includes('Mobile')) {
+      // Throttle updates for mobile PWA
+      if (Math.abs(progress - segmentProgress) > 5) {
+        setSegmentProgress(progress);
+      }
+    } else {
+      // Normal web app can handle more frequent updates
+      // Only set progress if value has changed significantly
+      if (Math.abs(progress - segmentProgress) > 1) {
         requestAnimationFrame(() => {
           if (isMountedRef.current) {
-            const easedProgress = Math.pow(progress / 100, 0.85) * 100;
-            setSegmentProgress(easedProgress);
+            setSegmentProgress(progress);
           }
         });
       }
@@ -280,44 +348,33 @@ export const useFocusSession = () => {
   };
   
   const toggleLowPowerMode = () => {
-    if (operationInProgressRef.current) return;
-    operationInProgressRef.current = true;
+    // Prevent multiple rapid toggles that could cause freezing
+    if (operationInProgressRef.current || lowPowerToggleInProgressRef.current) return;
+    lowPowerToggleInProgressRef.current = true;
     
     if (isPwaRef.current) {
-      // For PWA, use the worker to handle mode toggle in background
+      // For PWA, update state immediately to ensure UI responsiveness
+      const newMode = !lowPowerMode;
+      setLowPowerMode(newMode);
+      
+      // Use minimal processing for toast in PWA to prevent jank
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          toast.info(newMode ? 
+            "Low power mode activated" : 
+            "Visual mode activated",
+            { duration: 2000 }
+          );
+          lowPowerToggleInProgressRef.current = false;
+        }
+      }, 10);
+      
+      // Offload background processing to worker if available
       if (workerRef.current) {
         workerRef.current.postMessage({
           type: 'lowPowerToggle',
-          data: { newMode: !lowPowerMode }
+          data: { newMode }
         });
-        
-        // Don't wait for worker to complete, update UI immediately
-        setLowPowerMode(!lowPowerMode);
-        
-        // Delay toast to prevent UI jank
-        setTimeout(() => {
-          if (isMountedRef.current) {
-            toast.info(!lowPowerMode ? 
-              "Low power mode activated - reduced animations" : 
-              "Enhanced visual mode activated",
-              { duration: 3000 }
-            );
-            operationInProgressRef.current = false;
-          }
-        }, 100);
-      } else {
-        // Fallback if worker isn't available
-        setLowPowerMode(!lowPowerMode);
-        setTimeout(() => {
-          if (isMountedRef.current) {
-            toast.info(!lowPowerMode ? 
-              "Low power mode activated - reduced animations" : 
-              "Enhanced visual mode activated",
-              { duration: 3000 }
-            );
-            operationInProgressRef.current = false;
-          }
-        }, 100);
       }
     } else {
       // Standard behavior for non-PWA
@@ -327,7 +384,7 @@ export const useFocusSession = () => {
         "Enhanced visual mode activated",
         { duration: 3000 }
       );
-      operationInProgressRef.current = false;
+      lowPowerToggleInProgressRef.current = false;
     }
   };
 
