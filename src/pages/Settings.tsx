@@ -4,12 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import NavigationBar from "@/components/dashboard/NavigationBar";
 import { BellIcon, EyeIcon, MoonIcon, VolumeIcon } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Settings = () => {
   // Notification settings
@@ -33,6 +33,8 @@ const Settings = () => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [volume, setVolume] = useState("medium"); // low, medium, high
   const [focusSounds, setFocusSounds] = useState(true);
+
+  const isMobile = useIsMobile();
   
   const handleSettingChange = (
     setting: string, 
@@ -50,8 +52,8 @@ const Settings = () => {
   };
   
   return (
-    <div className="container max-w-4xl pb-24">
-      <div className="space-y-6 pb-6 pt-2">
+    <div className="container max-w-4xl px-3 sm:px-6 pb-24">
+      <div className="space-y-4 pb-4 pt-2">
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="text-muted-foreground">
           Manage your app preferences and permissions
@@ -59,16 +61,16 @@ const Settings = () => {
       </div>
       
       <Tabs defaultValue="notifications" className="mb-24">
-        <TabsList className="mb-6">
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="dnd">Do Not Disturb</TabsTrigger>
-          <TabsTrigger value="display">Display</TabsTrigger>
-          <TabsTrigger value="sound">Sound</TabsTrigger>
+        <TabsList className="mb-4 flex w-full overflow-x-auto pb-1">
+          <TabsTrigger value="notifications" className="flex-1 min-w-[100px]">Notifications</TabsTrigger>
+          <TabsTrigger value="dnd" className="flex-1 min-w-[100px]">Do Not Disturb</TabsTrigger>
+          <TabsTrigger value="display" className="flex-1 min-w-[100px]">Display</TabsTrigger>
+          <TabsTrigger value="sound" className="flex-1 min-w-[100px]">Sound</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="notifications" className="space-y-6">
+        <TabsContent value="notifications" className="space-y-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <BellIcon className="h-5 w-5 text-primary" />
                 <CardTitle>Notification Settings</CardTitle>
@@ -77,7 +79,7 @@ const Settings = () => {
                 Control how and when you receive notifications
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-5">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="font-medium">Enable Notifications</h4>
@@ -154,9 +156,9 @@ const Settings = () => {
           </Card>
         </TabsContent>
         
-        <TabsContent value="dnd" className="space-y-6">
+        <TabsContent value="dnd" className="space-y-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <MoonIcon className="h-5 w-5 text-primary" />
                 <CardTitle>Do Not Disturb</CardTitle>
@@ -165,7 +167,7 @@ const Settings = () => {
                 Control when notifications are silenced
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-5">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="font-medium">Enable Do Not Disturb</h4>
@@ -216,9 +218,9 @@ const Settings = () => {
           </Card>
         </TabsContent>
         
-        <TabsContent value="display" className="space-y-6">
+        <TabsContent value="display" className="space-y-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <EyeIcon className="h-5 w-5 text-primary" />
                 <CardTitle>Display Settings</CardTitle>
@@ -227,7 +229,7 @@ const Settings = () => {
                 Customize how the app looks
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-5">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="font-medium">Dark Mode</h4>
@@ -276,9 +278,9 @@ const Settings = () => {
           </Card>
         </TabsContent>
         
-        <TabsContent value="sound" className="space-y-6">
+        <TabsContent value="sound" className="space-y-4">
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <VolumeIcon className="h-5 w-5 text-primary" />
                 <CardTitle>Sound Settings</CardTitle>
@@ -287,7 +289,7 @@ const Settings = () => {
                 Configure audio preferences
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-5">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="font-medium">Enable Sounds</h4>
