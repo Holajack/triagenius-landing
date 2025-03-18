@@ -1,4 +1,3 @@
-
 import { motion, useAnimation } from "framer-motion";
 import { StudyEnvironment } from "@/types/onboarding";
 import { useState, useEffect, useRef } from "react";
@@ -283,12 +282,25 @@ export const HikingTrail = ({
   const [terrain, setTerrain] = useState<'flat' | 'uphill' | 'downhill' | 'rocky'>('flat');
   const [envEffects, setEnvEffects] = useState<{ birds: boolean; wind: boolean }>({ birds: false, wind: false });
   const [timeOfDay, setTimeOfDay] = useState<'morning' | 'day' | 'evening'>('day');
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const terrainTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const effectsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const scrollControlsRef = useRef({ x: 0 });
   const groundControls = useAnimation();
   
-  // Set up continuous scrolling animation
+  const skyImages = [
+    '/lovable-uploads/4b5c18b4-0735-42fb-b3c0-033caff6e88b.png', // Light pink sky
+    '/lovable-uploads/1c6c89de-51e8-4d13-bf84-ad97b1297a92.png', // Darker pink sky
+    '/lovable-uploads/c57503b9-b4ef-4530-a43c-932b0809fecd.png', // Striped sky
+    '/lovable-uploads/cc8585e2-6399-4d70-af84-084bd8403137.png', // Light blue treeline
+    '/lovable-uploads/63fcb28c-d6f3-4fe7-b074-b75451fb19cd.png', // Medium blue treeline
+    '/lovable-uploads/dee86c2b-7eda-49e2-a2a6-cf9a1b76a30a.png', // Dark trees
+    '/lovable-uploads/80286acf-39b7-49d4-80ee-6f3616992af3.png', // Sparse treeline
+    '/lovable-uploads/f478ce15-05c0-4bd7-91c6-fcd793fb026c.png', // Lighter blue horizon
+    '/lovable-uploads/97fbd021-a6ae-461c-9e58-b0d8a49b30a1.png', // Pink gradient
+    '/lovable-uploads/ec63c78e-1d9d-4ec9-afad-fdffb1d880c0.png'  // Composite sunset scene
+  ];
+  
   useEffect(() => {
     const startContinuousScrolling = async () => {
       while (true) {
@@ -313,7 +325,14 @@ export const HikingTrail = ({
     };
   }, []);
   
-  // Handle milestone celebrations
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % skyImages.length);
+    }, 5000); // Change image every 5 seconds
+    
+    return () => clearInterval(interval);
+  }, []);
+  
   useEffect(() => {
     if (isCelebrating) {
       setAnimate(true);
@@ -335,14 +354,16 @@ export const HikingTrail = ({
     }
   }, [isCelebrating]);
   
-  // Update background position based on progress - modified to be more continuous
   useEffect(() => {
-    // Calculate position for checkpoints/milestones only
-    // This no longer affects the continuous ground scrolling
-    setBackgroundPosition(milestone * 25 + (progress / 4));
-  }, [milestone, progress]);
+    if (milestone === 0) {
+      setTimeOfDay('morning');
+    } else if (milestone === 1 || milestone === 2) {
+      setTimeOfDay('day');
+    } else {
+      setTimeOfDay('evening');
+    }
+  }, [milestone]);
   
-  // Enhanced terrain system with more terrain types
   useEffect(() => {
     if (terrainTimeoutRef.current) {
       clearTimeout(terrainTimeoutRef.current);
@@ -373,21 +394,6 @@ export const HikingTrail = ({
     };
   }, []);
   
-  // Calculate walking speed based on terrain
-  const getWalkingSpeed = () => {
-    switch(terrain) {
-      case 'uphill':
-        return 0.8; // 20% slower on uphill
-      case 'downhill':
-        return 1.2; // 20% faster on downhill
-      case 'rocky':
-        return 0.85; // 15% slower on rocky terrain
-      default:
-        return 1.0; // Normal speed on flat terrain
-    }
-  };
-  
-  // Dynamic environmental effects
   useEffect(() => {
     if (effectsTimeoutRef.current) {
       clearTimeout(effectsTimeoutRef.current);
@@ -413,147 +419,77 @@ export const HikingTrail = ({
     };
   }, []);
   
-  // Time of day changes based on session duration
-  useEffect(() => {
-    if (milestone === 0) {
-      setTimeOfDay('morning');
-    } else if (milestone === 1 || milestone === 2) {
-      setTimeOfDay('day');
-    } else {
-      setTimeOfDay('evening');
-    }
-  }, [milestone]);
-  
-  // Determine checkpoint visibility based on progress and milestone
   const isCheckpointVisible = (checkpointIndex: number) => {
-    // Current checkpoint is always visible
     if (checkpointIndex === milestone) {
       return true;
     }
     
-    // Next checkpoint becomes visible as we get closer to it
     if (checkpointIndex === milestone + 1) {
-      return progress > 75; // Only show next checkpoint when we're 75% through the current segment
+      return progress > 75;
     }
     
-    // Previous checkpoints are always visible
     if (checkpointIndex < milestone) {
       return true;
     }
     
-    // Future checkpoints (beyond next) are not visible
     return false;
   };
   
-  // Calculate checkpoint entrance animation based on progress
   const getCheckpointOpacity = (checkpointIndex: number) => {
     if (checkpointIndex === milestone + 1) {
-      // Gradually fade in the next checkpoint
       return Math.max(0, (progress - 75) / 25);
     }
     
     return isCheckpointVisible(checkpointIndex) ? 1 : 0;
   };
   
-  // Get position between checkpoints based on progress
   const getProgressPosition = () => {
-    // Fixed position for the character, we'll move the background instead
     return "20%";
   };
-  
-  // Calculate the sun/moon position and color based on time of day
-  const getSkyProps = () => {
-    switch (timeOfDay) {
-      case 'morning':
-        return {
-          skyGradient: 'from-[#f8b195] via-[#f67280] to-[#355c7d]',
-          lightColor: '#f9d71c',
-          lightPosition: 'top-[25%] left-[25%]',
-          lightSize: 'w-10 h-10'
-        };
-      case 'day':
-        return {
-          skyGradient: 'from-[#5d94fb] via-[#5d94fb] to-[#78a9ff]',
-          lightColor: '#f9d71c',
-          lightPosition: 'top-[15%] left-[60%]',
-          lightSize: 'w-12 h-12'
-        };
-      case 'evening':
-        return {
-          skyGradient: 'from-[#2c3e50] via-[#4ca1af] to-[#c779d0]',
-          lightColor: '#f4f1de',
-          lightPosition: 'top-[20%] right-[20%]',
-          lightSize: 'w-8 h-8'
-        };
-    }
-  };
-  
-  const skyProps = getSkyProps();
 
   return (
     <div className="w-full h-full relative overflow-hidden rounded-lg border">
-      {/* Sky and stationary background elements */}
       <div className="absolute inset-0">
-        {/* Dynamic Sky Background based on time of day */}
-        <div className={`absolute inset-0 bg-gradient-to-b ${skyProps.skyGradient}`} style={{ backgroundSize: '32px 32px' }}></div>
-        
-        {/* Sun/Moon based on time of day */}
-        <div className={`absolute ${skyProps.lightPosition} ${skyProps.lightSize} rounded-full bg-[${skyProps.lightColor}] opacity-90`}></div>
-        
-        {/* Pixelated Clouds - with animation */}
-        {[...Array(10)].map((_, index) => (
-          <motion.div 
-            key={index}
-            className="absolute bg-white opacity-80 rounded-full"
-            style={{ 
-              top: `${5 + Math.random() * 15}%`, 
-              left: `${(index * 15) + Math.random() * 10}%`,
-              width: `${8 + Math.random() * 12}rem`,
-              height: `${1 + Math.random() * 1.5}rem`,
-            }}
-            animate={{ 
-              x: [0, 10, 20, 10, 0],
-              opacity: [0.8, 0.85, 0.9, 0.85, 0.8]
-            }}
-            transition={{ 
-              repeat: Infinity, 
-              duration: 20 + Math.random() * 10,
-              ease: "linear" 
-            }}
-          />
-        ))}
+        <div className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000">
+          {skyImages.map((src, index) => (
+            <img
+              key={index}
+              src={src}
+              alt={`Sky background ${index + 1}`}
+              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000"
+              style={{ 
+                opacity: currentImageIndex === index ? 1 : 0,
+                zIndex: currentImageIndex === index ? 1 : 0
+              }}
+            />
+          ))}
+        </div>
       </div>
       
-      {/* Parallax background with continuous scrolling animation */}
       <motion.div 
         className="absolute inset-0"
         animate={groundControls}
         initial={{ x: 0 }}
       >
-        {/* Mountain Ranges - extended for continuous parallax */}
         <div className="absolute bottom-[45%] left-0 w-[300%] h-[25%]">
           <svg viewBox="0 0 300 20" preserveAspectRatio="none" className="h-full w-full">
             <path d="M0,0 L5,2 L10,0 L15,3 L20,0 L25,4 L30,1 L35,5 L40,2 L45,6 L50,3 L55,5 L60,2 L65,4 L70,0 L75,3 L80,1 L85,4 L90,2 L95,3 L100,0 L105,2 L110,0 L115,3 L120,0 L125,4 L130,1 L135,5 L140,2 L145,6 L150,3 L155,5 L160,2 L165,4 L170,0 L175,3 L180,1 L185,4 L190,2 L195,3 L200,0 L205,2 L210,0 L215,3 L220,0 L225,4 L230,1 L235,5 L240,2 L245,6 L250,3 L255,5 L260,2 L265,4 L270,0 L275,3 L280,1 L285,4 L290,2 L295,3 L300,0 L300,20 L0,20 Z" fill="#4a5fd0" />
           </svg>
         </div>
         
-        {/* Closer Mountain Range - extended for continuous parallax */}
         <div className="absolute bottom-[35%] left-0 w-[300%] h-[20%]">
           <svg viewBox="0 0 300 20" preserveAspectRatio="none" className="h-full w-full">
             <path d="M0,3 L8,1 L16,5 L24,2 L32,6 L40,3 L48,7 L56,4 L64,6 L72,3 L80,5 L88,2 L96,4 L104,3 L112,1 L120,5 L128,2 L136,6 L144,3 L152,7 L160,4 L168,6 L176,3 L184,5 L192,2 L200,3 L208,1 L216,5 L224,2 L232,6 L240,3 L248,7 L256,4 L264,6 L272,3 L280,5 L288,2 L296,4 L300,3 L300,20 L0,20 Z" fill="#5870d6" />
           </svg>
         </div>
         
-        {/* Pixel Art Hills - extended for continuous parallax */}
         <div className="absolute bottom-[25%] left-0 w-[300%] h-[15%]">
           <svg viewBox="0 0 300 20" preserveAspectRatio="none" className="h-full w-full">
             <path d="M0,8 L12,4 L24,9 L36,5 L48,10 L60,6 L72,9 L84,5 L96,8 L108,6 L120,8 L132,4 L144,9 L156,5 L168,10 L180,6 L192,9 L204,7 L216,4 L228,9 L240,5 L252,10 L264,6 L276,9 L288,5 L300,8 L300,20 L0,20 Z" fill="#38a169" />
           </svg>
         </div>
         
-        {/* Pixelated Ground - extended for continuous parallax */}
         <div className="absolute bottom-0 left-0 w-[300%] h-[25%] bg-[#4ade80]">
-          {/* Grid Pattern for 16-bit look */}
           <div className="absolute inset-0 opacity-10" 
               style={{ 
                 backgroundImage: 'linear-gradient(to right, #000 1px, transparent 1px), linear-gradient(to bottom, #000 1px, transparent 1px)', 
@@ -561,7 +497,6 @@ export const HikingTrail = ({
               }}>
           </div>
           
-          {/* Wind effect animation */}
           {envEffects.wind && (
             <div className="absolute inset-0">
               {[...Array(10)].map((_, i) => (
@@ -589,7 +524,6 @@ export const HikingTrail = ({
           )}
         </div>
         
-        {/* Birds flying animation */}
         {envEffects.birds && (
           <div className="absolute top-[10%] left-0 w-full">
             {[...Array(3)].map((_, i) => (
@@ -636,8 +570,6 @@ export const HikingTrail = ({
           </div>
         )}
         
-        {/* Trees & Scenery - now part of the continuous scrolling */}
-        {/* First section trees */}
         <div className="absolute bottom-[25%] left-[5%]">
           <div className="w-10 h-12 relative">
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-4 bg-[#7d5a33] rounded-none"></div>
@@ -654,7 +586,6 @@ export const HikingTrail = ({
           </div>
         </div>
         
-        {/* Second section trees */}
         <div className="absolute bottom-[25%] left-[45%]">
           <div className="w-12 h-14 relative">
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-5 bg-[#7d5a33] rounded-none"></div>
@@ -671,7 +602,6 @@ export const HikingTrail = ({
           </div>
         </div>
         
-        {/* Third section - autumn trees */}
         <div className="absolute bottom-[25%] left-[85%]">
           <div className="w-10 h-12 relative">
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-4 bg-[#7d5a33] rounded-none"></div>
@@ -688,7 +618,6 @@ export const HikingTrail = ({
           </div>
         </div>
         
-        {/* Fourth section - more varied trees */}
         <div className="absolute bottom-[25%] left-[120%]">
           <div className="w-8 h-10 relative">
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-3 bg-[#7d5a33] rounded-none"></div>
@@ -705,7 +634,6 @@ export const HikingTrail = ({
           </div>
         </div>
         
-        {/* Final area - mountain cabin */}
         <div className="absolute bottom-[28%] right-[50%]">
           <div className="w-16 h-20 relative">
             <div className="absolute bottom-0 left-0 w-16 h-12 bg-[#718096] rounded-none"></div>
@@ -715,7 +643,6 @@ export const HikingTrail = ({
         </div>
       </motion.div>
       
-      {/* Stationary trail path (fixed position relative to viewport) */}
       <div className="absolute bottom-[12.5%] left-0 right-0 h-[2.5%]">
         <svg viewBox="0 0 100 10" preserveAspectRatio="none" className="h-full w-full">
           <path 
@@ -727,7 +654,6 @@ export const HikingTrail = ({
           />
         </svg>
         
-        {/* Checkpoint Markers with visibility and animation based on progress */}
         {[0, 1, 2, 3].map((checkpointIndex) => (
           <motion.div 
             key={checkpointIndex}
@@ -750,7 +676,6 @@ export const HikingTrail = ({
           </motion.div>
         ))}
         
-        {/* Goal Flag - only appears when approaching last checkpoint */}
         <motion.div 
           className="absolute top-0 left-[85%] -translate-x-1/2 -translate-y-1/2"
           style={{ 
@@ -773,7 +698,6 @@ export const HikingTrail = ({
         </motion.div>
       </div>
       
-      {/* The Animated Hiker - Fixed position, we move the background instead */}
       <motion.div
         className="absolute bottom-[15%]"
         style={{ left: getProgressPosition() }}
@@ -798,7 +722,6 @@ export const HikingTrail = ({
             walkingSpeed={getWalkingSpeed()}
           />
           
-          {/* Milestone check map animation */}
           {showCheckMap && (
             <motion.div 
               className="absolute -top-10 left-4"
@@ -816,7 +739,6 @@ export const HikingTrail = ({
             </motion.div>
           )}
           
-          {/* Milestone drink water animation */}
           {showDrink && (
             <motion.div 
               className="absolute -top-9 left-2"
@@ -830,7 +752,6 @@ export const HikingTrail = ({
             </motion.div>
           )}
           
-          {/* Celebration speech bubble with dynamic messages */}
           {isCelebrating && !showCheckMap && !showDrink && (
             <motion.div 
               className="absolute -top-8 -left-6 right-0"
@@ -849,7 +770,6 @@ export const HikingTrail = ({
         </div>
       </motion.div>
       
-      {/* Environmental Elements with visibility based on milestone progress */}
       {milestone >= 1 && (
         <motion.div 
           className="absolute bottom-[15%] left-[30%]"
@@ -895,7 +815,6 @@ export const HikingTrail = ({
         </motion.div>
       )}
       
-      {/* Camera shake effect with enhanced terrain-specific shaking */}
       {(isCelebrating || terrain !== 'flat') && (
         <motion.div 
           className="absolute inset-0 pointer-events-none"
