@@ -1,4 +1,3 @@
-
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -107,15 +106,27 @@ const SessionReport = () => {
               }
               
               if (dbSession) {
+                // Check if we have any notes stored separately in local storage for this session
+                let sessionNotes = '';
+                try {
+                  const notesKey = `sessionNotes_${params.id}`;
+                  const storedNotes = localStorage.getItem(notesKey);
+                  if (storedNotes) {
+                    sessionNotes = storedNotes;
+                  }
+                } catch (e) {
+                  console.error('Error retrieving notes from localStorage:', e);
+                }
+                
                 setSessionData({
                   milestone: dbSession.milestone_count || 0,
                   duration: dbSession.duration || 0,
                   timestamp: dbSession.created_at,
                   environment: dbSession.environment || 'default',
-                  notes: dbSession.notes || '',
+                  notes: sessionNotes,
                   completed: dbSession.completed
                 });
-                setSessionNotes(dbSession.notes || '');
+                setSessionNotes(sessionNotes);
                 setSessionId(params.id);
               } else {
                 // Session not found, redirect to dashboard
@@ -209,31 +220,40 @@ const SessionReport = () => {
       if (params.id) {
         // Update existing report
         const reportKey = `sessionReport_${params.id}`;
-        const currentData = JSON.parse(localStorage.getItem(reportKey) || '{}');
-        const updatedData = {
-          ...currentData,
-          notes: sessionNotes,
-          lastEdited: new Date().toISOString()
-        };
-        localStorage.setItem(reportKey, JSON.stringify(updatedData));
+        const notesKey = `sessionNotes_${params.id}`;
         
-        // Update in database if user is logged in
-        if (user?.id) {
+        // Save notes to localStorage
+        localStorage.setItem(notesKey, sessionNotes);
+        
+        // Update report data in localStorage if available
+        const currentReportData = localStorage.getItem(reportKey);
+        if (currentReportData) {
           try {
-            await supabase
-              .from('focus_sessions')
-              .update({ notes: sessionNotes })
-              .eq('id', params.id);
+            const currentData = JSON.parse(currentReportData);
+            const updatedData = {
+              ...currentData,
+              notes: sessionNotes,
+              lastEdited: new Date().toISOString()
+            };
+            localStorage.setItem(reportKey, JSON.stringify(updatedData));
           } catch (e) {
-            console.error('Error updating session notes in database:', e);
+            console.error('Error updating report data in localStorage:', e);
           }
         }
+        
+        // No need to update notes in database as it doesn't have a notes field
         
         setIsEditing(false);
       } else {
         // Save the session report to localStorage with a unique key
         const reportId = sessionId || `session_${Date.now()}`;
         const reportKey = `sessionReport_${reportId}`;
+        const notesKey = `sessionNotes_${reportId}`;
+        
+        // Save notes separately
+        localStorage.setItem(notesKey, sessionNotes);
+        
+        // Save session report data
         const reportData = {
           ...sessionData,
           notes: sessionNotes,
@@ -252,7 +272,6 @@ const SessionReport = () => {
               duration: sessionData.duration || 0,
               created_at: sessionData.timestamp || new Date().toISOString(),
               environment: sessionData.environment || 'default',
-              notes: sessionNotes,
               completed: sessionData.milestone >= 3
             });
           } catch (e) {

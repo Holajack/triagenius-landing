@@ -66,6 +66,9 @@ export function ConfirmEndDialog({
           
           localStorage.setItem(`sessionReport_${reportId}`, JSON.stringify(reportData));
           
+          // Also save notes separately for better compatibility
+          localStorage.setItem(`sessionNotes_${reportId}`, "");
+          
           // Also save to Supabase if user is logged in
           if (user?.id) {
             try {

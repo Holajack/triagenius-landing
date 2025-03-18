@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -64,6 +63,17 @@ const SessionReportsList = () => {
                 const reportData = JSON.parse(localStorage.getItem(key) || '');
                 const reportId = key.replace('sessionReport_', '');
                 
+                // Try to get notes from separate storage
+                let notes = '';
+                const notesKey = `sessionNotes_${reportId}`;
+                const storedNotes = localStorage.getItem(notesKey);
+                if (storedNotes) {
+                  notes = storedNotes;
+                } else if (reportData.notes) {
+                  // Fallback to notes in the report data if it exists
+                  notes = reportData.notes;
+                }
+                
                 // Convert localStorage format to database format
                 if (reportData) {
                   localReports.push({
@@ -72,7 +82,7 @@ const SessionReportsList = () => {
                     duration: reportData.duration || 0,
                     created_at: reportData.timestamp || reportData.savedAt || new Date().toISOString(),
                     environment: reportData.environment || 'default',
-                    notes: reportData.notes || '',
+                    notes: notes,
                     user_id: user.id,
                     completed: reportData.milestone >= 3
                   });
@@ -104,7 +114,18 @@ const SessionReportsList = () => {
         if (dbReports) {
           dbReports.forEach(dbReport => {
             if (!combinedReports.some(r => r.id === dbReport.id)) {
-              combinedReports.push(dbReport);
+              // Check if we have notes for this report in localStorage
+              let notes = '';
+              const notesKey = `sessionNotes_${dbReport.id}`;
+              const storedNotes = localStorage.getItem(notesKey);
+              if (storedNotes) {
+                notes = storedNotes;
+              }
+              
+              combinedReports.push({
+                ...dbReport,
+                notes: notes
+              });
             }
           });
         }
@@ -315,6 +336,15 @@ const SessionReportsList = () => {
             <CollapsibleContent>
               <CardContent className="pt-0">
                 <Separator className="my-4" />
+                
+                {report.notes && (
+                  <div className="space-y-4 mb-4">
+                    <h3 className="text-sm font-medium">Session Notes</h3>
+                    <div className="p-3 bg-muted/50 rounded-md">
+                      <p className="text-sm">{report.notes}</p>
+                    </div>
+                  </div>
+                )}
                 
                 {reflectionData[report.id] ? (
                   <div className="space-y-4">
