@@ -8,9 +8,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import NavigationBar from "@/components/dashboard/NavigationBar";
-import { BellIcon, EyeIcon, MoonIcon, VolumeIcon, Info } from "lucide-react";
+import { BellIcon, EyeIcon, MoonIcon, VolumeIcon, Info, ShieldAlert } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useDevicePermissions } from "@/hooks/use-device-permissions";
+import { Button } from "@/components/ui/button";
 
 const Settings = () => {
   // Notification settings
@@ -38,15 +40,11 @@ const Settings = () => {
   const isMobile = useIsMobile();
   const isPwa = localStorage.getItem('isPWA') === 'true';
   
-  // Check for existing permissions
-  const [hasNotificationPermission, setHasNotificationPermission] = useState(false);
+  // Use our new device permissions hook
+  const { permissionStatus, requestPermission, applyDeviceSetting } = useDevicePermissions();
   
+  // Load saved settings from localStorage on initial render
   useEffect(() => {
-    // Check if we have notification permission
-    if ('Notification' in window) {
-      setHasNotificationPermission(Notification.permission === 'granted');
-    }
-    
     // Load saved settings from localStorage
     const loadSavedSettings = () => {
       const settings = [
@@ -88,143 +86,60 @@ const Settings = () => {
     
     loadSavedSettings();
   }, []);
-  
-  // Request notification permission
-  const requestNotificationPermission = async () => {
-    if (!('Notification' in window)) {
-      toast.error("Notifications are not supported by your browser");
-      return false;
-    }
-    
-    try {
-      const permission = await Notification.requestPermission();
-      setHasNotificationPermission(permission === 'granted');
-      return permission === 'granted';
-    } catch (error) {
-      console.error('Error requesting notification permission:', error);
-      toast.error("Failed to request notification permission");
-      return false;
-    }
-  };
 
-  // Request Do Not Disturb permission (Not available in all browsers)
-  const requestDNDPermission = async () => {
-    // This is only available in some browsers/devices
-    // For this example, we'll simulate requesting it
-    if ('permissions' in navigator && 'query' in navigator.permissions) {
-      try {
-        // Request audio output permissions as a proxy for DND
-        await requestPermission('notifications');
-        return true;
-      } catch (error) {
-        console.error('Error requesting DND permission:', error);
-        toast.error("Your device doesn't support Do Not Disturb control");
-        return false;
-      }
-    } else {
-      toast.error("Your device doesn't support Do Not Disturb control");
-      return false;
-    }
-  };
-  
-  // Request display settings permission
-  const requestDisplayPermission = async () => {
-    // This is a simulated permission since browser APIs don't directly control system display
-    if ('permissions' in navigator && 'query' in navigator.permissions) {
-      try {
-        // Request wake lock as a proxy for display settings
-        await requestPermission('screen-wake-lock');
-        return true;
-      } catch (error) {
-        console.error('Error requesting display permission:', error);
-        toast.error("Your device doesn't support display setting control");
-        return false;
-      }
-    } else {
-      toast.error("Your device doesn't support display setting control");
-      return false;
-    }
-  };
-  
-  // Request audio permission
-  const requestAudioPermission = async () => {
-    if ('mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices) {
-      try {
-        // Request microphone access as a proxy for audio settings
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // Stop all tracks immediately after getting permission
-        stream.getTracks().forEach(track => track.stop());
-        return true;
-      } catch (error) {
-        console.error('Error requesting audio permission:', error);
-        toast.error("Failed to get audio permissions");
-        return false;
-      }
-    } else {
-      toast.error("Your device doesn't support audio control");
-      return false;
-    }
-  };
-  
-  // Generic permission request helper
-  const requestPermission = async (permissionName: PermissionName) => {
-    if ('permissions' in navigator && 'query' in navigator.permissions) {
-      try {
-        const result = await navigator.permissions.query({ name: permissionName });
-        
-        if (result.state === 'granted') {
-          return true;
-        } else if (result.state === 'prompt') {
-          // This will trigger the permission prompt
-          return false;
-        } else {
-          toast.error(`Permission for ${permissionName} was denied`);
-          return false;
-        }
-      } catch (error) {
-        console.error(`Error checking ${permissionName} permission:`, error);
-        return false;
-      }
-    }
-    return false;
-  };
-  
+  // Request permission and apply device setting
   const handleSettingChange = async (
     setting: string, 
     value: boolean | string,
     updateFunction: (value: any) => void,
     permissionType?: 'notification' | 'dnd' | 'display' | 'audio'
   ) => {
-    // Request appropriate permission if needed
-    let permissionGranted = true;
+    // Update app's internal setting state
+    updateFunction(value);
     
-    if (value === true && permissionType && isPwa) {
-      switch (permissionType) {
-        case 'notification':
-          permissionGranted = await requestNotificationPermission();
-          break;
-        case 'dnd':
-          permissionGranted = await requestDNDPermission();
-          break;
-        case 'display':
-          permissionGranted = await requestDisplayPermission();
-          break;
-        case 'audio':
-          permissionGranted = await requestAudioPermission();
-          break;
+    // Save to local storage
+    localStorage.setItem(`setting_${setting}`, JSON.stringify(value));
+    
+    // Handle device permissions and settings if we're in a PWA and it's a boolean setting
+    if (typeof value === 'boolean' && permissionType && isPwa) {
+      if (value === true) {
+        // We're enabling a setting that needs permission
+        const success = await applyDeviceSetting(permissionType, true);
+        
+        if (success) {
+          toast.success(`Updated ${setting} setting and applied to device`);
+        } else {
+          toast.error(`Couldn't apply ${setting} to device`, {
+            description: "Permission denied or feature not supported on this device",
+            action: {
+              label: "Retry",
+              onClick: () => requestPermission(permissionType)
+            }
+          });
+        }
+      } else {
+        // We're disabling a setting
+        await applyDeviceSetting(permissionType, false);
+        toast.success(`Updated ${setting} setting`);
       }
-    }
-    
-    // Only update if permission was granted or if turning off the setting
-    if (permissionGranted || value === false) {
-      // Call the update function with the new value
-      updateFunction(value);
-      
-      // Save to local storage
-      localStorage.setItem(`setting_${setting}`, JSON.stringify(value));
-      
-      // Show success notification
+    } else {
+      // Regular setting update (no permission needed)
       toast.success(`Updated ${setting} setting`);
+    }
+  };
+
+  // Handle manual permission request
+  const handleRequestPermission = async (type: 'notification' | 'dnd' | 'display' | 'audio') => {
+    const granted = await requestPermission(type);
+    
+    if (granted) {
+      toast.success(`${type} permission granted`, {
+        description: "You can now enable related features"
+      });
+    } else {
+      toast.error(`${type} permission denied`, {
+        description: "Please enable in your device settings to use this feature"
+      });
     }
   };
   
@@ -265,12 +180,25 @@ const Settings = () => {
                 Control how and when you receive notifications
                 {isPwa && (
                   <span className="block mt-1 text-xs">
-                    {hasNotificationPermission ? 
+                    {permissionStatus.notifications === 'granted' ? 
                       "✓ Permission granted" : 
+                      permissionStatus.notifications === 'denied' ?
+                      "⚠️ Permission blocked in device settings" :
                       "⚠️ Permission required to enable notifications"}
                   </span>
                 )}
               </CardDescription>
+              {isPwa && permissionStatus.notifications !== 'granted' && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={() => handleRequestPermission('notification')}
+                >
+                  <ShieldAlert className="h-4 w-4 mr-2" />
+                  Request Notification Permission
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="flex items-center justify-between">
@@ -285,6 +213,7 @@ const Settings = () => {
                   onCheckedChange={(checked) => 
                     handleSettingChange("notificationsEnabled", checked, setNotificationsEnabled, "notification")
                   }
+                  disabled={isPwa && permissionStatus.notifications === 'denied'}
                 />
               </div>
               
@@ -302,7 +231,7 @@ const Settings = () => {
                     onCheckedChange={(checked) => 
                       handleSettingChange("sessionCompletionNotifications", checked, setSessionCompletionNotifications, "notification")
                     }
-                    disabled={!notificationsEnabled}
+                    disabled={!notificationsEnabled || (isPwa && permissionStatus.notifications === 'denied')}
                   />
                 </div>
                 
@@ -315,7 +244,7 @@ const Settings = () => {
                     onCheckedChange={(checked) => 
                       handleSettingChange("breakReminderNotifications", checked, setBreakReminderNotifications, "notification")
                     }
-                    disabled={!notificationsEnabled}
+                    disabled={!notificationsEnabled || (isPwa && permissionStatus.notifications === 'denied')}
                   />
                 </div>
                 
@@ -328,7 +257,7 @@ const Settings = () => {
                     onCheckedChange={(checked) => 
                       handleSettingChange("friendRequestNotifications", checked, setFriendRequestNotifications, "notification")
                     }
-                    disabled={!notificationsEnabled}
+                    disabled={!notificationsEnabled || (isPwa && permissionStatus.notifications === 'denied')}
                   />
                 </div>
                 
@@ -341,7 +270,7 @@ const Settings = () => {
                     onCheckedChange={(checked) => 
                       handleSettingChange("messageNotifications", checked, setMessageNotifications, "notification")
                     }
-                    disabled={!notificationsEnabled}
+                    disabled={!notificationsEnabled || (isPwa && permissionStatus.notifications === 'denied')}
                   />
                 </div>
               </div>
@@ -360,10 +289,25 @@ const Settings = () => {
                 Control when notifications are silenced
                 {isPwa && (
                   <span className="block mt-1 text-xs">
-                    Enabling this may request system-level permissions
+                    {permissionStatus.dnd === 'granted' ? 
+                      "✓ Permission granted" : 
+                      permissionStatus.dnd === 'denied' ?
+                      "⚠️ Permission blocked in device settings" :
+                      "⚠️ Permission required to control Do Not Disturb"}
                   </span>
                 )}
               </CardDescription>
+              {isPwa && permissionStatus.dnd !== 'granted' && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={() => handleRequestPermission('dnd')}
+                >
+                  <ShieldAlert className="h-4 w-4 mr-2" />
+                  Request DND Permission
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="flex items-center justify-between">
@@ -378,6 +322,7 @@ const Settings = () => {
                   onCheckedChange={(checked) => 
                     handleSettingChange("dndEnabled", checked, setDndEnabled, "dnd")
                   }
+                  disabled={isPwa && permissionStatus.dnd === 'denied'}
                 />
               </div>
               
@@ -396,6 +341,7 @@ const Settings = () => {
                     onCheckedChange={(checked) => 
                       handleSettingChange("dndDuringFocus", checked, setDndDuringFocus, "dnd")
                     }
+                    disabled={isPwa && permissionStatus.dnd === 'denied'}
                   />
                 </div>
                 
@@ -409,6 +355,7 @@ const Settings = () => {
                     onCheckedChange={(checked) => 
                       handleSettingChange("dndDuringBreaks", checked, setDndDuringBreaks, "dnd")
                     }
+                    disabled={isPwa && permissionStatus.dnd === 'denied'}
                   />
                 </div>
               </div>
@@ -427,10 +374,25 @@ const Settings = () => {
                 Customize how the app looks
                 {isPwa && (
                   <span className="block mt-1 text-xs">
-                    Some settings may affect your device's display
+                    {permissionStatus.display === 'granted' ? 
+                      "✓ Permission granted" : 
+                      permissionStatus.display === 'denied' ?
+                      "⚠️ Permission blocked in device settings" :
+                      "⚠️ Some settings may require device permissions"}
                   </span>
                 )}
               </CardDescription>
+              {isPwa && permissionStatus.display !== 'granted' && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={() => handleRequestPermission('display')}
+                >
+                  <ShieldAlert className="h-4 w-4 mr-2" />
+                  Request Display Permission
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="flex items-center justify-between">
@@ -492,10 +454,25 @@ const Settings = () => {
                 Configure audio preferences
                 {isPwa && (
                   <span className="block mt-1 text-xs">
-                    Enabling sounds may request audio permissions
+                    {permissionStatus.audio === 'granted' ? 
+                      "✓ Permission granted" : 
+                      permissionStatus.audio === 'denied' ?
+                      "⚠️ Permission blocked in device settings" :
+                      "⚠️ Some settings may require audio permissions"}
                   </span>
                 )}
               </CardDescription>
+              {isPwa && permissionStatus.audio !== 'granted' && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={() => handleRequestPermission('audio')}
+                >
+                  <ShieldAlert className="h-4 w-4 mr-2" />
+                  Request Audio Permission
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="flex items-center justify-between">
@@ -510,6 +487,7 @@ const Settings = () => {
                   onCheckedChange={(checked) => 
                     handleSettingChange("soundEnabled", checked, setSoundEnabled, "audio")
                   }
+                  disabled={isPwa && permissionStatus.audio === 'denied'}
                 />
               </div>
               
@@ -522,7 +500,7 @@ const Settings = () => {
                   onValueChange={(value) => 
                     handleSettingChange("volume", value, setVolume, "audio")
                   }
-                  disabled={!soundEnabled}
+                  disabled={!soundEnabled || (isPwa && permissionStatus.audio === 'denied')}
                   className="flex flex-row space-x-4"
                 >
                   <div className="flex items-center space-x-2">
@@ -552,7 +530,7 @@ const Settings = () => {
                   onCheckedChange={(checked) => 
                     handleSettingChange("focusSounds", checked, setFocusSounds, "audio")
                   }
-                  disabled={!soundEnabled}
+                  disabled={!soundEnabled || (isPwa && permissionStatus.audio === 'denied')}
                 />
               </div>
             </CardContent>

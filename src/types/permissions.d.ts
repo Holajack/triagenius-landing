@@ -21,3 +21,10 @@ type PermissionName =
   | 'screen-wake-lock'
   | 'speaker'
   | 'speaker-selection';
+
+interface DevicePermissionStatus {
+  notifications: PermissionState;
+  dnd: PermissionState;
+  display: PermissionState;
+  audio: PermissionState;
+}
