@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 const Index = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { theme } = useTheme();
   const navigate = useNavigate();
   
@@ -20,12 +21,19 @@ const Index = () => {
     // Set loaded state after a short delay to trigger animations
     const timer = setTimeout(() => {
       setIsLoaded(true);
+      setIsLoading(false);
     }, 100);
     
     // Check if user is authenticated
     const checkAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      setIsAuthenticated(!!data.session);
+      try {
+        const { data } = await supabase.auth.getSession();
+        setIsAuthenticated(!!data.session);
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error checking auth:", error);
+        setIsLoading(false);
+      }
     };
     
     checkAuth();
@@ -61,18 +69,6 @@ const Index = () => {
       y: 0,
       transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] }
     }
-  };
-
-  const handleStartFocusing = () => {
-    if (isAuthenticated) {
-      navigate('/dashboard');
-    } else {
-      navigate('/auth', { state: { mode: 'signup', source: 'start-focusing' } });
-    }
-  };
-
-  const handleLogin = () => {
-    navigate('/auth', { state: { mode: isAuthenticated ? 'logout' : 'login' } });
   };
 
   return (
@@ -116,19 +112,27 @@ const Index = () => {
               variants={itemVariants}
               className="flex flex-col md:flex-row items-center justify-center gap-4 mb-12"
             >
-              <FocusButton 
-                label={isAuthenticated ? "Continue Session" : "Start Focusing"} 
-                icon="play" 
-                className="w-full md:w-auto"
-                onClick={handleStartFocusing}
-              />
+              {isLoading ? (
+                <div className="w-full md:w-auto h-14 bg-gray-200 animate-pulse rounded-xl"></div>
+              ) : (
+                <FocusButton 
+                  label={isAuthenticated ? "Continue Session" : "Start Focusing"} 
+                  icon="play" 
+                  className="w-full md:w-auto"
+                  navigateTo={isAuthenticated ? "/dashboard" : "/auth"}
+                />
+              )}
               
-              <FocusButton 
-                label={isAuthenticated ? "Logout" : "Log In"} 
-                isPrimary={false} 
-                className="w-full md:w-auto"
-                onClick={handleLogin}
-              />
+              {isLoading ? (
+                <div className="w-full md:w-auto h-14 bg-gray-200 animate-pulse rounded-xl"></div>
+              ) : (
+                <FocusButton 
+                  label={isAuthenticated ? "Logout" : "Log In"} 
+                  isPrimary={false} 
+                  className="w-full md:w-auto"
+                  navigateTo={"/auth"}
+                />
+              )}
             </motion.div>
             
             <motion.div 

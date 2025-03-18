@@ -11,11 +11,29 @@ import { toast } from "sonner";
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const isFromStartFocusing = location.state?.source === "start-focusing";
+  const isFromStartFocusing = location.state?.source === "start-focusing" || location.pathname === "/auth";
   const initialMode = location.state?.mode || "login";
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isPwa, setIsPwa] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
+
+  useEffect(() => {
+    // Check network status
+    setIsOffline(!navigator.onLine);
+    
+    const handleOnlineStatus = () => {
+      setIsOffline(!navigator.onLine);
+    };
+    
+    window.addEventListener('online', handleOnlineStatus);
+    window.addEventListener('offline', handleOnlineStatus);
+    
+    return () => {
+      window.removeEventListener('online', handleOnlineStatus);
+      window.removeEventListener('offline', handleOnlineStatus);
+    };
+  }, []);
 
   useEffect(() => {
     // Check if running as PWA
@@ -93,6 +111,12 @@ const Auth = () => {
         </Button>
         
         <div className="max-w-md mx-auto">
+          {isOffline && (
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-md text-sm">
+              You are currently offline. Some features may be limited.
+            </div>
+          )}
+          
           {isFromStartFocusing ? (
             <div className="mb-6 text-center">
               <h1 className="text-2xl font-bold mb-2">Create Your Account</h1>
@@ -113,11 +137,11 @@ const Auth = () => {
             </TabsList>
             
             <TabsContent value="login">
-              <AuthForm mode="login" source={location.state?.source} />
+              <AuthForm mode="login" source={isFromStartFocusing ? "start-focusing" : location.state?.source} />
             </TabsContent>
             
             <TabsContent value="signup">
-              <AuthForm mode="signup" source={location.state?.source} />
+              <AuthForm mode="signup" source={isFromStartFocusing ? "start-focusing" : location.state?.source} />
             </TabsContent>
           </Tabs>
         </div>

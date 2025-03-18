@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Target, Play, Timer } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useNavigate } from "react-router-dom";
 
 interface FocusButtonProps {
   label: string;
@@ -11,6 +12,7 @@ interface FocusButtonProps {
   onClick?: () => void;
   isPrimary?: boolean;
   className?: string;
+  navigateTo?: string;
 }
 
 const FocusButton = ({ 
@@ -18,10 +20,20 @@ const FocusButton = ({
   icon = "target", 
   onClick, 
   isPrimary = true,
-  className = "" 
+  className = "",
+  navigateTo
 }: FocusButtonProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const { theme } = useTheme();
+  const navigate = useNavigate();
+  
+  const handleClick = () => {
+    if (navigateTo) {
+      navigate(navigateTo);
+    } else if (onClick) {
+      onClick();
+    }
+  };
   
   const getIcon = () => {
     switch (icon) {
@@ -45,7 +57,7 @@ const FocusButton = ({
             ? "bg-gray-800 border border-gray-700 text-gray-100 hover:bg-gray-700" 
             : "bg-white border border-gray-200 text-gray-800 hover:bg-gray-50"
       } rounded-xl subtle-shadow ${className}`}
-      onClick={onClick}
+      onClick={handleClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
