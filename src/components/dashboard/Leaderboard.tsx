@@ -1,5 +1,5 @@
-
 import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { Award, Crown, Medal, Users } from "lucide-react";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { getFriendsLeaderboardData } from "@/utils/leaderboardData";
 import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useState } from "react";
+import { LeaderboardUser } from "@/utils/leaderboardData";
 
 const Leaderboard = () => {
   const { state } = useOnboarding();
@@ -17,6 +17,7 @@ const Leaderboard = () => {
   const { user } = useUser();
   const [hasData, setHasData] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardUser[]>([]);
   
   // Check if the user has any focus session data
   useEffect(() => {
@@ -32,6 +33,10 @@ const Leaderboard = () => {
             .eq('user_id', user.id);
             
           setHasData(count !== null && count > 0);
+          
+          // Load real leaderboard data
+          const realData = await getFriendsLeaderboardData(count === 0);
+          setLeaderboardData(realData);
         }
       } catch (error) {
         console.error('Error checking for focus data:', error);
@@ -68,9 +73,6 @@ const Leaderboard = () => {
       default: return "bg-triage-purple";
     }
   };
-  
-  // Get users from the shared data source - use empty state for new users
-  const leaderboardData = getFriendsLeaderboardData(isNewUser);
   
   // Use the user's weekly focus goal for progress calculations
   // Make sure to provide a fallback value if it's not set
@@ -179,7 +181,7 @@ const Leaderboard = () => {
                     <p className={`text-sm font-medium truncate ${user.isCurrentUser ? getAccentColor().split(" ")[0] : ""}`}>
                       {user.name}
                     </p>
-                    <span className="text-xs text-muted-foreground">{user.focusHours}h</span>
+                    <span className="text-xs text-muted-foreground">{user.focusHours.toFixed(1)}h</span>
                   </div>
                   <Progress 
                     value={Math.min(100, (user.focusHours / weeklyGoal) * 100)} 

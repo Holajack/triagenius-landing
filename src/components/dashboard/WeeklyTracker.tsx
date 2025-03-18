@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -35,54 +34,21 @@ const generateEmptyData = () => {
   
   return days.map(day => ({
     day,
-    total: 0,
-    Math: 0,
-    Physics: 0,
-    History: 0,
-    English: 0,
-    Chemistry: 0
+    total: 0
   }));
 };
 
 // Generate empty data for the pie chart
 const generateEmptyPieData = () => {
-  const subjects = ["Math", "Physics", "History", "English", "Chemistry"];
-  
-  return subjects.map(name => ({
-    name,
-    value: 0
-  }));
+  return [];
 };
 
 const WeeklyTracker = ({ chartType, hasData = true, optimizeForMobile = false }: WeeklyTrackerProps) => {
   const { state } = useOnboarding();
   const { user } = useUser();
-  const [data, setData] = useState(() => {
-    // First try to load from localStorage
-    const savedData = localStorage.getItem('weeklyTrackerData');
-    if (savedData) {
-      try {
-        return JSON.parse(savedData);
-      } catch (e) {
-        console.error('Error parsing saved weekly data', e);
-      }
-    }
-    return generateEmptyData();
-  });
-  
-  const [pieData, setPieData] = useState(() => {
-    // First try to load from localStorage
-    const savedPieData = localStorage.getItem('weeklyPieData');
-    if (savedPieData) {
-      try {
-        return JSON.parse(savedPieData);
-      } catch (e) {
-        console.error('Error parsing saved pie data', e);
-      }
-    }
-    return generateEmptyPieData();
-  });
-  
+  const [data, setData] = useState(generateEmptyData());
+  const [pieData, setPieData] = useState(generateEmptyPieData());
+  const [subjectColors, setSubjectColors] = useState<{[key: string]: string}>({});
   const [isLoading, setIsLoading] = useState(true);
   const [noDataAvailable, setNoDataAvailable] = useState(false);
   
@@ -109,74 +75,64 @@ const WeeklyTracker = ({ chartType, hasData = true, optimizeForMobile = false }:
           // Fetch focus sessions for the current week
           const { data: focusSessions, error } = await supabase
             .from('focus_sessions')
-            .select('*')
+            .select('*, tasks!focus_sessions_id_fkey(*)')
             .eq('user_id', user.id)
             .gte('start_time', startOfWeek.toISOString())
             .lte('start_time', endOfWeek.toISOString());
             
           if (error) {
             console.error('Error fetching focus sessions:', error);
-            // Use cached data if available
-            const cachedData = localStorage.getItem('weeklyTrackerData');
-            const cachedPieData = localStorage.getItem('weeklyPieData');
-            
-            if (cachedData && cachedPieData) {
-              setData(JSON.parse(cachedData));
-              setPieData(JSON.parse(cachedPieData));
-              setNoDataAvailable(false);
-            } else {
-              setNoDataAvailable(true);
-            }
+            setNoDataAvailable(true);
           } else if (!focusSessions || focusSessions.length === 0) {
-            // If no focus sessions yet, use cached data or empty data
-            const cachedData = localStorage.getItem('weeklyTrackerData');
-            const cachedPieData = localStorage.getItem('weeklyPieData');
-            
-            if (cachedData && cachedPieData) {
-              setData(JSON.parse(cachedData));
-              setPieData(JSON.parse(cachedPieData));
-              setNoDataAvailable(false);
-            } else {
-              setNoDataAvailable(true);
-            }
+            setNoDataAvailable(true);
           } else {
+            // Get user tasks to extract unique categories/subjects
+            const { data: userTasks, error: tasksError } = await supabase
+              .from('tasks')
+              .select('title, description, priority')
+              .eq('user_id', user.id);
+              
+            if (tasksError) {
+              console.error('Error fetching user tasks:', tasksError);
+            }
+            
+            // Extract subjects/categories from tasks
+            const subjects = new Set<string>();
+            userTasks?.forEach(task => {
+              // Add priority as a category
+              if (task.priority) {
+                subjects.add(task.priority.charAt(0).toUpperCase() + task.priority.slice(1));
+              }
+              
+              // Try to extract subjects from description with #tags
+              if (task.description) {
+                const tags = task.description.match(/#(\w+)/g);
+                if (tags) {
+                  tags.forEach(tag => {
+                    subjects.add(tag.substring(1).charAt(0).toUpperCase() + tag.substring(1).slice(1));
+                  });
+                }
+              }
+            });
+            
+            // If no subjects found, use some defaults
+            if (subjects.size === 0) {
+              ['Study', 'Work', 'Personal', 'Other'].forEach(subject => subjects.add(subject));
+            }
+            
             // Process the data for charts
-            const processedData = processSessionData(focusSessions, startOfWeek);
+            const processedData = processSessionData(focusSessions, startOfWeek, Array.from(subjects));
             setData(processedData.weeklyData);
             setPieData(processedData.pieData);
-            
-            // Cache the data
-            localStorage.setItem('weeklyTrackerData', JSON.stringify(processedData.weeklyData));
-            localStorage.setItem('weeklyPieData', JSON.stringify(processedData.pieData));
-            
+            setSubjectColors(processedData.subjectColors);
             setNoDataAvailable(false);
           }
-        } else {
-          // No user logged in, use cached data if available
-          const cachedData = localStorage.getItem('weeklyTrackerData');
-          const cachedPieData = localStorage.getItem('weeklyPieData');
-          
-          if (cachedData && cachedPieData) {
-            setData(JSON.parse(cachedData));
-            setPieData(JSON.parse(cachedPieData));
-            setNoDataAvailable(false);
-          } else {
-            setNoDataAvailable(true);
-          }
-        }
-      } catch (error) {
-        console.error('Error in fetchFocusData:', error);
-        // Use cached data if available
-        const cachedData = localStorage.getItem('weeklyTrackerData');
-        const cachedPieData = localStorage.getItem('weeklyPieData');
-        
-        if (cachedData && cachedPieData) {
-          setData(JSON.parse(cachedData));
-          setPieData(JSON.parse(cachedPieData));
-          setNoDataAvailable(false);
         } else {
           setNoDataAvailable(true);
         }
+      } catch (error) {
+        console.error('Error in fetchFocusData:', error);
+        setNoDataAvailable(true);
       } finally {
         setIsLoading(false);
       }
@@ -186,7 +142,7 @@ const WeeklyTracker = ({ chartType, hasData = true, optimizeForMobile = false }:
   }, [user]);
   
   // Process session data for charts
-  const processSessionData = (sessions: any[], startOfWeek: Date) => {
+  const processSessionData = (sessions: any[], startOfWeek: Date, subjects: string[]) => {
     const daysMap: Record<string, number> = {
       0: 6, // Sunday -> index 6
       1: 0, // Monday -> index 0
@@ -198,12 +154,25 @@ const WeeklyTracker = ({ chartType, hasData = true, optimizeForMobile = false }:
     };
     
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    const subjects = ["Math", "Physics", "History", "English", "Chemistry"];
     
     // Initialize data structures
-    const weeklyData = generateEmptyData();
+    const weeklyData = days.map(day => {
+      const dayObj: {[key: string]: any} = { day, total: 0 };
+      subjects.forEach(subject => {
+        dayObj[subject] = 0;
+      });
+      return dayObj;
+    });
+    
     const subjectTotals: Record<string, number> = {};
     subjects.forEach(subject => subjectTotals[subject] = 0);
+    
+    // Create colors for each subject
+    const colors = getColors();
+    const subjectColors: {[key: string]: string} = {};
+    subjects.forEach((subject, index) => {
+      subjectColors[subject] = colors[index % colors.length];
+    });
     
     // Process each session
     sessions.forEach(session => {
@@ -221,31 +190,59 @@ const WeeklyTracker = ({ chartType, hasData = true, optimizeForMobile = false }:
       const durationHours = duration / 60;
       weeklyData[dayIndex].total += durationHours;
       
-      // Random distribution of time across subjects (since we don't have real subject data)
-      // In a real app, you'd have a sessions_subjects table or similar
-      let remainingDuration = duration;
-      subjects.forEach((subject, index) => {
-        if (index === subjects.length - 1) {
-          // Last subject gets remaining time
-          weeklyData[dayIndex][subject] = remainingDuration / 60;
-          subjectTotals[subject] += remainingDuration;
-        } else {
-          // Random portion of time for each subject
-          const subjectMinutes = Math.floor(Math.random() * (remainingDuration / 2)) + 1;
-          weeklyData[dayIndex][subject] = subjectMinutes / 60;
-          subjectTotals[subject] += subjectMinutes;
-          remainingDuration -= subjectMinutes;
-        }
-      });
+      // If session has associated tasks, distribute time based on tasks
+      if (session.tasks && session.tasks.length > 0) {
+        const tasksWithSubjects = session.tasks.map((task: any) => {
+          // Try to determine subject from task
+          let taskSubject = 'Other';
+          
+          // Check priority first
+          if (task.priority) {
+            taskSubject = task.priority.charAt(0).toUpperCase() + task.priority.slice(1);
+          }
+          
+          // Then check for #tags in description
+          if (task.description) {
+            const tags = task.description.match(/#(\w+)/g);
+            if (tags && tags.length > 0) {
+              taskSubject = tags[0].substring(1).charAt(0).toUpperCase() + tags[0].substring(1).slice(1);
+            }
+          }
+          
+          return {
+            ...task,
+            subject: taskSubject
+          };
+        });
+        
+        // Distribute session time across task subjects
+        const timePerTask = durationHours / tasksWithSubjects.length;
+        
+        tasksWithSubjects.forEach((task: any) => {
+          if (subjects.includes(task.subject)) {
+            weeklyData[dayIndex][task.subject] += timePerTask;
+            subjectTotals[task.subject] += timePerTask * 60; // Store in minutes for pie chart
+          } else {
+            weeklyData[dayIndex]['Other'] = (weeklyData[dayIndex]['Other'] || 0) + timePerTask;
+            subjectTotals['Other'] = (subjectTotals['Other'] || 0) + timePerTask * 60;
+          }
+        });
+      } else {
+        // If no tasks associated, assign to "Other"
+        weeklyData[dayIndex]['Other'] = (weeklyData[dayIndex]['Other'] || 0) + durationHours;
+        subjectTotals['Other'] = (subjectTotals['Other'] || 0) + durationHours * 60;
+      }
     });
     
     // Create pie data
-    const pieData = subjects.map(name => ({
-      name,
-      value: subjectTotals[name]
-    }));
+    const pieData = Object.entries(subjectTotals)
+      .filter(([_, value]) => value > 0)
+      .map(([name, value]) => ({
+        name,
+        value
+      }));
     
-    return { weeklyData, pieData };
+    return { weeklyData, pieData, subjectColors };
   };
   
   // Calculate total weekly time (in hours)
@@ -315,6 +312,16 @@ const WeeklyTracker = ({ chartType, hasData = true, optimizeForMobile = false }:
     return value.charAt(0);
   };
   
+  // Get unique subjects from data
+  const getSubjects = () => {
+    if (chartData.length === 0) return [];
+    
+    const firstDay = chartData[0];
+    return Object.keys(firstDay).filter(key => key !== 'day' && key !== 'total');
+  };
+  
+  const subjects = getSubjects();
+  
   return (
     <Card className="shadow-sm">
       <CardContent className={`p-${optimizeForMobile ? '2' : '6'}`}>
@@ -346,11 +353,16 @@ const WeeklyTracker = ({ chartType, hasData = true, optimizeForMobile = false }:
                 labelFormatter={(label) => `${label}`}
               />
               {!optimizeForMobile && <Legend />}
-              <Bar dataKey="Math" stackId="a" fill={colors[0]} />
-              <Bar dataKey="Physics" stackId="a" fill={colors[1]} />
-              <Bar dataKey="History" stackId="a" fill={colors[2]} />
-              <Bar dataKey="English" stackId="a" fill={colors[3]} />
-              <Bar dataKey="Chemistry" stackId="a" fill={colors[4]} />
+              
+              {subjects.map((subject, index) => (
+                <Bar 
+                  key={subject} 
+                  dataKey={subject} 
+                  stackId="a" 
+                  fill={subjectColors[subject] || colors[index % colors.length]} 
+                />
+              ))}
+              
               {/* Add reference line for daily goal */}
               <ReferenceLine 
                 y={dailyFocusGoal} 
@@ -378,7 +390,10 @@ const WeeklyTracker = ({ chartType, hasData = true, optimizeForMobile = false }:
                 dataKey="value"
               >
                 {chartPieData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={subjectColors[entry.name] || colors[index % colors.length]} 
+                  />
                 ))}
               </Pie>
               <Tooltip formatter={(value: number) => [`${Math.round(value)} min`, "Focus Time"]} />
@@ -442,23 +457,21 @@ const WeeklyTracker = ({ chartType, hasData = true, optimizeForMobile = false }:
               ></div>
             </div>
             
-            {["Math", "Physics", "History", "English", "Chemistry"].map((subject, index) => {
-              // Calculate total minutes for this subject across the week
-              const subjectMinutes = chartData.reduce((total, day) => total + (day[subject] || 0) * 60, 0);
-              const percentOfWeek = totalWeeklyHours > 0 ? (subjectMinutes / (totalWeeklyHours * 60)) * 100 : 0;
+            {chartPieData.map((subject, index) => {
+              const percentOfWeek = totalWeeklyHours > 0 ? (subject.value / (totalWeeklyHours * 60)) * 100 : 0;
               
               return (
-                <div key={subject} className="space-y-1">
+                <div key={subject.name} className="space-y-1">
                   <div className="flex justify-between text-sm">
-                    <span>{subject}</span>
-                    <span>{Math.round(subjectMinutes)} min</span>
+                    <span>{subject.name}</span>
+                    <span>{Math.round(subject.value)} min</span>
                   </div>
                   <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full"
                       style={{
                         width: `${percentOfWeek}%`,
-                        backgroundColor: colors[index % colors.length]
+                        backgroundColor: subjectColors[subject.name] || colors[index % colors.length]
                       }}
                     ></div>
                   </div>
@@ -473,3 +486,4 @@ const WeeklyTracker = ({ chartType, hasData = true, optimizeForMobile = false }:
 };
 
 export default WeeklyTracker;
+
