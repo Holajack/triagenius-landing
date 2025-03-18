@@ -53,6 +53,24 @@ if ('serviceWorker' in navigator) {
         };
       };
       
+      // Check for updates every 30 minutes
+      setInterval(() => {
+        registration.update();
+        console.log('Checking for service worker updates');
+      }, 30 * 60 * 1000);
+      
+      // Register for periodic background sync (if supported)
+      if ('periodicSync' in registration) {
+        try {
+          await (registration as any).periodicSync.register('update-content', {
+            minInterval: 12 * 60 * 60 * 1000, // 12 hours
+          });
+          console.log('Periodic background sync registered');
+        } catch (error) {
+          console.error('Error registering periodic sync:', error);
+        }
+      }
+      
       // Log when the service worker takes control
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         console.log('Service worker controller changed');

@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Download } from 'lucide-react';
+import { X, Download, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/hooks/use-toast';
 
@@ -17,62 +17,92 @@ const InstallPrompt = () => {
     name: string;
     isIOS: boolean;
     isStandalone: boolean;
+    isAndroid: boolean;
+    isMobile: boolean;
   }>({
     name: '',
     isIOS: false,
-    isStandalone: false
+    isStandalone: false,
+    isAndroid: false,
+    isMobile: false
   });
   const { toast } = useToast();
   
   useEffect(() => {
-    // Detect browser
+    // Detect browser and device info
     const detectBrowser = () => {
-      const userAgent = navigator.userAgent;
+      const userAgent = navigator.userAgent.toLowerCase();
       let browserName = 'Unknown';
       
-      if (userAgent.match(/chrome|chromium|crios/i)) {
-        browserName = 'Chrome';
-      } else if (userAgent.match(/firefox|fxios/i)) {
-        browserName = 'Firefox';
-      } else if (userAgent.match(/safari/i)) {
-        browserName = 'Safari';
-      } else if (userAgent.match(/opr\//i)) {
-        browserName = 'Opera';
-      } else if (userAgent.match(/edg/i)) {
+      // Detect browser
+      if (userAgent.includes('edge') || userAgent.includes('edg')) {
         browserName = 'Edge';
-      } else if (userAgent.match(/android/i)) {
-        browserName = 'Android';
-      } else if (userAgent.match(/iphone|ipad|ipod/i)) {
-        browserName = 'iOS';
+      } else if (userAgent.includes('chrome') || userAgent.includes('chromium') || userAgent.includes('crios')) {
+        browserName = 'Chrome';
+      } else if (userAgent.includes('firefox') || userAgent.includes('fxios')) {
+        browserName = 'Firefox';
+      } else if (userAgent.includes('safari') && !userAgent.includes('chrome')) {
+        browserName = 'Safari';
+      } else if (userAgent.includes('opera') || userAgent.includes('opr')) {
+        browserName = 'Opera';
+      } else if (userAgent.includes('msie') || userAgent.includes('trident')) {
+        browserName = 'Internet Explorer';
+      } else if (userAgent.includes('samsung')) {
+        browserName = 'Samsung Internet';
       }
       
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      // Detect OS and device type
+      const isIOS = /ipad|iphone|ipod/.test(userAgent) && !(window as any).MSStream;
+      const isAndroid = /android/.test(userAgent);
+      const isMobile = /mobile|tablet|ipad|iphone|ipod|android/.test(userAgent);
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                           (window.navigator as any).standalone === true;
       
-      return { name: browserName, isIOS, isStandalone };
+      return { 
+        name: browserName, 
+        isIOS, 
+        isStandalone, 
+        isAndroid,
+        isMobile
+      };
     };
     
     const browser = detectBrowser();
     setBrowserInfo(browser);
+    console.log('Browser detected:', browser);
     
-    // If already installed/standalone mode, don't show the prompt
+    // Don't show the prompt if already installed/standalone mode
     if (browser.isStandalone) {
       console.log('App is already installed and running in standalone mode');
       return;
     }
     
-    // For iOS Safari, we need a custom approach
-    if (browser.isIOS) {
-      // Check if we haven't shown the prompt recently
+    // Check if we've prompted recently
+    const shouldPrompt = () => {
       const lastPrompt = localStorage.getItem('installPromptDismissed');
-      if (!lastPrompt || daysBetween(new Date(lastPrompt), new Date()) > 3) {
-        setTimeout(() => setIsVisible(true), 2000);
+      // Show prompt if we haven't shown it before or if it's been more than 3 days
+      return !lastPrompt || daysBetween(new Date(lastPrompt), new Date()) > 3;
+    };
+    
+    // For iOS Safari, we need a custom approach with delayed prompt
+    if (browser.isIOS) {
+      if (shouldPrompt()) {
+        setTimeout(() => setIsVisible(true), 3000);
       }
       return;
     }
     
-    // For Chrome and other browsers supporting BeforeInstallPromptEvent
+    // For Android Samsung Internet or other browsers without BeforeInstallPrompt support
+    if ((browser.isAndroid && browser.name === 'Samsung Internet') || 
+        browser.name === 'Firefox' || 
+        browser.name === 'Internet Explorer') {
+      if (shouldPrompt()) {
+        setTimeout(() => setIsVisible(true), 3000);
+      }
+      return;
+    }
+    
+    // For Chrome, Edge, and other browsers that support BeforeInstallPrompt
     const handleBeforeInstallPrompt = (e: Event) => {
       // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
@@ -80,32 +110,39 @@ const InstallPrompt = () => {
       // Store the event so it can be triggered later
       setInstallPrompt(e as BeforeInstallPromptEvent);
       
-      // Show our custom prompt after a short delay
-      const lastPrompt = localStorage.getItem('installPromptDismissed');
-      if (!lastPrompt || daysBetween(new Date(lastPrompt), new Date()) > 3) {
-        setTimeout(() => setIsVisible(true), 2000);
+      // Show our custom prompt
+      if (shouldPrompt()) {
+        setTimeout(() => setIsVisible(true), 3000);
       }
     };
     
     console.log('Adding beforeinstallprompt event listener');
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     
-    // Always show the prompt for browsers without beforeinstallprompt support
-    // but not iOS (handled separately) and not already in standalone mode
-    if (!browser.isIOS && !browser.isStandalone) {
-      const lastPrompt = localStorage.getItem('installPromptDismissed');
-      if (!lastPrompt || daysBetween(new Date(lastPrompt), new Date()) > 3) {
-        // Delay showing prompt slightly to avoid immediate popup
+    // For other mobile browsers, show a prompt after delay if appropriate
+    if (browser.isMobile && !browser.isIOS && !browser.isStandalone) {
+      if (shouldPrompt()) {
         setTimeout(() => {
-          // If we haven't captured beforeinstallprompt, show custom instructions
+          // If we haven't captured beforeinstallprompt by now, show custom instructions
           if (!installPrompt) {
             setIsVisible(true);
           }
-        }, 3000);
+        }, 5000);
       }
     }
     
-    // Cleanup
+    // For desktop browsers, show a more subtle prompt after a longer delay
+    if (!browser.isMobile && !browser.isStandalone) {
+      if (shouldPrompt()) {
+        setTimeout(() => {
+          if (!installPrompt) {
+            setIsVisible(true);
+          }
+        }, 10000);
+      }
+    }
+    
+    // Cleanup event listener
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
@@ -117,12 +154,12 @@ const InstallPrompt = () => {
       return;
     }
     
-    // For Chrome and other browsers that support the beforeinstallprompt event
+    // For browsers that support the beforeinstallprompt event
     if (installPrompt) {
       console.log('Triggering browser install prompt');
-      installPrompt.prompt();
-      
       try {
+        await installPrompt.prompt();
+        
         // Wait for the user to respond to the prompt
         const choiceResult = await installPrompt.userChoice;
         
@@ -132,19 +169,22 @@ const InstallPrompt = () => {
             title: "Installing App",
             description: "Thank you for installing our app!"
           });
+          setIsVisible(false);
         } else {
           console.log('User dismissed the install prompt');
+          // Save the dismissal time so we don't prompt again too soon
+          localStorage.setItem('installPromptDismissed', new Date().toISOString());
         }
       } catch (err) {
         console.error('Error with install prompt:', err);
+        // Show browser-specific instructions as fallback
+        showBrowserSpecificInstructions(browserInfo.name);
       }
       
       // Clear the saved prompt since it can't be used again
       setInstallPrompt(null);
-      setIsVisible(false);
     } else {
-      // For browsers that don't support beforeinstallprompt
-      // Show browser-specific installation instructions
+      // For browsers without beforeinstallprompt support
       showBrowserSpecificInstructions(browserInfo.name);
     }
   };
@@ -158,37 +198,57 @@ const InstallPrompt = () => {
   
   const showIOSInstructions = () => {
     toast({
-      title: "Install this app",
-      description: "To install: tap the share icon, then 'Add to Home Screen'",
+      title: "Install Triagenius",
+      description: "To install: tap the share icon (📤) at the bottom of your screen, then 'Add to Home Screen'",
       duration: 10000
     });
   };
   
   const showBrowserSpecificInstructions = (browser: string) => {
-    let instructions = "Add this app to your home screen for a better experience.";
+    let instructions = "";
     
-    switch(browser) {
-      case "Chrome":
-        instructions = "Click the menu (⋮) and select 'Install App' or 'Add to Home Screen'";
+    switch(browser.toLowerCase()) {
+      case "chrome":
+        if (browserInfo.isAndroid) {
+          instructions = "Tap the menu (⋮) and select 'Add to Home Screen'";
+        } else {
+          instructions = "Click the menu (⋮) in the top right, then 'Install Triagenius...'";
+        }
         break;
-      case "Edge":
+      case "edge":
         instructions = "Click the menu (...) and select 'Apps > Install this site as an app'";
         break;
-      case "Firefox":
-        instructions = "Click the menu (≡) and select 'Install' or visit about:addons";
+      case "firefox":
+        if (browserInfo.isAndroid) {
+          instructions = "Tap the menu (⋮) and select 'Add to Home Screen'";
+        } else {
+          instructions = "Click the menu (≡), then click the '+' icon in the address bar";
+        }
         break;
-      case "Safari":
-        instructions = "Tap the share icon and select 'Add to Home Screen'";
+      case "safari":
+        instructions = "Tap the share icon (📤) at the bottom of the screen, then 'Add to Home Screen'";
         break;
-      case "Opera":
-        instructions = "Click the menu and select 'Add to home screen'";
+      case "opera":
+        instructions = "Tap the menu (⋮) and select 'Add to Home screen'";
         break;
+      case "samsung internet":
+        instructions = "Tap the menu (⋮) and select 'Add page to' then 'Home screen'";
+        break;
+      case "internet explorer":
+        instructions = "Click the pin icon in the address bar and select 'Pin to Start'";
+        break;
+      default:
+        if (browserInfo.isAndroid) {
+          instructions = "Tap the menu button (usually ⋮ or ≡) and look for 'Add to Home Screen' or 'Install App'";
+        } else {
+          instructions = "Look for 'Install App' or 'Add to Home Screen' in your browser's menu";
+        }
     }
     
     toast({
       title: "Install Triagenius",
       description: instructions,
-      duration: 10000
+      duration: 15000
     });
   };
   
@@ -210,29 +270,56 @@ const InstallPrompt = () => {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 50 }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className="fixed bottom-4 left-4 right-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg z-50 border border-gray-200 dark:border-gray-700"
+          className="fixed bottom-4 left-4 right-4 mx-auto max-w-md bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg z-50 border border-gray-200 dark:border-gray-700"
         >
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <h3 className="font-semibold text-lg mb-1">Install Triagenius</h3>
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
                 {browserInfo.isIOS 
-                  ? "Install our app: tap the share icon then 'Add to Home Screen'"
-                  : "Install our app for a better experience and offline access."}
+                  ? "Get a better experience by adding this app to your home screen"
+                  : "Install our app for a faster, fullscreen experience with offline access"}
               </p>
-              <Button 
-                onClick={handleInstallClick}
-                className="w-full bg-black hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
-              >
-                <Download className="w-4 h-4 mr-2" /> Install App
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button 
+                  onClick={handleInstallClick}
+                  className="flex-1 bg-black hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
+                >
+                  <Download className="w-4 h-4 mr-2" /> Install App
+                </Button>
+                {browserInfo.isIOS && (
+                  <Button 
+                    variant="outline"
+                    onClick={() => showIOSInstructions()}
+                    className="flex-1"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" /> Show Steps
+                  </Button>
+                )}
+              </div>
             </div>
             <button 
               onClick={handleDismiss}
               className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+              aria-label="Close"
             >
               <X className="w-5 h-5 text-gray-500" />
             </button>
+          </div>
+          
+          {/* Mini instructions based on browser */}
+          <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+            {browserInfo.name && (
+              <p>
+                {browserInfo.name === 'Safari' && browserInfo.isIOS ? 
+                  "Tap share icon (📤) then 'Add to Home Screen'" :
+                  browserInfo.name === 'Chrome' ? 
+                  "Look for 'Install app' in the menu (⋮)" :
+                  browserInfo.name === 'Firefox' ?
+                  "Look for '+' in the address bar or menu" :
+                  "Look for install or 'Add to Home Screen' option"}
+              </p>
+            )}
           </div>
         </motion.div>
       )}
