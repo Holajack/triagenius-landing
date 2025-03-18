@@ -9,4 +9,27 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'triage-app',
+    },
+  },
+});
+
+// Helper function to handle Supabase errors consistently
+export const handleSupabaseError = (error: any, customMessage: string = "An unexpected error occurred") => {
+  console.error(`Supabase error: ${customMessage}`, error);
+  
+  // Return a structured error object that can be used throughout the app
+  return {
+    message: error?.message || customMessage,
+    status: error?.status || 500,
+    details: error?.details || null
+  };
+};

@@ -1,48 +1,24 @@
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect } from "react";
 import { Navigate, Outlet, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuthState } from "@/hooks/use-auth-state";
 import { useUser } from "@/hooks/use-user";
+import { toast } from "sonner";
 
 const ProtectedRoute = () => {
-  const [loading, setLoading] = useState(true);
-  const [authenticated, setAuthenticated] = useState(false);
+  const { loading, isAuthenticated } = useAuthState();
   const navigate = useNavigate();
-  const { user } = useUser();
+  const { user, isLoading: userLoading } = useUser();
   
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data } = await supabase.auth.getSession();
-        setAuthenticated(!!data.session);
-      } catch (error) {
-        console.error("Error checking authentication:", error);
-        setAuthenticated(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    // If we already have user data from the UserProvider, use that
-    if (user) {
-      setAuthenticated(true);
-      setLoading(false);
-    } else {
-      checkAuth();
+    // Handle edge case when authenticated but user data fails to load
+    if (isAuthenticated && !userLoading && !user) {
+      toast.error("Failed to load user data. Please try logging in again.");
+      navigate("/auth", { replace: true });
     }
-    
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setAuthenticated(!!session);
-      }
-    );
-    
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, [navigate, user]);
+  }, [isAuthenticated, user, userLoading, navigate]);
   
-  if (loading) {
+  if (loading || userLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-triage-purple">Loading...</div>
@@ -50,7 +26,7 @@ const ProtectedRoute = () => {
     );
   }
   
-  if (!authenticated) {
+  if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
   }
   

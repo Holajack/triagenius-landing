@@ -1,6 +1,6 @@
 
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, handleSupabaseError } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface UserData {
@@ -14,24 +14,34 @@ interface UserData {
 interface UserContextType {
   user: UserData | null;
   refreshUser: () => Promise<void>;
-  isLoading: boolean;  // Add this property
+  isLoading: boolean;
+  error: Error | null;
+  clearError: () => void;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);  // Add loading state
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  
+  const clearError = () => setError(null);
   
   const fetchUserData = async () => {
     try {
-      setIsLoading(true);  // Set loading to true when fetching
+      setIsLoading(true);
+      clearError();
       
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError) {
+        throw authError;
+      }
       
       if (!authUser) {
         setUser(null);
-        setIsLoading(false);  // Set loading to false when done
+        setIsLoading(false);
         return;
       }
       
@@ -45,16 +55,41 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       });
       
       // Fetch profile data
-      const { data: profileData, error } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('username, email, avatar_url')
         .eq('id', authUser.id)
         .single();
       
-      if (error) {
-        console.error("Error fetching profile:", error);
-        setUser(prev => prev ? { ...prev, isLoading: false } : null);
-        setIsLoading(false);  // Set loading to false when done with error
+      if (profileError) {
+        // Check if profile doesn't exist yet
+        if (profileError.code === 'PGRST116') {
+          // Create profile if it doesn't exist
+          const { error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: authUser.id,
+              email: authUser.email,
+              username: authUser.email?.split('@')[0] || null
+            });
+            
+          if (insertError) {
+            console.error("Error creating profile:", insertError);
+          }
+          
+          // Update with default data
+          setUser({
+            id: authUser.id,
+            email: authUser.email,
+            username: authUser.email?.split('@')[0] || null,
+            avatarUrl: null,
+            isLoading: false,
+          });
+        } else {
+          console.error("Error fetching profile:", profileError);
+          setUser(prev => prev ? { ...prev, isLoading: false } : null);
+        }
+        setIsLoading(false);
         return;
       }
       
@@ -67,11 +102,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         isLoading: false,
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch user data:", error);
+      setError(error);
       setUser(null);
     } finally {
-      setIsLoading(false);  // Always set loading to false in finally block
+      setIsLoading(false);
     }
   };
   
@@ -80,8 +116,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     fetchUserData();
     
     // Subscribe to auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      fetchUserData();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        fetchUserData();
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+      }
     });
     
     return () => {
@@ -90,7 +130,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   }, []);
   
   return (
-    <UserContext.Provider value={{ user, refreshUser: fetchUserData, isLoading }}>
+    <UserContext.Provider value={{ 
+      user, 
+      refreshUser: fetchUserData, 
+      isLoading,
+      error,
+      clearError
+    }}>
       {children}
     </UserContext.Provider>
   );
