@@ -1,0 +1,82 @@
+
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    // Parse the request body
+    const { sender_id_param, recipient_id_param } = await req.json();
+
+    // Create a Supabase client with the Auth context
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {
+        global: {
+          headers: { Authorization: req.headers.get("Authorization")! },
+        },
+      }
+    );
+
+    // Get the user from the request
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseClient.auth.getUser();
+
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+      );
+    }
+
+    // Ensure the user is only creating requests as themselves
+    if (user.id !== sender_id_param) {
+      return new Response(
+        JSON.stringify({ error: "You can only create friend requests as yourself" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
+      );
+    }
+
+    // Insert the friend request
+    const { data, error } = await supabaseClient
+      .from("friend_requests")
+      .insert({
+        sender_id: sender_id_param,
+        recipient_id: recipient_id_param,
+        status: "pending"
+      })
+      .select("*")
+      .single();
+
+    if (error) {
+      console.error("Error creating friend request:", error);
+      return new Response(
+        JSON.stringify({ error: error.message }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
+    }
+
+    return new Response(
+      JSON.stringify({ data }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    return new Response(
+      JSON.stringify({ error: "An unexpected error occurred" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+    );
+  }
+});

@@ -67,14 +67,18 @@ export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityU
         if (statsError) throw statsError;
         
         // Fetch friend requests
+        // Using a custom SQL query since friend_requests table is not in the types yet
         const { data: requests, error: requestsError } = await supabase
-          .from('friend_requests')
-          .select('*')
-          .or(`sender_id.eq.${user?.id},recipient_id.eq.${user?.id}`);
+          .rpc('get_friend_requests', { user_id_param: user?.id })
+          .select('*');
           
-        if (requestsError) throw requestsError;
-        
-        setFriendRequests(requests || []);
+        if (requestsError) {
+          console.error('Error fetching friend requests:', requestsError);
+          // Fallback to empty array if the RPC call fails
+          setFriendRequests([]);
+        } else {
+          setFriendRequests(requests as FriendRequest[] || []);
+        }
         
         const statsMap = new Map();
         stats?.forEach(stat => {
@@ -195,17 +199,26 @@ export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityU
     try {
       setProcessingRequests(prev => new Set(prev).add(userId));
       
-      const { error } = await supabase
-        .from('friend_requests')
-        .insert({
-          sender_id: user.id,
-          recipient_id: userId,
-          status: 'pending'
-        });
-        
+      // Use a direct SQL insert since friend_requests is not in types
+      const { error } = await supabase.rpc('create_friend_request', { 
+        sender_id_param: user.id,
+        recipient_id_param: userId
+      });
+      
       if (error) throw error;
       
       toast.success('Friend request sent!');
+      
+      // Update the local state to reflect the new request
+      const newRequest: FriendRequest = {
+        id: 'temp-' + Date.now(), // Temporary ID until refresh
+        sender_id: user.id,
+        recipient_id: userId,
+        status: 'pending'
+      };
+      
+      setFriendRequests(prev => [...prev, newRequest]);
+      
     } catch (err) {
       console.error('Error sending friend request:', err);
       toast.error('Could not send friend request');
@@ -234,12 +247,20 @@ export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityU
         return;
       }
       
-      const { error } = await supabase
-        .from('friend_requests')
-        .update({ status: accept ? 'accepted' : 'rejected' })
-        .eq('id', request.id);
-        
+      // Use RPC to update the request
+      const { error } = await supabase.rpc('update_friend_request', {
+        request_id_param: request.id,
+        new_status_param: accept ? 'accepted' : 'rejected'
+      });
+      
       if (error) throw error;
+      
+      // Update local state
+      setFriendRequests(prev => 
+        prev.map(r => 
+          r.id === request.id ? { ...r, status: accept ? 'accepted' : 'rejected' } : r
+        )
+      );
       
       toast.success(accept ? 'Friend request accepted!' : 'Friend request declined');
     } catch (err) {

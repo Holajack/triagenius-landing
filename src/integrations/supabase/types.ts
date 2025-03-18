@@ -180,6 +180,33 @@ export type Database = {
           },
         ]
       }
+      friend_requests: {
+        Row: {
+          created_at: string
+          id: string
+          recipient_id: string
+          sender_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          recipient_id: string
+          sender_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          recipient_id?: string
+          sender_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       leaderboard_stats: {
         Row: {
           created_at: string
@@ -386,25 +413,55 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          business: string | null
+          classes: string[] | null
           created_at: string
           email: string | null
           id: string
+          major: string | null
+          profession: string | null
+          show_business: boolean | null
+          show_classes: boolean | null
+          show_state: boolean | null
+          show_university: boolean | null
+          state: string | null
+          university: string | null
           updated_at: string
           username: string | null
         }
         Insert: {
           avatar_url?: string | null
+          business?: string | null
+          classes?: string[] | null
           created_at?: string
           email?: string | null
           id: string
+          major?: string | null
+          profession?: string | null
+          show_business?: boolean | null
+          show_classes?: boolean | null
+          show_state?: boolean | null
+          show_university?: boolean | null
+          state?: string | null
+          university?: string | null
           updated_at?: string
           username?: string | null
         }
         Update: {
           avatar_url?: string | null
+          business?: string | null
+          classes?: string[] | null
           created_at?: string
           email?: string | null
           id?: string
+          major?: string | null
+          profession?: string | null
+          show_business?: boolean | null
+          show_classes?: boolean | null
+          show_state?: boolean | null
+          show_university?: boolean | null
+          state?: string | null
+          university?: string | null
           updated_at?: string
           username?: string | null
         }
