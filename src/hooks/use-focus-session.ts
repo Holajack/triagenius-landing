@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -351,20 +350,21 @@ export const useFocusSession = () => {
       if (user?.id) {
         console.log("useFocusSession: handleEndSessionEarly - Saving to Supabase for user", user.id);
         
-        // Don't await this - let it run in parallel
-        supabase.from('focus_sessions').insert({
-          id: reportId,
-          user_id: user.id,
-          milestone_count: sessionData.milestone || 0,
-          duration: sessionData.duration || 0,
-          created_at: sessionData.timestamp,
-          environment: sessionData.environment,
-          completed: false
-        }).then(() => {
+        // Use async/await with try/catch instead of Promise.catch
+        try {
+          await supabase.from('focus_sessions').insert({
+            id: reportId,
+            user_id: user.id,
+            milestone_count: sessionData.milestone || 0,
+            duration: sessionData.duration || 0,
+            created_at: sessionData.timestamp,
+            environment: sessionData.environment,
+            completed: false
+          });
           console.log("useFocusSession: handleEndSessionEarly - Successfully saved to Supabase");
-        }).catch(error => {
+        } catch (error) {
           console.error('useFocusSession: Error saving to Supabase:', error);
-        });
+        }
       }
       
       // Schedule navigation with sufficient delay to allow UI to settle
