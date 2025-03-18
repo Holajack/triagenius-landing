@@ -67,11 +67,13 @@ if ('serviceWorker' in navigator) {
           
           // Enable background sync for focus sessions - with PWA detection
           if ('SyncManager' in window && localStorage.getItem('isPWA') === 'true') {
-            // Safely access the sync property with proper error handling
+            // Safely access the sync property with proper type handling
             setTimeout(() => {
               try {
-                if (registration.sync) {
-                  registration.sync.register('sync-focus-session')
+                // Use type assertion to handle the sync property that TypeScript doesn't recognize
+                const syncRegistration = registration as unknown as { sync?: { register: (tag: string) => Promise<void> } };
+                if (syncRegistration.sync) {
+                  syncRegistration.sync.register('sync-focus-session')
                     .catch(err => console.log('Background sync registration failed:', err));
                 }
               } catch (err) {
