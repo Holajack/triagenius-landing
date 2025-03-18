@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { UserProvider } from "./hooks/use-user";
 import { OnboardingProvider } from "./contexts/OnboardingContext";
 import { WalkthroughProvider } from "./contexts/WalkthroughContext";
+import { TaskProvider } from "./contexts/TaskContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -53,39 +54,41 @@ function App() {
         <UserProvider>
           <OnboardingProvider>
             <WalkthroughProvider>
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/onboarding" element={<Onboarding />} />
+              <TaskProvider>
+                <BrowserRouter>
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/onboarding" element={<Onboarding />} />
+                    
+                    {/* Protected routes */}
+                    <Route element={<ProtectedRoute />}>
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/focus-session" element={<FocusSession />} />
+                      <Route path="/break-timer" element={<BreakTimer />} />
+                      <Route path="/session-reflection" element={<SessionReflection />} />
+                      <Route path="/session-report/:id" element={<SessionReport />} />
+                      <Route path="/reports" element={<Reports />} />
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/settings" element={<Settings />} />
+                      <Route path="/community" element={<Community />} />
+                      <Route path="/leaderboard" element={<Leaderboard />} />
+                      <Route path="/chat" element={<Chat />} />
+                      <Route path="/bonuses" element={<Bonuses />} />
+                      <Route path="/study-room/:id?" element={<StudyRoom />} />
+                      <Route path="/nora" element={<Nora />} />
+                      <Route path="/learning-quiz" element={<LearningQuiz />} />
+                    </Route>
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
                   
-                  {/* Protected routes */}
-                  <Route element={<ProtectedRoute />}>
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/focus-session" element={<FocusSession />} />
-                    <Route path="/break-timer" element={<BreakTimer />} />
-                    <Route path="/session-reflection" element={<SessionReflection />} />
-                    <Route path="/session-report/:id" element={<SessionReport />} />
-                    <Route path="/reports" element={<Reports />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/community" element={<Community />} />
-                    <Route path="/leaderboard" element={<Leaderboard />} />
-                    <Route path="/chat" element={<Chat />} />
-                    <Route path="/bonuses" element={<Bonuses />} />
-                    <Route path="/study-room/:id?" element={<StudyRoom />} />
-                    <Route path="/nora" element={<Nora />} />
-                    <Route path="/learning-quiz" element={<LearningQuiz />} />
-                  </Route>
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                
-                <Toaster richColors position="top-center" />
-                
-                {/* PWA components */}
-                <PWADetector />
-                <InstallPrompt />
-              </BrowserRouter>
+                  <Toaster richColors position="top-center" />
+                  
+                  {/* PWA components */}
+                  <PWADetector />
+                  <InstallPrompt />
+                </BrowserRouter>
+              </TaskProvider>
             </WalkthroughProvider>
           </OnboardingProvider>
         </UserProvider>
