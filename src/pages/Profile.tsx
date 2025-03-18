@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import NavigationBar from "@/components/dashboard/NavigationBar";
@@ -13,6 +14,7 @@ import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
 import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
+import ProfilePreferences from "@/components/profile/ProfilePreferences";
 import { 
   PencilIcon, 
   BookOpenIcon, 
@@ -182,8 +184,8 @@ const Profile = () => {
   };
   
   return (
-    <div className="container max-w-6xl pb-24">
-      <div className="space-y-6 pb-6 pt-2">
+    <div className="container max-w-6xl px-3 sm:px-6 pb-24">
+      <div className="space-y-4 sm:space-y-6 pb-4 sm:pb-6 pt-2">
         <h1 className="text-2xl font-bold">Profile</h1>
         <p className="text-muted-foreground">
           View and edit your profile information
@@ -191,9 +193,10 @@ const Profile = () => {
       </div>
 
       <Tabs defaultValue="profile" className="mb-24">
-        <TabsList className="mb-6">
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="privacy">Privacy</TabsTrigger>
+        <TabsList className="mb-6 w-full overflow-x-auto flex space-x-1 sm:space-x-0 pb-px">
+          <TabsTrigger value="profile" className="min-w-[80px] sm:min-w-0 flex-1">Profile</TabsTrigger>
+          <TabsTrigger value="privacy" className="min-w-[80px] sm:min-w-0 flex-1">Privacy</TabsTrigger>
+          <TabsTrigger value="preferences" className="min-w-[100px] sm:min-w-0 flex-1">Preferences</TabsTrigger>
         </TabsList>
         
         <TabsContent value="profile" className="space-y-6">
@@ -496,11 +499,15 @@ const Profile = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="preferences" className="space-y-6">
+          <ProfilePreferences />
+        </TabsContent>
       </Tabs>
       
       <EditProfileDialog 
         open={isEditDialogOpen} 
-        onOpenChange={(open) => setIsEditDialogOpen(open)} 
+        onOpenChange={setIsEditDialogOpen} 
         onUpdate={(avatar) => {
           setEditedData(prev => ({...prev, avatar_url: avatar}));
           setIsEditDialogOpen(false);

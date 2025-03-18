@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -21,6 +20,9 @@ import {
   Brain,
   Target,
   Sparkles,
+  Crown,
+  Medal,
+  ChevronDown
 } from "lucide-react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { 
@@ -49,7 +51,6 @@ const Leaderboard = () => {
   const [friendsRankingMessage, setFriendsRankingMessage] = useState("");
   const [globalRankingMessage, setGlobalRankingMessage] = useState("");
   
-  // Determine if this is a new user with no data
   const isNewUser = !user || (user && user.isLoading) || !user.username;
   
   useEffect(() => {
@@ -57,7 +58,6 @@ const Leaderboard = () => {
       setIsLoading(true);
       
       try {
-        // Load personal stats
         if (user?.id) {
           const { data: statsData, error: statsError } = await supabase
             .from('leaderboard_stats')
@@ -66,7 +66,6 @@ const Leaderboard = () => {
             .single();
             
           if (!statsError && statsData) {
-            // Get completed tasks count
             const { count: completedTasksCount } = await supabase
               .from('tasks')
               .select('*', { count: 'exact', head: true })
@@ -75,28 +74,24 @@ const Leaderboard = () => {
               
             setPersonalStats({
               streak: statsData.current_streak || 0,
-              focusTime: (statsData.weekly_focus_time || 0) / 60, // Convert minutes to hours
+              focusTime: (statsData.weekly_focus_time || 0) / 60,
               tasksCompleted: completedTasksCount || 0
             });
           }
         }
         
-        // Load friends leaderboard data
         const friends = await getFriendsLeaderboardData(isNewUser);
         setFriendsData(friends);
         
-        // Load global leaderboard data
         const global = await getGlobalLeaderboardData(isNewUser);
         setGlobalData(global);
         
-        // Load ranking messages
         const friendsMessage = await getUserRankingMessage("friends", isNewUser);
         setFriendsRankingMessage(friendsMessage);
         
         const globalMessage = await getUserRankingMessage("global", isNewUser);
         setGlobalRankingMessage(globalMessage);
         
-        // Load activity feed
         const activity = await getCommunityActivityFeed(isNewUser);
         setActivityData(activity);
       } catch (error) {
@@ -108,13 +103,11 @@ const Leaderboard = () => {
     
     loadData();
     
-    // Set up real-time subscription for leaderboard updates
     const channel = supabase
       .channel('leaderboard_changes')
       .on('postgres_changes', 
         { event: 'UPDATE', schema: 'public', table: 'leaderboard_stats' }, 
         async () => {
-          // Refresh leaderboard data when any stats are updated
           const friends = await getFriendsLeaderboardData(isNewUser);
           setFriendsData(friends);
           
@@ -125,7 +118,6 @@ const Leaderboard = () => {
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'focus_sessions' },
         async () => {
-          // Refresh activity feed when new focus sessions are added
           const activity = await getCommunityActivityFeed(isNewUser);
           setActivityData(activity);
         }
@@ -137,7 +129,6 @@ const Leaderboard = () => {
     };
   }, [user, isNewUser]);
   
-  // Get accent color based on environment
   const getAccentColor = () => {
     switch (state.environment) {
       case 'office': return "text-blue-600";
@@ -157,7 +148,6 @@ const Leaderboard = () => {
       />
       
       <div className="space-y-8">
-        {/* Personal Productivity Stats */}
         <PersonalStats 
           weeklyFocusGoal={state.weeklyFocusGoal} 
           getAccentColor={getAccentColor} 
@@ -166,7 +156,6 @@ const Leaderboard = () => {
           stats={personalStats}
         />
         
-        {/* Leaderboard Rankings */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-xl flex items-center gap-2">
@@ -204,14 +193,7 @@ const Leaderboard = () => {
               </TabsContent>
               
               <TabsContent value="global" className="mt-0">
-                <LeaderboardList 
-                  type="global" 
-                  getAccentColor={getAccentColor} 
-                  isNewUser={isNewUser}
-                  isLoading={isLoading}
-                  data={globalData}
-                  rankingMessage={globalRankingMessage}
-                />
+                <GlobalRankingsTab />
               </TabsContent>
             </Tabs>
             
@@ -224,7 +206,6 @@ const Leaderboard = () => {
           </CardContent>
         </Card>
         
-        {/* Community Activity Feed */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-xl flex items-center gap-2">
@@ -247,7 +228,6 @@ const Leaderboard = () => {
   );
 };
 
-// Personal Productivity Stats Component
 const PersonalStats = ({ 
   weeklyFocusGoal, 
   getAccentColor, 
@@ -266,8 +246,7 @@ const PersonalStats = ({
   }
 }) => {
   const accentColor = getAccentColor();
-  // For new users, start with 0 focus hours
-  const currentFocusHours = isNewUser ? 0 : stats.focusTime; 
+  const currentFocusHours = isNewUser ? 0 : stats.focusTime;
   const focusGoalProgress = Math.min(100, (currentFocusHours / weeklyFocusGoal) * 100);
   
   const statsData = [
@@ -395,7 +374,6 @@ const PersonalStats = ({
   );
 };
 
-// Leaderboard List Component
 const LeaderboardList = ({ 
   type, 
   getAccentColor,
@@ -534,7 +512,124 @@ const LeaderboardList = ({
   );
 };
 
-// Activity Feed Component
+const GlobalRankingsTab = () => {
+  const { state } = useOnboarding();
+  const [globalData, setGlobalData] = useState<LeaderboardUser[]>([]);
+  const [userRankMessage, setUserRankMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchGlobalData = async () => {
+      setLoading(true);
+      try {
+        const data = await getGlobalLeaderboardData();
+        setGlobalData(data);
+        
+        const message = await getUserRankingMessage("global");
+        setUserRankMessage(message);
+      } catch (error) {
+        console.error("Error fetching global leaderboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchGlobalData();
+  }, []);
+  
+  const getProgressColor = () => {
+    switch (state.environment) {
+      case 'office': return "bg-blue-600";
+      case 'park': return "bg-green-600";
+      case 'home': return "bg-orange-600";
+      case 'coffee-shop': return "bg-amber-600";
+      case 'library': return "bg-gray-600";
+      default: return "bg-triage-purple";
+    }
+  };
+  
+  const getRankBadge = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return <Crown className="w-4 h-4 text-yellow-500" />;
+      case 2:
+        return <Medal className="w-4 h-4 text-gray-400" />;
+      case 3:
+        return <Medal className="w-4 h-4 text-amber-600" />;
+      default:
+        return <span className="text-xs font-medium">{rank}</span>;
+    }
+  };
+  
+  if (loading) {
+    return <LeaderboardSkeletonList count={10} />;
+  }
+  
+  return (
+    <div className="space-y-4">
+      <div className="space-y-4">
+        {globalData.map((user, index) => {
+          if (user.isSeparator) {
+            return (
+              <div key={`separator-${index}`} className="flex justify-center py-2">
+                <ChevronDown className="h-6 w-6 text-muted-foreground" />
+              </div>
+            );
+          }
+          
+          return (
+            <div 
+              key={`${user.rank}-${index}`}
+              className={`flex items-center gap-3 p-3 rounded-md ${
+                user.isCurrentUser ? "bg-muted/50" : ""
+              }`}
+            >
+              <div className="w-8 h-8 flex items-center justify-center">
+                {getRankBadge(user.rank)}
+              </div>
+              
+              <Avatar className="h-8 w-8 border">
+                <AvatarImage src={user.avatar} alt={user.name} />
+                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-center mb-1">
+                  <div className="flex items-center">
+                    <p className={`text-sm font-medium truncate ${user.isCurrentUser ? "text-triage-purple" : ""}`}>
+                      {user.name}
+                    </p>
+                    {user.badge && (
+                      <Badge variant="outline" className="ml-2 text-xs">
+                        {user.badge}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{user.focusHours.toFixed(1)}h</span>
+                    <span>{user.points} pts</span>
+                  </div>
+                </div>
+                <Progress 
+                  value={Math.min(100, user.points / 10)} 
+                  className="h-1.5" 
+                  indicatorClassName={user.isCurrentUser ? getProgressColor() : ""}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      
+      <div className="text-center mt-6">
+        <p className="text-sm text-muted-foreground">
+          {userRankMessage}
+        </p>
+      </div>
+    </div>
+  );
+};
+
 const ActivityFeed = ({ 
   isNewUser, 
   isLoading,

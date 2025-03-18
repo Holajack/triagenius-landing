@@ -1,495 +1,395 @@
 
-import { useState, useEffect, useMemo } from "react";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { MessageSquare, Clock, CheckCircle, Trophy, Loader2, UserPlus, UserCheck, UserX, Briefcase, GraduationCap } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUser } from "@/hooks/use-user";
-import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { UserPlus, UserCheck, Search, Users } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useIsMobile } from "@/hooks/use-mobile";
 
-interface UserProfile {
+interface Profile {
   id: string;
   username: string | null;
   avatar_url: string | null;
-  stats?: {
-    total_focus_time?: number;
-    total_sessions?: number;
-    level?: number;
-  }
-  online?: boolean;
   university?: string | null;
-  major?: string | null;
-  business?: string | null;
-  profession?: string | null;
+  state?: string | null;
+  show_university?: boolean;
+  show_state?: boolean;
 }
 
 interface FriendRequest {
   id: string;
   sender_id: string;
   recipient_id: string;
-  status: "pending" | "accepted" | "rejected";
+  status: string;
 }
 
-interface CommunityUserListProps {
-  searchQuery?: string;
-  filters?: string[];
-}
-
-export const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserListProps) => {
-  const navigate = useNavigate();
+const CommunityUserList = () => {
   const { user } = useUser();
-  const { getUnreadCount } = useRealtimeMessages();
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = useState("");
+  const [allUsers, setAllUsers] = useState<Profile[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<Profile[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
-  const [processingRequests, setProcessingRequests] = useState<Set<string>>(new Set());
+  const [pendingFriendIds, setPendingFriendIds] = useState<string[]>([]);
+  const [acceptedFriendIds, setAcceptedFriendIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const isMobile = useIsMobile();
 
+  // Fetch all users
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchAllUsers = async () => {
+      if (!user) return;
+      
       try {
         setLoading(true);
         
-        const { data: profiles, error: profilesError } = await supabase
+        // Fetch all profiles except current user
+        const { data: profiles, error } = await supabase
           .from('profiles')
-          .select('id, username, email, avatar_url, university, major, business, profession');
-          
-        if (profilesError) throw profilesError;
+          .select('id, username, avatar_url, university, state, show_university, show_state')
+          .neq('id', user.id);
         
-        const { data: stats, error: statsError } = await supabase
-          .from('leaderboard_stats')
-          .select('user_id, total_focus_time, total_sessions, level');
-          
-        if (statsError) throw statsError;
-        
-        // Fetch friend requests
-        // Using a fetch to the edge function instead of RPC
-        const { data: requests, error: requestsError } = await supabase.functions.invoke('get_friend_requests');
-          
-        if (requestsError) {
-          console.error('Error fetching friend requests:', requestsError);
-          // Fallback to empty array if the function call fails
-          setFriendRequests([]);
-        } else {
-          setFriendRequests(requests.data || []);
+        if (error) {
+          console.error('Error fetching users:', error);
+          return;
         }
         
-        const statsMap = new Map();
-        stats?.forEach(stat => {
-          statsMap.set(stat.user_id, {
-            total_focus_time: stat.total_focus_time || 0,
-            total_sessions: stat.total_sessions || 0,
-            level: stat.level || 1
-          });
-        });
+        setAllUsers(profiles || []);
+        setFilteredUsers(profiles || []);
         
-        const usersWithStats = profiles?.map(profile => ({
-          id: profile.id,
-          username: profile.username || `User-${profile.id.substring(0, 4)}`,
-          avatar_url: profile.avatar_url,
-          university: profile.university,
-          major: profile.major,
-          business: profile.business, 
-          profession: profile.profession,
-          stats: statsMap.get(profile.id) || {
-            total_focus_time: 0,
-            total_sessions: 0,
-            level: 1
-          },
-          online: false
-        })) || [];
-        
-        setUsers(usersWithStats);
-      } catch (err) {
-        console.error('Error fetching users:', err);
-        toast.error('Could not load community members');
+      } catch (error) {
+        console.error('Error in fetchAllUsers:', error);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchUsers();
-    
-    const channel = supabase.channel('online-users')
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState();
-        const online = new Set<string>();
-        
-        Object.values(state).forEach(presence => {
-          const presences = presence as Array<{[key: string]: any}>;
-          presences.forEach(p => {
-            if (p.user_id) online.add(p.user_id);
-            if (p.presence_ref) {
-              const match = p.presence_ref.match(/user_id=([^&]+)/);
-              if (match && match[1]) online.add(match[1]);
-            }
-          });
+    fetchAllUsers();
+  }, [user]);
+  
+  // Fetch friend requests
+  useEffect(() => {
+    const fetchFriendRequests = async () => {
+      if (!user) return;
+      
+      try {
+        // Fetch all friend requests for current user (sent and received)
+        const { data, error } = await supabase.functions.invoke('get_friend_requests', {
+          body: { userId: user.id }
         });
         
-        setOnlineUsers(online);
-        
-        setUsers(currentUsers => 
-          currentUsers.map(u => ({
-            ...u,
-            online: online.has(u.id)
-          }))
-        );
-      })
-      .subscribe();
-      
-    // Listen for friend request changes
-    const friendRequestChannel = supabase
-      .channel('friend-requests-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'friend_requests'
-        },
-        () => {
-          fetchUsers(); // Refresh data when friend requests change
+        if (error) {
+          console.error('Error fetching friend requests:', error);
+          return;
         }
-      )
-      .subscribe();
-      
-    if (user?.id) {
-      channel.track({
-        user_id: user.id,
-        online_at: new Date().toISOString()
-      });
-    }
-    
-    return () => {
-      supabase.removeChannel(channel);
-      supabase.removeChannel(friendRequestChannel);
+        
+        if (data && data.friendRequests) {
+          setFriendRequests(data.friendRequests);
+          
+          // Get IDs of all pending friend requests
+          const pending = data.friendRequests
+            .filter((req: FriendRequest) => req.status === 'pending')
+            .map((req: FriendRequest) => 
+              req.sender_id === user.id ? req.recipient_id : req.sender_id
+            );
+          
+          // Get IDs of all accepted friend requests (friends)
+          const accepted = data.friendRequests
+            .filter((req: FriendRequest) => req.status === 'accepted')
+            .map((req: FriendRequest) => 
+              req.sender_id === user.id ? req.recipient_id : req.sender_id
+            );
+          
+          setPendingFriendIds(pending);
+          setAcceptedFriendIds(accepted);
+        }
+      } catch (error) {
+        console.error('Error in fetchFriendRequests:', error);
+      }
     };
-  }, [user?.id]);
-
-  const getFriendRequestStatus = (userId: string) => {
-    if (!user) return null;
     
-    const request = friendRequests.find(
-      r => (r.sender_id === user.id && r.recipient_id === userId) || 
-           (r.sender_id === userId && r.recipient_id === user.id)
-    );
-    
-    if (!request) return null;
-    
-    if (request.status === 'accepted') return 'friend';
-    if (request.status === 'pending') {
-      if (request.sender_id === user.id) return 'sent';
-      return 'received';
-    }
-    return null;
-  };
-
-  const sendFriendRequest = async (userId: string) => {
-    if (!user) {
-      toast.error('You must be logged in to send friend requests');
+    fetchFriendRequests();
+  }, [user]);
+  
+  // Filter users based on search term
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredUsers(allUsers);
       return;
     }
     
-    try {
-      setProcessingRequests(prev => new Set(prev).add(userId));
-      
-      // Use the edge function instead of direct RPC
-      const { error } = await supabase.functions.invoke('create_friend_request', {
-        body: { 
-          sender_id_param: user.id,
-          recipient_id_param: userId
-        }
-      });
-      
-      if (error) throw error;
-      
-      toast.success('Friend request sent!');
-      
-      // Update the local state to reflect the new request
-      const newRequest: FriendRequest = {
-        id: 'temp-' + Date.now(), // Temporary ID until refresh
-        sender_id: user.id,
-        recipient_id: userId,
-        status: 'pending'
-      };
-      
-      setFriendRequests(prev => [...prev, newRequest]);
-      
-    } catch (err) {
-      console.error('Error sending friend request:', err);
-      toast.error('Could not send friend request');
-    } finally {
-      setProcessingRequests(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(userId);
-        return newSet;
-      });
-    }
+    const term = searchTerm.toLowerCase();
+    const filtered = allUsers.filter(profile => 
+      profile.username?.toLowerCase().includes(term) ||
+      profile.university?.toLowerCase().includes(term) ||
+      profile.state?.toLowerCase().includes(term)
+    );
+    
+    setFilteredUsers(filtered);
+  }, [searchTerm, allUsers]);
+  
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
   };
-
-  const respondToFriendRequest = async (userId: string, accept: boolean) => {
+  
+  const isFriendRequestPending = (userId: string) => {
+    return pendingFriendIds.includes(userId);
+  };
+  
+  const isFriend = (userId: string) => {
+    return acceptedFriendIds.includes(userId);
+  };
+  
+  const getFriendRequest = (userId: string): FriendRequest | undefined => {
+    return friendRequests.find(req => 
+      (req.sender_id === user?.id && req.recipient_id === userId) ||
+      (req.sender_id === userId && req.recipient_id === user?.id)
+    );
+  };
+  
+  const sendFriendRequest = async (recipientId: string) => {
     if (!user) return;
     
     try {
-      setProcessingRequests(prev => new Set(prev).add(userId));
-      
-      // Find the request
-      const request = friendRequests.find(
-        r => r.sender_id === userId && r.recipient_id === user.id && r.status === 'pending'
-      );
-      
-      if (!request) {
-        toast.error('Friend request not found');
-        return;
-      }
-      
-      // Use the edge function instead of direct RPC
-      const { error } = await supabase.functions.invoke('update_friend_request', {
-        body: {
-          request_id_param: request.id,
-          new_status_param: accept ? 'accepted' : 'rejected'
+      const { data, error } = await supabase.functions.invoke('create_friend_request', {
+        body: { 
+          senderId: user.id,
+          recipientId
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error sending friend request:', error);
+        toast.error("Failed to send friend request");
+        return;
+      }
       
-      // Update local state
-      setFriendRequests(prev => 
-        prev.map(r => 
-          r.id === request.id ? { ...r, status: accept ? 'accepted' : 'rejected' } : r
-        )
-      );
-      
-      toast.success(accept ? 'Friend request accepted!' : 'Friend request declined');
-    } catch (err) {
-      console.error('Error responding to friend request:', err);
-      toast.error('Could not process friend request');
-    } finally {
-      setProcessingRequests(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(userId);
-        return newSet;
+      if (data && data.friendRequest) {
+        // Update local state
+        setFriendRequests([...friendRequests, data.friendRequest]);
+        setPendingFriendIds([...pendingFriendIds, recipientId]);
+        toast.success("Friend request sent!");
+      }
+    } catch (error) {
+      console.error('Error in sendFriendRequest:', error);
+      toast.error("Failed to send friend request");
+    }
+  };
+  
+  const acceptFriendRequest = async (requestId: string, senderId: string) => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('update_friend_request', {
+        body: { 
+          requestId,
+          status: 'accepted'
+        }
       });
+      
+      if (error) {
+        console.error('Error accepting friend request:', error);
+        toast.error("Failed to accept friend request");
+        return;
+      }
+      
+      if (data && data.friendRequest) {
+        // Update local state
+        setFriendRequests(
+          friendRequests.map(req => req.id === requestId ? data.friendRequest : req)
+        );
+        setPendingFriendIds(pendingFriendIds.filter(id => id !== senderId));
+        setAcceptedFriendIds([...acceptedFriendIds, senderId]);
+        toast.success("Friend request accepted!");
+      }
+    } catch (error) {
+      console.error('Error in acceptFriendRequest:', error);
+      toast.error("Failed to accept friend request");
     }
   };
-
-  const filteredUsers = users.filter(user => {
-    const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = 
-      user.username?.toLowerCase().includes(searchLower) || 
-      user.university?.toLowerCase().includes(searchLower) || 
-      user.major?.toLowerCase().includes(searchLower) || 
-      user.business?.toLowerCase().includes(searchLower) || 
-      user.profession?.toLowerCase().includes(searchLower) || 
-      false;
-    
-    if (searchQuery && !matchesSearch) return false;
-    
-    if (filters.length > 0) {
-      if (filters.includes("Online Now") && !user.online) return false;
-      if (filters.includes("Top Performers") && (user.stats?.level || 0) < 3) return false;
-      if (filters.includes("Same Organization") && !user.business) return false;
+  
+  const renderUserList = (users: Profile[], emptyMessage: string) => {
+    if (users.length === 0) {
+      return (
+        <div className="py-8 text-center">
+          <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
+          <h3 className="mt-4 text-lg font-medium">No users found</h3>
+          <p className="mt-2 text-sm text-muted-foreground">{emptyMessage}</p>
+        </div>
+      );
     }
     
-    return true;
-  });
-  
-  const handleMessageUser = (userId: string) => {
-    navigate(`/community/chat/${userId}`);
-  };
-  
-  if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">Loading community members...</span>
-      </div>
-    );
-  }
-  
-  return (
-    <div className="space-y-4">
-      {filteredUsers.map((profile) => {
-        if (profile.id === user?.id) return null; // Don't show current user
-        
-        const friendStatus = getFriendRequestStatus(profile.id);
-        const isProcessing = processingRequests.has(profile.id);
-        
-        return (
-          <Card key={profile.id} className="p-4">
-            <div className="flex items-start gap-4">
-              <div className="relative">
-                <Avatar>
-                  <AvatarImage src={profile.avatar_url || ""} alt={profile.username || ""} />
-                  <AvatarFallback>{profile.username?.[0] || "U"}</AvatarFallback>
-                </Avatar>
-                {profile.online && (
-                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
-                )}
-              </div>
-              
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-medium">{profile.username}</h3>
-                    {(profile.stats?.level || 0) >= 3 && (
-                      <Trophy className="h-4 w-4 text-yellow-500" aria-label="Top Performer" />
-                    )}
+      <ScrollArea className="h-[400px] pr-4">
+        <div className="space-y-4">
+          {users.map((profile) => {
+            const isPending = isFriendRequestPending(profile.id);
+            const isAlreadyFriend = isFriend(profile.id);
+            const friendRequest = getFriendRequest(profile.id);
+            const isReceivedRequest = friendRequest && friendRequest.sender_id === profile.id;
+            
+            return (
+              <div 
+                key={profile.id}
+                className="flex items-center justify-between p-3 rounded-lg border"
+              >
+                <div className="flex items-center space-x-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={profile.avatar_url || ""} />
+                    <AvatarFallback>
+                      {profile.username?.charAt(0)?.toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{profile.username || "Anonymous"}</p>
+                    <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
+                      {profile.show_university && profile.university && (
+                        <span>{profile.university}</span>
+                      )}
+                      {profile.show_state && profile.state && (
+                        <span>{profile.state}</span>
+                      )}
+                    </div>
                   </div>
-                  <span className="text-xs text-muted-foreground">{profile.online ? 'Online now' : 'Offline'}</span>
                 </div>
                 
-                {/* Education or Work Information */}
-                <div className="mt-1 space-y-1">
-                  {profile.university && (
-                    <div className="flex items-center text-sm">
-                      <GraduationCap className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        {profile.university}
-                        {profile.major && `, ${profile.major}`}
-                      </p>
-                    </div>
-                  )}
-                  
-                  {profile.business && (
-                    <div className="flex items-center text-sm">
-                      <Briefcase className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        {profile.business}
-                        {profile.profession && `, ${profile.profession}`}
-                      </p>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex flex-wrap gap-2 mt-2">
-                  <Badge variant="secondary" className="flex items-center gap-1">
-                    <Clock className="h-4 w-4 text-muted-foreground" aria-label="Focus time" />
-                    {Math.round((profile.stats?.total_focus_time || 0) / 60)}h
-                  </Badge>
-                  <Badge variant="secondary" className="flex items-center gap-1">
-                    <CheckCircle className="h-3 w-3" />
-                    {profile.stats?.total_sessions || 0} sessions
-                  </Badge>
-                  <Badge variant={profile.online ? "default" : "outline"}>
-                    {profile.online ? "Active" : "Away"}
-                  </Badge>
-                </div>
-                
-                <div className="mt-3 flex justify-between items-center">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className="text-xs"
-                    onClick={() => {
-                      toast.info("Profile view is coming soon");
-                    }}
-                  >
-                    View Profile
-                  </Button>
-                  
-                  <div className="flex gap-2">
-                    {/* Friend Request Controls */}
-                    {!friendStatus && (
+                <div>
+                  {isAlreadyFriend ? (
+                    <Button variant="ghost" size="sm" disabled>
+                      <UserCheck className="h-4 w-4 mr-1" />
+                      <span className="hidden sm:inline">Friend</span>
+                    </Button>
+                  ) : isPending ? (
+                    isReceivedRequest ? (
                       <Button 
                         variant="outline" 
                         size="sm"
-                        className="flex items-center gap-1"
-                        onClick={() => sendFriendRequest(profile.id)}
-                        disabled={isProcessing}
+                        onClick={() => acceptFriendRequest(friendRequest.id, profile.id)}
                       >
-                        {isProcessing ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <UserPlus className="h-3.5 w-3.5" />
-                        )}
-                        Add Friend
+                        Accept
                       </Button>
-                    )}
-                    
-                    {friendStatus === 'sent' && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="flex items-center gap-1"
-                        disabled
-                      >
-                        Request Sent
+                    ) : (
+                      <Button variant="ghost" size="sm" disabled>
+                        Pending
                       </Button>
-                    )}
-                    
-                    {friendStatus === 'received' && (
-                      <div className="flex gap-1">
-                        <Button 
-                          variant="default" 
-                          size="sm"
-                          className="flex items-center gap-1"
-                          onClick={() => respondToFriendRequest(profile.id, true)}
-                          disabled={isProcessing}
-                        >
-                          {isProcessing ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <UserCheck className="h-3.5 w-3.5" />
-                          )}
-                          Accept
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="flex items-center gap-1"
-                          onClick={() => respondToFriendRequest(profile.id, false)}
-                          disabled={isProcessing}
-                        >
-                          <UserX className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    )}
-                    
-                    {friendStatus === 'friend' && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        className="flex items-center gap-1"
-                        disabled
-                      >
-                        <UserCheck className="h-3.5 w-3.5" />
-                        Friends
-                      </Button>
-                    )}
-                    
+                    )
+                  ) : (
                     <Button 
                       variant="outline" 
                       size="sm"
-                      className="flex items-center gap-1"
-                      onClick={() => handleMessageUser(profile.id)}
-                      disabled={profile.id === user?.id}
+                      onClick={() => sendFriendRequest(profile.id)}
                     >
-                      <MessageSquare className="h-3.5 w-3.5" />
-                      Message
-                      {getUnreadCount(profile.id) > 0 && (
-                        <Badge variant="destructive" className="ml-1 text-[10px] h-4 w-4 px-0 rounded-full flex items-center justify-center">
-                          {getUnreadCount(profile.id)}
-                        </Badge>
-                      )}
+                      <UserPlus className="h-4 w-4 mr-1" />
+                      <span className="hidden sm:inline">Add</span>
                     </Button>
-                  </div>
+                  )}
                 </div>
               </div>
-            </div>
-          </Card>
-        );
-      })}
-      
-      {filteredUsers.length === 0 && (
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">No users match your search or filters</p>
+            );
+          })}
         </div>
-      )}
-    </div>
+      </ScrollArea>
+    );
+  };
+  
+  return (
+    <Card className="col-span-1 h-full">
+      <CardHeader>
+        <CardTitle>People</CardTitle>
+        <CardDescription>Find and connect with other users</CardDescription>
+        
+        <div className="relative mt-2">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search users..."
+            className="pl-8"
+            value={searchTerm}
+            onChange={handleSearch}
+          />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue="all" className="w-full">
+          <TabsList className="mb-4 w-full grid grid-cols-3">
+            <TabsTrigger value="all">All Users</TabsTrigger>
+            <TabsTrigger value="pending">Pending</TabsTrigger>
+            <TabsTrigger value="friends">Friends</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="all">
+            {loading ? (
+              <div className="animate-pulse space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-center space-x-3 p-3 rounded-lg border">
+                    <div className="h-10 w-10 rounded-full bg-muted"></div>
+                    <div className="space-y-2 flex-1">
+                      <div className="h-4 bg-muted rounded w-24"></div>
+                      <div className="h-3 bg-muted rounded w-32"></div>
+                    </div>
+                    <div className="h-8 w-16 bg-muted rounded"></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              renderUserList(
+                filteredUsers, 
+                "Try adjusting your search or check back later for new users to connect with."
+              )
+            )}
+          </TabsContent>
+          
+          <TabsContent value="pending">
+            {loading ? (
+              <div className="animate-pulse space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex items-center space-x-3 p-3 rounded-lg border">
+                    <div className="h-10 w-10 rounded-full bg-muted"></div>
+                    <div className="space-y-2 flex-1">
+                      <div className="h-4 bg-muted rounded w-24"></div>
+                      <div className="h-3 bg-muted rounded w-32"></div>
+                    </div>
+                    <div className="h-8 w-16 bg-muted rounded"></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              renderUserList(
+                filteredUsers.filter(user => pendingFriendIds.includes(user.id)),
+                "No pending friend requests."
+              )
+            )}
+          </TabsContent>
+          
+          <TabsContent value="friends">
+            {loading ? (
+              <div className="animate-pulse space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex items-center space-x-3 p-3 rounded-lg border">
+                    <div className="h-10 w-10 rounded-full bg-muted"></div>
+                    <div className="space-y-2 flex-1">
+                      <div className="h-4 bg-muted rounded w-24"></div>
+                      <div className="h-3 bg-muted rounded w-32"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              renderUserList(
+                filteredUsers.filter(user => acceptedFriendIds.includes(user.id)),
+                "You haven't connected with any users yet. Add friends to see them here."
+              )
+            )}
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
   );
 };
+
+export default CommunityUserList;

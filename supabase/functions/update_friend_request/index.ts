@@ -1,101 +1,102 @@
 
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Content-Type': 'application/json'
 };
 
 serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders, status: 204 });
   }
 
   try {
-    // Parse the request body
-    const { request_id_param, new_status_param } = await req.json();
-
+    // Get Supabase credentials from environment
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
+    
+    // Initialize Supabase client with service role key
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Parse request body
+    const { requestId, status } = await req.json();
+    
+    if (!requestId || !status) {
+      return new Response(
+        JSON.stringify({ error: "Missing required fields" }),
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    
     // Validate status
-    if (!["accepted", "rejected"].includes(new_status_param)) {
+    if (!['accepted', 'rejected', 'pending'].includes(status)) {
       return new Response(
-        JSON.stringify({ error: "Status must be 'accepted' or 'rejected'" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        JSON.stringify({ error: "Invalid status value" }),
+        { status: 400, headers: corsHeaders }
       );
     }
-
-    // Create a Supabase client with the Auth context
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
-        },
+    
+    // Update friend request
+    const { data: friendRequest, error: updateError } = await supabase
+      .from('friend_requests')
+      .update({ status })
+      .eq('id', requestId)
+      .select()
+      .single();
+      
+    if (updateError) {
+      console.error('Error updating friend request:', updateError);
+      return new Response(
+        JSON.stringify({ error: updateError.message }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
+    
+    // Create user connection if accepted
+    if (status === 'accepted') {
+      try {
+        // Check if user_connections table exists
+        const { data: tablesExist } = await supabase
+          .from('user_connections')
+          .select('id')
+          .limit(1);
+          
+        // If table exists, create connections
+        if (tablesExist !== null) {
+          // Create two-way connection between users
+          await supabase
+            .from('user_connections')
+            .insert([
+              {
+                follower_id: friendRequest.sender_id,
+                following_id: friendRequest.recipient_id
+              },
+              {
+                follower_id: friendRequest.recipient_id,
+                following_id: friendRequest.sender_id
+              }
+            ]);
+        }
+      } catch (error) {
+        console.error('Error creating user connections:', error);
+        // Don't return error - we still want to accept the friend request even if connection fails
       }
-    );
-
-    // Get the user from the request
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseClient.auth.getUser();
-
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
-      );
     }
-
-    // First, get the request to verify the user is the recipient
-    const { data: requestData, error: requestError } = await supabaseClient
-      .from("friend_requests")
-      .select("*")
-      .eq("id", request_id_param)
-      .single();
-
-    if (requestError || !requestData) {
-      return new Response(
-        JSON.stringify({ error: "Friend request not found" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
-      );
-    }
-
-    // Ensure the user is the recipient of the request
-    if (requestData.recipient_id !== user.id) {
-      return new Response(
-        JSON.stringify({ error: "You can only respond to friend requests sent to you" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
-      );
-    }
-
-    // Update the request status
-    const { data, error } = await supabaseClient
-      .from("friend_requests")
-      .update({ status: new_status_param })
-      .eq("id", request_id_param)
-      .select("*")
-      .single();
-
-    if (error) {
-      console.error("Error updating friend request:", error);
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-      );
-    }
-
+    
     return new Response(
-      JSON.stringify({ data }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ friendRequest }),
+      { status: 200, headers: corsHeaders }
     );
+    
   } catch (error) {
-    console.error("Unexpected error:", error);
+    console.error('Unexpected error:', error);
     return new Response(
-      JSON.stringify({ error: "An unexpected error occurred" }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      JSON.stringify({ error: "Internal server error" }),
+      { status: 500, headers: corsHeaders }
     );
   }
 });

@@ -1,66 +1,77 @@
 
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.6";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.0";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Content-Type': 'application/json'
 };
 
 serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders, status: 204 });
   }
 
   try {
-    // Create a Supabase client with the Auth context
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      {
-        global: {
-          headers: { Authorization: req.headers.get("Authorization")! },
-        },
-      }
-    );
-
-    // Get the user from the request
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseClient.auth.getUser();
-
-    if (userError || !user) {
+    // Get Supabase credentials from environment
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
+    
+    // Initialize Supabase client with service role key
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Parse request body
+    const { userId } = await req.json();
+    
+    if (!userId) {
       return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+        JSON.stringify({ error: "Missing user ID" }),
+        { status: 400, headers: corsHeaders }
       );
     }
-
-    // Fetch friend requests for this user
-    const { data, error } = await supabaseClient
-      .from("friend_requests")
-      .select("*")
-      .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`);
-
-    if (error) {
-      console.error("Error fetching friend requests:", error);
+    
+    // Fetch all friend requests where user is sender or recipient
+    const { data: sentRequests, error: sentError } = await supabase
+      .from('friend_requests')
+      .select('*')
+      .eq('sender_id', userId);
+      
+    if (sentError) {
+      console.error('Error fetching sent requests:', sentError);
       return new Response(
-        JSON.stringify({ error: error.message }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        JSON.stringify({ error: sentError.message }),
+        { status: 500, headers: corsHeaders }
       );
     }
-
+    
+    const { data: receivedRequests, error: receivedError } = await supabase
+      .from('friend_requests')
+      .select('*')
+      .eq('recipient_id', userId);
+      
+    if (receivedError) {
+      console.error('Error fetching received requests:', receivedError);
+      return new Response(
+        JSON.stringify({ error: receivedError.message }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
+    
+    // Combine sent and received requests
+    const friendRequests = [...sentRequests, ...receivedRequests];
+    
     return new Response(
-      JSON.stringify({ data }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ friendRequests }),
+      { status: 200, headers: corsHeaders }
     );
+    
   } catch (error) {
-    console.error("Unexpected error:", error);
+    console.error('Unexpected error:', error);
     return new Response(
-      JSON.stringify({ error: "An unexpected error occurred" }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      JSON.stringify({ error: "Internal server error" }),
+      { status: 500, headers: corsHeaders }
     );
   }
 });

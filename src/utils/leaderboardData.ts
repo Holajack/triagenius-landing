@@ -158,10 +158,11 @@ export const getGlobalLeaderboardData = async (isEmpty = false): Promise<Leaderb
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
     
-    // Get current user's rank by querying all leaderboard stats ordered by points
-    const { data: allStats, error: allStatsError } = await supabase
+    // Get all leaderboard stats ordered by points
+    const { data: allStats, error: statsError } = await supabase
       .from('leaderboard_stats')
       .select(`
+        id,
         points, 
         weekly_focus_time, 
         current_streak, 
@@ -170,60 +171,76 @@ export const getGlobalLeaderboardData = async (isEmpty = false): Promise<Leaderb
       `)
       .order('points', { ascending: false });
       
-    if (allStatsError) {
-      console.error('Error fetching all stats:', allStatsError);
+    if (statsError) {
+      console.error('Error fetching global leaderboard stats:', statsError);
       return [];
     }
     
-    // Find current user's position in the global ranking
-    const userRank = allStats.findIndex(stat => stat.user_id === user.id);
+    // Find current user's position
+    const userRank = allStats?.findIndex(stat => stat.user_id === user.id);
     
-    // If user is not ranked, return empty array
-    if (userRank === -1) {
+    if (userRank === -1 || userRank === undefined) {
       return [];
     }
     
-    // Get top 3 users plus the current user and a few around them
-    const relevantUsers = [];
+    // Get relevant stats to display
+    const displayStats = [];
     
-    // Add top 3 users
-    for (let i = 0; i < 3 && i < allStats.length; i++) {
-      relevantUsers.push(allStats[i]);
-    }
+    // Always include top 10 users
+    const topUsers = allStats.slice(0, Math.min(10, allStats.length));
+    displayStats.push(...topUsers);
     
-    // Add users around the current user (if not already in top 3)
-    if (userRank >= 3) {
-      // Add one user above current user
-      if (userRank > 3) {
-        relevantUsers.push(allStats[userRank - 1]);
+    // If current user is not in top 10, include them and a few nearby users
+    if (userRank >= 10) {
+      // Add separator
+      displayStats.push({ isSeparator: true });
+      
+      // Add user above current user (if there is one)
+      if (userRank > 0) {
+        displayStats.push(allStats[userRank - 1]);
       }
       
       // Add current user
-      relevantUsers.push(allStats[userRank]);
+      displayStats.push(allStats[userRank]);
       
-      // Add one user below current user
-      if (userRank + 1 < allStats.length) {
-        relevantUsers.push(allStats[userRank + 1]);
+      // Add user below current user (if there is one)
+      if (userRank < allStats.length - 1) {
+        displayStats.push(allStats[userRank + 1]);
       }
     }
     
     // Format data for the leaderboard
-    return relevantUsers.map(stat => {
-      const rank = allStats.findIndex(s => s.user_id === stat.user_id) + 1;
+    return displayStats.map((stat, index) => {
+      // Handle separator
+      if (stat.isSeparator) {
+        return {
+          isSeparator: true,
+          rank: -1,
+          name: "...",
+          avatar: "",
+          points: 0,
+          focusHours: 0,
+          streak: 0,
+          isCurrentUser: false
+        };
+      }
+      
+      const realRank = allStats.findIndex(s => s.id === stat.id) + 1;
       const profileData = stat.profiles as any;
-      const username = profileData?.username || 'Unknown';
+      const username = profileData?.username || 'Anonymous';
       const avatarUrl = profileData?.avatar_url || '/placeholder.svg';
       const isCurrentUser = stat.user_id === user.id;
       
       // Get appropriate badge based on ranking
       let badge;
-      if (rank === 1) badge = "Legend";
-      else if (rank === 2) badge = "Master";
-      else if (rank === 3) badge = "Expert";
-      else if (isCurrentUser) badge = "Climber";
+      if (realRank === 1) badge = "Champion";
+      else if (realRank === 2) badge = "Expert";
+      else if (realRank === 3) badge = "Dedicated";
+      else if (isCurrentUser) badge = "You";
+      else if (realRank <= 10) badge = "Top 10";
       
       return {
-        rank,
+        rank: realRank,
         name: isCurrentUser ? "You" : username,
         avatar: avatarUrl,
         points: stat.points || 0,

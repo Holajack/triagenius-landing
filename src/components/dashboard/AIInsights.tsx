@@ -1,18 +1,28 @@
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOnboarding } from "@/contexts/OnboardingContext";
-import { BrainCircuit, Clock, Lightbulb, Sparkles, TrendingUp } from "lucide-react";
-import { useState, useEffect } from "react";
+import { BrainCircuit, Clock, Lightbulb, Sparkles, TrendingUp, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+
+interface Insight {
+  title: string;
+  description: string;
+  icon?: React.ReactNode;
+}
 
 const AIInsights = () => {
   const { state } = useOnboarding();
+  const [insights, setInsights] = useState<Insight[]>([]);
   const [hasData, setHasData] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
-  // Check if the user has any focus session data
+  // Check if the user has any focus session data and fetch insights
   useEffect(() => {
-    const checkForFocusData = async () => {
+    const checkForFocusDataAndFetchInsights = async () => {
       try {
         setIsLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
@@ -23,33 +33,96 @@ const AIInsights = () => {
             .select('*', { count: 'exact', head: true })
             .eq('user_id', user.id);
             
-          setHasData(count !== null && count > 0);
+          const hasExistingData = count !== null && count > 0;
+          setHasData(hasExistingData);
+          
+          // Fetch insights using the edge function
+          await fetchInsights(user.id, hasExistingData);
         }
       } catch (error) {
         console.error('Error checking for focus data:', error);
+        setDefaultInsights();
       } finally {
         setIsLoading(false);
       }
     };
     
-    checkForFocusData();
+    checkForFocusDataAndFetchInsights();
   }, []);
   
-  // Get accent color based on environment
-  const getAccentColor = () => {
-    switch (state.environment) {
-      case 'office': return "text-blue-600";
-      case 'park': return "text-green-600";
-      case 'home': return "text-orange-600";
-      case 'coffee-shop': return "text-amber-600";
-      case 'library': return "text-gray-600";
-      default: return "text-triage-purple";
+  const fetchInsights = async (userId: string, hasExistingData: boolean) => {
+    if (!hasExistingData) {
+      setDefaultInsights();
+      return;
+    }
+    
+    try {
+      setIsRefreshing(true);
+      
+      // Call the edge function to generate insights
+      const { data, error } = await supabase.functions.invoke('generate-insights', {
+        body: { userId }
+      });
+      
+      if (error) {
+        console.error('Error invoking generate-insights:', error);
+        setDefaultInsights();
+        return;
+      }
+      
+      if (data.error) {
+        console.error('Error from generate-insights:', data.error);
+        setDefaultInsights();
+        return;
+      }
+      
+      // Process insights and add icons
+      const processedInsights = data.insights.map((insight: Insight, index: number) => {
+        let icon;
+        switch (index % 3) {
+          case 0:
+            icon = <Clock className={`w-5 h-5 ${getAccentColor()}`} />;
+            break;
+          case 1:
+            icon = <TrendingUp className={`w-5 h-5 ${getAccentColor()}`} />;
+            break;
+          case 2:
+            icon = <BrainCircuit className={`w-5 h-5 ${getAccentColor()}`} />;
+            break;
+        }
+        
+        return {
+          ...insight,
+          icon
+        };
+      });
+      
+      setInsights(processedInsights);
+    } catch (error) {
+      console.error('Error fetching insights:', error);
+      setDefaultInsights();
+    } finally {
+      setIsRefreshing(false);
     }
   };
   
-  const getInsightData = () => {
+  const refreshInsights = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        toast.info("Generating new insights...");
+        await fetchInsights(user.id, hasData);
+        toast.success("Insights refreshed!");
+      }
+    } catch (error) {
+      console.error('Error refreshing insights:', error);
+      toast.error("Failed to refresh insights");
+    }
+  };
+  
+  const setDefaultInsights = () => {
     if (!hasData) {
-      return [
+      setInsights([
         {
           title: "Start Your First Session",
           description: "Begin your first focus session to get personalized insights.",
@@ -65,32 +138,41 @@ const AIInsights = () => {
           description: "Set a weekly focus goal to track your progress and improve consistently.",
           icon: <BrainCircuit className={`w-5 h-5 ${getAccentColor()}`} />,
         },
-      ];
+      ]);
+    } else {
+      setInsights([
+        {
+          title: "Optimal Session Length",
+          description: "Based on your past focus patterns, 45-minute sessions work best for you.",
+          icon: <Clock className={`w-5 h-5 ${getAccentColor()}`} />,
+        },
+        {
+          title: "Productivity Peak",
+          description: `Your most productive time appears to be in the ${
+            Math.random() > 0.5 ? "morning between 9-11 AM" : "afternoon between 2-4 PM"
+          }.`,
+          icon: <TrendingUp className={`w-5 h-5 ${getAccentColor()}`} />,
+        },
+        {
+          title: "Focus Improvement",
+          description: "Try the Pomodoro technique with 25-min focus and 5-min breaks to boost your concentration.",
+          icon: <BrainCircuit className={`w-5 h-5 ${getAccentColor()}`} />,
+        },
+      ]);
     }
-    
-    // In a real app, these would be generated from actual user data
-    return [
-      {
-        title: "Optimal Session Length",
-        description: "Based on your past focus patterns, 45-minute sessions work best for you.",
-        icon: <Clock className={`w-5 h-5 ${getAccentColor()}`} />,
-      },
-      {
-        title: "Productivity Peak",
-        description: `Your most productive time appears to be in the ${
-          Math.random() > 0.5 ? "morning between 9-11 AM" : "afternoon between 2-4 PM"
-        }.`,
-        icon: <TrendingUp className={`w-5 h-5 ${getAccentColor()}`} />,
-      },
-      {
-        title: "Focus Improvement",
-        description: "Try the Pomodoro technique with 25-min focus and 5-min breaks to boost your concentration.",
-        icon: <BrainCircuit className={`w-5 h-5 ${getAccentColor()}`} />,
-      },
-    ];
   };
   
-  const insights = getInsightData();
+  // Get accent color based on environment
+  const getAccentColor = () => {
+    switch (state.environment) {
+      case 'office': return "text-blue-600";
+      case 'park': return "text-green-600";
+      case 'home': return "text-orange-600";
+      case 'coffee-shop': return "text-amber-600";
+      case 'library': return "text-gray-600";
+      default: return "text-triage-purple";
+    }
+  };
   
   if (isLoading) {
     return (
@@ -115,10 +197,24 @@ const AIInsights = () => {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center">
-          <Sparkles className="w-5 h-5 mr-2 text-triage-purple" />
-          {hasData ? "AI-Powered Insights" : "Getting Started"}
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center">
+            <Sparkles className="w-5 h-5 mr-2 text-triage-purple" />
+            {hasData ? "AI-Powered Insights" : "Getting Started"}
+          </CardTitle>
+          {hasData && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-8 w-8 p-0"
+              onClick={refreshInsights}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span className="sr-only">Refresh insights</span>
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="pt-2">
         <div className="grid gap-4 md:grid-cols-3">
