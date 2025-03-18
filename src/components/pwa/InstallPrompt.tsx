@@ -138,7 +138,27 @@ const InstallPrompt = () => {
       return !lastPrompt || daysBetween(new Date(lastPrompt), new Date()) > 3;
     };
     
-    // Chrome on Android specific handler
+    // Check if the user has previously seen the prompt and dismissed it
+    const checkForReturningUser = () => {
+      const lastDismissed = localStorage.getItem('installPromptDismissed');
+      const hasExitedWithoutInstall = localStorage.getItem('exitedWithoutInstall');
+      
+      // If they've previously dismissed but didn't install, and it's a return visit
+      if (lastDismissed && hasExitedWithoutInstall === 'true' && !browser.isStandalone) {
+        // Show the prompt again, but with a delay to not be intrusive immediately
+        setTimeout(() => {
+          setIsVisible(true);
+          // Add a toast notification as a gentle reminder
+          toast({
+            title: "Install The Triage System",
+            description: "Get the best experience by installing our app to your device",
+            duration: 8000
+          });
+        }, 30000); // 30 second delay
+      }
+    };
+    
+    // Handle Chrome on Android specific handler
     const handleAndroidChrome = () => {
       // For Chrome on Android, we need to be more aggressive with the install prompt
       if (browser.isAndroid && browser.name === 'Chrome') {
@@ -162,6 +182,7 @@ const InstallPrompt = () => {
         // Show prompt after a delay for better UX
         setTimeout(() => setIsVisible(true), 3000);
       }
+      checkForReturningUser();
       return;
     }
     
@@ -172,6 +193,7 @@ const InstallPrompt = () => {
       if (shouldPrompt()) {
         setTimeout(() => setIsVisible(true), 3000);
       }
+      checkForReturningUser();
       return;
     }
     
@@ -208,14 +230,30 @@ const InstallPrompt = () => {
       }, 5000);
     }
     
+    // Check for returning users who didn't install
+    checkForReturningUser();
+    
+    // Track when users exit the page without installing
+    const handleBeforeUnload = () => {
+      // If the prompt was shown but the app isn't installed, mark as exited without install
+      if (!browser.isStandalone && localStorage.getItem('installPromptDismissed')) {
+        localStorage.setItem('exitedWithoutInstall', 'true');
+        localStorage.setItem('lastExitTime', new Date().toISOString());
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
     // Track successful installs
     window.addEventListener('appinstalled', (e) => {
       console.log('PWA was installed', e);
       setIsVisible(false);
       localStorage.setItem('appInstalled', 'true');
+      // Remove the exited without install flag
+      localStorage.removeItem('exitedWithoutInstall');
       toast({
         title: "Installation Complete",
-        description: "Lux Aquinmata has been successfully installed!"
+        description: "The Triage System has been successfully installed!"
       });
     });
     
@@ -226,7 +264,7 @@ const InstallPrompt = () => {
         setTimeout(() => {
           toast({
             title: "Open in Installed App",
-            description: "You've installed Lux Aquinmata. Would you like to open it?",
+            description: "You've installed The Triage System. Would you like to open it?",
             action: <Button size="sm" onClick={() => {
               window.location.href = "/";
             }}>Open App</Button>
@@ -240,6 +278,7 @@ const InstallPrompt = () => {
     // Cleanup
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [toast]);
   
@@ -258,8 +297,9 @@ const InstallPrompt = () => {
         if (choiceResult.outcome === 'accepted') {
           console.log('User accepted the install prompt');
           localStorage.setItem('appInstalled', 'true');
+          localStorage.removeItem('exitedWithoutInstall');
           toast({
-            title: "Installing Lux Aquinmata",
+            title: "Installing The Triage System",
             description: "Thank you for installing our app!"
           });
           setIsVisible(false);
@@ -334,7 +374,7 @@ const InstallPrompt = () => {
             return;
           }
         } else {
-          instructions = "1. Click the menu button (⋮) in the top right\n2. Select 'Install Lux Aquinmata...'\n3. Click 'Install' in the prompt";
+          instructions = "1. Click the menu button (⋮) in the top right\n2. Select 'Install The Triage System...'\n3. Click 'Install' in the prompt";
         }
         break;
       case "edge":

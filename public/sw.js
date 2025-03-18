@@ -1,5 +1,6 @@
+
 // Cache version identifier - change this when files are updated
-const CACHE_NAME = 'lux-aquinmata-v2';
+const CACHE_NAME = 'triage-system-v1';
 
 // Add list of files to cache for offline access
 const STATIC_ASSETS = [
@@ -12,7 +13,7 @@ const STATIC_ASSETS = [
 
 // Create a cache of dynamic assets - CSS, JS, etc.
 // This will be populated as the user navigates the app
-const DYNAMIC_CACHE = 'lux-aquinmata-dynamic-v2';
+const DYNAMIC_CACHE = 'triage-system-dynamic-v1';
 
 // List of routes that should serve the index.html file (for SPA navigation)
 const APP_ROUTES = [
@@ -46,7 +47,7 @@ self.addEventListener('install', event => {
   );
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up old caches and notify clients about update
 self.addEventListener('activate', event => {
   console.log('[Service Worker] Activating');
   const cacheWhitelist = [CACHE_NAME, DYNAMIC_CACHE];
@@ -64,7 +65,19 @@ self.addEventListener('activate', event => {
       );
     }).then(() => {
       console.log('[Service Worker] Now ready to handle fetches!');
-      return self.clients.claim(); // Take control immediately
+      
+      // Notify all open clients about the update
+      return self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          // Send update available message to client
+          client.postMessage({
+            type: 'UPDATE_AVAILABLE',
+            message: 'New content is available. Please reload to update.'
+          });
+        });
+        
+        return self.clients.claim(); // Take control immediately
+      });
     })
   );
 });
@@ -251,7 +264,7 @@ self.addEventListener('push', event => {
     };
     
     event.waitUntil(
-      self.registration.showNotification(data.title || 'Lux Aquinmata Notification', options)
+      self.registration.showNotification(data.title || 'The Triage System Notification', options)
     );
   } catch (error) {
     console.error('Push notification error:', error);
@@ -281,6 +294,13 @@ self.addEventListener('notificationclick', event => {
       }
     })
   );
+});
+
+// Message event handler for client-service worker communication
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Add support for App Banner events

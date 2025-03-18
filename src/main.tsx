@@ -1,8 +1,10 @@
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
 import { Toaster } from "./components/ui/toaster"
+import { toast } from "@/hooks/use-toast"
 
 // Create root outside of the render call
 const rootElement = document.getElementById('root');
@@ -25,6 +27,35 @@ root.render(
   </React.StrictMode>
 );
 
+// Set up event listener for service worker messages
+const setupServiceWorkerMessaging = () => {
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
+      console.log('Update message from service worker:', event.data);
+      
+      // Show toast notification for the update
+      toast({
+        title: "Update Available",
+        description: "A new version of The Triage System is available. Reload to update.",
+        action: (
+          <button 
+            onClick={() => {
+              // Send message to service worker to skip waiting and activate new version
+              navigator.serviceWorker.controller?.postMessage({ type: 'SKIP_WAITING' });
+              // Reload the page to apply the update
+              window.location.reload();
+            }}
+            className="bg-[#bfaa4a] hover:bg-[#bfaa4a]/90 text-black rounded px-2 py-1 text-xs"
+          >
+            Update Now
+          </button>
+        ),
+        duration: 0 // Don't auto-dismiss this important notification
+      });
+    }
+  });
+};
+
 // Enhanced service worker registration with improved cross-browser support
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
@@ -40,6 +71,9 @@ if ('serviceWorker' in navigator) {
       
       console.log('Service worker registered successfully:', registration.scope);
       
+      // Set up event listener for communication
+      setupServiceWorkerMessaging();
+      
       // Handle updates with better UX for standalone mode
       registration.onupdatefound = () => {
         const installingWorker = registration.installing;
@@ -50,26 +84,26 @@ if ('serviceWorker' in navigator) {
             if (navigator.serviceWorker.controller) {
               console.log('New content is available; please refresh.');
               
-              // Check if running in standalone mode (PWA installed)
+              // For installed PWA, show an update notification
               if (isStandalone) {
-                // For installed PWA, use a less intrusive update notification
-                // that doesn't disrupt the app-like experience
-                const event = new CustomEvent('pwa-update-available');
-                window.dispatchEvent(event);
-                
-                // Show toast notification for update in PWA mode
-                try {
-                  const toastEvent = new CustomEvent('pwa-show-toast', {
-                    detail: {
-                      title: 'Update Available',
-                      description: 'A new version is available. Reload to update.',
-                      action: () => window.location.reload()
-                    }
-                  });
-                  window.dispatchEvent(toastEvent);
-                } catch (err) {
-                  console.error('Error showing toast:', err);
-                }
+                toast({
+                  title: "Update Available",
+                  description: "A new version of The Triage System is available.",
+                  action: (
+                    <button 
+                      onClick={() => {
+                        // Send message to service worker to skip waiting
+                        navigator.serviceWorker.controller?.postMessage({ type: 'SKIP_WAITING' });
+                        // Reload the page to apply the update
+                        window.location.reload();
+                      }}
+                      className="bg-[#bfaa4a] hover:bg-[#bfaa4a]/90 text-black rounded px-2 py-1 text-xs"
+                    >
+                      Update Now
+                    </button>
+                  ),
+                  duration: 0 // Don't auto-dismiss this important notification
+                });
               } else {
                 // For browser mode, we can use a more direct approach
                 if (window.confirm('New version available! Reload to update?')) {
@@ -85,11 +119,11 @@ if ('serviceWorker' in navigator) {
         };
       };
       
-      // Check for updates every 30 minutes
+      // Check for updates more frequently - every 15 minutes
       setInterval(() => {
         registration.update();
         console.log('Checking for service worker updates');
-      }, 30 * 60 * 1000);
+      }, 15 * 60 * 1000);
       
       // For Chrome on Android, specifically check if conditions are right for PWA
       const isChrome = /chrome/i.test(navigator.userAgent);
