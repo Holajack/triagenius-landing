@@ -25,23 +25,24 @@ export function ConfirmEndDialog({
   onConfirm,
   onCancel,
 }: ConfirmEndDialogProps) {
-  // Use a more reliable approach for handling confirm action with PWA detection
+  // Get PWA status
+  const isPwa = localStorage.getItem('isPWA') === 'true';
+
+  // Optimized confirm handler with PWA-specific paths
   const handleConfirm = (e: React.MouseEvent) => {
     // Prevent default behavior
     e.preventDefault();
     
-    // Get PWA status
-    const isPwa = localStorage.getItem('isPWA') === 'true';
-    
-    // For PWA, apply special handling to prevent freezing
+    // For PWA, we need to be extra careful to avoid UI freezing
     if (isPwa) {
       // Close dialog immediately first to prevent UI blocking
       onOpenChange(false);
       
-      // Use a minimal timeout for mobile PWA to prevent UI thread blocking
-      setTimeout(() => {
+      // Very short timeout to ensure UI updates before heavy processing
+      requestAnimationFrame(() => {
+        // Call the confirm handler with minimal delay
         onConfirm();
-      }, 10);
+      });
     } else {
       // Standard behavior for non-PWA
       onConfirm();
@@ -52,15 +53,12 @@ export function ConfirmEndDialog({
   const handleCancel = (e: React.MouseEvent) => {
     e.preventDefault();
     
-    // Get PWA status
-    const isPwa = localStorage.getItem('isPWA') === 'true';
-    
     if (isPwa) {
       // Close dialog first for better mobile performance
       onOpenChange(false);
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         onCancel();
-      }, 10);
+      });
     } else {
       // Standard behavior for browsers
       onCancel();

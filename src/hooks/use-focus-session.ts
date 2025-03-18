@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -219,7 +218,7 @@ export const useFocusSession = () => {
           timerRef.current.stopTimer();
         }
         
-        // Prepare minimal data
+        // Prepare session data for report
         const reportId = `session_${Date.now()}`;
         const reportKey = `sessionReport_${reportId}`;
         const sessionData = {
@@ -237,7 +236,7 @@ export const useFocusSession = () => {
           savedAt: new Date().toISOString()
         }));
         
-        // Navigate immediately without animations
+        // Navigate immediately to the session report page
         navigate(`/session-report/${reportId}`, { replace: true });
         isEndingRef.current = false;
         operationInProgressRef.current = false;
@@ -286,7 +285,7 @@ export const useFocusSession = () => {
     if (!isMountedRef.current || operationInProgressRef.current || navigationAttemptedRef.current) return;
     operationInProgressRef.current = true;
     
-    // For PWA, use a simplified direct approach
+    // For PWA, use a direct approach to avoid freezing
     if (isPwaRef.current) {
       // Stop timer first
       if (timerRef.current) {
@@ -294,6 +293,8 @@ export const useFocusSession = () => {
       }
       
       setShowEndConfirmation(false);
+      
+      // Immediate navigation to end session report for PWA
       handleEndSessionEarly();
       return;
     }
