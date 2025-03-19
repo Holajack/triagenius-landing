@@ -26,6 +26,7 @@ import Chat from "./pages/Chat";
 import StudyRoom from "./pages/StudyRoom";
 import Bonuses from "./pages/Bonuses";
 import LearningQuiz from "./pages/LearningQuiz";
+import LearningToolkit from "./pages/LearningToolkit";
 import NotFound from "./pages/NotFound";
 import Nora from "./pages/Nora";
 import PWADetector from "./components/pwa/PWADetector";
@@ -79,6 +80,7 @@ function App() {
                       <Route path="/study-room/:id?" element={<StudyRoom />} />
                       <Route path="/nora" element={<Nora />} />
                       <Route path="/learning-quiz" element={<LearningQuiz />} />
+                      <Route path="/learning-toolkit" element={<LearningToolkit />} />
                     </Route>
                     <Route path="*" element={<NotFound />} />
                   </Routes>

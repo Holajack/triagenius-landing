@@ -112,7 +112,7 @@ const Bonuses = () => {
               
               <div className="mt-auto">
                 <Button
-                  onClick={() => alert('Coming Soon!')}
+                  onClick={() => navigate('/learning-toolkit')}
                   className="bg-teal-600 hover:bg-teal-700 text-white"
                 >
                   Explore Guides
