@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import PageHeader from '@/components/common/PageHeader';
@@ -13,11 +14,13 @@ const Community = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <PageHeader
-        title="Community"
-        subtitle="Connect and collaborate with fellow learners"
-        data-walkthrough="community-header"
-      />
+      <div className="container mx-auto px-4">
+        <PageHeader
+          title="Community"
+          subtitle="Connect and collaborate with fellow learners"
+          data-walkthrough="community-header"
+        />
+      </div>
 
       {/* Main content */}
       <div className="container mx-auto px-4 py-8 pb-24">

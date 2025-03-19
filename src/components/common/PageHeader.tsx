@@ -15,7 +15,7 @@ const PageHeader = ({ title, subtitle }: PageHeaderProps) => {
   return (
     <header className="py-6">
       <div className="flex justify-between items-start mb-4">
-        <div>
+        <div className="text-center md:text-left max-w-2xl mx-auto md:mx-0">
           <h1 className="text-2xl font-bold mb-1">{title}</h1>
           {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
         </div>
