@@ -216,7 +216,8 @@ const ProfilePreferences = () => {
           </div>
         )}
         
-        <div className="pt-6 border-t mt-8">
+        {/* Added extra space with mt-16 to separate logout button from the sound preference */}
+        <div className="pt-6 border-t mt-16">
           <Button 
             variant="destructive" 
             onClick={handleLogout} 
