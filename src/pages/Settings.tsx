@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -24,6 +25,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useDevicePermissions, PermissionType } from "@/hooks/use-device-permissions";
 import { Button } from "@/components/ui/button";
 import { SoundFilesManager } from "@/components/settings/SoundFilesManager";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const Settings = () => {
   // Notification settings
@@ -632,6 +634,17 @@ const Settings = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Music Attribution Header */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Music className="h-4 w-4 text-primary" />
+              <h4 className="font-medium">Music Attribution</h4>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              The Triage System uses music from various sources. Below are the attributions for the music tracks used in the app.
+            </p>
+          </div>
+          
           {/* Nature Sounds */}
           <div className="space-y-2">
             <h4 className="font-medium">Nature</h4>
@@ -642,50 +655,204 @@ const Settings = () => {
             </div>
           </div>
           
-          {/* Music Attribution */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Music className="h-4 w-4 text-primary" />
-              <h4 className="font-medium">Music Attribution</h4>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              The Triage System uses music from various sources. Below are the attributions for the music tracks used in the app.
-            </p>
-            
-            {/* Lo-Fi Music */}
-            <div className="space-y-1 pl-4">
-              <h5 className="text-sm font-medium">Lo-Fi Music</h5>
-              <ul className="text-sm text-muted-foreground list-disc list-inside">
-                <li>Marshmallow by Lukrembo</li>
-                <li>Biscuit by Lukrembo</li>
-                <li>Donut by Lukrembo</li>
-                <li>Sunset by Lukrembo</li>
-                <li>honey jam by massobeats</li>
-              </ul>
-            </div>
-            
-            {/* Ambient */}
-            <div className="space-y-1 pl-4">
-              <h5 className="text-sm font-medium">Ambient</h5>
-              <ul className="text-sm text-muted-foreground list-disc list-inside">
-                <li>Flourish by Pufino</li>
-                <li>Creek by Pufino</li>
-                <li>Wallflower by Epic Spectrum</li>
-              </ul>
-            </div>
-            
-            {/* Classic */}
-            <div className="space-y-1 pl-4">
-              <h5 className="text-sm font-medium">Classic</h5>
-              <ul className="text-sm text-muted-foreground list-disc list-inside">
-                <li>Enlivening by Pufino</li>
-                <li>Sky Clearing by Epic Spectrum</li>
-                <li>Farewell by Guillermo Guareschi</li>
-                <li>Wings of Freedom by Alegend</li>
-                <li>Dragon Kingdom by Walen</li>
-                <li>Sky With Yellow Spots by Aeris</li>
-              </ul>
-            </div>
+          {/* Lo-Fi Music Accordion */}
+          <div className="space-y-2">
+            <h4 className="font-medium">Lo-Fi Music</h4>
+            <Accordion type="single" collapsible className="w-full border rounded-md">
+              <AccordionItem value="marshmallow">
+                <AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/50">
+                  <span className="text-sm">Marshmallow by Lukrembo</span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 pt-1">
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p><strong>Artist:</strong> Lukrembo</p>
+                    <p><strong>License:</strong> No Copyright Music for Video (Free)</p>
+                    <p><strong>Source:</strong> <a href="https://freetouse.com/music" className="text-primary hover:underline">freetouse.com/music</a></p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="biscuit">
+                <AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/50">
+                  <span className="text-sm">Biscuit by Lukrembo</span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 pt-1">
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p><strong>Artist:</strong> Lukrembo</p>
+                    <p><strong>License:</strong> Copyright Free Music for Video</p>
+                    <p><strong>Source:</strong> <a href="https://freetouse.com/music" className="text-primary hover:underline">freetouse.com/music</a></p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="donut">
+                <AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/50">
+                  <span className="text-sm">Donut by Lukrembo</span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 pt-1">
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p><strong>Artist:</strong> Lukrembo</p>
+                    <p><strong>License:</strong> Copyright Free Music for Videos</p>
+                    <p><strong>Source:</strong> <a href="https://freetouse.com/music" className="text-primary hover:underline">freetouse.com/music</a></p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="sunset">
+                <AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/50">
+                  <span className="text-sm">Sunset by Lukrembo</span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 pt-1">
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p><strong>Artist:</strong> Lukrembo</p>
+                    <p><strong>License:</strong> Royalty Free Music for Video (Safe)</p>
+                    <p><strong>Source:</strong> <a href="https://freetouse.com/music" className="text-primary hover:underline">freetouse.com/music</a></p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="honeyjam">
+                <AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/50">
+                  <span className="text-sm">honey jam by massobeats</span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 pt-1">
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p><strong>Artist:</strong> massobeats</p>
+                    <p><strong>License:</strong> Free Music Without Copyright (Safe)</p>
+                    <p><strong>Source:</strong> <a href="https://freetouse.com/music" className="text-primary hover:underline">freetouse.com/music</a></p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+          
+          {/* Ambient Music Accordion */}
+          <div className="space-y-2">
+            <h4 className="font-medium">Ambient</h4>
+            <Accordion type="single" collapsible className="w-full border rounded-md">
+              <AccordionItem value="flourish">
+                <AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/50">
+                  <span className="text-sm">Flourish by Pufino</span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 pt-1">
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p><strong>Artist:</strong> Pufino</p>
+                    <p><strong>License:</strong> Free To Use Music for Video</p>
+                    <p><strong>Source:</strong> <a href="https://freetouse.com/music" className="text-primary hover:underline">freetouse.com/music</a></p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="creek">
+                <AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/50">
+                  <span className="text-sm">Creek by Pufino</span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 pt-1">
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p><strong>Artist:</strong> Pufino</p>
+                    <p><strong>License:</strong> Music for Video (Free Download)</p>
+                    <p><strong>Source:</strong> <a href="https://freetouse.com/music" className="text-primary hover:underline">freetouse.com/music</a></p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="wallflower">
+                <AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/50">
+                  <span className="text-sm">Wallflower by Epic Spectrum</span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 pt-1">
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p><strong>Artist:</strong> Epic Spectrum</p>
+                    <p><strong>License:</strong> Royalty Free Music for Videos (Safe)</p>
+                    <p><strong>Source:</strong> <a href="https://freetouse.com/music" className="text-primary hover:underline">freetouse.com/music</a></p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+          
+          {/* Classic Music Accordion */}
+          <div className="space-y-2">
+            <h4 className="font-medium">Classic</h4>
+            <Accordion type="single" collapsible className="w-full border rounded-md">
+              <AccordionItem value="enlivening">
+                <AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/50">
+                  <span className="text-sm">Enlivening by Pufino</span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 pt-1">
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p><strong>Artist:</strong> Pufino</p>
+                    <p><strong>License:</strong> No Copyright Background Music</p>
+                    <p><strong>Source:</strong> <a href="https://freetouse.com/music" className="text-primary hover:underline">freetouse.com/music</a></p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="skyclearing">
+                <AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/50">
+                  <span className="text-sm">Sky Clearing by Epic Spectrum</span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 pt-1">
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p><strong>Artist:</strong> Epic Spectrum</p>
+                    <p><strong>License:</strong> Background Music for Video (Free)</p>
+                    <p><strong>Source:</strong> <a href="https://freetouse.com/music" className="text-primary hover:underline">freetouse.com/music</a></p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="farewell">
+                <AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/50">
+                  <span className="text-sm">Farewell by Guillermo Guareschi</span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 pt-1">
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p><strong>Artist:</strong> Guillermo Guareschi</p>
+                    <p><strong>License:</strong> Free No Copyright Music Download</p>
+                    <p><strong>Source:</strong> <a href="https://freetouse.com/music" className="text-primary hover:underline">freetouse.com/music</a></p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="wingsoffreedom">
+                <AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/50">
+                  <span className="text-sm">Wings of Freedom by Alegend</span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 pt-1">
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p><strong>Artist:</strong> Alegend</p>
+                    <p><strong>License:</strong> Music for Video (Free Download)</p>
+                    <p><strong>Source:</strong> <a href="https://freetouse.com/music" className="text-primary hover:underline">freetouse.com/music</a></p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="dragonkingdom">
+                <AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/50">
+                  <span className="text-sm">Dragon Kingdom by Walen</span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 pt-1">
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p><strong>Artist:</strong> Walen</p>
+                    <p><strong>License:</strong> Music for Video (Free Download)</p>
+                    <p><strong>Source:</strong> <a href="https://freetouse.com/music" className="text-primary hover:underline">freetouse.com/music</a></p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="skywithyellowspots">
+                <AccordionTrigger className="px-4 hover:no-underline hover:bg-muted/50">
+                  <span className="text-sm">Sky With Yellow Spots by Aeris</span>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-3 pt-1">
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p><strong>Artist:</strong> Aeris</p>
+                    <p><strong>License:</strong> Free No Copyright Music Download</p>
+                    <p><strong>Source:</strong> <a href="https://freetouse.com/music" className="text-primary hover:underline">freetouse.com/music</a></p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
           
           {/* Legal Information */}
