@@ -150,11 +150,9 @@ const ProfilePreferences = () => {
                   <SelectValue placeholder="Select your main goal" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="academic-improvement">Academic Improvement</SelectItem>
-                  <SelectItem value="career-development">Career Development</SelectItem>
-                  <SelectItem value="project-completion">Project Completion</SelectItem>
-                  <SelectItem value="skill-acquisition">Skill Acquisition</SelectItem>
-                  <SelectItem value="exam-preparation">Exam Preparation</SelectItem>
+                  <SelectItem value="deep-work">Deep Work</SelectItem>
+                  <SelectItem value="study">Study</SelectItem>
+                  <SelectItem value="accountability">Accountability</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -170,9 +168,9 @@ const ProfilePreferences = () => {
                   <SelectValue placeholder="Select your work style" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="deep-work">Deep Work (Long Sessions)</SelectItem>
-                  <SelectItem value="pomodoro">Pomodoro (Short Intervals)</SelectItem>
-                  <SelectItem value="flexible">Flexible (Variable)</SelectItem>
+                  <SelectItem value="deep-work">Deep Work</SelectItem>
+                  <SelectItem value="balanced">Balanced</SelectItem>
+                  <SelectItem value="pomodoro">Sprints</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -208,11 +206,9 @@ const ProfilePreferences = () => {
                   <SelectValue placeholder="Select your sound preference" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ambient">Ambient Noise</SelectItem>
-                  <SelectItem value="nature">Nature Sounds</SelectItem>
-                  <SelectItem value="white-noise">White Noise</SelectItem>
-                  <SelectItem value="lo-fi">Lo-Fi Music</SelectItem>
-                  <SelectItem value="classical">Classical Music</SelectItem>
+                  <SelectItem value="ambient">Nature</SelectItem>
+                  <SelectItem value="lo-fi">Lo-fi</SelectItem>
+                  <SelectItem value="classical">Classical</SelectItem>
                   <SelectItem value="silence">Silence</SelectItem>
                 </SelectContent>
               </Select>

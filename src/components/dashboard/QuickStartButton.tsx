@@ -184,7 +184,7 @@ const QuickStartButton = () => {
                 {formatTime(timer)}
               </div>
               <span className="text-xs mt-1">
-                {state.workStyle === 'pomodoro' ? 'Pomodoro' : 'Focus'} Timer
+                {state.workStyle === 'pomodoro' ? 'Sprints' : state.workStyle === 'deep-work' ? 'Deep Work' : 'Balanced'} Timer
               </span>
             </div>
           )}
