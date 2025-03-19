@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -7,7 +8,15 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import NavigationBar from "@/components/dashboard/NavigationBar";
-import { BellIcon, EyeIcon, MoonIcon, VolumeIcon, Info, ShieldAlert } from "lucide-react";
+import { 
+  BellIcon, 
+  EyeIcon, 
+  MoonIcon, 
+  VolumeIcon, 
+  Info, 
+  ShieldAlert,
+  ExternalLinkIcon
+} from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useDevicePermissions, PermissionType } from "@/hooks/use-device-permissions";
@@ -21,17 +30,10 @@ const Settings = () => {
   const [friendRequestNotifications, setFriendRequestNotifications] = useState(true);
   const [messageNotifications, setMessageNotifications] = useState(true);
   
-  // Do Not Disturb settings
-  const [dndEnabled, setDndEnabled] = useState(false);
-  const [dndDuringFocus, setDndDuringFocus] = useState(true);
-  const [dndDuringBreaks, setDndDuringBreaks] = useState(false);
-  
-  // Display settings
+  // App preferences (not device settings)
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
   const [highContrastMode, setHighContrastMode] = useState(false);
   const [reducedAnimations, setReducedAnimations] = useState(false);
-  
-  // Sound settings
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [volume, setVolume] = useState("medium"); // low, medium, high
   const [focusSounds, setFocusSounds] = useState(true);
@@ -52,9 +54,6 @@ const Settings = () => {
         { key: 'breakReminderNotifications', setter: setBreakReminderNotifications },
         { key: 'friendRequestNotifications', setter: setFriendRequestNotifications },
         { key: 'messageNotifications', setter: setMessageNotifications },
-        { key: 'dndEnabled', setter: setDndEnabled },
-        { key: 'dndDuringFocus', setter: setDndDuringFocus },
-        { key: 'dndDuringBreaks', setter: setDndDuringBreaks },
         { key: 'darkModeEnabled', setter: setDarkModeEnabled },
         { key: 'highContrastMode', setter: setHighContrastMode },
         { key: 'reducedAnimations', setter: setReducedAnimations },
@@ -99,10 +98,10 @@ const Settings = () => {
     // Save to local storage
     localStorage.setItem(`setting_${setting}`, JSON.stringify(value));
     
-    // Handle device permissions and settings if we're in a PWA and it's a boolean setting
-    if (typeof value === 'boolean' && permissionType && isPwa) {
+    // Handle device permissions for notifications if we're in a PWA 
+    if (typeof value === 'boolean' && permissionType === 'notifications' && isPwa) {
       if (value === true) {
-        // Directly request permission from the device when enabling a setting
+        // Directly request notification permission when enabling
         const permission = await requestPermission(permissionType);
         
         if (permission) {
@@ -130,7 +129,7 @@ const Settings = () => {
           });
         }
       } else {
-        // We're disabling a setting - disable it on the device if possible
+        // We're disabling notification - disable it if possible
         await applyDeviceSetting(permissionType, false);
         toast.success(`${setting} disabled`);
       }
@@ -140,8 +139,13 @@ const Settings = () => {
     }
   };
 
-  // Handle manual permission request with improved feedback
+  // Handle manual permission request for notifications
   const handleRequestPermission = async (type: PermissionType) => {
+    if (type !== 'notifications') {
+      toast.info("This permission can only be managed in your device settings");
+      return;
+    }
+    
     toast.loading(`Requesting ${type} permission...`, { id: 'permission-request' });
     
     const granted = await requestPermission(type);
@@ -158,20 +162,37 @@ const Settings = () => {
       });
     }
   };
+
+  // Provide instructions to open device settings based on platform
+  const openDeviceSettings = (settingType: string) => {
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    
+    if (isIOS) {
+      toast.info(`To manage ${settingType} settings on iOS:`, {
+        description: "Open Settings app > Find our app > Enable required permissions",
+        duration: 5000
+      });
+    } else {
+      toast.info(`To manage ${settingType} settings on Android:`, {
+        description: "Open Settings app > Apps > Find our app > Permissions",
+        duration: 5000
+      });
+    }
+  };
   
   return (
     <div className="container max-w-4xl px-3 sm:px-6 pb-24">
       <div className="space-y-4 pb-4 pt-2">
         <h1 className="text-2xl font-bold">Settings</h1>
         <p className="text-muted-foreground">
-          Manage your app preferences and permissions
+          Manage your app preferences and device permissions
         </p>
         
         {isPwa && (
           <Alert variant="default" className="bg-primary/10 border-0">
             <Info className="h-4 w-4" />
             <AlertDescription>
-              This app will request device permissions when enabling certain settings to provide the best experience on your device.
+              As a progressive web app, some device features require enabling permissions in your device settings.
             </AlertDescription>
           </Alert>
         )}
@@ -302,77 +323,57 @@ const Settings = () => {
                 <CardTitle>Do Not Disturb</CardTitle>
               </div>
               <CardDescription>
-                Control when notifications are silenced
-                {isPwa && (
-                  <span className="block mt-1 text-xs">
-                    {permissionStatus.dnd === 'granted' ? 
-                      "✓ Permission granted" : 
-                      permissionStatus.dnd === 'denied' ?
-                      "⚠️ Permission blocked in device settings" :
-                      "⚠️ Permission required to control Do Not Disturb"}
-                  </span>
-                )}
+                Recommendations for controlling notifications during focus sessions
               </CardDescription>
-              {isPwa && permissionStatus.dnd !== 'granted' && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-2"
-                  onClick={() => handleRequestPermission('dnd')}
-                >
-                  <ShieldAlert className="h-4 w-4 mr-2" />
-                  Request DND Permission
-                </Button>
-              )}
             </CardHeader>
             <CardContent className="space-y-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium">Enable Do Not Disturb</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Silence all notifications
-                  </p>
-                </div>
-                <Switch 
-                  checked={dndEnabled}
-                  onCheckedChange={(checked) => 
-                    handleSettingChange("dndEnabled", checked, setDndEnabled, "dnd")
-                  }
-                  disabled={isPwa && permissionStatus.dnd === 'denied'}
-                />
-              </div>
-              
-              <Separator />
+              <Alert variant="default" className="bg-muted">
+                <Info className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  Currently, PWA apps cannot directly control your device's Do Not Disturb settings. 
+                  Here are some recommendations:
+                </AlertDescription>
+              </Alert>
               
               <div className="space-y-4">
-                <h4 className="font-medium">Automatic DND</h4>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm">During Focus Sessions</p>
-                    <p className="text-xs text-muted-foreground">Automatically enable DND when focusing</p>
-                  </div>
-                  <Switch 
-                    checked={dndDuringFocus}
-                    onCheckedChange={(checked) => 
-                      handleSettingChange("dndDuringFocus", checked, setDndDuringFocus, "dnd")
-                    }
-                    disabled={isPwa && permissionStatus.dnd === 'denied'}
-                  />
+                <div className="space-y-2 border p-4 rounded-md">
+                  <h4 className="font-medium">During Focus Sessions</h4>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    We recommend enabling Do Not Disturb mode manually before starting a focus session.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="w-full sm:w-auto" 
+                    onClick={() => openDeviceSettings('Do Not Disturb')}
+                  >
+                    <ExternalLinkIcon className="h-4 w-4 mr-2" />
+                    How to enable DND mode
+                  </Button>
                 </div>
                 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm">During Breaks</p>
-                    <p className="text-xs text-muted-foreground">Automatically enable DND during break times</p>
-                  </div>
-                  <Switch 
-                    checked={dndDuringBreaks}
-                    onCheckedChange={(checked) => 
-                      handleSettingChange("dndDuringBreaks", checked, setDndDuringBreaks, "dnd")
-                    }
-                    disabled={isPwa && permissionStatus.dnd === 'denied'}
-                  />
+                <div className="space-y-2 border p-4 rounded-md">
+                  <h4 className="font-medium">Schedule DND Sessions</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Most devices allow scheduling Do Not Disturb mode for specific time periods:
+                  </p>
+                  
+                  <ul className="text-sm list-disc list-inside mt-2 space-y-1 text-muted-foreground">
+                    <li>On iOS: Settings → Focus → Do Not Disturb → Add Schedule</li>
+                    <li>On Android: Settings → Sound & Vibration → Do Not Disturb → Schedule</li>
+                  </ul>
+                </div>
+                
+                <div className="space-y-2 border p-4 rounded-md">
+                  <h4 className="font-medium">Device-specific focus modes</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Many devices offer focus modes designed specifically for productivity:
+                  </p>
+                  
+                  <ul className="text-sm list-disc list-inside mt-2 space-y-1 text-muted-foreground">
+                    <li>On iOS: Try the "Focus" mode in Settings</li>
+                    <li>On Android: Try "Focus mode" in Digital Wellbeing settings</li>
+                  </ul>
                 </div>
               </div>
             </CardContent>
@@ -387,73 +388,101 @@ const Settings = () => {
                 <CardTitle>Display Settings</CardTitle>
               </div>
               <CardDescription>
-                Customize how the app looks
-                {isPwa && (
-                  <span className="block mt-1 text-xs">
-                    {permissionStatus.display === 'granted' ? 
-                      "✓ Permission granted" : 
-                      permissionStatus.display === 'denied' ?
-                      "⚠️ Permission blocked in device settings" :
-                      "⚠️ Some settings may require device permissions"}
-                  </span>
-                )}
+                Customize how the app looks and device display recommendations
               </CardDescription>
-              {isPwa && permissionStatus.display !== 'granted' && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-2"
-                  onClick={() => handleRequestPermission('display')}
-                >
-                  <ShieldAlert className="h-4 w-4 mr-2" />
-                  Request Display Permission
-                </Button>
-              )}
             </CardHeader>
             <CardContent className="space-y-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium">Dark Mode</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Switch between light and dark themes
-                  </p>
+              <div className="space-y-4">
+                <h4 className="font-medium">App Display Settings</h4>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">Dark Mode</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Switch between light and dark themes
+                    </p>
+                  </div>
+                  <Switch 
+                    checked={darkModeEnabled}
+                    onCheckedChange={(checked) => 
+                      handleSettingChange("darkModeEnabled", checked, setDarkModeEnabled)
+                    }
+                  />
                 </div>
-                <Switch 
-                  checked={darkModeEnabled}
-                  onCheckedChange={(checked) => 
-                    handleSettingChange("darkModeEnabled", checked, setDarkModeEnabled, "display")
-                  }
-                />
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">High Contrast Mode</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Increase contrast for better visibility
+                    </p>
+                  </div>
+                  <Switch 
+                    checked={highContrastMode}
+                    onCheckedChange={(checked) => 
+                      handleSettingChange("highContrastMode", checked, setHighContrastMode)
+                    }
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">Reduced Animations</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Minimize motion effects
+                    </p>
+                  </div>
+                  <Switch 
+                    checked={reducedAnimations}
+                    onCheckedChange={(checked) => 
+                      handleSettingChange("reducedAnimations", checked, setReducedAnimations)
+                    }
+                  />
+                </div>
               </div>
               
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium">High Contrast Mode</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Increase contrast for better visibility
-                  </p>
-                </div>
-                <Switch 
-                  checked={highContrastMode}
-                  onCheckedChange={(checked) => 
-                    handleSettingChange("highContrastMode", checked, setHighContrastMode, "display")
-                  }
-                />
-              </div>
+              <Separator />
               
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium">Reduced Animations</h4>
+              <div className="space-y-4">
+                <h4 className="font-medium">Device Display Recommendations</h4>
+                
+                <Alert variant="default" className="bg-muted">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription className="text-sm">
+                    To maintain focus during study sessions, we recommend adjusting these device display settings:
+                  </AlertDescription>
+                </Alert>
+                
+                <div className="space-y-2 border p-4 rounded-md">
+                  <h4 className="font-medium">Screen Brightness</h4>
                   <p className="text-sm text-muted-foreground">
-                    Minimize motion effects
+                    For eye comfort during long focus sessions, consider:
                   </p>
+                  <ul className="text-sm list-disc list-inside mt-2 space-y-1 text-muted-foreground">
+                    <li>Enabling auto-brightness to adjust based on ambient light</li>
+                    <li>Using night mode/blue light filter during evening sessions</li>
+                    <li>Reducing brightness in low-light environments</li>
+                  </ul>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="w-full sm:w-auto mt-2" 
+                    onClick={() => openDeviceSettings('screen brightness')}
+                  >
+                    <ExternalLinkIcon className="h-4 w-4 mr-2" />
+                    Adjust screen settings
+                  </Button>
                 </div>
-                <Switch 
-                  checked={reducedAnimations}
-                  onCheckedChange={(checked) => 
-                    handleSettingChange("reducedAnimations", checked, setReducedAnimations, "display")
-                  }
-                />
+                
+                <div className="space-y-2 border p-4 rounded-md">
+                  <h4 className="font-medium">Keep Screen Awake</h4>
+                  <p className="text-sm text-muted-foreground">
+                    To prevent your screen from turning off during focus sessions:
+                  </p>
+                  <ul className="text-sm list-disc list-inside mt-2 space-y-1 text-muted-foreground">
+                    <li>On iOS: Settings → Display & Brightness → Auto-Lock → Set to a longer duration</li>
+                    <li>On Android: Settings → Display → Screen timeout → Increase duration</li>
+                  </ul>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -467,87 +496,108 @@ const Settings = () => {
                 <CardTitle>Sound Settings</CardTitle>
               </div>
               <CardDescription>
-                Configure audio preferences
-                {isPwa && (
-                  <span className="block mt-1 text-xs">
-                    {permissionStatus.audio === 'granted' ? 
-                      "✓ Permission granted" : 
-                      permissionStatus.audio === 'denied' ?
-                      "⚠️ Permission blocked in device settings" :
-                      "⚠️ Some settings may require audio permissions"}
-                  </span>
-                )}
+                Configure app audio preferences and device recommendations
               </CardDescription>
-              {isPwa && permissionStatus.audio !== 'granted' && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="mt-2"
-                  onClick={() => handleRequestPermission('audio')}
-                >
-                  <ShieldAlert className="h-4 w-4 mr-2" />
-                  Request Audio Permission
-                </Button>
-              )}
             </CardHeader>
             <CardContent className="space-y-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium">Enable Sounds</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Play sound effects and alerts
-                  </p>
+              <div className="space-y-4">
+                <h4 className="font-medium">App Sound Settings</h4>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">Enable Sounds</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Play sound effects and alerts in the app
+                    </p>
+                  </div>
+                  <Switch 
+                    checked={soundEnabled}
+                    onCheckedChange={(checked) => 
+                      handleSettingChange("soundEnabled", checked, setSoundEnabled)
+                    }
+                  />
                 </div>
-                <Switch 
-                  checked={soundEnabled}
-                  onCheckedChange={(checked) => 
-                    handleSettingChange("soundEnabled", checked, setSoundEnabled, "audio")
-                  }
-                  disabled={isPwa && permissionStatus.audio === 'denied'}
-                />
+                
+                <div className="space-y-2">
+                  <h4 className="font-medium">Volume Level</h4>
+                  <RadioGroup 
+                    value={volume} 
+                    onValueChange={(value) => 
+                      handleSettingChange("volume", value, setVolume)
+                    }
+                    disabled={!soundEnabled}
+                    className="flex flex-row space-x-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="low" id="low" />
+                      <Label htmlFor="low">Low</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="medium" id="medium" />
+                      <Label htmlFor="medium">Medium</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="high" id="high" />
+                      <Label htmlFor="high">High</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">Focus Sounds</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Play ambient sounds during focus sessions
+                    </p>
+                  </div>
+                  <Switch 
+                    checked={focusSounds}
+                    onCheckedChange={(checked) => 
+                      handleSettingChange("focusSounds", checked, setFocusSounds)
+                    }
+                    disabled={!soundEnabled}
+                  />
+                </div>
               </div>
               
               <Separator />
               
-              <div className="space-y-2">
-                <h4 className="font-medium">Volume Level</h4>
-                <RadioGroup 
-                  value={volume} 
-                  onValueChange={(value) => 
-                    handleSettingChange("volume", value, setVolume, "audio")
-                  }
-                  disabled={!soundEnabled || (isPwa && permissionStatus.audio === 'denied')}
-                  className="flex flex-row space-x-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="low" id="low" />
-                    <Label htmlFor="low">Low</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="medium" id="medium" />
-                    <Label htmlFor="medium">Medium</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="high" id="high" />
-                    <Label htmlFor="high">High</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium">Focus Sounds</h4>
+              <div className="space-y-4">
+                <h4 className="font-medium">Device Sound Recommendations</h4>
+                
+                <Alert variant="default" className="bg-muted">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription className="text-sm">
+                    For optimal focus during study sessions, consider these device sound settings:
+                  </AlertDescription>
+                </Alert>
+                
+                <div className="space-y-2 border p-4 rounded-md">
+                  <h4 className="font-medium">Silent Mode / Vibrate</h4>
                   <p className="text-sm text-muted-foreground">
-                    Play ambient sounds during focus sessions
+                    We recommend enabling silent mode or vibrate-only during focus sessions to minimize distractions.
                   </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="w-full sm:w-auto mt-2" 
+                    onClick={() => openDeviceSettings('sound')}
+                  >
+                    <ExternalLinkIcon className="h-4 w-4 mr-2" />
+                    Adjust sound settings
+                  </Button>
                 </div>
-                <Switch 
-                  checked={focusSounds}
-                  onCheckedChange={(checked) => 
-                    handleSettingChange("focusSounds", checked, setFocusSounds, "audio")
-                  }
-                  disabled={!soundEnabled || (isPwa && permissionStatus.audio === 'denied')}
-                />
+                
+                <div className="space-y-2 border p-4 rounded-md">
+                  <h4 className="font-medium">External Audio Devices</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Consider using:
+                  </p>
+                  <ul className="text-sm list-disc list-inside mt-2 space-y-1 text-muted-foreground">
+                    <li>Noise-cancelling headphones to block background noise</li>
+                    <li>Bluetooth speakers for ambient focus sounds</li>
+                    <li>Earbuds with transparency mode for awareness of surroundings when needed</li>
+                  </ul>
+                </div>
               </div>
             </CardContent>
           </Card>
