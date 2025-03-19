@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, handleSupabaseError } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useUser } from '@/hooks/use-user';
 
 export interface SoundFile {
   id: string;
@@ -18,6 +19,7 @@ export const useSoundFiles = () => {
   const [soundFiles, setSoundFiles] = useState<SoundFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useUser();
 
   // Fetch all sound files
   const fetchSoundFiles = async () => {
@@ -73,6 +75,11 @@ export const useSoundFiles = () => {
     description: string, 
     soundPreference: string
   ) => {
+    if (!user || !user.id) {
+      toast.error('You must be logged in to upload sound files');
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
@@ -93,7 +100,8 @@ export const useSoundFiles = () => {
           description,
           file_path: filePath,
           file_type: file.type,
-          sound_preference: soundPreference
+          sound_preference: soundPreference,
+          user_id: user.id // Add the user_id field which was missing
         });
 
       if (insertError) throw handleSupabaseError(insertError);
