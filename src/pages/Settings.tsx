@@ -15,7 +15,9 @@ import {
   Info, 
   ShieldAlert,
   ExternalLinkIcon,
-  HeartIcon
+  HeartIcon,
+  Music,
+  ShieldCheck
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -629,12 +631,75 @@ const Settings = () => {
             Credits for resources used in this application
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
+          {/* Nature Sounds */}
           <div className="space-y-2">
-            <h4 className="font-medium">Sound Effects</h4>
+            <h4 className="font-medium">Nature</h4>
             <div className="text-sm text-muted-foreground space-y-2">
               <p>
                 Sound Effect by <a href="https://pixabay.com/users/soul_serenity_ambience-6817262/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=229896" className="text-primary hover:underline">Soul_Serenity_Ambience</a> from <a href="https://pixabay.com/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=229896" className="text-primary hover:underline">Pixabay</a>
+              </p>
+            </div>
+          </div>
+          
+          {/* Music Attribution */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Music className="h-4 w-4 text-primary" />
+              <h4 className="font-medium">Music Attribution</h4>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              The Triage System uses music from various sources. Below are the attributions for the music tracks used in the app.
+            </p>
+            
+            {/* Lo-Fi Music */}
+            <div className="space-y-1 pl-4">
+              <h5 className="text-sm font-medium">Lo-Fi Music</h5>
+              <ul className="text-sm text-muted-foreground list-disc list-inside">
+                <li>Marshmallow by Lukrembo</li>
+                <li>Biscuit by Lukrembo</li>
+                <li>Donut by Lukrembo</li>
+                <li>Sunset by Lukrembo</li>
+                <li>honey jam by massobeats</li>
+              </ul>
+            </div>
+            
+            {/* Ambient */}
+            <div className="space-y-1 pl-4">
+              <h5 className="text-sm font-medium">Ambient</h5>
+              <ul className="text-sm text-muted-foreground list-disc list-inside">
+                <li>Flourish by Pufino</li>
+                <li>Creek by Pufino</li>
+                <li>Wallflower by Epic Spectrum</li>
+              </ul>
+            </div>
+            
+            {/* Classic */}
+            <div className="space-y-1 pl-4">
+              <h5 className="text-sm font-medium">Classic</h5>
+              <ul className="text-sm text-muted-foreground list-disc list-inside">
+                <li>Enlivening by Pufino</li>
+                <li>Sky Clearing by Epic Spectrum</li>
+                <li>Farewell by Guillermo Guareschi</li>
+                <li>Wings of Freedom by Alegend</li>
+                <li>Dragon Kingdom by Walen</li>
+                <li>Sky With Yellow Spots by Aeris</li>
+              </ul>
+            </div>
+          </div>
+          
+          {/* Legal Information */}
+          <div className="space-y-2 pt-2">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              <h4 className="font-medium">Legal Information</h4>
+            </div>
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p>
+                The Triage System respects intellectual property rights and provides attribution for all resources used within the application.
+              </p>
+              <p>
+                If you believe any content violates your rights, please contact us.
               </p>
             </div>
           </div>
