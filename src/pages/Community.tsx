@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import PageHeader from '@/components/common/PageHeader';
@@ -15,8 +14,8 @@ const Community = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <PageHeader
-        title="Study Community"
-        subtitle="Connect with like-minded learners and accelerate your progress through collaboration"
+        title="Community"
+        subtitle="Connect and collaborate with fellow learners"
         data-walkthrough="community-header"
       />
 
