@@ -1,11 +1,9 @@
 
-import { useToast } from "@/hooks/use-toast";
 import { RotateCw, CheckCircle } from "lucide-react";
+import { toast } from "sonner";
 
 // Export the toast function to show update notifications
 export function showUpdateNotification(isUserBased = false, isMobile = false, isPWA = false, refreshApp: () => void, isUpdating = false) {
-  const { toast } = useToast();
-  
   // Detect domain for more accurate update messaging
   const hostname = window.location.hostname;
   const isProduction = hostname === 'triagenius-landing.lovable.app' || hostname === 'triagenius.lovable.app';
@@ -190,7 +188,6 @@ const useMessageChannelForUpdate = (
 // Refresh app function
 export const refreshApp = (setIsUpdating: React.Dispatch<React.SetStateAction<boolean>>) => {
   setIsUpdating(true);
-  const { toast } = useToast();
   
   try {
     // More reliable update method - first try FORCE_UPDATE message
@@ -252,8 +249,6 @@ export const refreshApp = (setIsUpdating: React.Dispatch<React.SetStateAction<bo
 
 // Regular update method
 const regularUpdateMethod = (setIsUpdating: React.Dispatch<React.SetStateAction<boolean>>) => {
-  const { toast } = useToast();
-  
   // Tell service worker to skip waiting
   if (navigator.serviceWorker.controller) {
     navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
