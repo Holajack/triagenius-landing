@@ -1,15 +1,15 @@
+
 import { useState, useEffect } from "react";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { useOnboarding } from "@/contexts/OnboardingContext";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UserGoal, WorkStyle, StudyEnvironment, SoundPreference } from "@/types/onboarding";
-import { PencilIcon, SaveIcon, Loader2Icon, LogOut } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { PencilIcon, SaveIcon, Loader2Icon } from "lucide-react";
+
 const ProfilePreferences = () => {
   const {
     state,
@@ -22,19 +22,21 @@ const ProfilePreferences = () => {
     ...state
   });
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
+  
   const handleEditStart = () => {
     setIsEditing(true);
     setEditedState({
       ...state
     });
   };
+  
   const handleCancel = () => {
     setIsEditing(false);
     setEditedState({
       ...state
     });
   };
+  
   const handleSave = async () => {
     try {
       setIsLoading(true);
@@ -84,19 +86,7 @@ const ProfilePreferences = () => {
       setIsLoading(false);
     }
   };
-  const handleLogout = async () => {
-    try {
-      setIsLoading(true);
-      await supabase.auth.signOut();
-      toast.success("Logged out successfully");
-      navigate("/auth");
-    } catch (error: any) {
-      console.error("Error logging out:", error);
-      toast.error(`Failed to log out: ${error.message || "An unknown error occurred"}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  
   return <Card className="my-0 py-0">
       <CardHeader>
         <div className="flex justify-between items-center">
@@ -212,14 +202,6 @@ const ProfilePreferences = () => {
             </div>
           </div>}
       </CardContent>
-      
-      {/* Moved logout button to a separate CardFooter */}
-      <CardFooter className="border-t pt-6 mt-6 mx-0 px-[15px] my-[3px] py-[6px]">
-        <Button variant="destructive" onClick={handleLogout} disabled={isLoading} className="w-full px-0 py-0 my-[35px]">
-          {isLoading ? <Loader2Icon className="h-4 w-4 mr-2 animate-spin" /> : <LogOut className="h-4 w-4 mr-2" />}
-          Logout
-        </Button>
-      </CardFooter>
     </Card>;
 };
 export default ProfilePreferences;
