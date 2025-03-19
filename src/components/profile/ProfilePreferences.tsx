@@ -185,7 +185,7 @@ const ProfilePreferences = () => {
                 <SelectTrigger id="environment">
                   <SelectValue placeholder="Select your preferred environment" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper" className="w-full z-50">
                   <SelectItem value="home">Home</SelectItem>
                   <SelectItem value="office">Office</SelectItem>
                   <SelectItem value="library">Library</SelectItem>
@@ -195,7 +195,7 @@ const ProfilePreferences = () => {
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 mb-8">
               <Label htmlFor="sound-preference">Sound Preference</Label>
               <Select
                 disabled={!isEditing || isLoading}
@@ -205,7 +205,7 @@ const ProfilePreferences = () => {
                 <SelectTrigger id="sound-preference">
                   <SelectValue placeholder="Select your sound preference" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper" className="w-full z-50">
                   <SelectItem value="ambient">Nature</SelectItem>
                   <SelectItem value="lo-fi">Lo-fi</SelectItem>
                   <SelectItem value="classical">Classical</SelectItem>
@@ -216,7 +216,7 @@ const ProfilePreferences = () => {
           </div>
         )}
         
-        <div className="pt-4 border-t mt-4">
+        <div className="pt-6 border-t mt-8">
           <Button 
             variant="destructive" 
             onClick={handleLogout} 
