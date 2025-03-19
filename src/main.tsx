@@ -1,10 +1,8 @@
-
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
 import { Toaster } from "./components/ui/toaster"
-import { UpdateNotification } from './components/pwa/UpdateNotification'
 
 // Detect if the app is being launched in standalone mode with multi-domain support
 const detectPWA = () => {
@@ -162,7 +160,6 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <App />
-    <UpdateNotification />
     <Toaster />
   </React.StrictMode>
 );

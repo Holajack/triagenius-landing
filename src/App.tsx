@@ -9,6 +9,7 @@ import { OnboardingProvider } from "./contexts/OnboardingContext";
 import { WalkthroughProvider } from "./contexts/WalkthroughContext";
 import { TaskProvider } from "./contexts/TaskContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import { UpdateNotification } from "./components/pwa/UpdateNotification";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -91,6 +92,7 @@ function App() {
                   <PWADetector />
                   <InstallPrompt />
                   <FirstVisitPrompt />
+                  <UpdateNotification />
                 </BrowserRouter>
               </TaskProvider>
             </WalkthroughProvider>
