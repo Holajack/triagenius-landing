@@ -21,6 +21,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useDevicePermissions, PermissionType } from "@/hooks/use-device-permissions";
 import { Button } from "@/components/ui/button";
+import { SoundFilesManager } from "@/components/settings/SoundFilesManager";
 
 const Settings = () => {
   // Notification settings
@@ -566,6 +567,11 @@ const Settings = () => {
                   />
                 </div>
               </div>
+              
+              <Separator />
+              
+              {/* Sound Files Manager */}
+              <SoundFilesManager />
               
               <Separator />
               

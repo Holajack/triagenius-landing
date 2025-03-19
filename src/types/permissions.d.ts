@@ -27,6 +27,7 @@ interface DevicePermissionStatus {
   dnd: PermissionState;
   display: PermissionState;
   audio: PermissionState;
+  microphone: PermissionState;
 }
 
 // Add definitions for native device settings
@@ -41,4 +42,14 @@ interface NativeDeviceSettings {
     volume: number;
     muted: boolean;
   };
+}
+
+// Add new interface for sound files
+interface SoundFileInfo {
+  id: string;
+  title: string;
+  description?: string;
+  url: string;
+  type: string;
+  category: SoundPreference;
 }
