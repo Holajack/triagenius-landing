@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -15,7 +14,8 @@ import {
   VolumeIcon, 
   Info, 
   ShieldAlert,
-  ExternalLinkIcon
+  ExternalLinkIcon,
+  HeartIcon
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -199,7 +199,7 @@ const Settings = () => {
         )}
       </div>
       
-      <Tabs defaultValue="notifications" className="mb-24">
+      <Tabs defaultValue="notifications" className="mb-10">
         <TabsList className="grid grid-cols-4 w-full mb-4">
           <TabsTrigger value="notifications" className="text-xs sm:text-sm px-1 sm:px-3">
             <span className="truncate">Notifications</span>
@@ -617,6 +617,29 @@ const Settings = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      
+      {/* Attribution Section */}
+      <Card className="mb-24">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <HeartIcon className="h-5 w-5 text-primary" />
+            <CardTitle>Attribution</CardTitle>
+          </div>
+          <CardDescription>
+            Credits for resources used in this application
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <h4 className="font-medium">Sound Effects</h4>
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p>
+                Sound Effect by <a href="https://pixabay.com/users/soul_serenity_ambience-6817262/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=229896" className="text-primary hover:underline">Soul_Serenity_Ambience</a> from <a href="https://pixabay.com/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=229896" className="text-primary hover:underline">Pixabay</a>
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       
       <NavigationBar />
     </div>
