@@ -39,7 +39,7 @@ const Settings = () => {
   const isMobile = useIsMobile();
   const isPwa = localStorage.getItem('isPWA') === 'true';
   
-  // Use our new device permissions hook
+  // Use our device permissions hook
   const { permissionStatus, requestPermission, applyDeviceSetting } = useDevicePermissions();
   
   // Load saved settings from localStorage on initial render
@@ -102,24 +102,37 @@ const Settings = () => {
     // Handle device permissions and settings if we're in a PWA and it's a boolean setting
     if (typeof value === 'boolean' && permissionType && isPwa) {
       if (value === true) {
-        // We're enabling a setting that needs permission
-        const success = await applyDeviceSetting(permissionType, true);
+        // Directly request permission from the device when enabling a setting
+        const permission = await requestPermission(permissionType);
         
-        if (success) {
-          toast.success(`Updated ${setting} setting and applied to device`);
+        if (permission) {
+          // If permission granted, apply the device setting
+          const success = await applyDeviceSetting(permissionType, true);
+          
+          if (success) {
+            toast.success(`${setting} enabled with device permission`);
+          } else {
+            toast.error(`Couldn't apply ${setting} to device`, {
+              description: "Feature may not be fully supported on this device",
+              action: {
+                label: "Retry",
+                onClick: () => handleSettingChange(setting, value, updateFunction, permissionType)
+              }
+            });
+          }
         } else {
-          toast.error(`Couldn't apply ${setting} to device`, {
-            description: "Permission denied or feature not supported on this device",
+          toast.error(`Permission for ${setting} was denied`, {
+            description: "Please enable in your device settings to use this feature",
             action: {
-              label: "Retry",
+              label: "Try Again",
               onClick: () => requestPermission(permissionType)
             }
           });
         }
       } else {
-        // We're disabling a setting
+        // We're disabling a setting - disable it on the device if possible
         await applyDeviceSetting(permissionType, false);
-        toast.success(`Updated ${setting} setting`);
+        toast.success(`${setting} disabled`);
       }
     } else {
       // Regular setting update (no permission needed)
@@ -127,16 +140,20 @@ const Settings = () => {
     }
   };
 
-  // Handle manual permission request
+  // Handle manual permission request with improved feedback
   const handleRequestPermission = async (type: PermissionType) => {
+    toast.loading(`Requesting ${type} permission...`, { id: 'permission-request' });
+    
     const granted = await requestPermission(type);
     
     if (granted) {
       toast.success(`${type} permission granted`, {
+        id: 'permission-request',
         description: "You can now enable related features"
       });
     } else {
       toast.error(`${type} permission denied`, {
+        id: 'permission-request',
         description: "Please enable in your device settings to use this feature"
       });
     }

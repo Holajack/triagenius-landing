@@ -28,3 +28,17 @@ interface DevicePermissionStatus {
   display: PermissionState;
   audio: PermissionState;
 }
+
+// Add definitions for native device settings
+interface NativeDeviceSettings {
+  notifications: boolean;
+  dnd: boolean;
+  display: {
+    brightness: number;
+    keepAwake: boolean;
+  };
+  audio: {
+    volume: number;
+    muted: boolean;
+  };
+}
