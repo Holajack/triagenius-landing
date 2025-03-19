@@ -10,15 +10,15 @@ const CommunityWalkthrough = () => {
     {
       id: 'community-welcome',
       title: 'Community Hub',
-      description: "Connect with colleagues and study partners in our collaborative community space.",
+      description: "Connect with others on their focus journey and join collaborative study sessions.",
       targetSelector: '[data-walkthrough="community-header"]',
       placement: 'bottom',
     },
     {
-      id: 'users-tab',
-      title: 'People',
-      description: "Find and connect with other users who share your learning interests.",
-      targetSelector: '[data-walkthrough="users-tab"]',
+      id: 'study-rooms',
+      title: 'Study Rooms',
+      description: "Join or create virtual study rooms to focus together with others.",
+      targetSelector: '[data-walkthrough="study-rooms"]',
       placement: isMobile ? 'bottom' : 'right',
     },
     {
@@ -26,13 +26,6 @@ const CommunityWalkthrough = () => {
       title: 'Messages',
       description: "Check your messages and connect with friends in the community.",
       targetSelector: '[data-walkthrough="message-inbox"]',
-      placement: 'top',
-    },
-    {
-      id: 'study-rooms',
-      title: 'Study Rooms',
-      description: "Join or create virtual study rooms to focus together with others.",
-      targetSelector: '[data-walkthrough="study-rooms"]',
       placement: 'top',
     },
     {
