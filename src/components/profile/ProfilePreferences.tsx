@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -11,24 +10,31 @@ import { toast } from "sonner";
 import { UserGoal, WorkStyle, StudyEnvironment, SoundPreference } from "@/types/onboarding";
 import { PencilIcon, SaveIcon, Loader2Icon, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
 const ProfilePreferences = () => {
-  const { state, dispatch, saveOnboardingState, isLoading: contextLoading } = useOnboarding();
+  const {
+    state,
+    dispatch,
+    saveOnboardingState,
+    isLoading: contextLoading
+  } = useOnboarding();
   const [isEditing, setIsEditing] = useState(false);
-  const [editedState, setEditedState] = useState({ ...state });
+  const [editedState, setEditedState] = useState({
+    ...state
+  });
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-
   const handleEditStart = () => {
     setIsEditing(true);
-    setEditedState({ ...state });
+    setEditedState({
+      ...state
+    });
   };
-
   const handleCancel = () => {
     setIsEditing(false);
-    setEditedState({ ...state });
+    setEditedState({
+      ...state
+    });
   };
-
   const handleSave = async () => {
     try {
       setIsLoading(true);
@@ -36,26 +42,40 @@ const ProfilePreferences = () => {
       Object.entries(editedState).forEach(([key, value]) => {
         switch (key) {
           case 'userGoal':
-            dispatch({ type: 'SET_USER_GOAL', payload: value as UserGoal });
+            dispatch({
+              type: 'SET_USER_GOAL',
+              payload: value as UserGoal
+            });
             break;
           case 'workStyle':
-            dispatch({ type: 'SET_WORK_STYLE', payload: value as WorkStyle });
+            dispatch({
+              type: 'SET_WORK_STYLE',
+              payload: value as WorkStyle
+            });
             break;
           case 'environment':
-            dispatch({ type: 'SET_ENVIRONMENT', payload: value as StudyEnvironment });
+            dispatch({
+              type: 'SET_ENVIRONMENT',
+              payload: value as StudyEnvironment
+            });
             break;
           case 'soundPreference':
-            dispatch({ type: 'SET_SOUND_PREFERENCE', payload: value as SoundPreference });
+            dispatch({
+              type: 'SET_SOUND_PREFERENCE',
+              payload: value as SoundPreference
+            });
             break;
           case 'weeklyFocusGoal':
-            dispatch({ type: 'SET_WEEKLY_FOCUS_GOAL', payload: value as number });
+            dispatch({
+              type: 'SET_WEEKLY_FOCUS_GOAL',
+              payload: value as number
+            });
             break;
         }
       });
 
       // Save to database
       await saveOnboardingState();
-      
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating preferences:", error);
@@ -64,7 +84,6 @@ const ProfilePreferences = () => {
       setIsLoading(false);
     }
   };
-
   const handleLogout = async () => {
     try {
       setIsLoading(true);
@@ -78,61 +97,42 @@ const ProfilePreferences = () => {
       setIsLoading(false);
     }
   };
-
-  return (
-    <Card>
+  return <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle>Preferences</CardTitle>
-          {!isEditing ? (
-            <Button onClick={handleEditStart} variant="outline" size="sm" disabled={isLoading || contextLoading}>
+          {!isEditing ? <Button onClick={handleEditStart} variant="outline" size="sm" disabled={isLoading || contextLoading}>
               <PencilIcon className="h-4 w-4 mr-2" />
               Edit
-            </Button>
-          ) : (
-            <div className="flex space-x-2">
+            </Button> : <div className="flex space-x-2">
               <Button onClick={handleCancel} variant="outline" size="sm" disabled={isLoading || contextLoading}>
                 Cancel
               </Button>
               <Button onClick={handleSave} size="sm" disabled={isLoading || contextLoading}>
-                {isLoading || contextLoading ? (
-                  <>
+                {isLoading || contextLoading ? <>
                     <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
                     Saving...
-                  </>
-                ) : (
-                  <>
+                  </> : <>
                     <SaveIcon className="h-4 w-4 mr-2" />
                     Save
-                  </>
-                )}
+                  </>}
               </Button>
-            </div>
-          )}
+            </div>}
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {contextLoading && (
-          <div className="w-full flex justify-center py-4">
+        {contextLoading && <div className="w-full flex justify-center py-4">
             <Loader2Icon className="h-6 w-6 animate-spin text-primary" />
-          </div>
-        )}
+          </div>}
         
-        {!contextLoading && (
-          <div className="space-y-4">
+        {!contextLoading && <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="weekly-focus-goal">Weekly Focus Goal</Label>
               <div className="flex items-center space-x-2">
-                <Slider
-                  id="weekly-focus-goal"
-                  disabled={!isEditing || isLoading}
-                  value={[editedState.weeklyFocusGoal || state.weeklyFocusGoal || 10]}
-                  min={1}
-                  max={40}
-                  step={1}
-                  onValueChange={(value) => setEditedState(prev => ({ ...prev, weeklyFocusGoal: value[0] }))}
-                  className="flex-1"
-                />
+                <Slider id="weekly-focus-goal" disabled={!isEditing || isLoading} value={[editedState.weeklyFocusGoal || state.weeklyFocusGoal || 10]} min={1} max={40} step={1} onValueChange={value => setEditedState(prev => ({
+              ...prev,
+              weeklyFocusGoal: value[0]
+            }))} className="flex-1" />
                 <span className="text-sm font-medium w-12 text-right">
                   {editedState.weeklyFocusGoal || state.weeklyFocusGoal || 10} hrs
                 </span>
@@ -141,11 +141,10 @@ const ProfilePreferences = () => {
 
             <div className="space-y-2">
               <Label htmlFor="user-goal">Main Goal</Label>
-              <Select
-                disabled={!isEditing || isLoading}
-                value={editedState.userGoal || state.userGoal || ""}
-                onValueChange={(value) => setEditedState(prev => ({ ...prev, userGoal: value as UserGoal }))}
-              >
+              <Select disabled={!isEditing || isLoading} value={editedState.userGoal || state.userGoal || ""} onValueChange={value => setEditedState(prev => ({
+            ...prev,
+            userGoal: value as UserGoal
+          }))}>
                 <SelectTrigger id="user-goal">
                   <SelectValue placeholder="Select your main goal" />
                 </SelectTrigger>
@@ -159,11 +158,10 @@ const ProfilePreferences = () => {
 
             <div className="space-y-2">
               <Label htmlFor="work-style">Work Style</Label>
-              <Select
-                disabled={!isEditing || isLoading}
-                value={editedState.workStyle || state.workStyle || ""}
-                onValueChange={(value) => setEditedState(prev => ({ ...prev, workStyle: value as WorkStyle }))}
-              >
+              <Select disabled={!isEditing || isLoading} value={editedState.workStyle || state.workStyle || ""} onValueChange={value => setEditedState(prev => ({
+            ...prev,
+            workStyle: value as WorkStyle
+          }))}>
                 <SelectTrigger id="work-style">
                   <SelectValue placeholder="Select your work style" />
                 </SelectTrigger>
@@ -177,11 +175,10 @@ const ProfilePreferences = () => {
 
             <div className="space-y-2">
               <Label htmlFor="environment">Environment</Label>
-              <Select
-                disabled={!isEditing || isLoading}
-                value={editedState.environment || state.environment || ""}
-                onValueChange={(value) => setEditedState(prev => ({ ...prev, environment: value as StudyEnvironment }))}
-              >
+              <Select disabled={!isEditing || isLoading} value={editedState.environment || state.environment || ""} onValueChange={value => setEditedState(prev => ({
+            ...prev,
+            environment: value as StudyEnvironment
+          }))}>
                 <SelectTrigger id="environment">
                   <SelectValue placeholder="Select your preferred environment" />
                 </SelectTrigger>
@@ -197,11 +194,10 @@ const ProfilePreferences = () => {
 
             <div className="space-y-2 mb-8">
               <Label htmlFor="sound-preference">Sound Preference</Label>
-              <Select
-                disabled={!isEditing || isLoading}
-                value={editedState.soundPreference || state.soundPreference || ""}
-                onValueChange={(value) => setEditedState(prev => ({ ...prev, soundPreference: value as SoundPreference }))}
-              >
+              <Select disabled={!isEditing || isLoading} value={editedState.soundPreference || state.soundPreference || ""} onValueChange={value => setEditedState(prev => ({
+            ...prev,
+            soundPreference: value as SoundPreference
+          }))}>
                 <SelectTrigger id="sound-preference">
                   <SelectValue placeholder="Select your sound preference" />
                 </SelectTrigger>
@@ -213,28 +209,16 @@ const ProfilePreferences = () => {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-        )}
+          </div>}
         
         {/* Added extra space with mt-16 to separate logout button from the sound preference */}
-        <div className="pt-6 border-t mt-16">
-          <Button 
-            variant="destructive" 
-            onClick={handleLogout} 
-            className="w-full"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <LogOut className="h-4 w-4 mr-2" />
-            )}
+        <div className="pt-6 border-t mt-16 py-[25px]">
+          <Button variant="destructive" onClick={handleLogout} className="w-full" disabled={isLoading}>
+            {isLoading ? <Loader2Icon className="h-4 w-4 mr-2 animate-spin" /> : <LogOut className="h-4 w-4 mr-2" />}
             Logout
           </Button>
         </div>
       </CardContent>
-    </Card>
-  );
+    </Card>;
 };
-
 export default ProfilePreferences;
