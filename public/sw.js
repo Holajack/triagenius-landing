@@ -1,5 +1,5 @@
 // Cache version identifier - change this when files are updated
-const CACHE_NAME = 'triage-system-v9'; // Increment version to trigger updates
+const CACHE_NAME = 'triage-system-v10'; // Incremented version
 const APP_NAME = 'The Triage System';
 
 // Dynamic version control based on the last deployment time
@@ -39,7 +39,7 @@ const CRITICAL_ROUTES = [
 
 // Install event - cache static resources with better error handling
 self.addEventListener('install', event => {
-  console.log(`Installing service worker v9 (${DEPLOYMENT_TIMESTAMP}) - with improved update system`);
+  console.log(`Installing service worker v10 (${DEPLOYMENT_TIMESTAMP}) - with Supabase user update system`);
   
   // Force the waiting service worker to become the active service worker
   self.skipWaiting();
@@ -96,7 +96,7 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Improved fetch strategy with cache versioning support and frequent revalidation
+// Improved fetch strategy with user-based caching and authentication awareness
 self.addEventListener('fetch', event => {
   // Enhanced request handling for cross-domain PWA support
   const url = new URL(event.request.url);
@@ -106,17 +106,28 @@ self.addEventListener('fetch', event => {
     return;
   }
   
-  // Check for special update check request from client
-  if (url.pathname === '/check-for-updates') {
+  // Handle special auth-aware update check request
+  if (url.pathname === '/check-for-updates' || url.pathname === '/auth-check-for-updates') {
+    // Extract user info from request if available
+    const userId = url.searchParams.get('userId');
+    const lastLogin = url.searchParams.get('lastLogin');
+    
     event.respondWith(
       new Response(JSON.stringify({
         version: CACHE_NAME,
         timestamp: DEPLOYMENT_TIMESTAMP,
-        updated: true
+        updated: true,
+        userInfo: userId ? { userId, lastChecked: Date.now() } : null
       }), {
         headers: { 'Content-Type': 'application/json' }
       })
     );
+    return;
+  }
+  
+  // Special handling for auth routes - always bypass cache
+  if (url.pathname.includes('/auth') || url.pathname.includes('/token')) {
+    event.respondWith(fetch(event.request));
     return;
   }
   
@@ -236,7 +247,7 @@ self.addEventListener('fetch', event => {
     return;
   }
   
-  // For all other requests, use stale-while-revalidate strategy with shorter max-age
+  // For all other requests, use stale-while-revalidate strategy
   event.respondWith(
     caches.open(CACHE_NAME).then(cache => {
       return cache.match(event.request).then(cachedResponse => {
@@ -263,6 +274,112 @@ self.addEventListener('fetch', event => {
       });
     })
   );
+});
+
+// Enhanced message handling for user-based updates
+self.addEventListener('message', event => {
+  if (!event.data) return;
+  
+  // Handle user authentication events for update checks
+  if (event.data.type === 'USER_AUTHENTICATED') {
+    const { userId, lastLogin, userInfo } = event.data;
+    
+    console.log('User authenticated, checking for updates', { userId, lastLogin });
+    
+    // Store user info in IndexedDB or cache for later update checks
+    if (userId) {
+      caches.open('user-metadata').then(cache => {
+        cache.put(
+          new Request(`/user-metadata/${userId}`), 
+          new Response(JSON.stringify({ 
+            userId, 
+            lastLogin, 
+            userInfo,
+            lastChecked: Date.now() 
+          }))
+        );
+      });
+      
+      // After storing user data, check if app needs to be updated
+      // Compare app version with last login timestamp
+      if (lastLogin && parseInt(lastLogin) < DEPLOYMENT_TIMESTAMP) {
+        console.log('App update needed after user login - newer version available');
+        
+        // Notify clients about update needed
+        self.clients.matchAll().then(clients => {
+          clients.forEach(client => {
+            client.postMessage({
+              type: 'UPDATE_AVAILABLE_AFTER_LOGIN',
+              version: CACHE_NAME,
+              timestamp: DEPLOYMENT_TIMESTAMP,
+              userId
+            });
+          });
+        });
+      }
+    }
+    
+    // Send confirmation back to client
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({
+        type: 'USER_AUTH_PROCESSED',
+        timestamp: Date.now()
+      });
+    }
+  }
+  
+  // Handle standard update messages
+  if (event.data.type === 'SKIP_WAITING') {
+    console.log('Skip waiting message received, activating new worker immediately');
+    self.skipWaiting();
+  }
+  
+  if (event.data.type === 'GET_VERSION') {
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({
+        version: CACHE_NAME,
+        timestamp: DEPLOYMENT_TIMESTAMP
+      });
+    }
+  }
+  
+  if (event.data.type === 'CHECK_UPDATE') {
+    // Check if there's user info to include in the response
+    const userId = event.data.userId;
+    
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({
+        version: CACHE_NAME,
+        timestamp: DEPLOYMENT_TIMESTAMP,
+        updateCheckResult: 'completed',
+        userAware: !!userId
+      });
+    }
+  }
+  
+  if (event.data.type === 'FORCE_UPDATE') {
+    console.log('Force update requested by client');
+    // Force activation and notify clients
+    self.skipWaiting();
+    self.clients.claim().then(() => {
+      // Notify all clients about the forced update
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'UPDATE_ACTIVATED',
+            timestamp: Date.now()
+          });
+        });
+      });
+    });
+    
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({
+        updated: true,
+        timestamp: Date.now()
+      });
+    }
+  }
 });
 
 // Handle background sync for focus session data
@@ -405,66 +522,4 @@ self.addEventListener('notificationclick', event => {
       }
     })
   );
-});
-
-// Enhanced message handling for communication with the main thread
-self.addEventListener('message', event => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    console.log('Skip waiting message received, activating new worker immediately');
-    self.skipWaiting();
-  }
-  
-  if (event.data && event.data.type === 'GET_VERSION') {
-    if (event.ports && event.ports[0]) {
-      event.ports[0].postMessage({
-        version: CACHE_NAME,
-        timestamp: DEPLOYMENT_TIMESTAMP
-      });
-    }
-  }
-  
-  if (event.data && event.data.type === 'CHECK_UPDATE') {
-    if (event.ports && event.ports[0]) {
-      event.ports[0].postMessage({
-        version: CACHE_NAME,
-        timestamp: DEPLOYMENT_TIMESTAMP,
-        updateCheckResult: 'completed'
-      });
-    }
-  }
-  
-  if (event.data && event.data.type === 'FORCE_UPDATE') {
-    console.log('Force update requested by client');
-    // Force activation and notify clients
-    self.skipWaiting();
-    self.clients.claim().then(() => {
-      // Notify all clients about the forced update
-      self.clients.matchAll().then(clients => {
-        clients.forEach(client => {
-          client.postMessage({
-            type: 'UPDATE_ACTIVATED',
-            timestamp: Date.now()
-          });
-        });
-      });
-    });
-    
-    if (event.ports && event.ports[0]) {
-      event.ports[0].postMessage({
-        updated: true,
-        timestamp: Date.now()
-      });
-    }
-  }
-  
-  if (event.data && event.data.type === 'OPTIMIZE_FOCUS_SESSION') {
-    console.log('PWA Focus Session Optimization Requested');
-    // Report back success
-    if (event.ports && event.ports[0]) {
-      event.ports[0].postMessage({
-        optimized: true,
-        timestamp: Date.now()
-      });
-    }
-  }
 });

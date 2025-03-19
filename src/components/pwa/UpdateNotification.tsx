@@ -3,6 +3,12 @@ import React, { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { RotateCw, Download, RefreshCw, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useUser } from "@/hooks/use-user";
+import { supabase } from "@/integrations/supabase/client";
+import { 
+  checkForAuthAwareUpdates, 
+  notifyServiceWorkerAboutUser 
+} from "@/components/ServiceWorker";
 
 interface UpdateInfo {
   available: boolean;
@@ -12,6 +18,7 @@ interface UpdateInfo {
 
 export function UpdateNotification() {
   const { toast } = useToast();
+  const { user } = useUser();
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo>({ available: false });
   const [isUpdating, setIsUpdating] = useState(false);
   const [lastCheckTime, setLastCheckTime] = useState<number>(Date.now());
@@ -44,6 +51,18 @@ export function UpdateNotification() {
         
         // Show toast notification for update with native-like appearance
         showUpdateNotification();
+      }
+      
+      // Handle new message type for user-based updates
+      if (event.data && event.data.type === 'UPDATE_AVAILABLE_AFTER_LOGIN') {
+        setUpdateInfo({
+          available: true,
+          version: event.data.version,
+          timestamp: event.data.timestamp
+        });
+        
+        // Show specific update notification for post-login updates
+        showUpdateNotification(true);
       }
       
       // Handle activated update message
@@ -107,17 +126,77 @@ export function UpdateNotification() {
     };
   }, [isPWA, lastCheckTime]);
   
+  // Effect for handling user authentication state
+  useEffect(() => {
+    if (user && user.id) {
+      handleUserAuthenticated(user);
+    }
+  }, [user]);
+  
+  // Handle authenticated user and check for updates
+  const handleUserAuthenticated = async (userData: any) => {
+    if (!userData || !userData.id) return;
+    
+    console.log('User authenticated, checking for user-specific updates');
+    
+    try {
+      // Notify service worker about authenticated user
+      await notifyServiceWorkerAboutUser({
+        id: userData.id,
+        email: userData.email,
+        lastLogin: localStorage.getItem(`last-login-${userData.id}`) || Date.now().toString()
+      });
+      
+      // Check for auth-aware updates
+      const updateCheck = await checkForAuthAwareUpdates(userData.id);
+      
+      if (updateCheck.updateAvailable) {
+        setUpdateInfo({
+          available: true,
+          version: updateCheck.version,
+          timestamp: updateCheck.timestamp
+        });
+        
+        // Show specific notification for user-based updates
+        showUpdateNotification(true);
+      }
+      
+      // Store current login time for future reference
+      localStorage.setItem(`last-login-${userData.id}`, Date.now().toString());
+    } catch (error) {
+      console.error('Error checking for user-specific updates:', error);
+    }
+  };
+  
+  // Listen for Supabase auth changes
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        handleUserAuthenticated(session.user);
+      }
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+  
   const checkForUpdate = async (isInitialCheck = false) => {
     if (!navigator.serviceWorker.controller) return;
     
     try {
       // First, try direct fetch to check if sw.js has changed
-      const swUrl = `${window.location.origin}/sw.js?cacheBust=${Date.now()}`;
+      const queryParams = new URLSearchParams({
+        cacheBust: Date.now().toString(),
+        ...(user?.id ? { userId: user.id } : {})
+      }).toString();
+      
+      const swUrl = `${window.location.origin}/check-for-updates?${queryParams}`;
       
       // For PWAs or initial checks, use direct network check
       if (isPWA || isInitialCheck) {
         try {
-          const response = await fetch('/check-for-updates', { cache: 'no-store' });
+          const response = await fetch(swUrl, { cache: 'no-store' });
           if (response.ok) {
             const data = await response.json();
             
@@ -125,8 +204,13 @@ export function UpdateNotification() {
             const storedVersion = localStorage.getItem('pwa-version');
             const storedTimestamp = localStorage.getItem('pwa-timestamp');
             
+            // Also check user-specific stored version if user is logged in
+            const userSpecificVersion = user?.id ? 
+              localStorage.getItem(`pwa-version-${user.id}`) : null;
+            
             if ((storedVersion && storedVersion !== data.version) || 
-                (storedTimestamp && parseInt(storedTimestamp) < data.timestamp)) {
+                (storedTimestamp && parseInt(storedTimestamp) < data.timestamp) ||
+                (userSpecificVersion && userSpecificVersion !== data.version)) {
               setUpdateInfo({
                 available: true,
                 version: data.version,
@@ -139,6 +223,11 @@ export function UpdateNotification() {
               // Update stored values
               localStorage.setItem('pwa-version', data.version);
               localStorage.setItem('pwa-timestamp', data.timestamp.toString());
+              
+              // Also update user-specific version if user is logged in
+              if (user?.id) {
+                localStorage.setItem(`pwa-version-${user.id}`, data.version);
+              }
             }
           }
         } catch (error) {
@@ -165,8 +254,13 @@ export function UpdateNotification() {
         const storedVersion = localStorage.getItem('pwa-version');
         const storedTimestamp = localStorage.getItem('pwa-timestamp');
         
+        // Also check user-specific stored version if user is logged in
+        const userSpecificVersion = user?.id ? 
+          localStorage.getItem(`pwa-version-${user.id}`) : null;
+        
         if ((storedVersion && storedVersion !== event.data.version) || 
-            (storedTimestamp && parseInt(storedTimestamp) < event.data.timestamp)) {
+            (storedTimestamp && parseInt(storedTimestamp) < event.data.timestamp) ||
+            (userSpecificVersion && userSpecificVersion !== event.data.version)) {
           setUpdateInfo({
             available: true,
             version: event.data.version,
@@ -179,6 +273,11 @@ export function UpdateNotification() {
           // Update stored values
           localStorage.setItem('pwa-version', event.data.version);
           localStorage.setItem('pwa-timestamp', event.data.timestamp.toString());
+          
+          // Also update user-specific version if user is logged in
+          if (user?.id) {
+            localStorage.setItem(`pwa-version-${user.id}`, event.data.version);
+          }
         }
       }
     };
@@ -186,24 +285,31 @@ export function UpdateNotification() {
     // Send the message to check for updates
     if (navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage(
-        { type: 'CHECK_UPDATE' },
+        { 
+          type: 'CHECK_UPDATE',
+          userId: user?.id
+        },
         [messageChannel.port2]
       );
     }
   };
   
-  const showUpdateNotification = () => {
+  const showUpdateNotification = (isUserBased = false) => {
     // Detect domain for more accurate update messaging
     const hostname = window.location.hostname;
     const isProduction = hostname === 'triagenius-landing.lovable.app' || hostname === 'triagenius.lovable.app';
     const isDev = hostname.includes('lovableproject.com');
+    
+    const updateMessage = isUserBased ? 
+      "A new version was released since your last login. Please update to ensure you have the latest features." :
+      "A new version is available. Please update to ensure you have the latest features and improvements.";
     
     // Show different notification style for mobile PWA vs desktop
     if (isMobile && isPWA) {
       // Mobile PWA - native app-like notification
       toast({
         title: "Update Available",
-        description: "A new version is available. Please update to ensure you have the latest features and improvements.",
+        description: updateMessage,
         action: (
           <div className="flex flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0 mt-2">
             <Button 
@@ -232,7 +338,7 @@ export function UpdateNotification() {
       // Desktop or non-PWA - standard notification
       toast({
         title: "Update Available",
-        description: `A new version is available${isProduction ? ' for production' : isDev ? ' on preview' : ''}. Tap to refresh.`,
+        description: `${updateMessage}${isProduction ? ' for production' : isDev ? ' on preview' : ''}. Tap to refresh.`,
         action: (
           <Button 
             onClick={refreshApp}
@@ -291,7 +397,10 @@ export function UpdateNotification() {
         
         // Send the force update message
         navigator.serviceWorker.controller.postMessage(
-          { type: 'FORCE_UPDATE' },
+          { 
+            type: 'FORCE_UPDATE',
+            userId: user?.id 
+          },
           [messageChannel.port2]
         );
         

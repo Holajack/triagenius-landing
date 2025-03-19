@@ -1,4 +1,5 @@
-// Functions to register and manage service worker for PWA functionality
+
+// Functions to register and manage service worker for PWA functionality with Supabase auth awareness
 
 export function register() {
   if ('serviceWorker' in navigator) {
@@ -75,16 +76,25 @@ export function register() {
           console.log('Received skip waiting message, activating new worker');
         }
       }
+      
+      // Listen for user-auth based update needed messages
+      if (event.data && event.data.type === 'UPDATE_AVAILABLE_AFTER_LOGIN') {
+        console.log('Update available after login detected, should prompt user');
+        // Will be handled by the UpdateNotification component
+      }
     });
   }
 }
 
-// Check for service worker updates - improved with cache busting
-function checkForUpdates(registration: ServiceWorkerRegistration) {
+// Check for service worker updates - improved with cache busting and user awareness
+function checkForUpdates(registration: ServiceWorkerRegistration, userId?: string) {
   console.log('Checking for service worker updates...');
   
-  // Add timestamp to bypass cache
-  const cacheBustUrl = `${window.location.origin}/sw.js?cacheBust=${Date.now()}`;
+  // Add timestamp and userId (if available) to bypass cache
+  let cacheBustUrl = `${window.location.origin}/sw.js?cacheBust=${Date.now()}`;
+  if (userId) {
+    cacheBustUrl += `&userId=${userId}`;
+  }
   
   // Force a fresh check by telling browser to ignore cache
   fetch(cacheBustUrl, { cache: 'no-store' })
@@ -98,6 +108,79 @@ function checkForUpdates(registration: ServiceWorkerRegistration) {
     .catch(err => {
       console.error('Error checking for service worker updates:', err);
     });
+}
+
+// Notify service worker about user authentication
+export function notifyServiceWorkerAboutUser(userData: { id: string, lastLogin?: string, email?: string | null }) {
+  if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+    return Promise.resolve(false);
+  }
+  
+  return new Promise<boolean>((resolve) => {
+    try {
+      const messageChannel = new MessageChannel();
+      
+      // Set up handler for response
+      messageChannel.port1.onmessage = (event) => {
+        if (event.data && event.data.type === 'USER_AUTH_PROCESSED') {
+          console.log('Service worker processed user authentication');
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      };
+      
+      // Send user data to service worker
+      navigator.serviceWorker.controller.postMessage({
+        type: 'USER_AUTHENTICATED',
+        userId: userData.id,
+        lastLogin: userData.lastLogin || Date.now().toString(),
+        userInfo: {
+          email: userData.email
+        }
+      }, [messageChannel.port2]);
+      
+      // Set a timeout in case the service worker doesn't respond
+      setTimeout(() => resolve(false), 3000);
+    } catch (error) {
+      console.error('Error notifying service worker about user:', error);
+      resolve(false);
+    }
+  });
+}
+
+// Check for auth-aware updates - call this after a user logs in
+export async function checkForAuthAwareUpdates(userId: string) {
+  try {
+    // Direct API call to check for updates with user context
+    const response = await fetch(`/auth-check-for-updates?userId=${userId}&t=${Date.now()}`, { 
+      cache: 'no-store'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      
+      // Store version info in localStorage for this user
+      localStorage.setItem(`pwa-version-${userId}`, data.version);
+      localStorage.setItem(`pwa-timestamp-${userId}`, data.timestamp);
+      
+      // Compare with deployment timestamp to see if update is needed
+      const lastVersionSeen = localStorage.getItem(`last-version-seen-${userId}`);
+      if (!lastVersionSeen || lastVersionSeen !== data.version) {
+        console.log('Update available after user authentication');
+        return {
+          updateAvailable: true,
+          version: data.version,
+          timestamp: data.timestamp
+        };
+      }
+    }
+    
+    return { updateAvailable: false };
+  } catch (error) {
+    console.error('Error checking for auth-aware updates:', error);
+    return { updateAvailable: false, error };
+  }
 }
 
 // Register background sync with proper type checking
