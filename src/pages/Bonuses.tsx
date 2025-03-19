@@ -31,13 +31,11 @@ const Bonuses = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="container mx-auto px-4">
-        <PageHeader
-          title="Bonuses"
-          subtitle="Learning boosters and study tools"
-          data-walkthrough="bonuses-header"
-        />
-      </div>
+      <PageHeader
+        title="Bonus Features"
+        subtitle="Explore additional tools and resources"
+        data-walkthrough="bonuses-header"
+      />
       
       {/* Main content */}
       <div className="container mx-auto px-4 py-8 pb-24">
