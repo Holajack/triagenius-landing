@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import PageHeader from '@/components/common/PageHeader';
@@ -9,7 +10,7 @@ import CommunityUserList from '@/components/community/CommunityUserList';
 import CommunityWalkthrough from '@/components/walkthrough/CommunityWalkthrough';
 
 const Community = () => {
-  const [activeTab, setActiveTab] = useState("study-rooms");
+  const [activeTab, setActiveTab] = useState("users");
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -21,20 +22,20 @@ const Community = () => {
 
       {/* Main content */}
       <div className="container mx-auto px-4 py-8 pb-24">
-        <Tabs defaultValue="study-rooms" className="w-full" onValueChange={setActiveTab}>
+        <Tabs defaultValue="users" className="w-full" onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="study-rooms" data-walkthrough="study-rooms">Study Rooms</TabsTrigger>
+            <TabsTrigger value="users" data-walkthrough="users">Users</TabsTrigger>
             <TabsTrigger value="messages" data-walkthrough="message-inbox">Messages</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="study-rooms" data-walkthrough="study-rooms">Study Rooms</TabsTrigger>
           </TabsList>
-          <TabsContent value="study-rooms" className="space-y-4 mt-4">
-            <StudyRooms />
+          <TabsContent value="users" className="space-y-4 mt-4">
+            <CommunityUserList />
           </TabsContent>
           <TabsContent value="messages" className="space-y-4 mt-4">
             <MessageInbox />
           </TabsContent>
-          <TabsContent value="users" className="space-y-4 mt-4">
-            <CommunityUserList />
+          <TabsContent value="study-rooms" className="space-y-4 mt-4">
+            <StudyRooms />
           </TabsContent>
         </Tabs>
       </div>

@@ -15,10 +15,10 @@ const CommunityWalkthrough = () => {
       placement: 'bottom',
     },
     {
-      id: 'study-rooms',
-      title: 'Study Rooms',
-      description: "Join or create virtual study rooms to focus together with others.",
-      targetSelector: '[data-walkthrough="study-rooms"]',
+      id: 'users',
+      title: 'Users',
+      description: "Find and connect with other users in the community.",
+      targetSelector: '[data-walkthrough="users"]',
       placement: isMobile ? 'bottom' : 'right',
     },
     {
@@ -26,6 +26,13 @@ const CommunityWalkthrough = () => {
       title: 'Messages',
       description: "Check your messages and connect with friends in the community.",
       targetSelector: '[data-walkthrough="message-inbox"]',
+      placement: 'top',
+    },
+    {
+      id: 'study-rooms',
+      title: 'Study Rooms',
+      description: "Join or create virtual study rooms to focus together with others.",
+      targetSelector: '[data-walkthrough="study-rooms"]',
       placement: 'top',
     },
     {
