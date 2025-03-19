@@ -17,7 +17,7 @@ const Community = () => {
       <div className="container mx-auto px-4">
         <PageHeader
           title="Community"
-          subtitle="Connect and collaborate with fellow learners"
+          subtitle="Connect with colleagues and study partners"
           data-walkthrough="community-header"
         />
       </div>

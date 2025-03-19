@@ -33,8 +33,8 @@ const Bonuses = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto px-4">
         <PageHeader
-          title="Bonus Features"
-          subtitle="Explore additional tools and resources"
+          title="Bonuses"
+          subtitle="Learning boosters and study tools"
           data-walkthrough="bonuses-header"
         />
       </div>
