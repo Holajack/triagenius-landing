@@ -52,19 +52,23 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             .single();
 
           if (!error && data?.preferences) {
-            const { environment, theme: userTheme } = data.preferences;
+            // Type assertion to help TypeScript understand the structure
+            const preferences = data.preferences as { 
+              environment?: string; 
+              theme?: string;
+            };
             
             // Apply saved environment if available
-            if (environment) {
-              setCurrentEnvironment(environment);
-              applyEnvironmentTheme(environment);
-              localStorage.setItem('environment', environment);
+            if (preferences.environment) {
+              setCurrentEnvironment(preferences.environment);
+              applyEnvironmentTheme(preferences.environment);
+              localStorage.setItem('environment', preferences.environment);
             }
             
             // Apply saved theme if available
-            if (userTheme) {
-              setTheme(userTheme as ThemeMode);
-              localStorage.setItem('theme', userTheme);
+            if (preferences.theme) {
+              setTheme(preferences.theme as ThemeMode);
+              localStorage.setItem('theme', preferences.theme);
             }
           }
         } catch (err) {
