@@ -97,7 +97,7 @@ const ProfilePreferences = () => {
       setIsLoading(false);
     }
   };
-  return <Card>
+  return <Card className="my-0 py-0">
       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle>Preferences</CardTitle>
@@ -121,7 +121,7 @@ const ProfilePreferences = () => {
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 my-0 py-[58px]">
         {contextLoading && <div className="w-full flex justify-center py-4">
             <Loader2Icon className="h-6 w-6 animate-spin text-primary" />
           </div>}
@@ -214,8 +214,8 @@ const ProfilePreferences = () => {
       </CardContent>
       
       {/* Moved logout button to a separate CardFooter */}
-      <CardFooter className="border-t pt-6 mt-6">
-        <Button variant="destructive" onClick={handleLogout} disabled={isLoading} className="w-full py-[14px] px-0 my-[47px]">
+      <CardFooter className="border-t pt-6 mt-6 mx-0 px-[15px] my-[3px] py-[6px]">
+        <Button variant="destructive" onClick={handleLogout} disabled={isLoading} className="w-full px-0 my-0 py-0">
           {isLoading ? <Loader2Icon className="h-4 w-4 mr-2 animate-spin" /> : <LogOut className="h-4 w-4 mr-2" />}
           Logout
         </Button>
