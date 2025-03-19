@@ -1,6 +1,5 @@
-
 // Cache version identifier - change this when files are updated
-const CACHE_NAME = 'triage-system-v7'; // Increment version to trigger updates
+const CACHE_NAME = 'triage-system-v8'; // Increment version to trigger updates
 const APP_NAME = 'The Triage System';
 
 // Detect environment domain for proper caching and navigation
@@ -35,10 +34,12 @@ const CRITICAL_ROUTES = [
   '/dashboard'
 ];
 
-// Install event - cache static resources with error handling
+// Install event - cache static resources with better error handling
 self.addEventListener('install', event => {
-  console.log('Installing service worker v7 - with enhanced update notification');
-  // Don't force skipWaiting here to allow users to control updates
+  console.log('Installing service worker v8 - with improved update system');
+  
+  // Force the waiting service worker to become the active service worker
+  self.skipWaiting();
   
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -54,40 +55,45 @@ self.addEventListener('install', event => {
   );
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up old caches with improved client notification
 self.addEventListener('activate', event => {
+  console.log('Service Worker: Activated with version', CACHE_NAME);
   const cacheWhitelist = [CACHE_NAME];
   
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            console.log('Service Worker: Deleting old cache', cacheName);
-            return caches.delete(cacheName);
-          }
-          return null;
-        })
-      );
-    }).then(() => {
-      console.log('Service Worker: Now ready to handle fetches!');
+    Promise.all([
+      // Clean up old caches
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            if (cacheWhitelist.indexOf(cacheName) === -1) {
+              console.log('Service Worker: Deleting old cache', cacheName);
+              return caches.delete(cacheName);
+            }
+            return null;
+          })
+        );
+      }),
       
-      // Notify clients about the update
+      // Take control of all clients immediately without waiting for reload
+      self.clients.claim(),
+      
+      // After claiming clients, notify them about the update
       self.clients.matchAll().then(clients => {
-        clients.forEach(client => {
-          client.postMessage({
+        return Promise.all(clients.map(client => {
+          // Send update notification to each client
+          return client.postMessage({
             type: 'UPDATE_AVAILABLE',
-            version: CACHE_NAME
+            version: CACHE_NAME,
+            timestamp: new Date().toISOString()
           });
-        });
-      });
-      
-      return self.clients.claim(); // Take control immediately
-    })
+        }));
+      })
+    ])
   );
 });
 
-// Improved fetch strategy for PWA with focus on performance and cross-domain support
+// Improved fetch strategy with cache versioning support
 self.addEventListener('fetch', event => {
   // Enhanced request handling for cross-domain PWA support
   const url = new URL(event.request.url);
@@ -359,21 +365,14 @@ self.addEventListener('notificationclick', event => {
   );
 });
 
-// Message handling for communication with the main thread
+// Enhanced message handling for communication with the main thread
 self.addEventListener('message', event => {
-  if (event.data.type === 'SKIP_WAITING') {
-    console.log('Skip waiting message received, activating new worker');
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log('Skip waiting message received, activating new worker immediately');
     self.skipWaiting();
   }
   
-  if (event.data.type === 'GET_VERSION') {
-    event.ports[0].postMessage({
-      version: CACHE_NAME
-    });
-  }
-  
-  // Handle update check requests
-  if (event.data.type === 'CHECK_UPDATE') {
+  if (event.data && event.data.type === 'GET_VERSION') {
     if (event.ports && event.ports[0]) {
       event.ports[0].postMessage({
         version: CACHE_NAME,
@@ -382,8 +381,17 @@ self.addEventListener('message', event => {
     }
   }
   
-  // Handle focus session optimizations
-  if (event.data.type === 'OPTIMIZE_FOCUS_SESSION') {
+  if (event.data && event.data.type === 'CHECK_UPDATE') {
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({
+        version: CACHE_NAME,
+        timestamp: Date.now(),
+        updateCheckResult: 'completed'
+      });
+    }
+  }
+  
+  if (event.data && event.data.type === 'OPTIMIZE_FOCUS_SESSION') {
     console.log('PWA Focus Session Optimization Requested');
     // Report back success
     if (event.ports && event.ports[0]) {

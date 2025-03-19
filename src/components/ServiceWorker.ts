@@ -10,6 +10,9 @@ export function register() {
         
         console.log('ServiceWorker registration successful with scope:', registration.scope);
         
+        // Check for updates immediately after registration
+        checkForUpdates(registration);
+        
         // Handle updates
         registration.onupdatefound = () => {
           const installingWorker = registration.installing;
@@ -35,6 +38,11 @@ export function register() {
             }
           };
         };
+        
+        // Set up periodic update checks (every 30 minutes)
+        setInterval(() => {
+          checkForUpdates(registration);
+        }, 30 * 60 * 1000);
         
         // Enable background sync if supported
         if ('SyncManager' in window) {
@@ -70,6 +78,16 @@ export function register() {
       }
     });
   }
+}
+
+// Check for service worker updates
+function checkForUpdates(registration: ServiceWorkerRegistration) {
+  console.log('Checking for service worker updates...');
+  
+  // Bypass cache when checking for updates
+  registration.update().catch(err => {
+    console.error('Error checking for service worker updates:', err);
+  });
 }
 
 // Register background sync with proper type checking
