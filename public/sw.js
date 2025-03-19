@@ -1,6 +1,9 @@
 // Cache version identifier - change this when files are updated
-const CACHE_NAME = 'triage-system-v8'; // Increment version to trigger updates
+const CACHE_NAME = 'triage-system-v9'; // Increment version to trigger updates
 const APP_NAME = 'The Triage System';
+
+// Dynamic version control based on the last deployment time
+const DEPLOYMENT_TIMESTAMP = Date.now();
 
 // Detect environment domain for proper caching and navigation
 const HOST_DOMAINS = [
@@ -36,7 +39,7 @@ const CRITICAL_ROUTES = [
 
 // Install event - cache static resources with better error handling
 self.addEventListener('install', event => {
-  console.log('Installing service worker v8 - with improved update system');
+  console.log(`Installing service worker v9 (${DEPLOYMENT_TIMESTAMP}) - with improved update system`);
   
   // Force the waiting service worker to become the active service worker
   self.skipWaiting();
@@ -85,7 +88,7 @@ self.addEventListener('activate', event => {
           return client.postMessage({
             type: 'UPDATE_AVAILABLE',
             version: CACHE_NAME,
-            timestamp: new Date().toISOString()
+            timestamp: DEPLOYMENT_TIMESTAMP
           });
         }));
       })
@@ -93,13 +96,27 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Improved fetch strategy with cache versioning support
+// Improved fetch strategy with cache versioning support and frequent revalidation
 self.addEventListener('fetch', event => {
   // Enhanced request handling for cross-domain PWA support
   const url = new URL(event.request.url);
   
   // Skip non-GET requests
   if (event.request.method !== 'GET') {
+    return;
+  }
+  
+  // Check for special update check request from client
+  if (url.pathname === '/check-for-updates') {
+    event.respondWith(
+      new Response(JSON.stringify({
+        version: CACHE_NAME,
+        timestamp: DEPLOYMENT_TIMESTAMP,
+        updated: true
+      }), {
+        headers: { 'Content-Type': 'application/json' }
+      })
+    );
     return;
   }
   
@@ -114,11 +131,34 @@ self.addEventListener('fetch', event => {
     return;
   }
   
+  // Special handling for HTML pages - always try network first to get latest version
+  if (event.request.mode === 'navigate' || 
+      (event.request.method === 'GET' && 
+       event.request.headers.get('accept')?.includes('text/html'))) {
+    
+    event.respondWith(
+      fetch(event.request).then(response => {
+        // Cache the fresh response
+        const responseToCache = response.clone();
+        caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, responseToCache);
+        });
+        return response;
+      }).catch(() => {
+        // If network fails, try cache
+        return caches.match(event.request).then(cachedResponse => {
+          return cachedResponse || caches.match('/');
+        });
+      })
+    );
+    return;
+  }
+  
   // Special handling for focus session and related routes
   const isCriticalRoute = CRITICAL_ROUTES.some(route => url.pathname.includes(route));
   
   // For critical routes like focus session, use network-first with fast fallback
-  if (isCriticalRoute || event.request.mode === 'navigate') {
+  if (isCriticalRoute) {
     event.respondWith(
       Promise.race([
         // Try network first - with 2s timeout
@@ -196,27 +236,29 @@ self.addEventListener('fetch', event => {
     return;
   }
   
-  // For all other requests, use stale-while-revalidate strategy
+  // For all other requests, use stale-while-revalidate strategy with shorter max-age
   event.respondWith(
     caches.open(CACHE_NAME).then(cache => {
       return cache.match(event.request).then(cachedResponse => {
-        // Clone the response so we can return it immediately
+        // Always try network fetch to get fresh content
         const fetchPromise = fetch(event.request)
           .then(networkResponse => {
             if (networkResponse.ok) {
+              // Always update cache with latest response
               cache.put(event.request, networkResponse.clone());
             }
             return networkResponse;
           })
           .catch(error => {
             console.log('Fetch failed, falling back to cache:', error);
+            // Use cached response as fallback
             return cachedResponse || new Response('Offline content not available', {
               status: 503,
               headers: { 'Content-Type': 'text/plain' }
             });
           });
         
-        // Return the cached response immediately if we have it
+        // Return cached response immediately if available, but still update cache in background
         return cachedResponse || fetchPromise;
       });
     })
@@ -376,7 +418,7 @@ self.addEventListener('message', event => {
     if (event.ports && event.ports[0]) {
       event.ports[0].postMessage({
         version: CACHE_NAME,
-        timestamp: Date.now()
+        timestamp: DEPLOYMENT_TIMESTAMP
       });
     }
   }
@@ -385,8 +427,32 @@ self.addEventListener('message', event => {
     if (event.ports && event.ports[0]) {
       event.ports[0].postMessage({
         version: CACHE_NAME,
-        timestamp: Date.now(),
+        timestamp: DEPLOYMENT_TIMESTAMP,
         updateCheckResult: 'completed'
+      });
+    }
+  }
+  
+  if (event.data && event.data.type === 'FORCE_UPDATE') {
+    console.log('Force update requested by client');
+    // Force activation and notify clients
+    self.skipWaiting();
+    self.clients.claim().then(() => {
+      // Notify all clients about the forced update
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'UPDATE_ACTIVATED',
+            timestamp: Date.now()
+          });
+        });
+      });
+    });
+    
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({
+        updated: true,
+        timestamp: Date.now()
       });
     }
   }

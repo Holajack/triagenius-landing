@@ -1,4 +1,3 @@
-
 // Functions to register and manage service worker for PWA functionality
 
 export function register() {
@@ -39,10 +38,10 @@ export function register() {
           };
         };
         
-        // Set up periodic update checks (every 30 minutes)
+        // Set up more frequent update checks (every 5 minutes instead of 30)
         setInterval(() => {
           checkForUpdates(registration);
-        }, 30 * 60 * 1000);
+        }, 5 * 60 * 1000);
         
         // Enable background sync if supported
         if ('SyncManager' in window) {
@@ -80,14 +79,25 @@ export function register() {
   }
 }
 
-// Check for service worker updates
+// Check for service worker updates - improved with cache busting
 function checkForUpdates(registration: ServiceWorkerRegistration) {
   console.log('Checking for service worker updates...');
   
-  // Bypass cache when checking for updates
-  registration.update().catch(err => {
-    console.error('Error checking for service worker updates:', err);
-  });
+  // Add timestamp to bypass cache
+  const cacheBustUrl = `${window.location.origin}/sw.js?cacheBust=${Date.now()}`;
+  
+  // Force a fresh check by telling browser to ignore cache
+  fetch(cacheBustUrl, { cache: 'no-store' })
+    .then(() => {
+      // After fetching fresh service worker, update registration
+      return registration.update();
+    })
+    .then(() => {
+      console.log('Service worker update check completed');
+    })
+    .catch(err => {
+      console.error('Error checking for service worker updates:', err);
+    });
 }
 
 // Register background sync with proper type checking
