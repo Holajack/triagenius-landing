@@ -199,11 +199,19 @@ const Settings = () => {
       </div>
       
       <Tabs defaultValue="notifications" className="mb-24">
-        <TabsList className="mb-4 flex w-full overflow-x-auto pb-1">
-          <TabsTrigger value="notifications" className="flex-1 min-w-[100px]">Notifications</TabsTrigger>
-          <TabsTrigger value="dnd" className="flex-1 min-w-[100px]">Do Not Disturb</TabsTrigger>
-          <TabsTrigger value="display" className="flex-1 min-w-[100px]">Display</TabsTrigger>
-          <TabsTrigger value="sound" className="flex-1 min-w-[100px]">Sound</TabsTrigger>
+        <TabsList className="grid grid-cols-4 w-full mb-4">
+          <TabsTrigger value="notifications" className="text-xs sm:text-sm px-1 sm:px-3">
+            <span className="truncate">Notifications</span>
+          </TabsTrigger>
+          <TabsTrigger value="dnd" className="text-xs sm:text-sm px-1 sm:px-3">
+            <span className="truncate">Do Not Disturb</span>
+          </TabsTrigger>
+          <TabsTrigger value="display" className="text-xs sm:text-sm px-1 sm:px-3">
+            <span className="truncate">Display</span>
+          </TabsTrigger>
+          <TabsTrigger value="sound" className="text-xs sm:text-sm px-1 sm:px-3">
+            <span className="truncate">Sound</span>
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="notifications" className="space-y-4">
