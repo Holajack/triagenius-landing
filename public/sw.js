@@ -1,6 +1,6 @@
 
 // Cache version identifier - change this when files are updated
-const CACHE_NAME = 'triage-system-v6';
+const CACHE_NAME = 'triage-system-v7'; // Increment version to trigger updates
 const APP_NAME = 'The Triage System';
 
 // Detect environment domain for proper caching and navigation
@@ -37,8 +37,8 @@ const CRITICAL_ROUTES = [
 
 // Install event - cache static resources with error handling
 self.addEventListener('install', event => {
-  console.log('Installing service worker v6 - with cross-domain support');
-  self.skipWaiting(); // Force activation on install
+  console.log('Installing service worker v7 - with enhanced update notification');
+  // Don't force skipWaiting here to allow users to control updates
   
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -362,6 +362,7 @@ self.addEventListener('notificationclick', event => {
 // Message handling for communication with the main thread
 self.addEventListener('message', event => {
   if (event.data.type === 'SKIP_WAITING') {
+    console.log('Skip waiting message received, activating new worker');
     self.skipWaiting();
   }
   
@@ -371,6 +372,16 @@ self.addEventListener('message', event => {
     });
   }
   
+  // Handle update check requests
+  if (event.data.type === 'CHECK_UPDATE') {
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({
+        version: CACHE_NAME,
+        timestamp: Date.now()
+      });
+    }
+  }
+  
   // Handle focus session optimizations
   if (event.data.type === 'OPTIMIZE_FOCUS_SESSION') {
     console.log('PWA Focus Session Optimization Requested');
@@ -378,16 +389,6 @@ self.addEventListener('message', event => {
     if (event.ports && event.ports[0]) {
       event.ports[0].postMessage({
         optimized: true,
-        timestamp: Date.now()
-      });
-    }
-  }
-  
-  // Handle update check requests
-  if (event.data.type === 'CHECK_UPDATE') {
-    if (event.ports && event.ports[0]) {
-      event.ports[0].postMessage({
-        version: CACHE_NAME,
         timestamp: Date.now()
       });
     }

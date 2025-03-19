@@ -21,9 +21,12 @@ export function register() {
                 // At this point, the updated precached content has been fetched
                 console.log('New content is available; please refresh.');
                 
-                // Show update notification to the user
-                if (window.confirm('New version available! Reload to update?')) {
-                  window.location.reload();
+                // Notify all clients about the update via the UpdateNotification component
+                if (navigator.serviceWorker.controller) {
+                  navigator.serviceWorker.controller.postMessage({
+                    type: 'UPDATE_AVAILABLE',
+                    version: new Date().toISOString() // Use timestamp as version
+                  });
                 }
               } else {
                 // At this point, everything has been precached.
@@ -53,7 +56,18 @@ export function register() {
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (refreshing) return;
       refreshing = true;
-      window.location.reload();
+      
+      // We'll let the UpdateNotification component handle the reload more gracefully
+      console.log('New service worker controller, page will reload shortly');
+    });
+    
+    // Listen for SKIP_WAITING messages from the UI
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'SKIP_WAITING') {
+        if (navigator.serviceWorker.controller) {
+          console.log('Received skip waiting message, activating new worker');
+        }
+      }
     });
   }
 }

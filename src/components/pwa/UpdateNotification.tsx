@@ -1,7 +1,9 @@
 
 import React, { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { RotateCw } from "lucide-react";
+import { RotateCw, Download, RefreshCw, CheckCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Toast } from "@/components/ui/toast";
 
 interface UpdateInfo {
   available: boolean;
@@ -11,11 +13,15 @@ interface UpdateInfo {
 export function UpdateNotification() {
   const { toast } = useToast();
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo>({ available: false });
+  const [isUpdating, setIsUpdating] = useState(false);
   
   // Enhanced PWA detection
   const isPWA = localStorage.getItem('isPWA') === 'true' || 
                 window.matchMedia('(display-mode: standalone)').matches ||
                 (window.navigator as any).standalone === true;
+  
+  // Check if on a mobile device
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   
   useEffect(() => {
     if (!isPWA || !('serviceWorker' in navigator)) return;
@@ -31,21 +37,8 @@ export function UpdateNotification() {
           version: event.data.version
         });
         
-        // Show toast notification for update
-        toast({
-          title: "Update Available",
-          description: "A new version is available. Tap to refresh.",
-          action: (
-            <button 
-              onClick={refreshApp}
-              className="inline-flex items-center justify-center rounded-md border bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              <RotateCw className="h-4 w-4 mr-1" />
-              Update
-            </button>
-          ),
-          duration: 10000, // 10 seconds
-        });
+        // Show toast notification for update with native-like appearance
+        showUpdateNotification();
       }
     };
     
@@ -82,25 +75,8 @@ export function UpdateNotification() {
               version: event.data.version
             });
             
-            // Detect domain for more accurate update messaging
-            const hostname = window.location.hostname;
-            const isProduction = hostname === 'triagenius-landing.lovable.app' || hostname === 'triagenius.lovable.app';
-            const isDev = hostname.includes('lovableproject.com');
-            
-            toast({
-              title: "Update Available",
-              description: `A new version is available${isProduction ? ' for production' : isDev ? ' on preview' : ''}. Tap to refresh.`,
-              action: (
-                <button 
-                  onClick={refreshApp}
-                  className="inline-flex items-center justify-center rounded-md border bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                >
-                  <RotateCw className="h-4 w-4 mr-1" />
-                  Update
-                </button>
-              ),
-              duration: 10000, // 10 seconds
-            });
+            // Show update notification with enhanced mobile experience
+            showUpdateNotification();
           }
           
           // Store the current version
@@ -118,15 +94,92 @@ export function UpdateNotification() {
     }
   };
   
+  const showUpdateNotification = () => {
+    // Detect domain for more accurate update messaging
+    const hostname = window.location.hostname;
+    const isProduction = hostname === 'triagenius-landing.lovable.app' || hostname === 'triagenius.lovable.app';
+    const isDev = hostname.includes('lovableproject.com');
+    
+    // Show different notification style for mobile PWA vs desktop
+    if (isMobile && isPWA) {
+      // Mobile PWA - native app-like notification
+      toast({
+        title: "Update Available",
+        description: "A new version is available. Please update to ensure you have the latest features and improvements.",
+        action: (
+          <div className="flex flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0 mt-2">
+            <Button 
+              onClick={refreshApp}
+              className="inline-flex items-center justify-center"
+              disabled={isUpdating}
+              variant="default"
+            >
+              {isUpdating ? (
+                <>
+                  <RotateCw className="h-4 w-4 mr-1 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-1" />
+                  Update Now
+                </>
+              )}
+            </Button>
+          </div>
+        ),
+        duration: 0, // Don't auto-dismiss
+      });
+    } else {
+      // Desktop or non-PWA - standard notification
+      toast({
+        title: "Update Available",
+        description: `A new version is available${isProduction ? ' for production' : isDev ? ' on preview' : ''}. Tap to refresh.`,
+        action: (
+          <Button 
+            onClick={refreshApp}
+            className="inline-flex items-center justify-center"
+            size="sm"
+          >
+            <RefreshCw className="h-4 w-4 mr-1" />
+            Update
+          </Button>
+        ),
+        duration: 10000, // 10 seconds
+      });
+    }
+  };
+  
   const refreshApp = () => {
+    setIsUpdating(true);
+    
     // Tell service worker to skip waiting if there's a new version
     if (navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
       
+      // Show updating toast
+      toast({
+        title: "Updating...",
+        description: "Installing the latest version",
+        action: (
+          <RotateCw className="h-4 w-4 animate-spin" />
+        ),
+        duration: 3000,
+      });
+      
       // Give the service worker a moment to activate the waiting worker
       setTimeout(() => {
-        window.location.reload();
-      }, 300);
+        toast({
+          title: "Update Complete",
+          description: "The app has been updated to the latest version",
+          action: <CheckCircle className="h-4 w-4 text-green-500" />,
+          duration: 3000,
+        });
+        
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }, 2000);
     } else {
       // Fallback - just reload the page
       window.location.reload();
