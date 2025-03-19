@@ -42,43 +42,45 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Load user preferences when user is authenticated
   useEffect(() => {
-    if (user?.id) {
-      const loadUserPreferences = async () => {
-        try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('preferences')
-            .eq('id', user.id)
-            .single();
+    if (!user) return; // Don't try to load if user is null or undefined
+    
+    const loadUserPreferences = async () => {
+      if (!user.id) return; // Additional safety check
+      
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('preferences')
+          .eq('id', user.id)
+          .single();
 
-          if (!error && data?.preferences) {
-            // Type assertion to help TypeScript understand the structure
-            const preferences = data.preferences as { 
-              environment?: string; 
-              theme?: string;
-            };
-            
-            // Apply saved environment if available
-            if (preferences.environment) {
-              setCurrentEnvironment(preferences.environment);
-              applyEnvironmentTheme(preferences.environment);
-              localStorage.setItem('environment', preferences.environment);
-            }
-            
-            // Apply saved theme if available
-            if (preferences.theme) {
-              setTheme(preferences.theme as ThemeMode);
-              localStorage.setItem('theme', preferences.theme);
-            }
+        if (!error && data?.preferences) {
+          // Type assertion to help TypeScript understand the structure
+          const preferences = data.preferences as { 
+            environment?: string; 
+            theme?: string;
+          };
+          
+          // Apply saved environment if available
+          if (preferences.environment) {
+            setCurrentEnvironment(preferences.environment);
+            applyEnvironmentTheme(preferences.environment);
+            localStorage.setItem('environment', preferences.environment);
           }
-        } catch (err) {
-          console.error('Failed to load user preferences:', err);
+          
+          // Apply saved theme if available
+          if (preferences.theme) {
+            setTheme(preferences.theme as ThemeMode);
+            localStorage.setItem('theme', preferences.theme);
+          }
         }
-      };
+      } catch (err) {
+        console.error('Failed to load user preferences:', err);
+      }
+    };
 
-      loadUserPreferences();
-    }
-  }, [user?.id]);
+    loadUserPreferences();
+  }, [user]);
 
   // Update localStorage and document class when theme changes
   useEffect(() => {

@@ -53,8 +53,8 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <ThemeProvider>
-        <UserProvider>
+      <UserProvider>
+        <ThemeProvider>
           <OnboardingProvider>
             <WalkthroughProvider>
               <TaskProvider>
@@ -97,8 +97,8 @@ function App() {
               </TaskProvider>
             </WalkthroughProvider>
           </OnboardingProvider>
-        </UserProvider>
-      </ThemeProvider>
+        </ThemeProvider>
+      </UserProvider>
     </ErrorBoundary>
   );
 }
