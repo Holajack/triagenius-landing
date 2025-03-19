@@ -16,11 +16,13 @@ export function showUpdateNotification(isUserBased = false, isMobile = false, is
   // Show different notification style for mobile PWA vs desktop
   if (isMobile && isPWA) {
     // Mobile PWA - native app-like notification
-    toast({
-      title: "Update Available",
-      description: updateMessage,
-      action: (
-        <div className="flex flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0 mt-2">
+    toast.custom((t) => (
+      <div className="flex flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0 mt-2 p-4 bg-white rounded-lg shadow-lg border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+        <div className="flex flex-col space-y-1">
+          <h3 className="font-semibold">Update Available</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{updateMessage}</p>
+        </div>
+        <div className="flex justify-end items-center">
           <button 
             onClick={refreshApp}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
@@ -39,23 +41,16 @@ export function showUpdateNotification(isUserBased = false, isMobile = false, is
             )}
           </button>
         </div>
-      ),
-      duration: 0, // Don't auto-dismiss
-    });
+      </div>
+    ), { duration: 0 }); // Don't auto-dismiss
   } else {
     // Desktop or non-PWA - standard notification
-    toast({
-      title: "Update Available",
+    toast.message("Update Available", {
       description: `${updateMessage}${isProduction ? ' for production' : isDev ? ' on preview' : ''}. Tap to refresh.`,
-      action: (
-        <button 
-          onClick={refreshApp}
-          className="inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground shadow hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-1"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
-          Update
-        </button>
-      ),
+      action: {
+        label: "Update",
+        onClick: refreshApp,
+      },
       duration: 10000, // 10 seconds
     });
   }
@@ -198,22 +193,18 @@ export const refreshApp = (setIsUpdating: React.Dispatch<React.SetStateAction<bo
       messageChannel.port1.onmessage = (event) => {
         if (event.data && event.data.updated) {
           // Show updating toast
-          toast({
-            title: "Updating...",
+          toast.message("Updating...", {
             description: "Installing the latest version",
-            action: (
-              <RotateCw className="h-4 w-4 animate-spin" />
-            ),
+            icon: <RotateCw className="h-4 w-4 animate-spin" />,
             duration: 3000,
           });
           
           // The service worker will trigger a reload after the update is complete
           // But we'll also set a safety timeout
           setTimeout(() => {
-            toast({
-              title: "Update Complete",
+            toast.message("Update Complete", {
               description: "The app has been updated to the latest version",
-              action: <CheckCircle className="h-4 w-4 text-green-500" />,
+              icon: <CheckCircle className="h-4 w-4 text-green-500" />,
               duration: 3000,
             });
             
@@ -255,21 +246,17 @@ const regularUpdateMethod = (setIsUpdating: React.Dispatch<React.SetStateAction<
   }
   
   // Show updating toast
-  toast({
-    title: "Updating...",
+  toast.message("Updating...", {
     description: "Installing the latest version",
-    action: (
-      <RotateCw className="h-4 w-4 animate-spin" />
-    ),
+    icon: <RotateCw className="h-4 w-4 animate-spin" />,
     duration: 3000,
   });
   
   // Give the service worker a moment to activate the waiting worker
   setTimeout(() => {
-    toast({
-      title: "Update Complete",
+    toast.message("Update Complete", {
       description: "The app has been updated to the latest version",
-      action: <CheckCircle className="h-4 w-4 text-green-500" />,
+      icon: <CheckCircle className="h-4 w-4 text-green-500" />,
       duration: 3000,
     });
     
