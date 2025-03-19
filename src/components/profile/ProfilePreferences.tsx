@@ -215,7 +215,7 @@ const ProfilePreferences = () => {
       
       {/* Moved logout button to a separate CardFooter */}
       <CardFooter className="border-t pt-6 mt-6 mx-0 px-[15px] my-[3px] py-[6px]">
-        <Button variant="destructive" onClick={handleLogout} disabled={isLoading} className="w-full px-0 my-0 py-0">
+        <Button variant="destructive" onClick={handleLogout} disabled={isLoading} className="w-full px-0 py-0 my-[35px]">
           {isLoading ? <Loader2Icon className="h-4 w-4 mr-2 animate-spin" /> : <LogOut className="h-4 w-4 mr-2" />}
           Logout
         </Button>
