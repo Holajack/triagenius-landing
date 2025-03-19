@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
@@ -66,6 +67,14 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
         }
         
         toast.success("Account created successfully!");
+        
+        // Check if email confirmation is enabled and notify the user
+        if (data?.user?.identities?.length === 1 && !data.user.email_confirmed_at) {
+          toast.info("Please check your email to confirm your account.", {
+            description: "You'll need to verify your email before you can log in.",
+            duration: 8000,
+          });
+        }
         
         // If the user signed up from the "Start Focusing" button, take them to onboarding
         if (isFromStartFocusing) {

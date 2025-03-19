@@ -1,6 +1,8 @@
 
+import { useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { useOnboarding } from "@/contexts/OnboardingContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { StudyEnvironment } from "@/types/onboarding";
 import { Building, Coffee, TreeDeciduous, BookOpen, Home } from "lucide-react";
 
@@ -81,6 +83,20 @@ const environments: Array<{
 
 export const EnvironmentStep = () => {
   const { state, dispatch } = useOnboarding();
+  const { setEnvironmentTheme } = useTheme();
+
+  // Apply environment theme when selected
+  useEffect(() => {
+    if (state.environment) {
+      setEnvironmentTheme(state.environment);
+    }
+  }, [state.environment, setEnvironmentTheme]);
+
+  const handleEnvironmentSelection = (envId: StudyEnvironment) => {
+    dispatch({ type: 'SET_ENVIRONMENT', payload: envId });
+    // Immediately apply the environment theme
+    setEnvironmentTheme(envId);
+  };
 
   return (
     <div className="grid gap-4">
@@ -90,7 +106,7 @@ export const EnvironmentStep = () => {
           className={`p-4 cursor-pointer transition-all hover:shadow-md ${
             state.environment === env.id ? 'shadow-md' : ''
           }`}
-          onClick={() => dispatch({ type: 'SET_ENVIRONMENT', payload: env.id })}
+          onClick={() => handleEnvironmentSelection(env.id)}
           style={{
             borderColor: state.environment === env.id ? 'var(--env-primary)' : undefined,
             borderWidth: state.environment === env.id ? '2px' : '1px',

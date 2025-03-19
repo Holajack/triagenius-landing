@@ -81,6 +81,11 @@ const Onboarding = () => {
   const handleNext = async () => {
     if (state.step < steps.length - 1) {
       dispatch({ type: 'SET_STEP', payload: state.step + 1 });
+      
+      // Save the state after each step to ensure we don't lose any selections
+      if (state.step > 0) {
+        await saveOnboardingState();
+      }
     } else {
       dispatch({ type: 'COMPLETE_ONBOARDING' });
       
