@@ -195,6 +195,7 @@ const ProfilePreferences = () => {
                 <SelectContent position="popper" className="w-full z-50">
                   <SelectItem value="lo-fi">Lo-fi</SelectItem>
                   <SelectItem value="ambient">Ambient</SelectItem>
+                  <SelectItem value="nature">Nature</SelectItem>
                   <SelectItem value="classical">Classical</SelectItem>
                   <SelectItem value="silence">Silence</SelectItem>
                 </SelectContent>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@/hooks/use-user';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,6 +22,7 @@ export const ProfileSetupStep = () => {
     avatar_url: ''
   });
   const [loading, setLoading] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
     const loadInitialData = async () => {
@@ -72,13 +72,15 @@ export const ProfileSetupStep = () => {
       ...prev,
       [field]: value
     }));
+    setIsDirty(true);
   };
 
   const saveProfileData = async () => {
-    if (!user) return;
+    if (!user || !isDirty) return;
     
     try {
       setLoading(true);
+      setIsDirty(false);
       
       let formattedClasses: string[] = [];
       
@@ -123,15 +125,19 @@ export const ProfileSetupStep = () => {
   // This function is called by the onboarding context when transitioning to the next step
   useEffect(() => {
     window.onbeforeunload = () => {
-      saveProfileData();
+      if (isDirty) {
+        saveProfileData();
+      }
       return undefined;
     };
     
     return () => {
       window.onbeforeunload = null;
-      saveProfileData();
+      if (isDirty) {
+        saveProfileData();
+      }
     };
-  }, [profileData]);
+  }, [profileData, isDirty]);
 
   return (
     <div className="space-y-6">
