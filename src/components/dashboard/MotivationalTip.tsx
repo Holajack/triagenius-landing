@@ -6,6 +6,25 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
+// Define the motivational tips outside the component
+const motivationalTips = [
+  "The secret of getting ahead is getting started.",
+  "Small progress is still progress.",
+  "Your focus determines your reality.",
+  "Success is the sum of small efforts repeated day in and day out.",
+  "Don't watch the clock; do what it does. Keep going.",
+  "The only way to do great work is to love what you do.",
+  "Believe you can and you're halfway there.",
+  "It always seems impossible until it's done.",
+  "The future depends on what you do today.",
+  "You don't have to be great to start, but you have to start to be great."
+];
+
+// Function to get a random tip - defined before it's used
+const getRandomTip = () => {
+  return motivationalTips[Math.floor(Math.random() * motivationalTips.length)];
+};
+
 const MotivationalTip = () => {
   const { state } = useOnboarding();
   const [tip, setTip] = useState(() => getRandomTip());
@@ -32,24 +51,6 @@ const MotivationalTip = () => {
       case 'library': return "text-gray-700";
       default: return "text-triage-purple";
     }
-  };
-  
-  // Get a random motivational tip
-  const getRandomTip = () => {
-    const tips = [
-      "The secret of getting ahead is getting started.",
-      "Small progress is still progress.",
-      "Your focus determines your reality.",
-      "Success is the sum of small efforts repeated day in and day out.",
-      "Don't watch the clock; do what it does. Keep going.",
-      "The only way to do great work is to love what you do.",
-      "Believe you can and you're halfway there.",
-      "It always seems impossible until it's done.",
-      "The future depends on what you do today.",
-      "You don't have to be great to start, but you have to start to be great."
-    ];
-    
-    return tips[Math.floor(Math.random() * tips.length)];
   };
   
   // Get button style based on environment
