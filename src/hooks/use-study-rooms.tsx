@@ -164,25 +164,49 @@ export function useStudyRooms() {
     }
 
     try {
-      const { data: roomData, error } = await supabase
+      // Convert subjects array to string if needed
+      const subjectsData = Array.isArray(data.subjects) ? data.subjects : [];
+      
+      // Generate a random room code (6 alphanumeric characters)
+      const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      
+      // Prepare the data for insertion
+      const roomData = {
+        name: data.name,
+        description: data.description || data.topic, // Use topic as fallback for description
+        creator_id: user.id,
+        is_active: true,
+        is_private: false,
+        schedule: data.schedule || null,
+        duration: data.duration || null,
+        subjects: subjectsData,
+        max_participants: data.max_participants || 10,
+        current_participants: 1, // Creator joins automatically
+        room_code: roomCode
+      };
+      
+      console.log('Creating room with data:', roomData);
+      
+      const { data: createdRoom, error } = await supabase
         .from('study_rooms')
-        .insert({
-          name: data.name,
-          description: data.description || null,
-          creator_id: user.id,
-          max_participants: data.max_participants || 10,
-          // Set any other fields that are in the database schema
-        })
+        .insert(roomData)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error creating room:', error);
+        throw error;
+      }
+      
+      if (!createdRoom) {
+        throw new Error('Failed to create room: No data returned');
+      }
 
       // Join the room automatically as creator
-      await joinRoom(roomData.id);
+      await joinRoom(createdRoom.id);
 
       toast.success('Study room created successfully!');
-      return roomData;
+      return createdRoom;
     } catch (err) {
       console.error('Error creating study room:', err);
       toast.error('Failed to create study room. Please try again.');
