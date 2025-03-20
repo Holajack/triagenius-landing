@@ -3,13 +3,13 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { SoundPreference } from "@/types/onboarding";
-import { Headphones, Music, Volume2, VolumeX } from "lucide-react";
+import { Headphones, Music, Volume2, VolumeX, Wind } from "lucide-react";
 import { useSoundFiles } from "@/hooks/use-sound-files";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const soundCategoryIcons: Record<SoundPreference, React.ReactNode> = {
   'lo-fi': <Music className="w-6 h-6" />,
-  'ambient': <Headphones className="w-6 h-6" />,
+  'ambient': <Wind className="w-6 h-6" />,
   'classical': <Music className="w-6 h-6 rotate-45" />,
   'silence': <VolumeX className="w-6 h-6" />,
 };
@@ -22,8 +22,8 @@ const defaultSounds: Array<{ id: SoundPreference; title: string; description: st
   },
   {
     id: 'ambient',
-    title: 'Nature',
-    description: 'Nature and environmental sounds',
+    title: 'Ambient',
+    description: 'Soothing environmental sounds',
   },
   {
     id: 'classical',
