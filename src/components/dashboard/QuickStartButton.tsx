@@ -22,23 +22,34 @@ const QuickStartButton = () => {
   
   const getGradientClass = () => {
     switch (state.environment) {
-      case 'office': return "from-blue-50 to-indigo-100";
-      case 'park': return "from-green-50 to-emerald-100";
-      case 'home': return "from-amber-50 to-orange-100";
-      case 'coffee-shop': return "from-amber-100 to-yellow-100";
-      case 'library': return "from-slate-100 to-gray-100";
-      default: return "from-purple-50 to-indigo-100";
+      case 'office': return "from-blue-100 to-blue-50";
+      case 'park': return "from-green-100 to-emerald-50";
+      case 'home': return "from-orange-100 to-amber-50";
+      case 'coffee-shop': return "from-amber-100 to-yellow-50";
+      case 'library': return "from-slate-100 to-gray-50";
+      default: return "from-purple-100 to-indigo-50";
     }
   };
   
   const getAccentColor = () => {
     switch (state.environment) {
-      case 'office': return "text-blue-600 bg-blue-50";
-      case 'park': return "text-green-600 bg-green-50";
-      case 'home': return "text-orange-600 bg-orange-50";
-      case 'coffee-shop': return "text-amber-600 bg-amber-50";
-      case 'library': return "text-gray-600 bg-gray-50";
-      default: return "text-purple-600 bg-purple-50";
+      case 'office': return "text-blue-600 bg-blue-100";
+      case 'park': return "text-green-600 bg-green-100";
+      case 'home': return "text-orange-600 bg-orange-100";
+      case 'coffee-shop': return "text-amber-600 bg-amber-100";
+      case 'library': return "text-gray-600 bg-gray-100";
+      default: return "text-purple-600 bg-purple-100";
+    }
+  };
+  
+  const getPrimaryButtonColor = () => {
+    switch (state.environment) {
+      case 'office': return "bg-blue-600 hover:bg-blue-700";
+      case 'park': return "bg-green-600 hover:bg-green-700";
+      case 'home': return "bg-orange-500 hover:bg-orange-600";
+      case 'coffee-shop': return "bg-amber-500 hover:bg-amber-600";
+      case 'library': return "bg-gray-600 hover:bg-gray-700";
+      default: return "bg-triage-purple hover:bg-triage-purple/90";
     }
   };
   
@@ -104,7 +115,16 @@ const QuickStartButton = () => {
   };
   
   return (
-    <Card className={cn("overflow-hidden", isActive ? "border-triage-purple shadow-md" : "")}>
+    <Card className={cn(
+      "overflow-hidden border-2", 
+      isActive ? "shadow-md" : "",
+      state.environment === 'office' ? "border-blue-200" :
+      state.environment === 'park' ? "border-green-200" :
+      state.environment === 'home' ? "border-orange-200" :
+      state.environment === 'coffee-shop' ? "border-amber-200" :
+      state.environment === 'library' ? "border-gray-200" :
+      "border-purple-200"
+    )}>
       <div className={cn("bg-gradient-to-r p-6", getGradientClass())}>
         <h3 className="text-lg font-semibold mb-1">Ready to focus?</h3>
         <p className="text-sm text-gray-600">Start a quick session based on your preferences</p>
@@ -202,7 +222,7 @@ const QuickStartButton = () => {
         {isActive ? (
           <Button 
             onClick={pauseSession}
-            className="w-full bg-triage-purple hover:bg-triage-purple/90 text-white"
+            className={`w-full ${getPrimaryButtonColor()} text-white`}
             size="lg"
           >
             <PauseCircle className="w-5 h-5 mr-2" /> Pause Session
@@ -210,7 +230,7 @@ const QuickStartButton = () => {
         ) : (
           <Button 
             onClick={startSession}
-            className="w-full bg-triage-purple hover:bg-triage-purple/90 text-white"
+            className={`w-full ${getPrimaryButtonColor()} text-white`}
             size="lg"
           >
             <PlayCircle className="w-5 h-5 mr-2" /> Start Focus Session

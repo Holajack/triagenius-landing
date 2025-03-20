@@ -6,7 +6,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { StudyEnvironment } from "@/types/onboarding";
 import { Building, Coffee, TreeDeciduous, BookOpen, Home } from "lucide-react";
 
-// Define environment themes with their respective colors
+// Define environment themes with their respective colors and more noticeable visual differences
 const environments: Array<{
   id: StudyEnvironment;
   title: string;
@@ -17,6 +17,7 @@ const environments: Array<{
     bg: string;
     accent: string;
     border: string;
+    card: string;
   };
 }> = [
   {
@@ -26,9 +27,10 @@ const environments: Array<{
     icon: <Building className="w-6 h-6" />,
     colors: {
       primary: 'bg-blue-600',
-      bg: 'from-blue-50 to-slate-100',
+      bg: 'from-blue-100 to-blue-50',
       accent: 'text-blue-700',
-      border: 'border-blue-200',
+      border: 'border-blue-300',
+      card: 'shadow-blue-100/50',
     }
   },
   {
@@ -38,9 +40,10 @@ const environments: Array<{
     icon: <TreeDeciduous className="w-6 h-6" />,
     colors: {
       primary: 'bg-green-600',
-      bg: 'from-green-50 to-emerald-100',
+      bg: 'from-green-100 to-emerald-50',
       accent: 'text-emerald-700',
-      border: 'border-green-200',
+      border: 'border-green-300',
+      card: 'shadow-green-100/50',
     }
   },
   {
@@ -49,10 +52,11 @@ const environments: Array<{
     description: 'Comfortable home atmosphere',
     icon: <Home className="w-6 h-6" />,
     colors: {
-      primary: 'bg-amber-600',
-      bg: 'from-amber-50 to-orange-100',
+      primary: 'bg-orange-500',
+      bg: 'from-orange-100 to-amber-50',
       accent: 'text-amber-700',
-      border: 'border-amber-200',
+      border: 'border-orange-300',
+      card: 'shadow-orange-100/50',
     }
   },
   {
@@ -62,9 +66,10 @@ const environments: Array<{
     icon: <Coffee className="w-6 h-6" />,
     colors: {
       primary: 'bg-amber-500',
-      bg: 'from-amber-100 to-stone-100',
+      bg: 'from-amber-100 to-yellow-50',
       accent: 'text-amber-800',
       border: 'border-amber-300',
+      card: 'shadow-amber-100/50',
     }
   },
   {
@@ -74,9 +79,10 @@ const environments: Array<{
     icon: <BookOpen className="w-6 h-6" />,
     colors: {
       primary: 'bg-gray-600',
-      bg: 'from-slate-100 to-gray-100',
+      bg: 'from-gray-100 to-slate-50',
       accent: 'text-gray-700',
-      border: 'border-gray-200',
+      border: 'border-gray-300',
+      card: 'shadow-gray-100/50',
     }
   }
 ];
@@ -104,11 +110,11 @@ export const EnvironmentStep = () => {
         <Card
           key={env.id}
           className={`p-4 cursor-pointer transition-all hover:shadow-md ${
-            state.environment === env.id ? 'shadow-md' : ''
+            state.environment === env.id ? `shadow-md ${env.colors.card}` : ''
           }`}
           onClick={() => handleEnvironmentSelection(env.id)}
           style={{
-            borderColor: state.environment === env.id ? 'var(--env-primary)' : undefined,
+            borderColor: state.environment === env.id ? `var(--env-primary)` : undefined,
             borderWidth: state.environment === env.id ? '2px' : '1px',
           }}
         >
@@ -121,18 +127,22 @@ export const EnvironmentStep = () => {
               <p className="text-sm text-gray-600">{env.description}</p>
             </div>
             
-            {/* Color preview */}
+            {/* Color preview - Enhanced for better visibility */}
             <div className="flex items-center space-x-2">
-              <div className={`h-4 w-4 rounded-full ${env.colors.primary}`} title="Primary color"></div>
-              <div className={`h-4 w-4 rounded-full bg-gradient-to-r ${env.colors.bg}`} title="Background gradient"></div>
-              <div className={`h-4 w-4 rounded-full ${env.colors.border}`} title="Border color"></div>
+              <div className={`h-5 w-5 rounded-full ${env.colors.primary}`} title="Primary color"></div>
+              <div className={`h-5 w-5 rounded-full bg-gradient-to-r ${env.colors.bg}`} title="Background gradient"></div>
+              <div className={`h-5 w-5 rounded-full ${env.colors.border}`} title="Border color"></div>
             </div>
           </div>
           
-          {/* Theme preview */}
+          {/* Theme preview with more prominent styling */}
           {state.environment === env.id && (
-            <div className="mt-3 p-3 rounded-md bg-gradient-to-r ${env.colors.bg} ${env.colors.border} text-sm">
-              <p className={env.colors.accent}>This is how your dashboard colors will look</p>
+            <div className={`mt-3 p-4 rounded-md bg-gradient-to-r ${env.colors.bg} border ${env.colors.border} text-sm`}>
+              <p className={`${env.colors.accent} font-medium`}>This is how your dashboard colors will look</p>
+              <div className="flex mt-2 gap-2">
+                <span className={`inline-block px-2 py-1 rounded-full text-xs ${env.colors.primary} text-white`}>Button</span>
+                <span className={`inline-block px-2 py-1 rounded-full text-xs border ${env.colors.border} ${env.colors.accent}`}>Tag</span>
+              </div>
             </div>
           )}
         </Card>

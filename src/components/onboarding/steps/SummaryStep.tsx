@@ -7,37 +7,42 @@ import { CheckCircle, Award, Cpu, Bookmark } from "lucide-react";
 export const SummaryStep = () => {
   const { state } = useOnboarding();
 
-  // Environment color themes
-  const environmentThemes: Record<string, { bg: string; text: string; cardBg: string; accent: string }> = {
+  // Environment color themes - enhanced for better visibility
+  const environmentThemes: Record<string, { bg: string; text: string; cardBg: string; accent: string; border: string }> = {
     'office': {
-      bg: 'from-blue-50 to-slate-100',
-      text: 'text-slate-800',
-      cardBg: 'from-blue-100/30 to-slate-100/30',
-      accent: 'text-blue-700'
+      bg: 'from-blue-100 to-blue-50',
+      text: 'text-blue-800',
+      cardBg: 'from-blue-100/40 to-blue-50/40',
+      accent: 'text-blue-600',
+      border: 'border-blue-200'
     },
     'park': {
-      bg: 'from-green-50 to-emerald-100/50',
-      text: 'text-emerald-900',
-      cardBg: 'from-green-100/30 to-emerald-50/30',
-      accent: 'text-emerald-700'
+      bg: 'from-green-100 to-emerald-50',
+      text: 'text-emerald-800',
+      cardBg: 'from-green-100/40 to-emerald-50/40',
+      accent: 'text-emerald-600',
+      border: 'border-green-200'
     },
     'home': {
-      bg: 'from-amber-50 to-orange-100/40',
-      text: 'text-amber-900',
-      cardBg: 'from-amber-100/30 to-orange-50/30',
-      accent: 'text-amber-700'
+      bg: 'from-orange-100 to-amber-50',
+      text: 'text-amber-800',
+      cardBg: 'from-orange-100/40 to-amber-50/40',
+      accent: 'text-amber-600',
+      border: 'border-orange-200'
     },
     'coffee-shop': {
-      bg: 'from-amber-100/50 to-stone-100',
-      text: 'text-stone-800',
-      cardBg: 'from-amber-100/30 to-stone-100/30',
-      accent: 'text-amber-800'
+      bg: 'from-amber-100 to-yellow-50',
+      text: 'text-amber-800',
+      cardBg: 'from-amber-100/40 to-yellow-50/40',
+      accent: 'text-amber-600',
+      border: 'border-amber-200'
     },
     'library': {
-      bg: 'from-slate-100 to-gray-100',
+      bg: 'from-gray-100 to-slate-50',
       text: 'text-gray-800',
-      cardBg: 'from-slate-100/30 to-gray-100/30',
-      accent: 'text-gray-700'
+      cardBg: 'from-gray-100/40 to-slate-50/40',
+      accent: 'text-gray-600',
+      border: 'border-gray-200'
     }
   };
 
@@ -70,18 +75,31 @@ export const SummaryStep = () => {
         "lo-fi": "Lo-fi Beats",
         "ambient": "Ambient Sounds",
         "classical": "Classical Music",
+        "nature": "Nature Sounds",
         "silence": "Silence"
       }
     };
 
     return displayNames[type][value] || value;
   };
+  
+  // Get environment badge color
+  const getEnvironmentBadgeClass = () => {
+    switch (state.environment) {
+      case 'office': return "bg-blue-600 hover:bg-blue-700";
+      case 'park': return "bg-green-600 hover:bg-green-700";
+      case 'home': return "bg-orange-500 hover:bg-orange-600";
+      case 'coffee-shop': return "bg-amber-500 hover:bg-amber-600";
+      case 'library': return "bg-gray-600 hover:bg-gray-700";
+      default: return "bg-triage-purple";
+    }
+  };
 
   return (
     <div className="grid gap-6">
       <div className="text-center space-y-2">
         <div className="inline-flex justify-center mb-2">
-          <Badge className="px-3 py-1 bg-triage-purple text-white">
+          <Badge className={`px-3 py-1 ${getEnvironmentBadgeClass()} text-white`}>
             <Award className="w-4 h-4 mr-1" /> Onboarding Achievement
           </Badge>
         </div>
@@ -91,17 +109,17 @@ export const SummaryStep = () => {
         </p>
       </div>
 
-      <Card className={`overflow-hidden border-${state.environment ? state.environment : 'triage-purple'}/20`}>
-        <CardHeader className={`bg-gradient-to-r ${currentTheme.cardBg} pb-2`}>
+      <Card className={`overflow-hidden ${currentTheme.border}`}>
+        <CardHeader className={`bg-gradient-to-r ${currentTheme.bg} pb-2`}>
           <CardTitle className={`text-lg flex items-center ${currentTheme.text}`}>
             <Cpu className={`w-5 h-5 mr-2 ${currentTheme.accent}`} />
             Your Focus Configuration
           </CardTitle>
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className={`pt-4 bg-gradient-to-br ${currentTheme.cardBg}`}>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
+              <div className="space-y-1 p-2 rounded-md bg-white/70">
                 <p className="text-xs text-gray-500">Focus Goal</p>
                 <div className="flex items-center">
                   <CheckCircle className={`w-4 h-4 mr-1.5 ${currentTheme.accent}`} />
@@ -109,7 +127,7 @@ export const SummaryStep = () => {
                 </div>
               </div>
               
-              <div className="space-y-1">
+              <div className="space-y-1 p-2 rounded-md bg-white/70">
                 <p className="text-xs text-gray-500">Work Style</p>
                 <div className="flex items-center">
                   <CheckCircle className={`w-4 h-4 mr-1.5 ${currentTheme.accent}`} />
@@ -117,7 +135,7 @@ export const SummaryStep = () => {
                 </div>
               </div>
               
-              <div className="space-y-1">
+              <div className="space-y-1 p-2 rounded-md bg-white/70">
                 <p className="text-xs text-gray-500">Environment</p>
                 <div className="flex items-center">
                   <CheckCircle className={`w-4 h-4 mr-1.5 ${currentTheme.accent}`} />
@@ -125,7 +143,7 @@ export const SummaryStep = () => {
                 </div>
               </div>
               
-              <div className="space-y-1">
+              <div className="space-y-1 p-2 rounded-md bg-white/70">
                 <p className="text-xs text-gray-500">Sound Preference</p>
                 <div className="flex items-center">
                   <CheckCircle className={`w-4 h-4 mr-1.5 ${currentTheme.accent}`} />
@@ -135,7 +153,7 @@ export const SummaryStep = () => {
             </div>
             
             <div className="pt-2 flex items-center justify-between">
-              <div className={`flex items-center text-sm ${currentTheme.text}`}>
+              <div className={`flex items-center text-sm ${currentTheme.text} bg-white/70 px-3 py-1.5 rounded-full`}>
                 <Bookmark className={`w-4 h-4 mr-1.5 ${currentTheme.accent}`} />
                 <span>Settings saved to your profile</span>
               </div>

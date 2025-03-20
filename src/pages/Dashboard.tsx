@@ -21,13 +21,20 @@ import { useUser } from "@/hooks/use-user";
 const Dashboard = () => {
   const { state } = useOnboarding();
   const navigate = useNavigate();
-  const { theme } = useTheme();
+  const { theme, applyEnvironmentTheme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [preferredChartType, setPreferredChartType] = useState(() => {
     return localStorage.getItem('preferredChartType') || 'bar';
   });
   const isMobile = useIsMobile();
   const { user } = useUser();
+
+  // Apply environment theme when component mounts to ensure consistency
+  useEffect(() => {
+    if (state.environment) {
+      applyEnvironmentTheme(state.environment);
+    }
+  }, [state.environment, applyEnvironmentTheme]);
 
   // Modified redirection logic to only redirect if explicitly coming from the index page
   useEffect(() => {
@@ -56,6 +63,18 @@ const Dashboard = () => {
     return state.environment;
   };
 
+  // Get environment-specific class for card styling
+  const getEnvCardClass = () => {
+    switch (state.environment) {
+      case 'office': return "border-blue-200 bg-gradient-to-br from-blue-50/30 to-white";
+      case 'park': return "border-green-200 bg-gradient-to-br from-green-50/30 to-white";
+      case 'home': return "border-orange-200 bg-gradient-to-br from-orange-50/30 to-white";
+      case 'coffee-shop': return "border-amber-200 bg-gradient-to-br from-amber-50/30 to-white";
+      case 'library': return "border-gray-200 bg-gradient-to-br from-gray-50/30 to-white";
+      default: return "";
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -80,7 +99,7 @@ const Dashboard = () => {
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Left column - Weekly tracker */}
           <div className="md:col-span-2 space-y-4">
-            <div data-walkthrough="weekly-tracker">
+            <div data-walkthrough="weekly-tracker" className={`p-4 rounded-lg ${getEnvCardClass()}`}>
               <Tabs defaultValue={preferredChartType} className="w-full" onValueChange={handleTabChange}>
                 <div className="flex justify-between items-center mb-2">
                   <h2 className="text-xl font-semibold">Weekly Progress</h2>
@@ -118,10 +137,13 @@ const Dashboard = () => {
             {/* Display Task List on desktop view */}
             {!isMobile && renderTaskList()}
 
-            <div data-walkthrough="ai-insights">
+            <div data-walkthrough="ai-insights" className={`rounded-lg ${getEnvCardClass()}`}>
               <AIInsights />
             </div>
-            <Leaderboard />
+            
+            <div className={`rounded-lg ${getEnvCardClass()}`}>
+              <Leaderboard />
+            </div>
 
             {/* Display Task List on mobile below Leaderboard */}
             {isMobile && renderTaskList()}

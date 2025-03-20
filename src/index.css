@@ -66,45 +66,65 @@
     --ring: 216 12.2% 83.9%;
   }
 
-  /* Environment-specific theme variables */
+  /* Environment-specific theme variables - Enhanced with more vibrant colors */
   .theme-office {
-    --env-primary: 226 100% 60%;
-    --env-secondary: 223 100% 52%;
-    --env-accent: 221 100% 45%;
-    --env-muted: 220 10% 46%;
-    --env-border: 220 13% 91%;
+    --env-primary: 226 85% 65%;
+    --env-secondary: 223 85% 60%;
+    --env-accent: 221 85% 55%;
+    --env-muted: 220 25% 46%;
+    --env-border: 220 30% 85%;
+    --env-background: 225 30% 96%;
+    --env-card: 225 25% 98%;
+    --env-hover: 225 85% 90%;
+    --env-focus: 226 85% 55%;
   }
 
   .theme-park {
-    --env-primary: 152 60% 52%;
-    --env-secondary: 142 70% 45%;
-    --env-accent: 158 64% 38%;
-    --env-muted: 150 10% 46%;
-    --env-border: 150 13% 91%;
+    --env-primary: 152 70% 48%;
+    --env-secondary: 142 80% 45%;
+    --env-accent: 158 74% 42%;
+    --env-muted: 150 25% 46%;
+    --env-border: 150 40% 85%;
+    --env-background: 145 40% 96%;
+    --env-card: 145 35% 98%;
+    --env-hover: 152 70% 90%;
+    --env-focus: 152 70% 45%;
   }
 
   .theme-home {
-    --env-primary: 30 100% 60%;
-    --env-secondary: 32 100% 50%;
-    --env-accent: 28 100% 45%;
-    --env-muted: 30 10% 46%;
-    --env-border: 30 13% 91%;
+    --env-primary: 30 95% 60%;
+    --env-secondary: 32 95% 55%;
+    --env-accent: 28 95% 50%;
+    --env-muted: 30 25% 46%;
+    --env-border: 30 40% 85%;
+    --env-background: 35 30% 96%;
+    --env-card: 35 25% 98%;
+    --env-hover: 30 95% 90%;
+    --env-focus: 30 95% 55%;
   }
 
   .theme-coffee-shop {
-    --env-primary: 35 100% 50%;
-    --env-secondary: 40 100% 45%;
-    --env-accent: 30 90% 40%;
-    --env-muted: 35 10% 46%;
-    --env-border: 35 13% 91%;
+    --env-primary: 35 90% 55%;
+    --env-secondary: 40 90% 50%;
+    --env-accent: 30 90% 45%;
+    --env-muted: 35 25% 46%;
+    --env-border: 35 40% 85%;
+    --env-background: 38 30% 96%;
+    --env-card: 38 25% 98%;
+    --env-hover: 35 90% 90%;
+    --env-focus: 35 90% 50%;
   }
 
   .theme-library {
-    --env-primary: 220 10% 45%;
-    --env-secondary: 215 10% 40%;
-    --env-accent: 210 10% 35%;
-    --env-muted: 220 5% 46%;
-    --env-border: 220 5% 91%;
+    --env-primary: 215 25% 50%;
+    --env-secondary: 210 25% 45%;
+    --env-accent: 205 25% 40%;
+    --env-muted: 220 15% 46%;
+    --env-border: 220 15% 85%;
+    --env-background: 215 15% 96%;
+    --env-card: 215 10% 98%;
+    --env-hover: 215 25% 90%;
+    --env-focus: 215 25% 45%;
   }
 }
 
@@ -158,6 +178,90 @@
     transform: translate(-50%, -50%);
     z-index: -1;
     border-radius: 50%;
+  }
+  
+  /* Environment-themed buttons and elements */
+  .theme-office .env-button {
+    @apply bg-blue-600 hover:bg-blue-700 text-white;
+  }
+  
+  .theme-park .env-button {
+    @apply bg-green-600 hover:bg-green-700 text-white;
+  }
+  
+  .theme-home .env-button {
+    @apply bg-orange-500 hover:bg-orange-600 text-white;
+  }
+  
+  .theme-coffee-shop .env-button {
+    @apply bg-amber-500 hover:bg-amber-600 text-white;
+  }
+  
+  .theme-library .env-button {
+    @apply bg-gray-600 hover:bg-gray-700 text-white;
+  }
+  
+  /* Environment-themed backgrounds */
+  .theme-office .env-bg-subtle {
+    @apply bg-blue-50;
+  }
+  
+  .theme-park .env-bg-subtle {
+    @apply bg-green-50;
+  }
+  
+  .theme-home .env-bg-subtle {
+    @apply bg-orange-50;
+  }
+  
+  .theme-coffee-shop .env-bg-subtle {
+    @apply bg-amber-50;
+  }
+  
+  .theme-library .env-bg-subtle {
+    @apply bg-gray-50;
+  }
+  
+  /* Environment-themed text */
+  .theme-office .env-text {
+    @apply text-blue-600;
+  }
+  
+  .theme-park .env-text {
+    @apply text-green-600;
+  }
+  
+  .theme-home .env-text {
+    @apply text-orange-500;
+  }
+  
+  .theme-coffee-shop .env-text {
+    @apply text-amber-500;
+  }
+  
+  .theme-library .env-text {
+    @apply text-gray-600;
+  }
+  
+  /* Environment-themed cards */
+  .theme-office .env-card {
+    @apply border-blue-100 bg-gradient-to-br from-blue-50/50 to-white;
+  }
+  
+  .theme-park .env-card {
+    @apply border-green-100 bg-gradient-to-br from-green-50/50 to-white;
+  }
+  
+  .theme-home .env-card {
+    @apply border-orange-100 bg-gradient-to-br from-orange-50/50 to-white;
+  }
+  
+  .theme-coffee-shop .env-card {
+    @apply border-amber-100 bg-gradient-to-br from-amber-50/50 to-white;
+  }
+  
+  .theme-library .env-card {
+    @apply border-gray-100 bg-gradient-to-br from-gray-50/50 to-white;
   }
   
   @keyframes staggered-fade-in {

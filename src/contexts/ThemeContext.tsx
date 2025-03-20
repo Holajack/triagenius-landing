@@ -11,6 +11,7 @@ type ThemeContextType = {
   toggleTheme: () => void;
   setEnvironmentTheme: (environment: string | undefined) => void;
   currentEnvironment: string | undefined;
+  applyEnvironmentTheme: (environment: string | undefined) => void;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -135,6 +136,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       
       // Add current environment theme class
       document.documentElement.classList.add(`theme-${environment}`);
+      
+      // Add a data attribute for easier CSS targeting
+      document.documentElement.setAttribute('data-environment', environment);
+    } else {
+      document.documentElement.removeAttribute('data-environment');
     }
   };
 
@@ -160,7 +166,8 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setTheme, 
       toggleTheme, 
       setEnvironmentTheme,
-      currentEnvironment
+      currentEnvironment,
+      applyEnvironmentTheme
     }}>
       {children}
     </ThemeContext.Provider>

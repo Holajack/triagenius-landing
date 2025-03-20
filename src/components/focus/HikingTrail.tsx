@@ -1,12 +1,14 @@
 
 import { useState, useEffect } from "react";
 import { StudyEnvironment } from "@/types/onboarding";
+
 interface HikingTrailProps {
   environment?: StudyEnvironment;
   milestone: number;
   isCelebrating?: boolean;
   progress?: number;
 }
+
 export const HikingTrail = ({
   environment = 'office',
   milestone = 0,
@@ -34,6 +36,37 @@ export const HikingTrail = ({
   // Pink gradient
   '/lovable-uploads/d2960f6f-feaf-478a-8519-cdcf8186198b.png' // Composite sunset scene
   ];
+  
+  // Environment-themed overlay colors
+  const getEnvironmentOverlay = () => {
+    switch (environment) {
+      case 'office':
+        return "linear-gradient(180deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0) 100%)";
+      case 'park':
+        return "linear-gradient(180deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0) 100%)";
+      case 'home':
+        return "linear-gradient(180deg, rgba(249, 115, 22, 0.1) 0%, rgba(234, 88, 12, 0) 100%)";
+      case 'coffee-shop':
+        return "linear-gradient(180deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0) 100%)";
+      case 'library':
+        return "linear-gradient(180deg, rgba(107, 114, 128, 0.1) 0%, rgba(75, 85, 99, 0) 100%)";
+      default:
+        return "none";
+    }
+  };
+  
+  // Environment-themed path colors
+  const getPathColor = () => {
+    switch (environment) {
+      case 'office': return "#3b82f6";
+      case 'park': return "#10b981";
+      case 'home': return "#f97316";
+      case 'coffee-shop': return "#f59e0b";
+      case 'library': return "#6b7280";
+      default: return "white";
+    }
+  };
+  
   useEffect(() => {
     // Change image every 5 seconds to create the sunrise/sunset effect
     const interval = setInterval(() => {
@@ -46,7 +79,13 @@ export const HikingTrail = ({
   const renderMilestoneIndicators = () => {
     return <div className="absolute bottom-[12.5%] left-0 right-0 h-[2.5%]">
         <svg viewBox="0 0 100 10" preserveAspectRatio="none" className="h-full w-full">
-          <path d="M0,5 Q25,3 50,5 T100,5" stroke="white" strokeWidth="1.5" strokeDasharray="3,3" fill="none" />
+          <path 
+            d="M0,5 Q25,3 50,5 T100,5" 
+            stroke={getPathColor()} 
+            strokeWidth="1.5" 
+            strokeDasharray="3,3" 
+            fill="none" 
+          />
         </svg>
         
         {[0, 1, 2, 3].map(checkpointIndex => <div key={checkpointIndex} className="absolute top-0" style={{
@@ -67,12 +106,19 @@ export const HikingTrail = ({
   
   // Return JSX to fix the component
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full overflow-hidden rounded-lg">
       <img 
         src={skyImages[currentImageIndex]} 
         alt="Hiking trail environment" 
         className="w-full h-full object-cover"
       />
+      <div 
+        className="absolute inset-0" 
+        style={{ 
+          background: getEnvironmentOverlay(),
+          mixBlendMode: 'multiply'
+        }}
+      ></div>
       {renderMilestoneIndicators()}
     </div>
   );
