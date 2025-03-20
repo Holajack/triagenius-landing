@@ -15,6 +15,7 @@ const Auth = () => {
   const initialMode = location.state?.mode || "login";
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [emailConfirmSuccess, setEmailConfirmSuccess] = useState(false);
 
   useEffect(() => {
     // Check if user is already authenticated
@@ -28,16 +29,32 @@ const Auth = () => {
       const hash = location.hash;
       const isEmailConfirmation = hash && hash.includes("type=signup");
       
-      // If already authenticated or just confirmed email, redirect to appropriate page
-      if (isLoggedIn) {
-        if (isEmailConfirmation) {
-          navigate("/onboarding");
-        } else if (isFromStartFocusing) {
+      if (isEmailConfirmation) {
+        try {
+          // Handle the confirmation token
+          const { error } = await supabase.auth.getSession();
+          if (error) throw error;
+          
+          setEmailConfirmSuccess(true);
+          toast.success("Email confirmed successfully!");
+          
+          // If already authenticated after confirmation, redirect to onboarding
+          if (isLoggedIn) {
+            navigate("/onboarding");
+          }
+        } catch (error: any) {
+          console.error("Email confirmation error:", error.message);
+          toast.error("Failed to confirm email. Please try logging in.");
+        }
+      } else if (isLoggedIn) {
+        // Regular redirect for already logged in users
+        if (isFromStartFocusing) {
           navigate("/onboarding");
         } else {
           navigate("/dashboard");
         }
       }
+      
       setIsCheckingAuth(false);
     };
     
@@ -101,20 +118,39 @@ const Auth = () => {
             </h1>
           )}
           
-          <Tabs defaultValue={isFromStartFocusing ? "signup" : initialMode} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="login">Log In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="login">
-              <AuthForm mode="login" source={location.state?.source} />
-            </TabsContent>
-            
-            <TabsContent value="signup">
-              <AuthForm mode="signup" source={location.state?.source} />
-            </TabsContent>
-          </Tabs>
+          {emailConfirmSuccess ? (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
+              <h2 className="text-xl font-semibold text-green-700 mb-3">Email Confirmed!</h2>
+              <p className="text-green-600 mb-4">
+                Your email has been successfully verified. You can now log in to your account.
+              </p>
+              <Button 
+                className="w-full bg-triage-purple hover:bg-triage-purple/90"
+                onClick={() => setEmailConfirmSuccess(false)}
+              >
+                Log In Now
+              </Button>
+            </div>
+          ) : (
+            <Tabs defaultValue={isFromStartFocusing ? "signup" : initialMode} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="login">Log In</TabsTrigger>
+                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="login">
+                <AuthForm mode="login" source={location.state?.source} />
+              </TabsContent>
+              
+              <TabsContent value="signup">
+                <AuthForm 
+                  mode="signup" 
+                  source={location.state?.source} 
+                  previewMode={true} 
+                />
+              </TabsContent>
+            </Tabs>
+          )}
         </div>
       </div>
     </div>

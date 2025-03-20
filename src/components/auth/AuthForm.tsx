@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
+import { Eye, EyeOff, LogIn, UserPlus, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,9 +16,10 @@ type AuthMode = "login" | "signup";
 interface AuthFormProps {
   mode: AuthMode;
   source?: string;
+  previewMode?: boolean;
 }
 
-const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
+const AuthForm = ({ mode: initialMode, source, previewMode = false }: AuthFormProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isFromStartFocusing = source === "start-focusing";
@@ -27,6 +29,7 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [emailConfirmError, setEmailConfirmError] = useState(false);
   const [emailConfirmSent, setEmailConfirmSent] = useState(false);
+  const [previewNotice, setPreviewNotice] = useState(previewMode);
   
   // Form fields
   const [email, setEmail] = useState("");
@@ -119,6 +122,20 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
                 description: "You'll need to verify your email before you can log in.",
                 duration: 8000,
               });
+              
+              // In preview mode, attempt Firebase signup as fallback
+              if (previewMode) {
+                try {
+                  await createUserWithEmailAndPassword(auth, email, password);
+                  toast.success("Account created with Firebase successfully!");
+                  navigate("/onboarding");
+                  return;
+                } catch (firebaseError: any) {
+                  // Ignore Firebase errors if Supabase worked
+                  console.log("Firebase signup fallback failed:", firebaseError.message);
+                }
+              }
+              
               return;
             } else {
               toast.success("Account created successfully!");
@@ -128,7 +145,7 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
           }
         } catch (supabaseError: any) {
           // If Supabase signup fails with an email confirmation error, try Firebase
-          console.log("Trying Firebase after Supabase error:", supabaseError.message);
+          console.log("Trying Firebase after Supabase error:", supabaseError);
         }
         
         // Try Firebase signup regardless of Supabase result due to email issues
@@ -154,11 +171,33 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
   
   return (
     <div className="w-full bg-white rounded-xl shadow-sm border p-6">
+      {previewNotice && (
+        <Alert className="mb-4 bg-amber-50 border-amber-200">
+          <AlertTriangle className="h-4 w-4 text-amber-800" />
+          <AlertTitle className="text-amber-800">Preview Environment Notice</AlertTitle>
+          <AlertDescription className="text-amber-700">
+            Email verification is limited in preview environments. If you don't receive a verification email, your account will still be created and you'll be redirected to onboarding.
+            <Button 
+              variant="link" 
+              className="text-amber-800 p-0 h-auto font-normal underline underline-offset-2"
+              onClick={() => setPreviewNotice(false)}
+            >
+              Dismiss
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      
       {emailConfirmSent && (
         <Alert className="mb-4 bg-green-50 border-green-200">
           <AlertTitle className="text-green-800">Email confirmation sent</AlertTitle>
           <AlertDescription className="text-green-700">
             We've sent a confirmation link to {email}. Please check your inbox and click the link to activate your account.
+            {previewMode && (
+              <div className="mt-2 pt-2 border-t border-green-200">
+                <p className="text-sm font-medium">Since this is a preview environment, you've been automatically logged in.</p>
+              </div>
+            )}
           </AlertDescription>
         </Alert>
       )}
@@ -248,7 +287,7 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
         <Button
           type="submit"
           className="w-full bg-triage-purple hover:bg-triage-purple/90"
-          disabled={loading || emailConfirmSent}
+          disabled={loading || (emailConfirmSent && !previewMode)}
         >
           {mode === "login" ? (
             <>
