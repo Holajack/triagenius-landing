@@ -1,400 +1,554 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import NavigationBar from "@/components/dashboard/NavigationBar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/components/ui/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import ProfilePreferences from "@/components/profile/ProfilePreferences";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
-import {
-  CalendarIcon,
-  LocateIcon,
+import { useUser } from "@/hooks/use-user";
+import { supabase } from "@/integrations/supabase/client";
+import { Switch } from "@/components/ui/switch";
+import ProfilePreferences from "@/components/profile/ProfilePreferences";
+import { 
+  PencilIcon, 
+  BookOpenIcon, 
+  BriefcaseIcon, 
   MapPinIcon,
   GraduationCapIcon,
   UserIcon,
   MailIcon,
-  Trophy
+  LogOutIcon,
+  Loader2Icon
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Profile = () => {
   const { user, isLoading } = useUser();
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [profileData, setProfileData] = useState({
     username: "",
-    email: user?.email || "",
+    email: "",
     avatar_url: "",
+    
     university: "",
     major: "",
-    state: "",
+    business: "",
     profession: "",
-    business: "", 
+    state: "",
     classes: [] as string[],
-    joinedDate: new Date().toISOString(),
-    points: 0,
-    streak: 0,
-    achievements: [] as Array<{description: string}>,
-    connections: [] as Array<{username: string, level: number}>,
-    level: 1,
-    totalFocusTime: 0
+    
+    show_university: true,
+    show_business: true,
+    show_state: true,
+    show_classes: true
   });
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editedData, setEditedData] = useState({...profileData});
   const [isEditing, setIsEditing] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
   const navigate = useNavigate();
   
   const formatClasses = (classes: string[] | null) => {
     if (!classes || !Array.isArray(classes) || classes.length === 0) return [];
     return classes;
   };
-
-  const fetchUserProfile = useCallback(async () => {
+  
+  const loadProfile = useCallback(async () => {
     if (!user) return;
-    setLoading(true);
+    
     try {
-      // Get profile data from profiles table
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
+      setLoading(true);
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('username, email, avatar_url, university, major, business, profession, state, classes, show_university, show_business, show_state, show_classes')
+        .eq('id', user.id)
         .single();
-        
-      if (profileError) {
-        throw profileError;
-      }
       
-      // Get leaderboard stats for points, streak, level
-      const { data: leaderboardData, error: leaderboardError } = await supabase
-        .from("leaderboard_stats")
-        .select("*")
-        .eq("user_id", user.id)
-        .single();
-        
-      if (leaderboardError && leaderboardError.code !== 'PGRST116') {
-        console.error("Error fetching leaderboard stats:", leaderboardError);
-      }
+      if (error) throw error;
       
-      // Get achievements
-      const { data: achievements, error: achievementsError } = await supabase
-        .from("achievements")
-        .select("*")
-        .eq("user_id", user.id);
-        
-      if (achievementsError) {
-        console.error("Error fetching achievements:", achievementsError);
-      }
-      
-      // Mock connections data for now
-      const mockConnections = [
-        { username: "studybuddy1", level: 3 },
-        { username: "learner42", level: 2 }
-      ];
-      
-      if (profileData) {
-        setProfileData({
-          username: profileData.username || "",
-          email: user.email || "",
-          avatar_url: profileData.avatar_url || "",
-          university: profileData.university || "",
-          major: profileData.major || "",
-          state: profileData.state || "",
-          profession: profileData.profession || "",
-          business: profileData.business || "",
-          classes: profileData.classes || [],
-          joinedDate: profileData.created_at || new Date().toISOString(),
-          points: leaderboardData?.points || 0,
-          streak: leaderboardData?.current_streak || 0,
-          achievements: achievements || [],
-          connections: mockConnections,
-          level: leaderboardData?.level || 1,
-          totalFocusTime: leaderboardData?.total_focus_time || 0
-        });
-        setEditedData({
-          username: profileData.username || "",
-          email: user.email || "",
-          avatar_url: profileData.avatar_url || "",
-          university: profileData.university || "",
-          major: profileData.major || "",
-          state: profileData.state || "",
-          profession: profileData.profession || "",
-          business: profileData.business || "",
-          classes: profileData.classes || [],
-          joinedDate: profileData.created_at || new Date().toISOString(),
-          points: leaderboardData?.points || 0,
-          streak: leaderboardData?.current_streak || 0,
-          achievements: achievements || [],
-          connections: mockConnections,
-          level: leaderboardData?.level || 1,
-          totalFocusTime: leaderboardData?.total_focus_time || 0
-        });
-      }
-    } catch (error: any) {
-      console.error("Error fetching profile:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to fetch profile data.",
-        variant: "destructive"
+      setProfileData({
+        username: data.username || "",
+        email: data.email || "",
+        avatar_url: data.avatar_url || "",
+        university: data.university || "",
+        major: data.major || "",
+        business: data.business || "",
+        profession: data.profession || "",
+        state: data.state || "",
+        classes: formatClasses(data.classes),
+        show_university: data.show_university !== false,
+        show_business: data.show_business !== false,
+        show_state: data.show_state !== false,
+        show_classes: data.show_classes !== false
       });
+      
+      setEditedData({
+        username: data.username || "",
+        email: data.email || "",
+        avatar_url: data.avatar_url || "",
+        university: data.university || "",
+        major: data.major || "",
+        business: data.business || "",
+        profession: data.profession || "",
+        state: data.state || "",
+        classes: formatClasses(data.classes),
+        show_university: data.show_university !== false,
+        show_business: data.show_business !== false,
+        show_state: data.show_state !== false,
+        show_classes: data.show_classes !== false
+      });
+    } catch (error) {
+      console.error("Error loading profile:", error);
+      toast.error("Failed to load profile data");
     } finally {
       setLoading(false);
     }
-  }, [user, toast]);
-
+  }, [user]);
+  
   useEffect(() => {
-    if (user) {
-      fetchUserProfile();
+    if (user && !isLoading) {
+      loadProfile();
     }
-  }, [user, fetchUserProfile]);
-
-  const saveProfile = async (data: any) => {
-    setLoading(true);
+  }, [user, isLoading, loadProfile]);
+  
+  const handleEditStart = () => {
+    setIsEditing(true);
+    setEditedData({...profileData});
+  };
+  
+  const handleCancel = () => {
+    setIsEditing(false);
+    setEditedData({...profileData});
+  };
+  
+  const handleSave = async () => {
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          username: data.username,
-          university: data.university,
-          major: data.major,
-          state: data.state,
-          profession: data.profession,
-          business: data.business,
-          classes: data.classes
-        })
-        .eq("id", user?.id);
-      if (error) {
-        throw error;
+      if (!user) return;
+      
+      setLoading(true);
+      
+      let formattedClasses: string[] = [];
+      
+      if (typeof editedData.classes === 'string') {
+        formattedClasses = (editedData.classes as string)
+          .split(',')
+          .map(c => c.trim())
+          .filter(c => c.length > 0);
+      } else if (Array.isArray(editedData.classes)) {
+        formattedClasses = editedData.classes;
       }
-      toast.success("Profile updated successfully!");
-      fetchUserProfile();
-    } catch (error: any) {
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          username: editedData.username,
+          email: editedData.email,
+          avatar_url: editedData.avatar_url,
+          university: editedData.university,
+          major: editedData.major,
+          business: editedData.business,
+          profession: editedData.profession,
+          state: editedData.state,
+          classes: formattedClasses,
+          show_university: editedData.show_university,
+          show_business: editedData.show_business,
+          show_state: editedData.show_state,
+          show_classes: editedData.show_classes
+        })
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      setProfileData({
+        ...editedData,
+        classes: formattedClasses
+      });
+      
+      setIsEditing(false);
+      toast.success("Profile updated successfully");
+    } catch (error) {
       console.error("Error updating profile:", error);
-      toast.error(error.message || "Failed to update profile.");
+      toast.error("Failed to update profile");
     } finally {
       setLoading(false);
     }
   };
-
-  const handleInputChange = (field: string, value: any) => {
+  
+  const handleChange = (field: string, value: string | boolean | string[]) => {
     setEditedData(prev => ({
       ...prev,
       [field]: value
     }));
   };
   
+  const handleLogout = async () => {
+    try {
+      setLogoutLoading(true);
+      await supabase.auth.signOut();
+      toast.success("Logged out successfully");
+      navigate("/auth");
+    } catch (error: any) {
+      console.error("Error logging out:", error);
+      toast.error(`Failed to log out: ${error.message || "An unknown error occurred"}`);
+    } finally {
+      setLogoutLoading(false);
+    }
+  };
+  
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 pb-24">
-        {loading ? (
-          <div className="flex justify-center items-center min-h-[50vh]">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-          </div>
-        ) : (
-          <>
-            {/* Profile Header */}
-            <div className="flex flex-col items-center mt-8 relative">
-              <Avatar className="h-24 w-24 mb-4">
-                {profileData.avatar_url ? (
-                  <AvatarImage src={profileData.avatar_url} alt={profileData.username} />
+    <div className="container max-w-6xl px-3 sm:px-6 pb-24">
+      <div className="space-y-4 sm:space-y-6 pb-4 sm:pb-6 pt-2">
+        <h1 className="text-2xl font-bold">Profile</h1>
+        <p className="text-muted-foreground">
+          View and edit your profile information
+        </p>
+      </div>
+
+      <Tabs defaultValue="profile" className="mb-24">
+        <TabsList className="mb-6 w-full overflow-x-auto flex space-x-1 sm:space-x-0 pb-px">
+          <TabsTrigger value="profile" className="min-w-[80px] sm:min-w-0 flex-1">Profile</TabsTrigger>
+          <TabsTrigger value="privacy" className="min-w-[80px] sm:min-w-0 flex-1">Privacy</TabsTrigger>
+          <TabsTrigger value="preferences" className="min-w-[100px] sm:min-w-0 flex-1">Preferences</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="profile" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle>Personal Information</CardTitle>
+                {!isEditing ? (
+                  <Button onClick={handleEditStart} variant="outline" size="sm">
+                    <PencilIcon className="h-4 w-4 mr-2" />
+                    Edit Profile
+                  </Button>
                 ) : (
-                  <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
-                    {profileData.username ? profileData.username.substring(0, 2).toUpperCase() : user?.email?.substring(0, 2).toUpperCase() || "??"}
-                  </AvatarFallback>
+                  <div className="flex space-x-2">
+                    <Button onClick={handleCancel} variant="outline" size="sm">
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSave} size="sm" disabled={loading}>
+                      Save Changes
+                    </Button>
+                  </div>
                 )}
-              </Avatar>
-              <h1 className="text-2xl font-bold">{profileData.username || "User"}</h1>
-              <p className="text-muted-foreground flex items-center gap-1">
-                <MailIcon className="h-4 w-4" />
-                {user?.email}
-              </p>
-              <div className="flex items-center mt-2 text-sm text-muted-foreground">
-                <CalendarIcon className="h-4 w-4 mr-1" />
-                <span>Joined {new Date(profileData.joinedDate).toLocaleDateString()}</span>
               </div>
-              
-              {profileData.state && (
-                <div className="flex items-center mt-1 text-sm text-muted-foreground">
-                  <MapPinIcon className="h-4 w-4 mr-1" />
-                  <span>{profileData.state}</span>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col md:flex-row gap-8">
+                <div className="flex flex-col items-center space-y-4">
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage src={profileData.avatar_url || ""} />
+                    <AvatarFallback className="text-2xl">
+                      {profileData.username?.charAt(0)?.toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  {isEditing && (
+                    <Button 
+                      onClick={() => setIsEditDialogOpen(true)} 
+                      variant="outline"
+                      size="sm"
+                    >
+                      Change Avatar
+                    </Button>
+                  )}
                 </div>
-              )}
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setIsEditDialogOpen(true)}
-                className="mt-4"
-              >
-                Edit Profile
-              </Button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-              <div className="col-span-1">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Stats</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Level</span>
-                      <span className="font-medium">{profileData.level}</span>
+                
+                <div className="flex-1 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <div className="flex items-center">
+                        <UserIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+                        <Label htmlFor="username">Username</Label>
+                      </div>
+                      {isEditing ? (
+                        <Input 
+                          id="username" 
+                          value={editedData.username} 
+                          onChange={(e) => handleChange('username', e.target.value)}
+                        />
+                      ) : (
+                        <p className="text-sm">{profileData.username || "Not set"}</p>
+                      )}
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Focus Time</span>
-                      <span className="font-medium">{Math.floor(profileData.totalFocusTime / 60)} hrs</span>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center">
+                        <MailIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+                        <Label htmlFor="email">Email</Label>
+                      </div>
+                      {isEditing ? (
+                        <Input 
+                          id="email" 
+                          type="email" 
+                          value={editedData.email} 
+                          onChange={(e) => handleChange('email', e.target.value)}
+                        />
+                      ) : (
+                        <p className="text-sm">{profileData.email || "Not set"}</p>
+                      )}
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Streak</span>
-                      <span className="font-medium">{profileData.streak} days</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Points</span>
-                      <span className="font-medium">{profileData.points}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-              
-              <div className="col-span-1 md:col-span-2">
-                <Tabs defaultValue="about">
-                  <TabsList className="w-full">
-                    <TabsTrigger value="about" className="flex-1">About</TabsTrigger>
-                    <TabsTrigger value="achievements" className="flex-1">Achievements</TabsTrigger>
-                    <TabsTrigger value="connections" className="flex-1">Connections</TabsTrigger>
-                  </TabsList>
+                  </div>
                   
-                  <TabsContent value="about" className="mt-4">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>About Me</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <p className="text-muted-foreground">Add information about yourself in your profile settings.</p>
-                        
-                        <Separator />
-                        
-                        <div>
-                          <h3 className="font-medium mb-2">Education</h3>
-                          {profileData.university ? (
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <GraduationCapIcon className="h-4 w-4 text-muted-foreground" />
-                                <span>{profileData.university}</span>
-                              </div>
-                              {profileData.major && (
-                                <div className="flex items-center gap-2">
-                                  <UserIcon className="h-4 w-4 text-muted-foreground" />
-                                  <span>{profileData.major}</span>
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <p className="text-muted-foreground">No education details provided.</p>
-                          )}
+                  <hr className="my-4" />
+                  
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Educational Information</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <div className="flex items-center">
+                          <GraduationCapIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+                          <Label htmlFor="university">University/School</Label>
                         </div>
-                        
-                        <Separator />
-                        
-                        <div>
-                          <h3 className="font-medium mb-2">Classes</h3>
-                          {profileData.classes && profileData.classes.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                              {formatClasses(profileData.classes).map((className, index) => (
-                                <Badge key={index} variant="outline">{className}</Badge>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-muted-foreground">No classes added.</p>
-                          )}
+                        {isEditing ? (
+                          <Input 
+                            id="university" 
+                            value={editedData.university} 
+                            onChange={(e) => handleChange('university', e.target.value)}
+                            placeholder="e.g. Stanford University"
+                          />
+                        ) : (
+                          <p className="text-sm">{profileData.university || "Not set"}</p>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center">
+                          <BookOpenIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+                          <Label htmlFor="major">Major/Field of Study</Label>
                         </div>
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-                  
-                  <TabsContent value="achievements" className="mt-4">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Achievements</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {profileData.achievements && profileData.achievements.length > 0 ? (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {profileData.achievements.map((achievement, index) => (
-                              <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
-                                <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center">
-                                  <Trophy className="h-5 w-5 text-primary" />
-                                </div>
-                                <div>
-                                  <h4 className="font-medium">Achievement #{index + 1}</h4>
-                                  <p className="text-sm text-muted-foreground">{achievement.description}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                        {isEditing ? (
+                          <Input 
+                            id="major" 
+                            value={editedData.major} 
+                            onChange={(e) => handleChange('major', e.target.value)}
+                            placeholder="e.g. Computer Science"
+                          />
                         ) : (
-                          <p className="text-muted-foreground text-center py-8">No achievements yet. Complete tasks to earn achievements!</p>
+                          <p className="text-sm">{profileData.major || "Not set"}</p>
                         )}
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-                  
-                  <TabsContent value="connections" className="mt-4">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle>Connections</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {profileData.connections && profileData.connections.length > 0 ? (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {profileData.connections.map((connection, index) => (
-                              <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
-                                <Avatar>
-                                  <AvatarFallback>
-                                    {connection.username.substring(0, 2).toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <h4 className="font-medium">{connection.username}</h4>
-                                  <p className="text-sm text-muted-foreground">Level {connection.level}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                      </div>
+                      
+                      <div className="space-y-2 md:col-span-2">
+                        <div className="flex items-center">
+                          <BookOpenIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+                          <Label htmlFor="classes">Current Classes</Label>
+                        </div>
+                        {isEditing ? (
+                          <Textarea 
+                            id="classes" 
+                            value={Array.isArray(editedData.classes) ? editedData.classes.join(', ') : editedData.classes} 
+                            onChange={(e) => handleChange('classes', e.target.value)}
+                            placeholder="Enter classes separated by commas"
+                            className="min-h-[80px]"
+                          />
                         ) : (
-                          <p className="text-muted-foreground text-center py-8">No connections yet. Connect with other students to study together!</p>
+                          <p className="text-sm">
+                            {profileData.classes && profileData.classes.length > 0 
+                              ? profileData.classes.join(', ') 
+                              : "No classes listed"}
+                          </p>
                         )}
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-                </Tabs>
+                      </div>
+                    </div>
+                    
+                    <hr className="my-4" />
+                    
+                    <h3 className="text-lg font-medium">Professional Information</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <div className="flex items-center">
+                          <BriefcaseIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+                          <Label htmlFor="business">Company/Organization</Label>
+                        </div>
+                        {isEditing ? (
+                          <Input 
+                            id="business" 
+                            value={editedData.business} 
+                            onChange={(e) => handleChange('business', e.target.value)}
+                            placeholder="e.g. Acme Inc."
+                          />
+                        ) : (
+                          <p className="text-sm">{profileData.business || "Not set"}</p>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center">
+                          <BriefcaseIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+                          <Label htmlFor="profession">Job Title/Role</Label>
+                        </div>
+                        {isEditing ? (
+                          <Input 
+                            id="profession" 
+                            value={editedData.profession} 
+                            onChange={(e) => handleChange('profession', e.target.value)}
+                            placeholder="e.g. Software Engineer"
+                          />
+                        ) : (
+                          <p className="text-sm">{profileData.profession || "Not set"}</p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <hr className="my-4" />
+                    
+                    <h3 className="text-lg font-medium">Location</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <div className="flex items-center">
+                          <MapPinIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+                          <Label htmlFor="state">State</Label>
+                        </div>
+                        {isEditing ? (
+                          <Input 
+                            id="state" 
+                            value={editedData.state} 
+                            onChange={(e) => handleChange('state', e.target.value)}
+                            placeholder="e.g. California"
+                          />
+                        ) : (
+                          <p className="text-sm">{profileData.state || "Not set"}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-            
-            <div className="mt-8">
-              <ProfilePreferences />
-            </div>
-          </>
-        )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="privacy" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle>Privacy Settings</CardTitle>
+                {!isEditing ? (
+                  <Button onClick={handleEditStart} variant="outline" size="sm">
+                    <PencilIcon className="h-4 w-4 mr-2" />
+                    Edit Settings
+                  </Button>
+                ) : (
+                  <div className="flex space-x-2">
+                    <Button onClick={handleCancel} variant="outline" size="sm">
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSave} size="sm" disabled={loading}>
+                      Save Changes
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <p className="text-sm text-muted-foreground">
+                  Control which parts of your profile are visible to other users.
+                </p>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">Show University Information</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Allow others to see your university and major
+                      </p>
+                    </div>
+                    <Switch 
+                      checked={editedData.show_university}
+                      onCheckedChange={(checked) => handleChange('show_university', checked)}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">Show Business Information</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Allow others to see your company and job title
+                      </p>
+                    </div>
+                    <Switch 
+                      checked={editedData.show_business}
+                      onCheckedChange={(checked) => handleChange('show_business', checked)}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">Show Location</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Allow others to see your state
+                      </p>
+                    </div>
+                    <Switch 
+                      checked={editedData.show_state}
+                      onCheckedChange={(checked) => handleChange('show_state', checked)}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">Show Classes</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Allow others to see your current classes
+                      </p>
+                    </div>
+                    <Switch 
+                      checked={editedData.show_classes}
+                      onCheckedChange={(checked) => handleChange('show_classes', checked)}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="preferences" className="space-y-6">
+          <ProfilePreferences />
+        </TabsContent>
+      </Tabs>
+      
+      <div className="w-full max-w-md mx-auto mt-10 mb-28">
+        <Button 
+          variant="destructive" 
+          onClick={handleLogout} 
+          disabled={logoutLoading} 
+          className="w-full"
+          size="lg"
+        >
+          {logoutLoading ? (
+            <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <LogOutIcon className="h-4 w-4 mr-2" />
+          )}
+          Logout
+        </Button>
       </div>
       
       <EditProfileDialog 
         open={isEditDialogOpen} 
         onOpenChange={setIsEditDialogOpen} 
         onUpdate={(avatar) => {
-          fetchUserProfile();
+          setEditedData(prev => ({...prev, avatar_url: avatar}));
+          setIsEditDialogOpen(false);
         }}
       />
-      
+
       <NavigationBar />
     </div>
   );
