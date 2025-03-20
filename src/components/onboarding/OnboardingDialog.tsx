@@ -7,6 +7,7 @@ import { UserGoalStep } from "@/components/onboarding/steps/UserGoalStep";
 import { WorkStyleStep } from "@/components/onboarding/steps/WorkStyleStep";
 import { EnvironmentStep } from "@/components/onboarding/steps/EnvironmentStep";
 import { SoundStep } from "@/components/onboarding/steps/SoundStep";
+import { ProfileSetupStep } from "@/components/onboarding/steps/ProfileSetupStep";
 import { SummaryStep } from "@/components/onboarding/steps/SummaryStep";
 import { ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,6 +34,7 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
     { component: WorkStyleStep, title: "How do you prefer to work?" },
     { component: EnvironmentStep, title: "Choose your environment" },
     { component: SoundStep, title: "Select your sound preference" },
+    { component: ProfileSetupStep, title: "Complete your profile" },
     { component: SummaryStep, title: "Your personalized setup" },
   ];
 
@@ -69,6 +71,7 @@ export const OnboardingDialog = ({ open, onOpenChange }: OnboardingDialogProps) 
       case 1: return !!state.workStyle;
       case 2: return !!state.environment; 
       case 3: return !!state.soundPreference;
+      case 4: return true; // Profile setup can proceed even if some fields are empty
       default: return true;
     }
   };
