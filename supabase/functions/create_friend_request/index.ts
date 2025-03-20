@@ -32,7 +32,28 @@ serve(async (req) => {
       );
     }
     
-    // Check if friend request already exists
+    // Check if we're in preview mode with sample IDs
+    const isSampleId = senderId.startsWith('sample-') || recipientId.startsWith('sample-');
+    
+    if (isSampleId) {
+      console.log("Detected sample IDs in preview mode");
+      // For sample IDs, return a mock success response
+      return new Response(
+        JSON.stringify({ 
+          friendRequest: {
+            id: `fr-${Date.now()}`,
+            sender_id: senderId,
+            recipient_id: recipientId,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        }),
+        { status: 201, headers: corsHeaders }
+      );
+    }
+    
+    // For real IDs, check if friend request already exists
     const { data: existingRequests, error: checkError } = await supabase
       .from('friend_requests')
       .select('*')

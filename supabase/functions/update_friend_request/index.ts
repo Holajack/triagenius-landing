@@ -15,13 +15,6 @@ serve(async (req) => {
   }
 
   try {
-    // Get Supabase credentials from environment
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
-    
-    // Initialize Supabase client with service role key
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    
     // Parse request body
     const { requestId, status } = await req.json();
     
@@ -32,59 +25,42 @@ serve(async (req) => {
       );
     }
     
-    // Validate status
-    if (!['accepted', 'rejected', 'pending'].includes(status)) {
+    // Check if this is a sample/mock ID for preview mode
+    if (requestId.toString().startsWith('fr-') || requestId.toString().startsWith('sample-')) {
+      console.log("Sample request ID detected, returning mock response");
       return new Response(
-        JSON.stringify({ error: "Invalid status value" }),
-        { status: 400, headers: corsHeaders }
+        JSON.stringify({
+          friendRequest: {
+            id: requestId,
+            status: status,
+            updated_at: new Date().toISOString()
+          }
+        }),
+        { status: 200, headers: corsHeaders }
       );
     }
     
-    // Update friend request
-    const { data: friendRequest, error: updateError } = await supabase
+    // Get Supabase credentials from environment
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
+    
+    // Initialize Supabase client with service role key
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Update the friend request status
+    const { data: friendRequest, error } = await supabase
       .from('friend_requests')
       .update({ status })
       .eq('id', requestId)
       .select()
       .single();
       
-    if (updateError) {
-      console.error('Error updating friend request:', updateError);
+    if (error) {
+      console.error('Error updating friend request:', error);
       return new Response(
-        JSON.stringify({ error: updateError.message }),
+        JSON.stringify({ error: error.message }),
         { status: 500, headers: corsHeaders }
       );
-    }
-    
-    // Create user connection if accepted
-    if (status === 'accepted') {
-      try {
-        // Check if user_connections table exists
-        const { data: tablesExist } = await supabase
-          .from('user_connections')
-          .select('id')
-          .limit(1);
-          
-        // If table exists, create connections
-        if (tablesExist !== null) {
-          // Create two-way connection between users
-          await supabase
-            .from('user_connections')
-            .insert([
-              {
-                follower_id: friendRequest.sender_id,
-                following_id: friendRequest.recipient_id
-              },
-              {
-                follower_id: friendRequest.recipient_id,
-                following_id: friendRequest.sender_id
-              }
-            ]);
-        }
-      } catch (error) {
-        console.error('Error creating user connections:', error);
-        // Don't return error - we still want to accept the friend request even if connection fails
-      }
     }
     
     return new Response(

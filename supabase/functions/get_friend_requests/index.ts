@@ -15,13 +15,6 @@ serve(async (req) => {
   }
 
   try {
-    // Get Supabase credentials from environment
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
-    
-    // Initialize Supabase client with service role key
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    
     // Parse request body
     const { userId } = await req.json();
     
@@ -32,38 +25,40 @@ serve(async (req) => {
       );
     }
     
-    // Fetch all friend requests where user is sender or recipient
-    const { data: sentRequests, error: sentError } = await supabase
+    // Check if we're in preview mode with sample IDs
+    if (userId.toString().startsWith('sample-')) {
+      console.log("Sample user ID detected, returning empty friend requests array");
+      return new Response(
+        JSON.stringify({ friendRequests: [] }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+    
+    // Get Supabase credentials from environment
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") as string;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") as string;
+    
+    // Initialize Supabase client with service role key
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Fetch all friend requests where the user is either sender or recipient
+    const { data: friendRequests, error } = await supabase
       .from('friend_requests')
       .select('*')
-      .eq('sender_id', userId);
+      .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`);
       
-    if (sentError) {
-      console.error('Error fetching sent requests:', sentError);
+    if (error) {
+      console.error('Error fetching friend requests:', error);
       return new Response(
-        JSON.stringify({ error: sentError.message }),
+        JSON.stringify({ error: error.message }),
         { status: 500, headers: corsHeaders }
       );
     }
     
-    const { data: receivedRequests, error: receivedError } = await supabase
-      .from('friend_requests')
-      .select('*')
-      .eq('recipient_id', userId);
-      
-    if (receivedError) {
-      console.error('Error fetching received requests:', receivedError);
-      return new Response(
-        JSON.stringify({ error: receivedError.message }),
-        { status: 500, headers: corsHeaders }
-      );
-    }
-    
-    // Combine sent and received requests
-    const friendRequests = [...sentRequests, ...receivedRequests];
+    console.log(`Fetched ${friendRequests?.length || 0} friend requests for user ${userId}`);
     
     return new Response(
-      JSON.stringify({ friendRequests }),
+      JSON.stringify({ friendRequests: friendRequests || [] }),
       { status: 200, headers: corsHeaders }
     );
     
