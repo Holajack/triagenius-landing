@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -13,25 +14,62 @@ const Auth = () => {
   const isFromStartFocusing = location.state?.source === "start-focusing";
   const initialMode = location.state?.mode || "login";
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
     // Check if user is already authenticated
     const checkAuth = async () => {
+      setIsCheckingAuth(true);
       const { data } = await supabase.auth.getSession();
-      setIsAuthenticated(!!data.session);
+      const isLoggedIn = !!data.session;
+      setIsAuthenticated(isLoggedIn);
       
-      // If already authenticated, redirect to appropriate page
-      if (data.session) {
+      // Check for email confirmation from URL hash
+      const hash = location.hash;
+      const isEmailConfirmation = hash && hash.includes("type=signup");
+      
+      // If already authenticated or just confirmed email, redirect to appropriate page
+      if (isLoggedIn) {
+        if (isEmailConfirmation) {
+          navigate("/onboarding");
+        } else if (isFromStartFocusing) {
+          navigate("/onboarding");
+        } else {
+          navigate("/dashboard");
+        }
+      }
+      setIsCheckingAuth(false);
+    };
+    
+    checkAuth();
+    
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const isLoggedIn = !!session;
+      setIsAuthenticated(isLoggedIn);
+      
+      if (event === 'SIGNED_IN') {
+        // Handle signed in event
         if (isFromStartFocusing) {
           navigate("/onboarding");
         } else {
           navigate("/dashboard");
         }
       }
-    };
+    });
     
-    checkAuth();
-  }, [navigate, isFromStartFocusing]);
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate, isFromStartFocusing, location.hash, location]);
+  
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-triage-purple">Checking authentication...</div>
+      </div>
+    );
+  }
   
   if (isAuthenticated) {
     return null; // Don't render anything while redirecting

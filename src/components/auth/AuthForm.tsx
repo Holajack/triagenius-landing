@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,12 +19,14 @@ interface AuthFormProps {
 
 const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const isFromStartFocusing = source === "start-focusing";
   
   const [mode] = useState<AuthMode>(initialMode);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [emailConfirmError, setEmailConfirmError] = useState(false);
+  const [emailConfirmSent, setEmailConfirmSent] = useState(false);
   
   // Form fields
   const [email, setEmail] = useState("");
@@ -33,11 +35,36 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
   const [username, setUsername] = useState("");
   const [error, setError] = useState("");
 
+  // Check for email confirmation
+  useEffect(() => {
+    const checkEmailConfirmation = async () => {
+      // Check if the URL has a confirmation token (from email link)
+      const hash = location.hash;
+      if (hash && hash.includes("type=signup")) {
+        try {
+          // Handle the confirmation token
+          const { error } = await supabase.auth.getSession();
+          if (error) throw error;
+          
+          toast.success("Email confirmed successfully!");
+          // Navigate to onboarding after confirmation
+          navigate("/onboarding");
+        } catch (error: any) {
+          console.error("Email confirmation error:", error.message);
+          toast.error("Failed to confirm email. Please try logging in.");
+        }
+      }
+    };
+    
+    checkEmailConfirmation();
+  }, [location, navigate]);
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
     setEmailConfirmError(false);
+    setEmailConfirmSent(false);
     
     try {
       if (mode === "login") {
@@ -73,6 +100,7 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
                 name,
                 username,
               },
+              emailRedirectTo: `${window.location.origin}/auth#type=signup`,
             },
           });
           
@@ -84,14 +112,18 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
               throw supabaseError;
             }
           } else {
-            toast.success("Account created successfully!");
-            
             // Handle email confirmation case
             if (supabaseData?.user?.identities?.length === 1 && !supabaseData.user.email_confirmed_at) {
-              toast.info("Please check your email to confirm your account.", {
+              setEmailConfirmSent(true);
+              toast.success("Account created! Please check your email to confirm your address.", {
                 description: "You'll need to verify your email before you can log in.",
                 duration: 8000,
               });
+              return;
+            } else {
+              toast.success("Account created successfully!");
+              navigate("/onboarding");
+              return;
             }
           }
         } catch (supabaseError: any) {
@@ -103,14 +135,7 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
         try {
           await createUserWithEmailAndPassword(auth, email, password);
           toast.success("Account created with Firebase successfully!");
-          
-          // If the user signed up from the "Start Focusing" button, take them to onboarding
-          if (isFromStartFocusing) {
-            navigate("/onboarding");
-          } else {
-            // Otherwise, take them to the dashboard
-            navigate("/dashboard");
-          }
+          navigate("/onboarding");
           return;
         } catch (firebaseError: any) {
           // Only throw if we didn't already succeed with Supabase
@@ -129,6 +154,15 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
   
   return (
     <div className="w-full bg-white rounded-xl shadow-sm border p-6">
+      {emailConfirmSent && (
+        <Alert className="mb-4 bg-green-50 border-green-200">
+          <AlertTitle className="text-green-800">Email confirmation sent</AlertTitle>
+          <AlertDescription className="text-green-700">
+            We've sent a confirmation link to {email}. Please check your inbox and click the link to activate your account.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       {emailConfirmError && (
         <Alert className="mb-4 bg-amber-50 border-amber-200">
           <AlertTitle className="text-amber-800">Email confirmation issue</AlertTitle>
@@ -138,7 +172,7 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
         </Alert>
       )}
       
-      {error && !emailConfirmError && (
+      {error && !emailConfirmError && !emailConfirmSent && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">
           {error}
         </div>
@@ -214,7 +248,7 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
         <Button
           type="submit"
           className="w-full bg-triage-purple hover:bg-triage-purple/90"
-          disabled={loading}
+          disabled={loading || emailConfirmSent}
         >
           {mode === "login" ? (
             <>
@@ -234,4 +268,3 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
 };
 
 export default AuthForm;
-
