@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
@@ -6,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { auth } from "@/integrations/firebase/client";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type AuthMode = "login" | "signup";
 
@@ -22,6 +24,7 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
   const [mode] = useState<AuthMode>(initialMode);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [emailConfirmError, setEmailConfirmError] = useState(false);
   
   // Form fields
   const [email, setEmail] = useState("");
@@ -34,54 +37,86 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setEmailConfirmError(false);
     
     try {
       if (mode === "login") {
-        // Handle login
-        const { data, error } = await supabase.auth.signInWithPassword({
+        // Try Supabase login first
+        const { data: supabaseData, error: supabaseError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         
-        if (error) {
-          throw error;
-        }
-        
-        toast.success("Welcome back!");
-        navigate("/dashboard");
-      } else {
-        // Handle signup
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              name,
-              username,
-            },
-          },
-        });
-        
-        if (error) {
-          throw error;
-        }
-        
-        toast.success("Account created successfully!");
-        
-        // Check if email confirmation is enabled and notify the user
-        if (data?.user?.identities?.length === 1 && !data.user.email_confirmed_at) {
-          toast.info("Please check your email to confirm your account.", {
-            description: "You'll need to verify your email before you can log in.",
-            duration: 8000,
-          });
-        }
-        
-        // If the user signed up from the "Start Focusing" button, take them to onboarding
-        if (isFromStartFocusing) {
-          navigate("/onboarding");
+        if (supabaseError) {
+          // If Supabase login fails, try Firebase login
+          try {
+            await signInWithEmailAndPassword(auth, email, password);
+            toast.success("Welcome back!");
+            navigate("/dashboard");
+            return;
+          } catch (firebaseError: any) {
+            throw supabaseError; // Use original Supabase error for consistency
+          }
         } else {
-          // Otherwise, take them to the dashboard
+          toast.success("Welcome back!");
           navigate("/dashboard");
+        }
+      } else {
+        // For signup, try both providers with better error handling
+        try {
+          // Try Supabase signup first
+          const { data: supabaseData, error: supabaseError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                name,
+                username,
+              },
+            },
+          });
+          
+          if (supabaseError) {
+            if (supabaseError.message.includes("confirmation email")) {
+              setEmailConfirmError(true);
+              // Continue to Firebase signup even though there was an email error
+            } else {
+              throw supabaseError;
+            }
+          } else {
+            toast.success("Account created successfully!");
+            
+            // Handle email confirmation case
+            if (supabaseData?.user?.identities?.length === 1 && !supabaseData.user.email_confirmed_at) {
+              toast.info("Please check your email to confirm your account.", {
+                description: "You'll need to verify your email before you can log in.",
+                duration: 8000,
+              });
+            }
+          }
+        } catch (supabaseError: any) {
+          // If Supabase signup fails with an email confirmation error, try Firebase
+          console.log("Trying Firebase after Supabase error:", supabaseError.message);
+        }
+        
+        // Try Firebase signup regardless of Supabase result due to email issues
+        try {
+          await createUserWithEmailAndPassword(auth, email, password);
+          toast.success("Account created with Firebase successfully!");
+          
+          // If the user signed up from the "Start Focusing" button, take them to onboarding
+          if (isFromStartFocusing) {
+            navigate("/onboarding");
+          } else {
+            // Otherwise, take them to the dashboard
+            navigate("/dashboard");
+          }
+          return;
+        } catch (firebaseError: any) {
+          // Only throw if we didn't already succeed with Supabase
+          if (emailConfirmError) {
+            throw firebaseError;
+          }
         }
       }
     } catch (error: any) {
@@ -94,7 +129,16 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
   
   return (
     <div className="w-full bg-white rounded-xl shadow-sm border p-6">
-      {error && (
+      {emailConfirmError && (
+        <Alert className="mb-4 bg-amber-50 border-amber-200">
+          <AlertTitle className="text-amber-800">Email confirmation issue</AlertTitle>
+          <AlertDescription className="text-amber-700">
+            We're experiencing issues with our email confirmation system. You can still create an account and log in directly.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {error && !emailConfirmError && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-md text-sm">
           {error}
         </div>
@@ -190,3 +234,4 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
 };
 
 export default AuthForm;
+
