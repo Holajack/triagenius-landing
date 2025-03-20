@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { UserPlus, UserCheck, Search, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { FriendRequest } from "@/types/database";
 
 interface CommunityUserListProps {
   searchQuery?: string;
@@ -24,13 +26,6 @@ interface Profile {
   state?: string | null;
   show_university?: boolean;
   show_state?: boolean;
-}
-
-interface FriendRequest {
-  id: string;
-  sender_id: string;
-  recipient_id: string;
-  status: string;
 }
 
 const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserListProps) => {
@@ -130,10 +125,10 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
         {
           event: '*',
           schema: 'public',
-          table: 'profiles'
+          table: 'friend_requests'
         },
         (payload) => {
-          fetchAllUsers();
+          fetchFriendRequests();
         }
       )
       .subscribe();
@@ -141,7 +136,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, fetchAllUsers]);
+  }, [user]);
   
   useEffect(() => {
     if (searchTerm.trim() === '') {
