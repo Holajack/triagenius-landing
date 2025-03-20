@@ -53,6 +53,9 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     try {
       setLoading(true);
       
+      // Make sure to log any SQL issues
+      console.log("Fetching users for user ID:", user.id);
+      
       const { data: profiles, error } = await supabase
         .from('profiles')
         .select('id, username, avatar_url, university, state, show_university, show_state')
@@ -64,6 +67,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
         return;
       }
       
+      console.log("Fetched profiles:", profiles?.length || 0);
       setAllUsers(profiles || []);
       setFilteredUsers(profiles || []);
       
@@ -79,43 +83,46 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     fetchAllUsers();
   }, [fetchAllUsers]);
   
-  useEffect(() => {
-    const fetchFriendRequests = async () => {
-      if (!user) return;
-      
-      try {
-        const { data, error } = await supabase.functions.invoke('get_friend_requests', {
-          body: { userId: user.id }
-        });
-        
-        if (error) {
-          console.error('Error fetching friend requests:', error);
-          return;
-        }
-        
-        if (data && data.friendRequests) {
-          setFriendRequests(data.friendRequests);
-          
-          const pending = data.friendRequests
-            .filter((req: FriendRequest) => req.status === 'pending')
-            .map((req: FriendRequest) => 
-              req.sender_id === user.id ? req.recipient_id : req.sender_id
-            );
-          
-          const accepted = data.friendRequests
-            .filter((req: FriendRequest) => req.status === 'accepted')
-            .map((req: FriendRequest) => 
-              req.sender_id === user.id ? req.recipient_id : req.sender_id
-            );
-          
-          setPendingFriendIds(pending);
-          setAcceptedFriendIds(accepted);
-        }
-      } catch (error) {
-        console.error('Error in fetchFriendRequests:', error);
-      }
-    };
+  const fetchFriendRequests = useCallback(async () => {
+    if (!user) return;
     
+    try {
+      console.log("Fetching friend requests for user ID:", user.id);
+      
+      const { data, error } = await supabase.functions.invoke('get_friend_requests', {
+        body: { userId: user.id }
+      });
+      
+      if (error) {
+        console.error('Error fetching friend requests:', error);
+        return;
+      }
+      
+      if (data && data.friendRequests) {
+        console.log("Fetched friend requests:", data.friendRequests.length);
+        setFriendRequests(data.friendRequests);
+        
+        const pending = data.friendRequests
+          .filter((req: FriendRequest) => req.status === 'pending')
+          .map((req: FriendRequest) => 
+            req.sender_id === user.id ? req.recipient_id : req.sender_id
+          );
+        
+        const accepted = data.friendRequests
+          .filter((req: FriendRequest) => req.status === 'accepted')
+          .map((req: FriendRequest) => 
+            req.sender_id === user.id ? req.recipient_id : req.sender_id
+          );
+        
+        setPendingFriendIds(pending);
+        setAcceptedFriendIds(accepted);
+      }
+    } catch (error) {
+      console.error('Error in fetchFriendRequests:', error);
+    }
+  }, [user]);
+  
+  useEffect(() => {
     fetchFriendRequests();
 
     const channel = supabase
@@ -128,6 +135,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
           table: 'friend_requests'
         },
         (payload) => {
+          console.log("Friend request changed:", payload);
           fetchFriendRequests();
         }
       )
@@ -136,7 +144,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, fetchFriendRequests]);
   
   useEffect(() => {
     if (searchTerm.trim() === '') {
@@ -174,9 +182,14 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
   };
   
   const sendFriendRequest = async (recipientId: string) => {
-    if (!user) return;
+    if (!user) {
+      toast.error("You must be logged in to send friend requests");
+      return;
+    }
     
     try {
+      console.log("Sending friend request to:", recipientId);
+      
       const { data, error } = await supabase.functions.invoke('create_friend_request', {
         body: { 
           senderId: user.id,
@@ -202,9 +215,14 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
   };
   
   const acceptFriendRequest = async (requestId: string, senderId: string) => {
-    if (!user) return;
+    if (!user) {
+      toast.error("You must be logged in to accept friend requests");
+      return;
+    }
     
     try {
+      console.log("Accepting friend request:", requestId);
+      
       const { data, error } = await supabase.functions.invoke('update_friend_request', {
         body: { 
           requestId,
@@ -219,6 +237,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
       }
       
       if (data && data.friendRequest) {
+        // Update the local state
         setFriendRequests(
           friendRequests.map(req => req.id === requestId ? data.friendRequest : req)
         );
@@ -229,6 +248,42 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     } catch (error) {
       console.error('Error in acceptFriendRequest:', error);
       toast.error("Failed to accept friend request");
+    }
+  };
+
+  const rejectFriendRequest = async (requestId: string, senderId: string) => {
+    if (!user) {
+      toast.error("You must be logged in to reject friend requests");
+      return;
+    }
+    
+    try {
+      console.log("Rejecting friend request:", requestId);
+      
+      const { data, error } = await supabase.functions.invoke('update_friend_request', {
+        body: { 
+          requestId,
+          status: 'rejected'
+        }
+      });
+      
+      if (error) {
+        console.error('Error rejecting friend request:', error);
+        toast.error("Failed to reject friend request");
+        return;
+      }
+      
+      if (data && data.friendRequest) {
+        // Update the local state
+        setFriendRequests(
+          friendRequests.map(req => req.id === requestId ? data.friendRequest : req)
+        );
+        setPendingFriendIds(pendingFriendIds.filter(id => id !== senderId));
+        toast.success("Friend request rejected");
+      }
+    } catch (error) {
+      console.error('Error in rejectFriendRequest:', error);
+      toast.error("Failed to reject friend request");
     }
   };
   
@@ -277,7 +332,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
                   </div>
                 </div>
                 
-                <div>
+                <div className="flex space-x-2">
                   {isAlreadyFriend ? (
                     <Button variant="ghost" size="sm" disabled>
                       <UserCheck className="h-4 w-4 mr-1" />
@@ -285,13 +340,22 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
                     </Button>
                   ) : isPending ? (
                     isReceivedRequest ? (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => acceptFriendRequest(friendRequest.id, profile.id)}
-                      >
-                        Accept
-                      </Button>
+                      <>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => acceptFriendRequest(friendRequest.id, profile.id)}
+                        >
+                          Accept
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => rejectFriendRequest(friendRequest.id, profile.id)}
+                        >
+                          Reject
+                        </Button>
+                      </>
                     ) : (
                       <Button variant="ghost" size="sm" disabled>
                         Pending
