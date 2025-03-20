@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -35,6 +36,18 @@ const Reports = () => {
   const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState("cognitive");
 
+  // Get environment-specific classes for card styling
+  const getEnvCardClass = () => {
+    switch (state.environment) {
+      case 'office': return "border-blue-300 bg-gradient-to-br from-blue-50/50 to-white shadow-blue-100/30 shadow-md";
+      case 'park': return "border-green-300 bg-gradient-to-br from-green-50/50 to-white shadow-green-100/30 shadow-md";
+      case 'home': return "border-orange-300 bg-gradient-to-br from-orange-50/50 to-white shadow-orange-100/30 shadow-md";
+      case 'coffee-shop': return "border-amber-300 bg-gradient-to-br from-amber-50/50 to-white shadow-amber-100/30 shadow-md";
+      case 'library': return "border-gray-300 bg-gradient-to-br from-gray-50/50 to-white shadow-gray-100/30 shadow-md";
+      default: return "border-purple-300 bg-gradient-to-br from-purple-50/50 to-white shadow-purple-100/30 shadow-md";
+    }
+  };
+
   return (
     <div className={cn(
       "min-h-screen bg-background text-foreground pb-20",
@@ -58,7 +71,7 @@ const Reports = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div className="md:col-span-2">
-            <Card className="shadow-sm">
+            <Card className={`shadow-sm ${getEnvCardClass()}`}>
               <CardHeader className="pb-2">
                 <CardTitle className="text-xl flex items-center">
                   <Activity className="h-5 w-5 mr-2 text-primary" />

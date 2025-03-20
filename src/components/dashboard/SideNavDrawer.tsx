@@ -27,15 +27,27 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
   const { theme } = useTheme();
   const [logoutLoading, setLogoutLoading] = useState(false);
 
-  // Get accent color based on environment
+  // Get accent color based on environment - more vibrant
   const getAccentColor = () => {
     switch (state.environment) {
-      case 'office': return "text-blue-600";
-      case 'park': return "text-green-600";
-      case 'home': return "text-orange-600";
-      case 'coffee-shop': return "text-amber-600";
-      case 'library': return "text-gray-600";
-      default: return "text-triage-purple";
+      case 'office': return "text-blue-600 hover:bg-blue-50";
+      case 'park': return "text-green-600 hover:bg-green-50";
+      case 'home': return "text-orange-600 hover:bg-orange-50";
+      case 'coffee-shop': return "text-amber-600 hover:bg-amber-50";
+      case 'library': return "text-gray-600 hover:bg-gray-50";
+      default: return "text-triage-purple hover:bg-purple-50";
+    }
+  };
+
+  // Get background style for the drawer based on environment
+  const getDrawerStyle = () => {
+    switch (state.environment) {
+      case 'office': return "bg-gradient-to-br from-blue-50/30 to-transparent border-l-2 border-blue-100";
+      case 'park': return "bg-gradient-to-br from-green-50/30 to-transparent border-l-2 border-green-100";
+      case 'home': return "bg-gradient-to-br from-orange-50/30 to-transparent border-l-2 border-orange-100";
+      case 'coffee-shop': return "bg-gradient-to-br from-amber-50/30 to-transparent border-l-2 border-amber-100";
+      case 'library': return "bg-gradient-to-br from-gray-50/30 to-transparent border-l-2 border-gray-100";
+      default: return "bg-gradient-to-br from-purple-50/30 to-transparent border-l-2 border-purple-100";
     }
   };
 
@@ -96,14 +108,26 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
     },
   ];
 
+  // Get environment-specific class for the header title
+  const getHeaderTitleClass = () => {
+    switch (state.environment) {
+      case 'office': return "text-blue-700";
+      case 'park': return "text-green-700";
+      case 'home': return "text-orange-700";
+      case 'coffee-shop': return "text-amber-700";
+      case 'library': return "text-gray-700";
+      default: return "text-triage-purple";
+    }
+  };
+
   return (
     <Sheet>
       <SheetTrigger asChild>
         {children}
       </SheetTrigger>
-      <SheetContent side="right" className="w-[270px] sm:w-[300px] flex flex-col">
+      <SheetContent side="right" className={`w-[270px] sm:w-[300px] flex flex-col ${getDrawerStyle()}`}>
         <SheetHeader className="text-left">
-          <SheetTitle className="text-center text-xl text-triage-purple">
+          <SheetTitle className={`text-center text-xl ${getHeaderTitleClass()}`}>
             The Triage System
           </SheetTitle>
         </SheetHeader>
@@ -112,10 +136,10 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
             <Button
               key={item.label}
               variant="ghost"
-              className="flex items-center justify-start gap-3 w-full py-6"
+              className={`flex items-center justify-start gap-3 w-full py-6 ${getAccentColor()}`}
               onClick={item.onClick}
             >
-              <span className={getAccentColor()}>
+              <span>
                 {item.icon}
               </span>
               <span className="text-base">

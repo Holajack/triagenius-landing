@@ -63,15 +63,15 @@ const Dashboard = () => {
     return state.environment;
   };
 
-  // Get environment-specific class for card styling
+  // Get environment-specific class for card styling with more distinctive colors
   const getEnvCardClass = () => {
     switch (state.environment) {
-      case 'office': return "border-blue-200 bg-gradient-to-br from-blue-50/30 to-white";
-      case 'park': return "border-green-200 bg-gradient-to-br from-green-50/30 to-white";
-      case 'home': return "border-orange-200 bg-gradient-to-br from-orange-50/30 to-white";
-      case 'coffee-shop': return "border-amber-200 bg-gradient-to-br from-amber-50/30 to-white";
-      case 'library': return "border-gray-200 bg-gradient-to-br from-gray-50/30 to-white";
-      default: return "";
+      case 'office': return "border-blue-300 bg-gradient-to-br from-blue-50/50 to-white shadow-blue-100/30 shadow-md";
+      case 'park': return "border-green-300 bg-gradient-to-br from-green-50/50 to-white shadow-green-100/30 shadow-md";
+      case 'home': return "border-orange-300 bg-gradient-to-br from-orange-50/50 to-white shadow-orange-100/30 shadow-md";
+      case 'coffee-shop': return "border-amber-300 bg-gradient-to-br from-amber-50/50 to-white shadow-amber-100/30 shadow-md";
+      case 'library': return "border-gray-300 bg-gradient-to-br from-gray-50/50 to-white shadow-gray-100/30 shadow-md";
+      default: return "border-purple-300 bg-gradient-to-br from-purple-50/50 to-white shadow-purple-100/30 shadow-md";
     }
   };
 

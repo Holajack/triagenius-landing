@@ -17,24 +17,36 @@ const NavigationBar = () => {
   // Get accent color based on environment - enhanced for more noticeable theming
   const getAccentColor = () => {
     switch (state.environment) {
-      case 'office': return "text-blue-600 bg-blue-50/80";
-      case 'park': return "text-green-600 bg-green-50/80";
-      case 'home': return "text-orange-600 bg-orange-50/80";
-      case 'coffee-shop': return "text-amber-600 bg-amber-50/80";
-      case 'library': return "text-gray-600 bg-gray-50/80";
-      default: return "text-triage-purple bg-purple-50/80";
+      case 'office': return "text-blue-700 bg-blue-100/90";
+      case 'park': return "text-green-700 bg-green-100/90";
+      case 'home': return "text-orange-700 bg-orange-100/90";
+      case 'coffee-shop': return "text-amber-700 bg-amber-100/90";
+      case 'library': return "text-gray-700 bg-gray-100/90";
+      default: return "text-triage-purple bg-purple-100/90";
     }
   };
   
-  // Get background color for active item
+  // Get background color for active item - more vibrant
   const getActiveBgColor = () => {
     switch (state.environment) {
-      case 'office': return "bg-blue-50";
-      case 'park': return "bg-green-50";
-      case 'home': return "bg-orange-50";
-      case 'coffee-shop': return "bg-amber-50";
-      case 'library': return "bg-gray-50";
-      default: return "bg-purple-50";
+      case 'office': return "bg-blue-100";
+      case 'park': return "bg-green-100";
+      case 'home': return "bg-orange-100";
+      case 'coffee-shop': return "bg-amber-100";
+      case 'library': return "bg-gray-100";
+      default: return "bg-purple-100";
+    }
+  };
+
+  // Get border color for active indicator
+  const getActiveBorderColor = () => {
+    switch (state.environment) {
+      case 'office': return "bg-blue-500";
+      case 'park': return "bg-green-500";
+      case 'home': return "bg-orange-500";
+      case 'coffee-shop': return "bg-amber-500";
+      case 'library': return "bg-gray-500";
+      default: return "bg-purple-500";
     }
   };
   
@@ -84,12 +96,12 @@ const NavigationBar = () => {
               variant="ghost"
               className={cn(
                 "flex flex-col h-16 rounded-none px-2 relative",
-                item.active ? `${getActiveBgColor()} bg-opacity-40` : ""
+                item.active ? `${getActiveBgColor()} bg-opacity-60` : ""
               )}
               onClick={item.onClick}
             >
               {item.active && (
-                <div className="absolute top-0 left-0 right-0 h-1 bg-current rounded-b" 
+                <div className="absolute top-0 left-0 right-0 h-1 rounded-b" 
                   style={{ 
                     backgroundColor: `hsl(var(--env-primary))` 
                   }}
