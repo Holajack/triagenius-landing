@@ -91,11 +91,11 @@ export const ProfileSetupStep = () => {
         formattedClasses = profileData.classes;
       }
       
+      // Update existing profile rather than trying to create a new one
       const { error } = await supabase
         .from('profiles')
-        .upsert({
-          id: user.id,
-          username: profileData.username,
+        .update({
+          username: profileData.username || user.email?.split('@')[0],
           university: profileData.university,
           major: profileData.major,
           business: profileData.business,
@@ -103,12 +103,16 @@ export const ProfileSetupStep = () => {
           state: profileData.state,
           classes: formattedClasses,
           avatar_url: profileData.avatar_url
-        });
+        })
+        .eq('id', user.id);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Profile update error:", error);
+        throw error;
+      }
       
       toast.success("Profile information saved");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving profile:", error);
       toast.error("Failed to save profile information");
     } finally {
