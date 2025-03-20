@@ -57,11 +57,78 @@ export function useStudyRooms() {
   const [error, setError] = useState<Error | null>(null);
   const { user } = useUser();
 
+  // Helper function to check if we're in preview/sandbox mode
+  const isPreviewMode = () => {
+    return !user || user.id.toString().startsWith('sample-');
+  };
+
+  // Generate a sample room for preview mode
+  const generateSampleRoom = (roomData: Partial<CreateRoomData>): StudyRoom => {
+    const randomId = `sample-${Math.random().toString(36).substring(2, 10)}`;
+    return {
+      id: randomId,
+      name: roomData.name || 'Sample Study Room',
+      description: roomData.description || roomData.topic || 'This is a sample room for preview mode',
+      topic: roomData.topic || 'General Study',
+      creator_id: user?.id || 'sample-user',
+      is_active: true,
+      is_private: false,
+      schedule: roomData.schedule || null,
+      duration: roomData.duration || null,
+      subjects: roomData.subjects || [],
+      max_participants: roomData.max_participants || 10,
+      current_participants: 1,
+      room_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      creator: {
+        id: user?.id || 'sample-user',
+        username: user?.username || 'Sample User',
+        avatar_url: null
+      },
+      participant_count: 1,
+      participants: [{
+        id: randomId,
+        user_id: user?.id || 'sample-user',
+        room_id: randomId,
+        joined_at: new Date().toISOString(),
+        last_active_at: new Date().toISOString(),
+        user: {
+          id: user?.id || 'sample-user',
+          username: user?.username || 'Sample User',
+          avatar_url: null
+        }
+      }]
+    };
+  };
+
   // Load initial study rooms
   useEffect(() => {
     const fetchStudyRooms = async () => {
       try {
         setLoading(true);
+        
+        // Check if we're in preview mode
+        if (isPreviewMode()) {
+          console.log('Preview mode detected, generating sample study rooms');
+          // Generate sample rooms for preview mode
+          const sampleRooms: StudyRoom[] = [
+            generateSampleRoom({
+              name: 'Biology Study Group',
+              topic: 'Cell Biology',
+              subjects: ['Biology', 'Science']
+            }),
+            generateSampleRoom({
+              name: 'Math Problem Solving',
+              topic: 'Calculus 2',
+              subjects: ['Math', 'Calculus']
+            })
+          ];
+          setRooms(sampleRooms);
+          setLoading(false);
+          return;
+        }
+        
         const { data, error } = await supabase
           .from('study_rooms')
           .select(`
@@ -89,7 +156,7 @@ export function useStudyRooms() {
             topic: room.description || 'General Study',
             // Default for fields that might be missing in the database
             is_active: true,
-            subjects: [],
+            subjects: room.subjects || [],
             participant_count: room.participants?.length || 0
           } as StudyRoom;
         }) || [];
@@ -105,56 +172,59 @@ export function useStudyRooms() {
 
     fetchStudyRooms();
 
-    // Subscribe to changes in study rooms
-    const roomsChannel = supabase
-      .channel('study_rooms_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'study_rooms',
-        },
-        (payload) => {
-          console.log('Study room change:', payload);
-          
-          if (payload.eventType === 'INSERT') {
-            fetchStudyRooms(); // Refetch all rooms to include relations
-          } else if (payload.eventType === 'UPDATE') {
-            setRooms(prev => 
-              prev.map(room => 
-                room.id === payload.new.id ? { ...room, ...payload.new } : room
-              )
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setRooms(prev => prev.filter(room => room.id !== payload.old.id));
+    // Only set up real-time subscriptions if not in preview mode
+    if (!isPreviewMode()) {
+      // Subscribe to changes in study rooms
+      const roomsChannel = supabase
+        .channel('study_rooms_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'study_rooms',
+          },
+          (payload) => {
+            console.log('Study room change:', payload);
+            
+            if (payload.eventType === 'INSERT') {
+              fetchStudyRooms(); // Refetch all rooms to include relations
+            } else if (payload.eventType === 'UPDATE') {
+              setRooms(prev => 
+                prev.map(room => 
+                  room.id === payload.new.id ? { ...room, ...payload.new } : room
+                )
+              );
+            } else if (payload.eventType === 'DELETE') {
+              setRooms(prev => prev.filter(room => room.id !== payload.old.id));
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
 
-    // Subscribe to changes in room participants
-    const participantsChannel = supabase
-      .channel('room_participants_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'study_room_participants',
-        },
-        () => {
-          // Refetch to get accurate counts
-          fetchStudyRooms();
-        }
-      )
-      .subscribe();
+      // Subscribe to changes in room participants
+      const participantsChannel = supabase
+        .channel('room_participants_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'study_room_participants',
+          },
+          () => {
+            // Refetch to get accurate counts
+            fetchStudyRooms();
+          }
+        )
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(roomsChannel);
-      supabase.removeChannel(participantsChannel);
-    };
-  }, []);
+      return () => {
+        supabase.removeChannel(roomsChannel);
+        supabase.removeChannel(participantsChannel);
+      };
+    }
+  }, [user?.id]);
 
   // Create a new study room
   const createRoom = async (data: CreateRoomData) => {
@@ -162,8 +232,20 @@ export function useStudyRooms() {
       toast.error('You need to be logged in to create a study room');
       return null;
     }
-
+    
     try {
+      // Check if we're in preview mode
+      if (isPreviewMode()) {
+        console.log('Preview mode detected, creating sample study room');
+        const sampleRoom = generateSampleRoom(data);
+        
+        // Add the new room to the rooms state
+        setRooms(prevRooms => [sampleRoom, ...prevRooms]);
+        
+        toast.success('Study room created successfully!');
+        return sampleRoom;
+      }
+      
       // Convert subjects array to string if needed
       const subjectsData = Array.isArray(data.subjects) ? data.subjects : [];
       
@@ -222,6 +304,45 @@ export function useStudyRooms() {
     }
 
     try {
+      // Check if we're in preview mode
+      if (isPreviewMode()) {
+        console.log('Preview mode detected, joining sample study room');
+        
+        // Update the room in state to show this user has joined
+        setRooms(prevRooms => 
+          prevRooms.map(room => {
+            if (room.id === roomId) {
+              const isAlreadyParticipant = room.participants?.some(p => p.user_id === user.id);
+              
+              if (!isAlreadyParticipant) {
+                const newParticipant = {
+                  id: `sample-${Math.random().toString(36).substring(2, 10)}`,
+                  user_id: user.id,
+                  room_id: roomId,
+                  joined_at: new Date().toISOString(),
+                  last_active_at: new Date().toISOString(),
+                  user: {
+                    id: user.id,
+                    username: user.username || 'Current User',
+                    avatar_url: user.avatar_url
+                  }
+                };
+                
+                return {
+                  ...room,
+                  participant_count: (room.participant_count || 0) + 1,
+                  participants: [...(room.participants || []), newParticipant]
+                };
+              }
+            }
+            return room;
+          })
+        );
+        
+        toast.success('Joined study room!');
+        return true;
+      }
+      
       // Check if already joined
       const { data: existingParticipant } = await supabase
         .from('study_room_participants')
@@ -265,6 +386,28 @@ export function useStudyRooms() {
     if (!user?.id) return false;
 
     try {
+      // Check if we're in preview mode
+      if (isPreviewMode()) {
+        console.log('Preview mode detected, leaving sample study room');
+        
+        // Update the room in state to show this user has left
+        setRooms(prevRooms => 
+          prevRooms.map(room => {
+            if (room.id === roomId) {
+              return {
+                ...room,
+                participant_count: Math.max(0, (room.participant_count || 0) - 1),
+                participants: (room.participants || []).filter(p => p.user_id !== user.id)
+              };
+            }
+            return room;
+          })
+        );
+        
+        toast.success('Left study room');
+        return true;
+      }
+      
       const { error } = await supabase
         .from('study_room_participants')
         .delete()
