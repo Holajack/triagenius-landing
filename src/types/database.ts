@@ -44,6 +44,11 @@ export interface UserProfile {
   classes?: string[] | null;
   created_at: string;
   updated_at: string;
+  bio?: string | null;
+  location?: string | null;
+  school?: string | null;
+  grade?: string | null;
+  subjects?: string[] | null;
 }
 
 // Helper function to handle Supabase errors with proper typing

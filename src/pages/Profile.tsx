@@ -1,9 +1,10 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import NavigationBar from "@/components/dashboard/NavigationBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -14,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ProfilePreferences from "@/components/profile/ProfilePreferences";
-import EditProfileDialog from "@/components/profile/EditProfileDialog";
+import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
 import {
   CalendarIcon,
   LocateIcon,
@@ -31,17 +32,18 @@ const Profile = () => {
   const [profileData, setProfileData] = useState({
     username: "",
     email: user?.email || "",
-    bio: "",
-    location: "",
-    school: "",
-    grade: "",
-    subjects: [],
-    classes: [],
+    avatar_url: "",
+    university: "",
+    major: "",
+    state: "",
+    profession: "",
+    business: "", 
+    classes: [] as string[],
     joinedDate: new Date().toISOString(),
     points: 0,
     streak: 0,
-    achievements: [],
-    connections: [],
+    achievements: [] as Array<{description: string}>,
+    connections: [] as Array<{username: string, level: number}>,
     level: 1,
     totalFocusTime: 0
   });
@@ -60,48 +62,80 @@ const Profile = () => {
     if (!user) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Get profile data from profiles table
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", user.id)
         .single();
-      if (error) {
-        throw error;
+        
+      if (profileError) {
+        throw profileError;
       }
-      if (data) {
+      
+      // Get leaderboard stats for points, streak, level
+      const { data: leaderboardData, error: leaderboardError } = await supabase
+        .from("leaderboard_stats")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+        
+      if (leaderboardError && leaderboardError.code !== 'PGRST116') {
+        console.error("Error fetching leaderboard stats:", leaderboardError);
+      }
+      
+      // Get achievements
+      const { data: achievements, error: achievementsError } = await supabase
+        .from("achievements")
+        .select("*")
+        .eq("user_id", user.id);
+        
+      if (achievementsError) {
+        console.error("Error fetching achievements:", achievementsError);
+      }
+      
+      // Mock connections data for now
+      const mockConnections = [
+        { username: "studybuddy1", level: 3 },
+        { username: "learner42", level: 2 }
+      ];
+      
+      if (profileData) {
         setProfileData({
-          username: data.username || "",
-          email: user?.email || "",
-          bio: data.bio || "",
-          location: data.location || "",
-          school: data.school || "",
-          grade: data.grade || "",
-          subjects: data.subjects || [],
-          classes: data.classes || [],
-          joinedDate: data.created_at || new Date().toISOString(),
-          points: data.points || 0,
-          streak: data.streak || 0,
-          achievements: data.achievements || [],
-          connections: data.connections || [],
-          level: data.level || 1,
-          totalFocusTime: data.total_focus_time || 0
+          username: profileData.username || "",
+          email: user.email || "",
+          avatar_url: profileData.avatar_url || "",
+          university: profileData.university || "",
+          major: profileData.major || "",
+          state: profileData.state || "",
+          profession: profileData.profession || "",
+          business: profileData.business || "",
+          classes: profileData.classes || [],
+          joinedDate: profileData.created_at || new Date().toISOString(),
+          points: leaderboardData?.points || 0,
+          streak: leaderboardData?.current_streak || 0,
+          achievements: achievements || [],
+          connections: mockConnections,
+          level: leaderboardData?.level || 1,
+          totalFocusTime: leaderboardData?.total_focus_time || 0
         });
         setEditedData({
-          username: data.username || "",
-          email: user?.email || "",
-          bio: data.bio || "",
-          location: data.location || "",
-          school: data.school || "",
-          grade: data.grade || "",
-          subjects: data.subjects || [],
-          classes: data.classes || [],
-          joinedDate: data.created_at || new Date().toISOString(),
-          points: data.points || 0,
-          streak: data.streak || 0,
-          achievements: data.achievements || [],
-          connections: data.connections || [],
-          level: data.level || 1,
-          totalFocusTime: data.total_focus_time || 0
+          username: profileData.username || "",
+          email: user.email || "",
+          avatar_url: profileData.avatar_url || "",
+          university: profileData.university || "",
+          major: profileData.major || "",
+          state: profileData.state || "",
+          profession: profileData.profession || "",
+          business: profileData.business || "",
+          classes: profileData.classes || [],
+          joinedDate: profileData.created_at || new Date().toISOString(),
+          points: leaderboardData?.points || 0,
+          streak: leaderboardData?.current_streak || 0,
+          achievements: achievements || [],
+          connections: mockConnections,
+          level: leaderboardData?.level || 1,
+          totalFocusTime: leaderboardData?.total_focus_time || 0
         });
       }
     } catch (error: any) {
@@ -114,7 +148,7 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, supabase, toast]);
+  }, [user, toast]);
 
   useEffect(() => {
     if (user) {
@@ -129,11 +163,11 @@ const Profile = () => {
         .from("profiles")
         .update({
           username: data.username,
-          bio: data.bio,
-          location: data.location,
-          school: data.school,
-          grade: data.grade,
-          subjects: data.subjects,
+          university: data.university,
+          major: data.major,
+          state: data.state,
+          profession: data.profession,
+          business: data.business,
           classes: data.classes
         })
         .eq("id", user?.id);
@@ -169,9 +203,13 @@ const Profile = () => {
             {/* Profile Header */}
             <div className="flex flex-col items-center mt-8 relative">
               <Avatar className="h-24 w-24 mb-4">
-                <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
-                  {profileData.username ? profileData.username.substring(0, 2).toUpperCase() : user?.email?.substring(0, 2).toUpperCase() || "??"}
-                </AvatarFallback>
+                {profileData.avatar_url ? (
+                  <AvatarImage src={profileData.avatar_url} alt={profileData.username} />
+                ) : (
+                  <AvatarFallback className="text-2xl bg-primary text-primary-foreground">
+                    {profileData.username ? profileData.username.substring(0, 2).toUpperCase() : user?.email?.substring(0, 2).toUpperCase() || "??"}
+                  </AvatarFallback>
+                )}
               </Avatar>
               <h1 className="text-2xl font-bold">{profileData.username || "User"}</h1>
               <p className="text-muted-foreground flex items-center gap-1">
@@ -183,10 +221,10 @@ const Profile = () => {
                 <span>Joined {new Date(profileData.joinedDate).toLocaleDateString()}</span>
               </div>
               
-              {profileData.location && (
+              {profileData.state && (
                 <div className="flex items-center mt-1 text-sm text-muted-foreground">
                   <MapPinIcon className="h-4 w-4 mr-1" />
-                  <span>{profileData.location}</span>
+                  <span>{profileData.state}</span>
                 </div>
               )}
               
@@ -241,26 +279,22 @@ const Profile = () => {
                         <CardTitle>About Me</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        {profileData.bio ? (
-                          <p>{profileData.bio}</p>
-                        ) : (
-                          <p className="text-muted-foreground">No bio provided.</p>
-                        )}
+                        <p className="text-muted-foreground">Add information about yourself in your profile settings.</p>
                         
                         <Separator />
                         
                         <div>
                           <h3 className="font-medium mb-2">Education</h3>
-                          {profileData.school ? (
+                          {profileData.university ? (
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
                                 <GraduationCapIcon className="h-4 w-4 text-muted-foreground" />
-                                <span>{profileData.school}</span>
+                                <span>{profileData.university}</span>
                               </div>
-                              {profileData.grade && (
+                              {profileData.major && (
                                 <div className="flex items-center gap-2">
                                   <UserIcon className="h-4 w-4 text-muted-foreground" />
-                                  <span>{profileData.grade}</span>
+                                  <span>{profileData.major}</span>
                                 </div>
                               )}
                             </div>
@@ -270,19 +304,6 @@ const Profile = () => {
                         </div>
                         
                         <Separator />
-                        
-                        <div>
-                          <h3 className="font-medium mb-2">Subjects</h3>
-                          {profileData.subjects && profileData.subjects.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                              {profileData.subjects.map((subject, index) => (
-                                <Badge key={index} variant="outline">{subject}</Badge>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-muted-foreground">No subjects added.</p>
-                          )}
-                        </div>
                         
                         <div>
                           <h3 className="font-medium mb-2">Classes</h3>
@@ -314,7 +335,7 @@ const Profile = () => {
                                   <Trophy className="h-5 w-5 text-primary" />
                                 </div>
                                 <div>
-                                  <h4 className="font-medium">{achievement.title}</h4>
+                                  <h4 className="font-medium">Achievement #{index + 1}</h4>
                                   <p className="text-sm text-muted-foreground">{achievement.description}</p>
                                 </div>
                               </div>
@@ -369,10 +390,8 @@ const Profile = () => {
       <EditProfileDialog 
         open={isEditDialogOpen} 
         onOpenChange={setIsEditDialogOpen} 
-        profileData={profileData}
-        onSave={(data) => {
-          saveProfile(data);
-          setIsEditDialogOpen(false);
+        onUpdate={(avatar) => {
+          fetchUserProfile();
         }}
       />
       
