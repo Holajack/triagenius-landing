@@ -156,8 +156,8 @@ export function useStudyRooms() {
             topic: room.description || 'General Study',
             // Default for fields that might be missing in the database
             is_active: true,
-            // FIX: Initialize subjects as an empty array if it doesn't exist in the database response
-            subjects: room.subjects || [],
+            // Add subjects as an empty array since the database doesn't have this field yet
+            subjects: [], 
             participant_count: room.participants?.length || 0
           } as StudyRoom;
         }) || [];
@@ -325,7 +325,6 @@ export function useStudyRooms() {
                   user: {
                     id: user.id,
                     username: user.username || 'Current User',
-                    // FIX: Use avatarUrl instead of avatar_url to match UserData type
                     avatar_url: user.avatarUrl
                   }
                 };
