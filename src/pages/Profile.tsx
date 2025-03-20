@@ -21,9 +21,7 @@ import {
   MapPinIcon,
   GraduationCapIcon,
   UserIcon,
-  MailIcon,
-  LogOutIcon,
-  Loader2Icon
+  MailIcon
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -50,7 +48,6 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [editedData, setEditedData] = useState({...profileData});
   const [isEditing, setIsEditing] = useState(false);
-  const [logoutLoading, setLogoutLoading] = useState(false);
   const navigate = useNavigate();
   
   const formatClasses = (classes: string[] | null) => {
@@ -185,20 +182,6 @@ const Profile = () => {
       ...prev,
       [field]: value
     }));
-  };
-  
-  const handleLogout = async () => {
-    try {
-      setLogoutLoading(true);
-      await supabase.auth.signOut();
-      toast.success("Logged out successfully");
-      navigate("/auth");
-    } catch (error: any) {
-      console.error("Error logging out:", error);
-      toast.error(`Failed to log out: ${error.message || "An unknown error occurred"}`);
-    } finally {
-      setLogoutLoading(false);
-    }
   };
   
   return (
@@ -522,23 +505,6 @@ const Profile = () => {
           <ProfilePreferences />
         </TabsContent>
       </Tabs>
-      
-      <div className="w-full max-w-md mx-auto mt-10 mb-28">
-        <Button 
-          variant="destructive" 
-          onClick={handleLogout} 
-          disabled={logoutLoading} 
-          className="w-full"
-          size="lg"
-        >
-          {logoutLoading ? (
-            <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <LogOutIcon className="h-4 w-4 mr-2" />
-          )}
-          Logout
-        </Button>
-      </div>
       
       <EditProfileDialog 
         open={isEditDialogOpen} 

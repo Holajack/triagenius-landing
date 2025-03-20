@@ -1,5 +1,5 @@
 
-import { Menu, Book, Brain, BadgePercent, LayoutDashboard, Users, Bot, BarChart3, UserCircle2, Trophy, Settings } from "lucide-react";
+import { LogOut, Menu, Book, Brain, BadgePercent, LayoutDashboard, Users, Bot, BarChart3, UserCircle2, Trophy, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
@@ -13,6 +13,9 @@ import {
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SideNavDrawerProps {
   children: React.ReactNode;
@@ -22,6 +25,7 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
   const navigate = useNavigate();
   const { state } = useOnboarding();
   const { theme } = useTheme();
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   // Get accent color based on environment
   const getAccentColor = () => {
@@ -32,6 +36,20 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
       case 'coffee-shop': return "text-amber-600";
       case 'library': return "text-gray-600";
       default: return "text-triage-purple";
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      setLogoutLoading(true);
+      await supabase.auth.signOut();
+      toast.success("Logged out successfully");
+      navigate("/auth");
+    } catch (error: any) {
+      console.error("Error logging out:", error);
+      toast.error(`Failed to log out: ${error.message || "An unknown error occurred"}`);
+    } finally {
+      setLogoutLoading(false);
     }
   };
 
@@ -83,13 +101,13 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
       <SheetTrigger asChild>
         {children}
       </SheetTrigger>
-      <SheetContent side="right" className="w-[270px] sm:w-[300px]">
+      <SheetContent side="right" className="w-[270px] sm:w-[300px] flex flex-col">
         <SheetHeader className="text-left">
           <SheetTitle className="text-center text-xl text-triage-purple">
             The Triage System
           </SheetTitle>
         </SheetHeader>
-        <div className="flex flex-col gap-2 p-4 mt-4">
+        <div className="flex flex-col gap-2 p-4 mt-4 flex-1">
           {navItems.map((item) => (
             <Button
               key={item.label}
@@ -106,7 +124,22 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
             </Button>
           ))}
         </div>
-        <SheetFooter className="absolute bottom-4 left-0 right-0">
+        
+        {/* Logout button at the bottom */}
+        <div className="px-4 pb-6 mt-auto">
+          <Button 
+            variant="destructive" 
+            onClick={handleLogout} 
+            disabled={logoutLoading} 
+            className="w-full"
+            size="lg"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
+        </div>
+        
+        <SheetFooter className="mt-2">
           <p className="text-center text-sm text-muted-foreground w-full">
             © {new Date().getFullYear()} The Triage System
           </p>
