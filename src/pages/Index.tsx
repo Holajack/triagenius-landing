@@ -9,6 +9,7 @@ import { ArrowDown, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Index = () => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -71,8 +72,28 @@ const Index = () => {
     }
   };
 
-  const handleLogin = () => {
-    navigate('/auth', { state: { mode: isAuthenticated ? 'logout' : 'login' } });
+  const handleLogin = async () => {
+    if (isAuthenticated) {
+      try {
+        // Sign the user out
+        const { error } = await supabase.auth.signOut();
+        
+        if (error) {
+          throw error;
+        }
+        
+        // Show success message
+        toast.success('Successfully logged out');
+        
+        // Navigate to the home page (refresh current page)
+        navigate('/', { replace: true });
+      } catch (error) {
+        console.error('Error logging out:', error);
+        toast.error('Failed to log out. Please try again.');
+      }
+    } else {
+      navigate('/auth', { state: { mode: 'login' } });
+    }
   };
 
   return (
