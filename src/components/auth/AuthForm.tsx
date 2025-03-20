@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Eye, EyeOff, LogIn, UserPlus, AlertTriangle } from "lucide-react";
+import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,10 +15,9 @@ type AuthMode = "login" | "signup";
 interface AuthFormProps {
   mode: AuthMode;
   source?: string;
-  previewMode?: boolean;
 }
 
-const AuthForm = ({ mode: initialMode, source, previewMode = false }: AuthFormProps) => {
+const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isFromStartFocusing = source === "start-focusing";
@@ -29,7 +27,6 @@ const AuthForm = ({ mode: initialMode, source, previewMode = false }: AuthFormPr
   const [showPassword, setShowPassword] = useState(false);
   const [emailConfirmError, setEmailConfirmError] = useState(false);
   const [emailConfirmSent, setEmailConfirmSent] = useState(false);
-  const [previewNotice, setPreviewNotice] = useState(previewMode);
   
   // Form fields
   const [email, setEmail] = useState("");
@@ -122,32 +119,6 @@ const AuthForm = ({ mode: initialMode, source, previewMode = false }: AuthFormPr
                 description: "You'll need to verify your email before you can log in.",
                 duration: 8000,
               });
-              
-              // In preview mode, redirect to onboarding immediately after account creation
-              if (previewMode) {
-                try {
-                  // Try Firebase signup as fallback
-                  await createUserWithEmailAndPassword(auth, email, password);
-                  toast.success("Account created successfully!");
-                  
-                  // Auto-redirect to onboarding in preview mode
-                  setTimeout(() => {
-                    navigate("/onboarding");
-                  }, 1500); // Small delay to allow the user to see the success message
-                  
-                  return;
-                } catch (firebaseError: any) {
-                  // Even if Firebase fails, still redirect in preview mode
-                  console.log("Firebase signup fallback failed:", firebaseError.message);
-                  
-                  setTimeout(() => {
-                    navigate("/onboarding");
-                  }, 1500);
-                  
-                  return;
-                }
-              }
-              
               return;
             } else {
               toast.success("Account created successfully!");
@@ -157,7 +128,7 @@ const AuthForm = ({ mode: initialMode, source, previewMode = false }: AuthFormPr
           }
         } catch (supabaseError: any) {
           // If Supabase signup fails with an email confirmation error, try Firebase
-          console.log("Trying Firebase after Supabase error:", supabaseError);
+          console.log("Trying Firebase after Supabase error:", supabaseError.message);
         }
         
         // Try Firebase signup regardless of Supabase result due to email issues
@@ -167,15 +138,6 @@ const AuthForm = ({ mode: initialMode, source, previewMode = false }: AuthFormPr
           navigate("/onboarding");
           return;
         } catch (firebaseError: any) {
-          // In preview mode, redirect even if authentication fails
-          if (previewMode) {
-            toast.success("Preview mode: Redirecting to onboarding...");
-            setTimeout(() => {
-              navigate("/onboarding");
-            }, 1500);
-            return;
-          }
-          
           // Only throw if we didn't already succeed with Supabase
           if (emailConfirmError) {
             throw firebaseError;
@@ -183,18 +145,6 @@ const AuthForm = ({ mode: initialMode, source, previewMode = false }: AuthFormPr
         }
       }
     } catch (error: any) {
-      // In preview mode, redirect even after errors for signup
-      if (previewMode && mode === "signup") {
-        setError(error.message || "Authentication failed");
-        toast.error("Authentication issue, but proceeding in preview mode");
-        
-        setTimeout(() => {
-          navigate("/onboarding");
-        }, 2000);
-        
-        return;
-      }
-      
       setError(error.message || "Authentication failed");
       toast.error(error.message || "Authentication failed");
     } finally {
@@ -204,33 +154,11 @@ const AuthForm = ({ mode: initialMode, source, previewMode = false }: AuthFormPr
   
   return (
     <div className="w-full bg-white rounded-xl shadow-sm border p-6">
-      {previewNotice && (
-        <Alert className="mb-4 bg-amber-50 border-amber-200">
-          <AlertTriangle className="h-4 w-4 text-amber-800" />
-          <AlertTitle className="text-amber-800">Preview Environment Notice</AlertTitle>
-          <AlertDescription className="text-amber-700">
-            Email verification is limited in preview environments. Your account will be created and you'll be redirected to onboarding automatically.
-            <Button 
-              variant="link" 
-              className="text-amber-800 p-0 h-auto font-normal underline underline-offset-2"
-              onClick={() => setPreviewNotice(false)}
-            >
-              Dismiss
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-      
       {emailConfirmSent && (
         <Alert className="mb-4 bg-green-50 border-green-200">
           <AlertTitle className="text-green-800">Email confirmation sent</AlertTitle>
           <AlertDescription className="text-green-700">
             We've sent a confirmation link to {email}. Please check your inbox and click the link to activate your account.
-            {previewMode && (
-              <div className="mt-2 pt-2 border-t border-green-200">
-                <p className="text-sm font-medium">Since this is a preview environment, you've been automatically logged in.</p>
-              </div>
-            )}
           </AlertDescription>
         </Alert>
       )}
@@ -320,7 +248,7 @@ const AuthForm = ({ mode: initialMode, source, previewMode = false }: AuthFormPr
         <Button
           type="submit"
           className="w-full bg-triage-purple hover:bg-triage-purple/90"
-          disabled={loading || (emailConfirmSent && !previewMode)}
+          disabled={loading || emailConfirmSent}
         >
           {mode === "login" ? (
             <>
@@ -334,12 +262,6 @@ const AuthForm = ({ mode: initialMode, source, previewMode = false }: AuthFormPr
             </>
           )}
         </Button>
-        
-        {previewMode && mode === "signup" && (
-          <p className="text-center text-sm text-gray-500 mt-2">
-            In preview mode, you'll be automatically redirected to onboarding after account creation.
-          </p>
-        )}
       </form>
     </div>
   );
