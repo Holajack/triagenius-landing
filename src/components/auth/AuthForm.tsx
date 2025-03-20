@@ -123,16 +123,28 @@ const AuthForm = ({ mode: initialMode, source, previewMode = false }: AuthFormPr
                 duration: 8000,
               });
               
-              // In preview mode, attempt Firebase signup as fallback
+              // In preview mode, redirect to onboarding immediately after account creation
               if (previewMode) {
                 try {
+                  // Try Firebase signup as fallback
                   await createUserWithEmailAndPassword(auth, email, password);
-                  toast.success("Account created with Firebase successfully!");
-                  navigate("/onboarding");
+                  toast.success("Account created successfully!");
+                  
+                  // Auto-redirect to onboarding in preview mode
+                  setTimeout(() => {
+                    navigate("/onboarding");
+                  }, 1500); // Small delay to allow the user to see the success message
+                  
                   return;
                 } catch (firebaseError: any) {
-                  // Ignore Firebase errors if Supabase worked
+                  // Even if Firebase fails, still redirect in preview mode
                   console.log("Firebase signup fallback failed:", firebaseError.message);
+                  
+                  setTimeout(() => {
+                    navigate("/onboarding");
+                  }, 1500);
+                  
+                  return;
                 }
               }
               
@@ -155,6 +167,15 @@ const AuthForm = ({ mode: initialMode, source, previewMode = false }: AuthFormPr
           navigate("/onboarding");
           return;
         } catch (firebaseError: any) {
+          // In preview mode, redirect even if authentication fails
+          if (previewMode) {
+            toast.success("Preview mode: Redirecting to onboarding...");
+            setTimeout(() => {
+              navigate("/onboarding");
+            }, 1500);
+            return;
+          }
+          
           // Only throw if we didn't already succeed with Supabase
           if (emailConfirmError) {
             throw firebaseError;
@@ -162,6 +183,18 @@ const AuthForm = ({ mode: initialMode, source, previewMode = false }: AuthFormPr
         }
       }
     } catch (error: any) {
+      // In preview mode, redirect even after errors for signup
+      if (previewMode && mode === "signup") {
+        setError(error.message || "Authentication failed");
+        toast.error("Authentication issue, but proceeding in preview mode");
+        
+        setTimeout(() => {
+          navigate("/onboarding");
+        }, 2000);
+        
+        return;
+      }
+      
       setError(error.message || "Authentication failed");
       toast.error(error.message || "Authentication failed");
     } finally {
@@ -176,7 +209,7 @@ const AuthForm = ({ mode: initialMode, source, previewMode = false }: AuthFormPr
           <AlertTriangle className="h-4 w-4 text-amber-800" />
           <AlertTitle className="text-amber-800">Preview Environment Notice</AlertTitle>
           <AlertDescription className="text-amber-700">
-            Email verification is limited in preview environments. If you don't receive a verification email, your account will still be created and you'll be redirected to onboarding.
+            Email verification is limited in preview environments. Your account will be created and you'll be redirected to onboarding automatically.
             <Button 
               variant="link" 
               className="text-amber-800 p-0 h-auto font-normal underline underline-offset-2"
@@ -301,6 +334,12 @@ const AuthForm = ({ mode: initialMode, source, previewMode = false }: AuthFormPr
             </>
           )}
         </Button>
+        
+        {previewMode && mode === "signup" && (
+          <p className="text-center text-sm text-gray-500 mt-2">
+            In preview mode, you'll be automatically redirected to onboarding after account creation.
+          </p>
+        )}
       </form>
     </div>
   );

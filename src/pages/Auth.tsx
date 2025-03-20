@@ -16,6 +16,10 @@ const Auth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [emailConfirmSuccess, setEmailConfirmSuccess] = useState(false);
+  
+  // Determine if we're in a preview environment
+  const isPreviewEnvironment = window.location.hostname.includes('lovableproject.com') || 
+                               window.location.hostname.includes('localhost');
 
   useEffect(() => {
     // Check if user is already authenticated
@@ -146,7 +150,7 @@ const Auth = () => {
                 <AuthForm 
                   mode="signup" 
                   source={location.state?.source} 
-                  previewMode={true} 
+                  previewMode={isPreviewEnvironment} 
                 />
               </TabsContent>
             </Tabs>
