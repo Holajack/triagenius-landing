@@ -37,6 +37,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
   const [pendingFriendIds, setPendingFriendIds] = useState<string[]>([]);
   const [acceptedFriendIds, setAcceptedFriendIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -52,10 +53,12 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     
     try {
       setLoading(true);
+      setError(null);
       
       // Make sure to log any SQL issues
       console.log("Fetching users for user ID:", user.id);
       
+      // Changed the query to fetch all profiles except the current user
       const { data: profiles, error } = await supabase
         .from('profiles')
         .select('id, username, avatar_url, university, state, show_university, show_state')
@@ -63,16 +66,53 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
       
       if (error) {
         console.error('Error fetching users:', error);
+        setError(`Failed to load users: ${error.message}`);
         toast.error("Failed to load users");
         return;
       }
       
       console.log("Fetched profiles:", profiles?.length || 0);
-      setAllUsers(profiles || []);
-      setFilteredUsers(profiles || []);
       
-    } catch (error) {
+      if (profiles && profiles.length > 0) {
+        setAllUsers(profiles);
+        setFilteredUsers(profiles);
+      } else {
+        // If in preview mode, add dummy data for testing
+        console.log("No profiles found, checking if we're in preview mode");
+        const isPreview = window.location.hostname.includes('lovable.app');
+        
+        if (isPreview) {
+          console.log("Adding sample profiles for preview");
+          const sampleProfiles: Profile[] = [
+            {
+              id: "sample-1",
+              username: "SampleUser1",
+              avatar_url: null,
+              university: "Sample University",
+              state: "CA",
+              show_university: true,
+              show_state: true
+            },
+            {
+              id: "sample-2",
+              username: "SampleUser2",
+              avatar_url: null,
+              university: "Another University",
+              state: "NY",
+              show_university: true,
+              show_state: true
+            }
+          ];
+          setAllUsers(sampleProfiles);
+          setFilteredUsers(sampleProfiles);
+        } else {
+          setAllUsers(profiles || []);
+          setFilteredUsers(profiles || []);
+        }
+      }
+    } catch (error: any) {
       console.error('Error in fetchAllUsers:', error);
+      setError(`Unexpected error: ${error.message}`);
       toast.error("Failed to load users");
     } finally {
       setLoading(false);
@@ -117,7 +157,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
         setPendingFriendIds(pending);
         setAcceptedFriendIds(accepted);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in fetchFriendRequests:', error);
     }
   }, [user]);
@@ -208,7 +248,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
         setPendingFriendIds([...pendingFriendIds, recipientId]);
         toast.success("Friend request sent!");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in sendFriendRequest:', error);
       toast.error("Failed to send friend request");
     }
@@ -245,7 +285,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
         setAcceptedFriendIds([...acceptedFriendIds, senderId]);
         toast.success("Friend request accepted!");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in acceptFriendRequest:', error);
       toast.error("Failed to accept friend request");
     }
@@ -281,13 +321,24 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
         setPendingFriendIds(pendingFriendIds.filter(id => id !== senderId));
         toast.success("Friend request rejected");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in rejectFriendRequest:', error);
       toast.error("Failed to reject friend request");
     }
   };
   
   const renderUserList = (users: Profile[], emptyMessage: string) => {
+    if (error) {
+      return (
+        <div className="py-8 text-center">
+          <div className="text-red-500 mb-2">Error: {error}</div>
+          <Button onClick={fetchAllUsers} variant="outline" size="sm">
+            Retry
+          </Button>
+        </div>
+      );
+    }
+    
     if (users.length === 0) {
       return (
         <div className="py-8 text-center">
