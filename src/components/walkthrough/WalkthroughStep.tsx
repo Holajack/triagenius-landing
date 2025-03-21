@@ -78,10 +78,9 @@ const WalkthroughStep = () => {
       setTargetElement(element);
       setTargetRect(element.getBoundingClientRect());
       
-      element.classList.add('ring-2', 'ring-triage-purple', 'ring-offset-2', 'transition-all');
-      element.style.pointerEvents = 'auto';
-      element.style.zIndex = '50';
+      element.classList.add('walkthrough-highlight');
       element.style.position = 'relative';
+      element.style.zIndex = '50';
       
       const scrollToElement = () => {
         const elementRect = element.getBoundingClientRect();
@@ -157,15 +156,31 @@ const WalkthroughStep = () => {
     
     const updateInterval = setInterval(handleUpdate, 100);
     
+    const pulseAnimation = () => {
+      if (!element) return;
+      element.animate([
+        { boxShadow: '0 0 0 2px rgba(139, 92, 246, 0.4)' },
+        { boxShadow: '0 0 0 4px rgba(139, 92, 246, 0.6)' },
+        { boxShadow: '0 0 0 2px rgba(139, 92, 246, 0.4)' }
+      ], {
+        duration: 2000,
+        iterations: Infinity
+      });
+    };
+    
+    const pulseTimer = setTimeout(pulseAnimation, 500);
+    
     return () => {
       window.removeEventListener('resize', handleUpdate);
       window.removeEventListener('scroll', handleUpdate);
       clearInterval(updateInterval);
+      clearTimeout(pulseTimer);
+      
       if (element) {
-        element.classList.remove('ring-2', 'ring-triage-purple', 'ring-offset-2');
-        element.style.pointerEvents = '';
-        element.style.zIndex = '';
+        element.classList.remove('walkthrough-highlight');
         element.style.position = '';
+        element.style.zIndex = '';
+        element.getAnimations().forEach(anim => anim.cancel());
       }
     };
   }, [state.isActive, state.currentStepIndex, currentStep, isMobile, dispatch]);

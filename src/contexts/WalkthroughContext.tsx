@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 
 // Types for walkthrough steps
 export type WalkthroughStep = {
@@ -113,8 +113,45 @@ const WalkthroughContext = createContext<WalkthroughContextType | undefined>(und
 export const WalkthroughProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(walkthroughReducer, initialState);
 
+  // Inject walkthrough highlight styles
+  useEffect(() => {
+    // Create style element for walkthrough highlights if it doesn't exist
+    if (!document.getElementById('walkthrough-styles')) {
+      const styleEl = document.createElement('style');
+      styleEl.id = 'walkthrough-styles';
+      styleEl.innerHTML = `
+        .walkthrough-highlight {
+          position: relative !important;
+          z-index: 50 !important;
+          box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.7), 0 0 15px rgba(139, 92, 246, 0.5) !important;
+          border-radius: 4px !important;
+          transition: box-shadow 0.3s ease-in-out !important;
+        }
+        
+        @keyframes walkthrough-pulse {
+          0% { box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.4), 0 0 10px rgba(139, 92, 246, 0.2); }
+          50% { box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.6), 0 0 15px rgba(139, 92, 246, 0.4); }
+          100% { box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.4), 0 0 10px rgba(139, 92, 246, 0.2); }
+        }
+        
+        .walkthrough-highlight-pulse {
+          animation: walkthrough-pulse 2s infinite ease-in-out;
+        }
+      `;
+      document.head.appendChild(styleEl);
+    }
+    
+    return () => {
+      // Remove styles when provider unmounts
+      const styleEl = document.getElementById('walkthrough-styles');
+      if (styleEl) {
+        styleEl.remove();
+      }
+    };
+  }, []);
+
   // Load completed status and visited pages from localStorage
-  React.useEffect(() => {
+  useEffect(() => {
     try {
       const hasCompleted = localStorage.getItem('hasCompletedTutorial');
       if (hasCompleted === 'true') {
@@ -135,7 +172,7 @@ export const WalkthroughProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, []);
 
   // Save completed status to localStorage
-  React.useEffect(() => {
+  useEffect(() => {
     try {
       if (state.hasCompletedTutorial) {
         localStorage.setItem('hasCompletedTutorial', 'true');

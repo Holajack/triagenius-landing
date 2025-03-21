@@ -29,6 +29,53 @@ const PageWalkthrough = ({ pageName, steps, showHelpButton = true }: PageWalkthr
     }
   }, [pageName, steps, hasVisitedPage, markPageVisited, startWalkthrough, state.isActive]);
 
+  // Pre-enhance walkthrough target elements
+  useEffect(() => {
+    // Add data attributes to all walkthrough targets
+    steps.forEach(step => {
+      const element = document.querySelector(step.targetSelector);
+      if (element) {
+        element.setAttribute('data-walkthrough-target', step.id);
+        
+        // Ensure the element has relative positioning and appropriate z-index when hovered
+        const enhanceElement = (el: Element) => {
+          if (el instanceof HTMLElement) {
+            el.addEventListener('mouseenter', () => {
+              if (!state.isActive) {
+                el.style.position = 'relative';
+                el.style.zIndex = '5';
+              }
+            });
+            
+            el.addEventListener('mouseleave', () => {
+              if (!state.isActive) {
+                el.style.position = '';
+                el.style.zIndex = '';
+              }
+            });
+          }
+        };
+        
+        enhanceElement(element);
+      }
+    });
+    
+    return () => {
+      // Clean up data attributes
+      steps.forEach(step => {
+        const element = document.querySelector(step.targetSelector);
+        if (element) {
+          element.removeAttribute('data-walkthrough-target');
+          
+          if (element instanceof HTMLElement) {
+            element.style.position = '';
+            element.style.zIndex = '';
+          }
+        }
+      });
+    };
+  }, [steps, state.isActive]);
+
   return (
     <>
       <WalkthroughStepComponent />
@@ -38,7 +85,7 @@ const PageWalkthrough = ({ pageName, steps, showHelpButton = true }: PageWalkthr
         <Button
           variant="outline"
           size="icon"
-          className="fixed bottom-20 right-4 rounded-full z-30 bg-white shadow-md border-triage-purple/20"
+          className="fixed bottom-20 right-4 rounded-full z-30 bg-white shadow-md border-triage-purple/20 hover:bg-triage-purple/10 hover:border-triage-purple transition-all duration-300"
           onClick={() => startWalkthrough(steps)}
           data-walkthrough="help-button"
         >
