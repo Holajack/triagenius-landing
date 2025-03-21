@@ -66,7 +66,7 @@ const AIInsights = () => {
     try {
       setIsRefreshing(true);
       
-      // Call the edge function to generate insights
+      // Call the edge function to generate insights (now using Groq)
       const { data, error } = await supabase.functions.invoke('generate-insights', {
         body: { userId }
       });

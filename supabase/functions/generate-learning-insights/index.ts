@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const groqApiKey = Deno.env.get('GROQ_API_KEY');
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -25,7 +25,7 @@ serve(async (req) => {
       );
     }
 
-    // Create a system prompt for OpenAI to understand the context
+    // Create a system prompt for Groq to understand the context
     const systemPrompt = `
       You are an AI assistant that analyzes learning and productivity data.
       Based on the user's focus sessions and tasks, generate insights about:
@@ -60,15 +60,15 @@ serve(async (req) => {
       If there's not enough data, make reasonable estimates based on the limited information available.
     `;
 
-    // Call OpenAI API
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Call Groq API instead of OpenAI
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${groqApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'llama3-8b-8192', // Using Llama 3 8B model from Groq
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
@@ -79,8 +79,8 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('OpenAI API error:', errorData);
-      throw new Error(`OpenAI API returned an error: ${JSON.stringify(errorData)}`);
+      console.error('Groq API error:', errorData);
+      throw new Error(`Groq API returned an error: ${JSON.stringify(errorData)}`);
     }
 
     const data = await response.json();
@@ -95,8 +95,8 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } catch (parseError) {
-      console.error('Error parsing OpenAI response as JSON:', parseError);
-      console.log('Raw OpenAI response:', generatedInsights);
+      console.error('Error parsing Groq response as JSON:', parseError);
+      console.log('Raw Groq response:', generatedInsights);
       
       // Return a simplified fallback response
       return new Response(

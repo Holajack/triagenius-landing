@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 // Interfaces for learning metrics
@@ -159,7 +158,7 @@ export const getLearningMetrics = async (): Promise<LearningMetrics> => {
       return emptyMetrics;
     }
 
-    // Generate metrics using OpenAI
+    // Generate metrics using Groq instead of OpenAI
     try {
       const { data: aiData, error: aiError } = await supabase.functions.invoke('generate-learning-insights', {
         body: {
@@ -295,4 +294,3 @@ export const getFocusStatistics = async (): Promise<FocusStats> => {
     return { totalHours: 0, avgSession: 0, focusScore: 0, improvement: "0%" };
   }
 };
-

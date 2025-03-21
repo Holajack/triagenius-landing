@@ -16,11 +16,11 @@ serve(async (req) => {
   }
 
   try {
-    // Get OpenAI API key from environment
-    const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiApiKey) {
+    // Get Groq API key from environment
+    const groqApiKey = Deno.env.get("GROQ_API_KEY");
+    if (!groqApiKey) {
       return new Response(
-        JSON.stringify({ error: "OpenAI API key not configured" }),
+        JSON.stringify({ error: "Groq API key not configured" }),
         { status: 500, headers: corsHeaders }
       );
     }
@@ -69,7 +69,7 @@ serve(async (req) => {
       console.error('Error fetching user preferences:', prefError);
     }
     
-    // Create prompt for OpenAI based on user data
+    // Create prompt for Groq API based on user data
     let prompt = "Generate three AI-powered insights for a focus app user based on their data:\n\n";
     
     if (focusSessions && focusSessions.length > 0) {
@@ -129,15 +129,15 @@ serve(async (req) => {
     
     prompt += "\nPlease provide three specific, actionable insights that would help this user improve their focus and productivity. Each insight should have a short title (3-5 words) and a brief description (1-2 sentences). Format the response as a JSON array with objects containing 'title' and 'description' fields. Do not include any other text outside this JSON array.";
     
-    // Call OpenAI API
-    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    // Call Groq API instead of OpenAI
+    const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${openaiApiKey}`
+        "Authorization": `Bearer ${groqApiKey}`
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "llama3-8b-8192", // Using Llama 3 8B model from Groq
         messages: [
           {
             role: "system",
@@ -153,24 +153,24 @@ serve(async (req) => {
       })
     });
     
-    // Parse OpenAI response
-    const openaiData = await openaiResponse.json();
+    // Parse Groq response
+    const groqData = await groqResponse.json();
     
-    if (!openaiData.choices || openaiData.choices.length === 0) {
-      console.error('Invalid OpenAI response:', openaiData);
+    if (!groqData.choices || groqData.choices.length === 0) {
+      console.error('Invalid Groq response:', groqData);
       return new Response(
         JSON.stringify({ error: "Failed to generate insights" }),
         { status: 500, headers: corsHeaders }
       );
     }
     
-    // Extract insights from OpenAI response
+    // Extract insights from Groq response
     let insights;
     try {
-      const content = openaiData.choices[0].message.content;
+      const content = groqData.choices[0].message.content;
       insights = JSON.parse(content);
     } catch (error) {
-      console.error('Error parsing OpenAI response:', error);
+      console.error('Error parsing Groq response:', error);
       return new Response(
         JSON.stringify({ error: "Failed to parse insights" }),
         { status: 500, headers: corsHeaders }
