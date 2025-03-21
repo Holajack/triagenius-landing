@@ -378,8 +378,23 @@ export function useStudyRooms() {
       }
 
       // Update the room's participant count
-      const { error: countError } = await supabase
-        .rpc('increment_room_participants', { room_id: roomId });
+      // Using direct fetch instead of rpc to avoid TypeScript errors
+      const { error: countError } = await fetch(`${supabase.supabaseUrl}/functions/v1/increment_room_participants`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.supabaseKey}`
+        },
+        body: JSON.stringify({ room_id: roomId })
+      }).then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      }).catch(err => {
+        console.error('Error calling increment_room_participants:', err);
+        return { error: err };
+      });
         
       if (countError) {
         console.error('Error updating participant count:', countError);
