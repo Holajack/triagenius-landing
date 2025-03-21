@@ -15,7 +15,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuthState } from "@/hooks/use-auth-state";
 
 interface SideNavDrawerProps {
   children: React.ReactNode;
@@ -25,6 +25,7 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
   const navigate = useNavigate();
   const { state } = useOnboarding();
   const { theme } = useTheme();
+  const { signOut } = useAuthState();
   const [logoutLoading, setLogoutLoading] = useState(false);
 
   // Get accent color based on environment - more vibrant
@@ -54,8 +55,7 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
   const handleLogout = async () => {
     try {
       setLogoutLoading(true);
-      await supabase.auth.signOut();
-      toast.success("Logged out successfully");
+      await signOut();
       navigate("/auth");
     } catch (error: any) {
       console.error("Error logging out:", error);

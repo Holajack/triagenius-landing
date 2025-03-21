@@ -76,6 +76,10 @@ export function useAuthState() {
       }
       
       toast.success('Successfully signed out');
+      
+      // Note: We don't use navigate here anymore since this hook shouldn't depend on React Router
+      // The component using this hook should handle navigation after signOut
+      // This makes the hook more reusable
     } catch (err) {
       console.error('Error signing out:', err);
       toast.error('Failed to sign out');

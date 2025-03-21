@@ -1,14 +1,14 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuthState } from "@/hooks/use-auth-state";
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { isAuthenticated, signOut } = useAuthState();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -18,30 +18,15 @@ const Navbar = () => {
 
     window.addEventListener("scroll", handleScroll);
     
-    // Check authentication status
-    const checkAuth = async () => {
-      const { data } = await supabase.auth.getSession();
-      setIsAuthenticated(!!data.session);
-    };
-    
-    checkAuth();
-    
-    // Listen for auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsAuthenticated(!!session);
-    });
-
     return () => {
       window.removeEventListener("scroll", handleScroll);
-      authListener.subscription.unsubscribe();
     };
   }, []);
   
-  const handleLoginClick = () => {
+  const handleLoginClick = async () => {
     if (isAuthenticated) {
-      supabase.auth.signOut().then(() => {
-        navigate('/');
-      });
+      await signOut();
+      navigate('/');
     } else {
       navigate('/auth', { state: { mode: 'login' } });
     }
