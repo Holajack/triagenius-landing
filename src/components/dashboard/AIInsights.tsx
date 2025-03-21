@@ -2,18 +2,25 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOnboarding } from "@/contexts/OnboardingContext";
-import { BrainCircuit, Clock, Lightbulb, Sparkles, TrendingUp, RefreshCw } from "lucide-react";
+import { BrainCircuit, Clock, Lightbulb, Sparkles, TrendingUp, RefreshCw, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 interface Insight {
   title: string;
   description: string;
   icon?: React.ReactNode;
+  action?: {
+    label: string;
+    route: string;
+    params?: Record<string, string>;
+  };
 }
 
 const AIInsights = () => {
+  const navigate = useNavigate();
   const { state } = useOnboarding();
   const [insights, setInsights] = useState<Insight[]>([]);
   const [hasData, setHasData] = useState(false);
@@ -76,24 +83,69 @@ const AIInsights = () => {
         return;
       }
       
-      // Process insights and add icons
+      // Process insights and add icons and actions
       const processedInsights = data.insights.map((insight: Insight, index: number) => {
         let icon;
+        let action;
+        
+        // Assign icons based on index for variety
         switch (index % 3) {
           case 0:
             icon = <Clock className={`w-5 h-5 ${getAccentColor()}`} />;
+            action = {
+              label: "Start now",
+              route: "/focus-session"
+            };
             break;
           case 1:
             icon = <TrendingUp className={`w-5 h-5 ${getAccentColor()}`} />;
+            action = {
+              label: "View trends",
+              route: "/reports"
+            };
             break;
           case 2:
             icon = <BrainCircuit className={`w-5 h-5 ${getAccentColor()}`} />;
+            action = {
+              label: "Set preferences",
+              route: "/profile"
+            };
             break;
+        }
+        
+        // Match keywords in insight titles to determine appropriate actions
+        const title = insight.title.toLowerCase();
+        if (title.includes("goal") || title.includes("target")) {
+          action = {
+            label: "Set goals",
+            route: "/profile"
+          };
+        } else if (title.includes("focus") || title.includes("session")) {
+          action = {
+            label: "Focus now",
+            route: "/focus-session"
+          };
+        } else if (title.includes("community") || title.includes("study room") || title.includes("group")) {
+          action = {
+            label: "Join others",
+            route: "/community"
+          };
+        } else if (title.includes("technique") || title.includes("method") || title.includes("learn")) {
+          action = {
+            label: "Learn more",
+            route: "/learning-toolkit"
+          };
+        } else if (title.includes("analyze") || title.includes("report") || title.includes("progress")) {
+          action = {
+            label: "View reports",
+            route: "/reports"
+          };
         }
         
         return {
           ...insight,
-          icon
+          icon,
+          action
         };
       });
       
@@ -127,16 +179,28 @@ const AIInsights = () => {
           title: "Start Your First Session",
           description: "Begin your first focus session to get personalized insights.",
           icon: <Lightbulb className={`w-5 h-5 ${getAccentColor()}`} />,
+          action: {
+            label: "Start now",
+            route: "/focus-session"
+          }
         },
         {
           title: "Try Different Environments",
           description: "Experiment with different study environments to find what works best for you.",
           icon: <Clock className={`w-5 h-5 ${getAccentColor()}`} />,
+          action: {
+            label: "Change settings",
+            route: "/profile"
+          }
         },
         {
           title: "Set a Weekly Goal",
           description: "Set a weekly focus goal to track your progress and improve consistently.",
           icon: <BrainCircuit className={`w-5 h-5 ${getAccentColor()}`} />,
+          action: {
+            label: "Set goal",
+            route: "/profile"
+          }
         },
       ]);
     } else {
@@ -145,6 +209,10 @@ const AIInsights = () => {
           title: "Optimal Session Length",
           description: "Based on your past focus patterns, 45-minute sessions work best for you.",
           icon: <Clock className={`w-5 h-5 ${getAccentColor()}`} />,
+          action: {
+            label: "Try now",
+            route: "/focus-session"
+          }
         },
         {
           title: "Productivity Peak",
@@ -152,11 +220,19 @@ const AIInsights = () => {
             Math.random() > 0.5 ? "morning between 9-11 AM" : "afternoon between 2-4 PM"
           }.`,
           icon: <TrendingUp className={`w-5 h-5 ${getAccentColor()}`} />,
+          action: {
+            label: "View analytics",
+            route: "/reports"
+          }
         },
         {
           title: "Focus Improvement",
           description: "Try the Pomodoro technique with 25-min focus and 5-min breaks to boost your concentration.",
           icon: <BrainCircuit className={`w-5 h-5 ${getAccentColor()}`} />,
+          action: {
+            label: "Learn more",
+            route: "/learning-toolkit"
+          }
         },
       ]);
     }
@@ -172,6 +248,11 @@ const AIInsights = () => {
       case 'library': return "text-gray-600";
       default: return "text-triage-purple";
     }
+  };
+  
+  // Handle navigation for insight actions
+  const handleActionClick = (action: { route: string; params?: Record<string, string> }) => {
+    navigate(action.route, { state: action.params });
   };
   
   if (isLoading) {
@@ -221,13 +302,25 @@ const AIInsights = () => {
           {insights.map((insight, index) => (
             <div 
               key={index} 
-              className="rounded-lg border p-3 shadow-sm transition-all hover:shadow-md"
+              className="rounded-lg border p-3 shadow-sm transition-all hover:shadow-md group"
             >
               <div className="flex items-start space-x-2">
                 <div className="pt-0.5">{insight.icon}</div>
-                <div>
+                <div className="flex-1">
                   <h4 className="font-medium text-sm">{insight.title}</h4>
                   <p className="text-xs text-muted-foreground mt-1">{insight.description}</p>
+                  
+                  {insight.action && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 h-7 px-2 text-xs gap-1 opacity-80 group-hover:opacity-100 transition-opacity"
+                      onClick={() => handleActionClick(insight.action!)}
+                    >
+                      {insight.action.label}
+                      <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

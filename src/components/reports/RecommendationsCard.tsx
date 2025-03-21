@@ -4,11 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lightbulb, Brain, Book, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 interface Recommendation {
   type: string;
   message: string;
   icon: JSX.Element;
+  action?: {
+    label: string;
+    route: string;
+    params?: Record<string, string>;
+  };
 }
 
 interface FocusArea {
@@ -18,6 +25,7 @@ interface FocusArea {
 }
 
 const RecommendationsCard = () => {
+  const navigate = useNavigate();
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [focusAreas, setFocusAreas] = useState<FocusArea[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,12 +76,22 @@ const RecommendationsCard = () => {
             type: "focus",
             message: "Try breaking your focus sessions into smaller chunks to improve completion rate.",
             icon: <Target className="h-5 w-5 text-primary" />,
+            action: {
+              label: "Try shorter session",
+              route: "/focus-session",
+              params: { duration: "25" }
+            }
           });
         } else if (sessions.length >= 5) {
           newRecommendations.push({
             type: "achievement",
             message: "Great job maintaining a high completion rate! Consider increasing session difficulty.",
             icon: <Lightbulb className="h-5 w-5 text-amber-500" />,
+            action: {
+              label: "Try a challenge",
+              route: "/focus-session",
+              params: { difficulty: "high" }
+            }
           });
         }
         
@@ -83,12 +101,21 @@ const RecommendationsCard = () => {
             type: "warning",
             message: "Your sessions average over 90 minutes. Consider more breaks to prevent burnout.",
             icon: <AlertCircle className="h-5 w-5 text-red-500" />,
+            action: {
+              label: "Set break reminder",
+              route: "/settings"
+            }
           });
         } else if (avgDuration < 30) {
           newRecommendations.push({
             type: "optimization",
             message: "Your sessions are short. Try extending them to 30-45 minutes for deeper focus.",
             icon: <Clock className="h-5 w-5 text-blue-500" />,
+            action: {
+              label: "Try longer session",
+              route: "/focus-session",
+              params: { duration: "45" }
+            }
           });
         }
         
@@ -98,6 +125,10 @@ const RecommendationsCard = () => {
             type: "health",
             message: "You have several late night study sessions. Consider adjusting your schedule for better rest.",
             icon: <Moon className="h-5 w-5 text-indigo-500" />,
+            action: {
+              label: "Schedule plan",
+              route: "/profile"
+            }
           });
         }
         
@@ -110,6 +141,10 @@ const RecommendationsCard = () => {
             type: "variety",
             message: "Try varying your study environments to stimulate different cognitive patterns.",
             icon: <Brain className="h-5 w-5 text-purple-500" />,
+            action: {
+              label: "Change environment",
+              route: "/profile"
+            }
           });
         }
         
@@ -118,6 +153,10 @@ const RecommendationsCard = () => {
           type: "learning",
           message: "Incorporate spaced repetition techniques to improve memory retention and recall.",
           icon: <Book className="h-5 w-5 text-green-500" />,
+          action: {
+            label: "Learning techniques",
+            route: "/learning-toolkit"
+          }
         });
         
         // If we still need more recommendations, add default ones
@@ -126,6 +165,10 @@ const RecommendationsCard = () => {
             type: "balance",
             message: "Balance focused work with creative activities to enhance overall cognitive function.",
             icon: <Brain className="h-5 w-5 text-primary" />,
+            action: {
+              label: "Focus techniques",
+              route: "/learning-toolkit"
+            }
           });
         }
         
@@ -172,21 +215,37 @@ const RecommendationsCard = () => {
           type: "balance",
           message: "Consider adding more creative activities to balance your cognitive workload.",
           icon: <Brain className="h-5 w-5 text-primary" />,
+          action: {
+            label: "Browse techniques",
+            route: "/learning-toolkit"
+          }
         },
         {
           type: "optimization",
           message: "Schedule complex tasks during your peak productivity hours for better results.",
           icon: <Lightbulb className="h-5 w-5 text-amber-500" />,
+          action: {
+            label: "Start focus timer",
+            route: "/focus-session"
+          }
         },
         {
           type: "learning",
           message: "Try spaced repetition techniques to improve your memory retention scores.",
           icon: <Book className="h-5 w-5 text-green-500" />,
+          action: {
+            label: "Learning methods",
+            route: "/learning-toolkit"
+          }
         },
         {
           type: "warning",
           message: "Remember to take regular breaks during extended study sessions to prevent burnout.",
           icon: <AlertCircle className="h-5 w-5 text-red-500" />,
+          action: {
+            label: "Set break reminder",
+            route: "/break-timer"
+          }
         },
       ]);
       
@@ -223,6 +282,11 @@ const RecommendationsCard = () => {
     
     return () => clearInterval(interval);
   }, []);
+
+  // Handle navigation for recommendation actions
+  const handleActionClick = (action: { route: string; params?: Record<string, string> }) => {
+    navigate(action.route, { state: action.params });
+  };
 
   if (isLoading) {
     return (
@@ -266,10 +330,20 @@ const RecommendationsCard = () => {
       <CardContent className="pt-2">
         <div className="space-y-4">
           {recommendations.map((recommendation, index) => (
-            <div key={index} className="flex gap-3 p-3 rounded-lg border bg-background/50">
+            <div key={index} className="flex gap-3 p-3 rounded-lg border bg-background/50 hover:bg-background/80 transition-colors">
               <div className="mt-0.5">{recommendation.icon}</div>
-              <div>
+              <div className="flex-1">
                 <p className="text-sm">{recommendation.message}</p>
+                {recommendation.action && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 h-7 px-2 text-xs"
+                    onClick={() => handleActionClick(recommendation.action!)}
+                  >
+                    {recommendation.action.label}
+                  </Button>
+                )}
               </div>
             </div>
           ))}
@@ -278,10 +352,16 @@ const RecommendationsCard = () => {
             <h4 className="text-sm font-medium mb-2">Suggested Focus Areas:</h4>
             <div className="grid grid-cols-2 gap-2">
               {focusAreas.map((area, index) => (
-                <div key={index} className={`text-xs p-2 bg-${area.bgColor} text-${area.color} rounded flex items-center gap-1`}>
+                <Button
+                  key={index}
+                  variant="outline"
+                  size="sm"
+                  className={`text-xs p-2 bg-${area.bgColor} text-${area.color} rounded flex items-center gap-1 h-auto justify-start`}
+                  onClick={() => navigate("/learning-toolkit", { state: { area: area.name } })}
+                >
                   <div className={`w-2 h-2 rounded-full bg-${area.color.split('-')[0]}-500`}></div>
                   {area.name}
-                </div>
+                </Button>
               ))}
             </div>
           </div>
