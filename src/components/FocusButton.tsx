@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Target, Play, Timer } from "lucide-react";
-import { useTheme } from "@/contexts/ThemeContext";
 import { useNavigate } from "react-router-dom";
 
 interface FocusButtonProps {
@@ -13,6 +12,7 @@ interface FocusButtonProps {
   navigateTo?: string;
   isPrimary?: boolean;
   className?: string;
+  theme?: string;  // Accept theme as a prop instead of using context
 }
 
 const FocusButton = ({ 
@@ -21,10 +21,10 @@ const FocusButton = ({
   onClick, 
   navigateTo,
   isPrimary = true,
-  className = "" 
+  className = "",
+  theme = "light" // Default to light theme 
 }: FocusButtonProps) => {
   const [isHovered, setIsHovered] = useState(false);
-  const { theme } = useTheme();
   const navigate = useNavigate();
   
   // Check if running as a PWA

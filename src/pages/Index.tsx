@@ -7,14 +7,15 @@ import FocusButton from "@/components/FocusButton";
 import HowItWorks from "@/components/HowItWorks";
 import { ArrowDown, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const Index = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const { theme } = useTheme();
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('theme') || 'light';
+  });
   const navigate = useNavigate();
   
   useEffect(() => {
