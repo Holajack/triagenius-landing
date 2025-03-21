@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
@@ -6,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ArrowLeft, Users, BookOpen, Clock, Timer, MessageSquare, Loader2 } from "lucide-react";
+import { ArrowLeft, Users, BookOpen, Clock, Timer, MessageSquare, Loader2, AlertCircle } from "lucide-react";
 import { StudyRoomChat } from "@/components/studyroom/StudyRoomChat";
 import { StudyRoomResources } from "@/components/studyroom/StudyRoomResources";
 import { StudyRoomMember } from "@/components/studyroom/StudyRoomMember";
@@ -35,13 +36,19 @@ const StudyRoom = () => {
   const [participants, setParticipants] = useState<any[]>([]);
   const [resources, setResources] = useState<any[]>([]);
   const [presenceChannel, setPresenceChannel] = useState<any>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadRoomData = async () => {
-      if (!id) return;
+      if (!id) {
+        setLoadError("No room ID provided");
+        setLoading(false);
+        return;
+      }
       
       try {
         setLoading(true);
+        console.log(`Loading room data for ID: ${id}`);
         
         const { data: roomData, error: roomError } = await supabase
           .from('study_rooms')
@@ -52,7 +59,14 @@ const StudyRoom = () => {
           .eq('id', id)
           .single();
           
-        if (roomError) throw roomError;
+        if (roomError) {
+          console.error("Error fetching room data:", roomError);
+          setLoadError(roomError.message);
+          setLoading(false);
+          return;
+        }
+        
+        console.log("Room data fetched:", roomData);
         
         const { data: participantsData, error: participantsError } = await supabase
           .from('study_room_participants')
@@ -62,7 +76,14 @@ const StudyRoom = () => {
           `)
           .eq('room_id', id);
           
-        if (participantsError) throw participantsError;
+        if (participantsError) {
+          console.error("Error fetching participants:", participantsError);
+          setLoadError(participantsError.message);
+          setLoading(false);
+          return;
+        }
+        
+        console.log("Participants data fetched:", participantsData);
         
         const mappedParticipants = participantsData.map(p => ({
           id: p.user.id,
@@ -73,7 +94,13 @@ const StudyRoom = () => {
         }));
         
         if (user?.id) {
-          await joinRoom(id);
+          console.log(`Joining room ${id} for user ${user.id}`);
+          try {
+            await joinRoom(id);
+            console.log("Successfully joined room");
+          } catch (joinError) {
+            console.error("Error joining room:", joinError);
+          }
         }
         
         const enrichedRoomData = {
@@ -88,14 +115,15 @@ const StudyRoom = () => {
         
         setRoom(enrichedRoomData);
         setParticipants(mappedParticipants);
+        setLoadError(null);
         
         setResources([
           { id: 1, title: "Study Room Guide", type: "Link", sharedBy: "System", timestamp: "Just now" }
         ]);
       } catch (err) {
         console.error('Error loading study room data:', err);
+        setLoadError('Could not load study room data');
         toast.error('Could not load study room data');
-        navigate('/community');
       } finally {
         setLoading(false);
       }
@@ -241,14 +269,14 @@ const StudyRoom = () => {
     );
   }
 
-  if (!room) {
+  if (loadError || !room) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center max-w-md p-6">
           <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
           <h2 className="text-xl font-bold mb-2">Study Room Not Found</h2>
           <p className="text-muted-foreground mb-4">
-            The study room you're looking for doesn't exist or you don't have access to it.
+            {loadError || "The study room you're looking for doesn't exist or you don't have access to it."}
           </p>
           <Button onClick={() => navigate('/community')}>
             Back to Community
