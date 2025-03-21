@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +34,6 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
     subjects: [] as string[],
     newSubject: ''
   });
-  const [formSubmitting, setFormSubmitting] = useState(false);
   
   const filteredRooms = rooms.filter(room => {
     const searchLower = searchQuery.toLowerCase();
@@ -50,13 +50,16 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
   
   const handleJoinRoom = async (roomId: string) => {
     try {
+      // Request media permissions when joining a room
       const permissions = await requestMediaPermissions();
       console.log('Media permissions:', permissions);
       
+      // If we've got permissions, toast success
       if (permissions.audio || permissions.video) {
         toast.success(`${permissions.audio ? 'Microphone' : ''}${permissions.audio && permissions.video ? ' and ' : ''}${permissions.video ? 'Camera' : ''} access granted`);
       }
       
+      // Join the room
       const joined = await joinRoom(roomId);
       if (joined) {
         navigate(`/community/room/${roomId}`);
@@ -72,8 +75,6 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
       toast.error('Please enter a name and topic for your study room');
       return;
     }
-    
-    setFormSubmitting(true);
     
     try {
       const newRoom = await createRoom({
@@ -97,12 +98,12 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
           newSubject: ''
         });
         
-        navigate(`/study-room/${newRoom.id}`);
+        // Navigate to the new room
+        navigate(`/community/room/${newRoom.id}`);
       }
     } catch (error) {
       console.error('Error creating room:', error);
-    } finally {
-      setFormSubmitting(false);
+      toast.error('Failed to create room');
     }
   };
   
@@ -231,6 +232,7 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
         </div>
       )}
       
+      {/* Create Study Room Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -248,7 +250,6 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
                 placeholder="e.g. Math Study Group" 
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
-                disabled={formSubmitting}
               />
             </div>
             
@@ -259,7 +260,6 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
                 placeholder="e.g. Calculus 101" 
                 value={formData.topic}
                 onChange={(e) => setFormData({...formData, topic: e.target.value})}
-                disabled={formSubmitting}
               />
             </div>
             
@@ -270,7 +270,6 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
                 placeholder="Describe what you'll be studying..." 
                 value={formData.description}
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
-                disabled={formSubmitting}
               />
             </div>
             
@@ -282,7 +281,6 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
                   placeholder="e.g. Daily, 3-5 PM" 
                   value={formData.schedule}
                   onChange={(e) => setFormData({...formData, schedule: e.target.value})}
-                  disabled={formSubmitting}
                 />
               </div>
               
@@ -293,7 +291,6 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
                   placeholder="e.g. 2 hours" 
                   value={formData.duration}
                   onChange={(e) => setFormData({...formData, duration: e.target.value})}
-                  disabled={formSubmitting}
                 />
               </div>
             </div>
@@ -311,9 +308,8 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
                       addSubject();
                     }
                   }}
-                  disabled={formSubmitting}
                 />
-                <Button type="button" onClick={addSubject} disabled={formSubmitting}>Add</Button>
+                <Button type="button" onClick={addSubject}>Add</Button>
               </div>
               
               <div className="flex flex-wrap gap-1 mt-2">
@@ -323,7 +319,6 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
                     <button 
                       className="ml-1 text-xs hover:text-destructive"
                       onClick={() => removeSubject(subject)}
-                      disabled={formSubmitting}
                     >
                       ✕
                     </button>
@@ -337,15 +332,8 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)} disabled={formSubmitting}>Cancel</Button>
-            <Button onClick={handleCreateRoom} disabled={formSubmitting}>
-              {formSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : 'Create Room'}
-            </Button>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
+            <Button onClick={handleCreateRoom}>Create Room</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

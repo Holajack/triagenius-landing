@@ -132,26 +132,11 @@ export const loadUserSession = async (userId: string | undefined): Promise<Persi
     if (data?.preferences && typeof data.preferences === 'object') {
       const prefs = data.preferences as Record<string, Json>;
       
-      // FIX: First check for userGoal and workStyle in preferences directly
-      if (prefs.userGoal || prefs.workStyle || prefs.environment || prefs.soundPreference) {
-        // We have structured preferences data - apply it to localStorage for immediate use
-        if (prefs.environment) localStorage.setItem('environment', prefs.environment as string);
-        if (prefs.soundPreference) localStorage.setItem('soundPreference', prefs.soundPreference as string);
-        if (prefs.theme) localStorage.setItem('theme', prefs.theme as string);
-      }
-      
-      // Then try the lastSessionData as fallback
       if (prefs.lastSessionData && typeof prefs.lastSessionData === 'string') {
         try {
           // Parse the stringified session data
           const parsedSessionData = JSON.parse(prefs.lastSessionData) as PersistedSessionData;
           console.log("Session loaded from Supabase");
-          
-          // Always ensure localStorage values are set from retrieved preferences
-          localStorage.setItem('theme', parsedSessionData.preferences.theme || 'light');
-          localStorage.setItem('environment', parsedSessionData.preferences.environment || 'office');
-          localStorage.setItem('soundPreference', parsedSessionData.preferences.soundPreference || 'none');
-          
           return parsedSessionData;
         } catch (parseError) {
           console.error("Error parsing saved session data:", parseError);

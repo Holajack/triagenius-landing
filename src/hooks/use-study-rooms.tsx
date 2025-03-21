@@ -1,13 +1,15 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from './use-user';
 import { toast } from 'sonner';
 
+// Update the StudyRoom interface to match the actual data structure from Supabase
 interface StudyRoom {
   id: string;
   name: string;
   description: string | null;
-  topic: string;
+  topic: string;  // This is derived from description if needed
   creator_id: string;
   is_active: boolean;
   is_private: boolean | null;
@@ -55,10 +57,12 @@ export function useStudyRooms() {
   const [error, setError] = useState<Error | null>(null);
   const { user } = useUser();
 
+  // Helper function to check if we're in preview/sandbox mode
   const isPreviewMode = () => {
     return !user || user.id.toString().startsWith('sample-');
   };
 
+  // Generate a sample room for preview mode
   const generateSampleRoom = (roomData: Partial<CreateRoomData>): StudyRoom => {
     const randomId = `sample-${Math.random().toString(36).substring(2, 10)}`;
     return {
@@ -98,13 +102,16 @@ export function useStudyRooms() {
     };
   };
 
+  // Load initial study rooms
   useEffect(() => {
     const fetchStudyRooms = async () => {
       try {
         setLoading(true);
         
+        // Check if we're in preview mode
         if (isPreviewMode()) {
           console.log('Preview mode detected, generating sample study rooms');
+          // Generate sample rooms for preview mode
           const sampleRooms: StudyRoom[] = [
             generateSampleRoom({
               name: 'Biology Study Group',
@@ -140,12 +147,17 @@ export function useStudyRooms() {
 
         if (error) throw error;
 
+        // Process the data to match our StudyRoom interface
         const processedRooms = data?.map(room => {
+          // Map the fields from the database to our interface
           return {
             ...room,
+            // Use description as topic if we don't have a dedicated topic field
             topic: room.description || 'General Study',
+            // Default for fields that might be missing in the database
             is_active: true,
-            subjects: [],
+            // Add subjects as an empty array since the database doesn't have this field yet
+            subjects: [], 
             participant_count: room.participants?.length || 0
           } as StudyRoom;
         }) || [];
@@ -161,7 +173,9 @@ export function useStudyRooms() {
 
     fetchStudyRooms();
 
+    // Only set up real-time subscriptions if not in preview mode
     if (!isPreviewMode()) {
+      // Subscribe to changes in study rooms
       const roomsChannel = supabase
         .channel('study_rooms_changes')
         .on(
@@ -175,7 +189,7 @@ export function useStudyRooms() {
             console.log('Study room change:', payload);
             
             if (payload.eventType === 'INSERT') {
-              fetchStudyRooms();
+              fetchStudyRooms(); // Refetch all rooms to include relations
             } else if (payload.eventType === 'UPDATE') {
               setRooms(prev => 
                 prev.map(room => 
@@ -189,6 +203,7 @@ export function useStudyRooms() {
         )
         .subscribe();
 
+      // Subscribe to changes in room participants
       const participantsChannel = supabase
         .channel('room_participants_changes')
         .on(
@@ -199,6 +214,7 @@ export function useStudyRooms() {
             table: 'study_room_participants',
           },
           () => {
+            // Refetch to get accurate counts
             fetchStudyRooms();
           }
         )
@@ -211,6 +227,7 @@ export function useStudyRooms() {
     }
   }, [user?.id]);
 
+  // Create a new study room
   const createRoom = async (data: CreateRoomData) => {
     if (!user?.id) {
       toast.error('You need to be logged in to create a study room');
@@ -218,23 +235,28 @@ export function useStudyRooms() {
     }
     
     try {
+      // Check if we're in preview mode
       if (isPreviewMode()) {
         console.log('Preview mode detected, creating sample study room');
         const sampleRoom = generateSampleRoom(data);
         
+        // Add the new room to the rooms state
         setRooms(prevRooms => [sampleRoom, ...prevRooms]);
         
         toast.success('Study room created successfully!');
         return sampleRoom;
       }
       
+      // Convert subjects array to string if needed
       const subjectsData = Array.isArray(data.subjects) ? data.subjects : [];
       
+      // Generate a random room code (6 alphanumeric characters)
       const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
       
+      // Prepare the data for insertion
       const roomData = {
         name: data.name,
-        description: data.description || data.topic,
+        description: data.description || data.topic, // Use topic as fallback for description
         creator_id: user.id,
         is_active: true,
         is_private: false,
@@ -242,49 +264,40 @@ export function useStudyRooms() {
         duration: data.duration || null,
         subjects: subjectsData,
         max_participants: data.max_participants || 10,
-        current_participants: 1,
+        current_participants: 1, // Creator joins automatically
         room_code: roomCode
       };
       
       console.log('Creating room with data:', roomData);
       
-      const { data: createdRoom, error: insertError } = await supabase
+      const { data: createdRoom, error } = await supabase
         .from('study_rooms')
         .insert(roomData)
         .select()
         .single();
 
-      if (insertError) {
-        console.error('Supabase error creating room:', insertError);
-        if (insertError.code === '23505') {
-          throw new Error('A room with this name already exists');
-        } else if (insertError.code === '23503') {
-          throw new Error('Could not associate the room with your account');
-        } else {
-          throw insertError;
-        }
+      if (error) {
+        console.error('Supabase error creating room:', error);
+        throw error;
       }
       
       if (!createdRoom) {
         throw new Error('Failed to create room: No data returned');
       }
 
-      try {
-        await joinRoom(createdRoom.id);
-      } catch (joinError) {
-        console.error('Error joining newly created room:', joinError);
-        toast.warning('Room created, but you could not be added as a participant automatically');
-      }
+      // Join the room automatically as creator
+      await joinRoom(createdRoom.id);
 
       toast.success('Study room created successfully!');
       return createdRoom;
     } catch (err) {
       console.error('Error creating study room:', err);
-      toast.error(err instanceof Error ? err.message : 'Failed to create study room. Please try again.');
+      toast.error('Failed to create study room. Please try again.');
       return null;
     }
   };
 
+  // Join a study room
   const joinRoom = async (roomId: string) => {
     if (!user?.id) {
       toast.error('You need to be logged in to join a study room');
@@ -292,9 +305,11 @@ export function useStudyRooms() {
     }
 
     try {
+      // Check if we're in preview mode
       if (isPreviewMode()) {
         console.log('Preview mode detected, joining sample study room');
         
+        // Update the room in state to show this user has joined
         setRooms(prevRooms => 
           prevRooms.map(room => {
             if (room.id === roomId) {
@@ -329,19 +344,16 @@ export function useStudyRooms() {
         return true;
       }
       
-      const { data: existingParticipant, error: checkError } = await supabase
+      // Check if already joined
+      const { data: existingParticipant } = await supabase
         .from('study_room_participants')
         .select('*')
         .eq('room_id', roomId)
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (checkError) {
-        console.error('Error checking participant:', checkError);
-        throw checkError;
-      }
-
       if (existingParticipant) {
+        // Update last active time
         const { error: updateError } = await supabase
           .from('study_room_participants')
           .update({ last_active_at: new Date().toISOString() })
@@ -351,34 +363,35 @@ export function useStudyRooms() {
         return true;
       }
 
-      const { error: joinError } = await supabase
+      // Join the room
+      const { error } = await supabase
         .from('study_room_participants')
         .insert({
           room_id: roomId,
           user_id: user.id,
         });
 
-      if (joinError) {
-        console.error('Error joining room:', joinError);
-        throw joinError;
-      }
+      if (error) throw error;
 
       toast.success('Joined study room!');
       return true;
     } catch (err) {
       console.error('Error joining study room:', err);
-      toast.error(err instanceof Error ? err.message : 'Failed to join study room. Please try again.');
+      toast.error('Failed to join study room. Please try again.');
       return false;
     }
   };
 
+  // Leave a study room
   const leaveRoom = async (roomId: string) => {
     if (!user?.id) return false;
 
     try {
+      // Check if we're in preview mode
       if (isPreviewMode()) {
         console.log('Preview mode detected, leaving sample study room');
         
+        // Update the room in state to show this user has left
         setRooms(prevRooms => 
           prevRooms.map(room => {
             if (room.id === roomId) {
@@ -413,15 +426,18 @@ export function useStudyRooms() {
     }
   };
 
+  // Get room by ID
   const getRoomById = (roomId: string) => {
     return rooms.find(room => room.id === roomId) || null;
   };
 
+  // Get rooms created by user
   const getUserRooms = () => {
     if (!user?.id) return [];
     return rooms.filter(room => room.creator_id === user.id);
   };
 
+  // Get rooms the user has joined
   const getJoinedRooms = () => {
     if (!user?.id) return [];
     return rooms.filter(room => 

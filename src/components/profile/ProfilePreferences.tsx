@@ -9,8 +9,6 @@ import { useOnboarding } from "@/contexts/OnboardingContext";
 import { toast } from "sonner";
 import { UserGoal, WorkStyle, StudyEnvironment, SoundPreference } from "@/types/onboarding";
 import { PencilIcon, SaveIcon, Loader2Icon } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useUser } from "@/hooks/use-user";
 
 const ProfilePreferences = () => {
   const {
@@ -19,8 +17,6 @@ const ProfilePreferences = () => {
     saveOnboardingState,
     isLoading: contextLoading
   } = useOnboarding();
-  
-  const { user } = useUser();
   const [isEditing, setIsEditing] = useState(false);
   const [editedState, setEditedState] = useState({
     ...state
@@ -82,39 +78,10 @@ const ProfilePreferences = () => {
 
       // Save to database
       await saveOnboardingState();
-      
-      // FIX: Additionally save preferences to user profile for better persistence
-      if (user?.id) {
-        // Save to the user profile preferences as well for redundancy
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            preferences: {
-              ...user.profile?.preferences,
-              userGoal: editedState.userGoal,
-              workStyle: editedState.workStyle,
-              environment: editedState.environment, 
-              soundPreference: editedState.soundPreference,
-              weeklyFocusGoal: editedState.weeklyFocusGoal
-            }
-          })
-          .eq('id', user.id);
-          
-        if (error) {
-          console.error("Error updating profile preferences:", error);
-          toast.error("Failed to save some preferences to your profile");
-        }
-      }
-      
-      // Also save to localStorage for immediate access
-      localStorage.setItem('environment', editedState.environment || 'office');
-      localStorage.setItem('soundPreference', editedState.soundPreference || 'none');
-      
       setIsEditing(false);
-      toast.success("Preferences saved successfully");
     } catch (error) {
       console.error("Error updating preferences:", error);
-      toast.error("Failed to save preferences");
+      // Toast error is already shown in the saveOnboardingState function
     } finally {
       setIsLoading(false);
     }
