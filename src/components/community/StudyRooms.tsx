@@ -1,9 +1,8 @@
-
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, Clock, BookOpen, Calendar, Plus, Loader2 } from "lucide-react";
+import { Users, Clock, BookOpen, Calendar, Plus, Loader2, AlertCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -14,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useUser } from "@/hooks/use-user";
 import { requestMediaPermissions } from "@/components/pwa/ServiceWorker";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface StudyRoomsProps {
   searchQuery?: string;
@@ -23,8 +23,10 @@ interface StudyRoomsProps {
 export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) => {
   const navigate = useNavigate();
   const { user } = useUser();
-  const { rooms, loading, createRoom, joinRoom } = useStudyRooms();
+  const { rooms, loading, error: roomsError, createRoom, joinRoom } = useStudyRooms();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -47,6 +49,21 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
     
     return true;
   });
+  
+  const validateForm = () => {
+    const errors: { [key: string]: string } = {};
+    
+    if (!formData.name.trim()) {
+      errors.name = 'Room name is required';
+    }
+    
+    if (!formData.topic.trim()) {
+      errors.topic = 'Topic is required';
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
   
   const handleJoinRoom = async (roomId: string) => {
     try {
@@ -71,10 +88,11 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
   };
   
   const handleCreateRoom = async () => {
-    if (!formData.name || !formData.topic) {
-      toast.error('Please enter a name and topic for your study room');
+    if (!validateForm()) {
       return;
     }
+    
+    setIsCreating(true);
     
     try {
       const newRoom = await createRoom({
@@ -104,11 +122,19 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
     } catch (error) {
       console.error('Error creating room:', error);
       toast.error('Failed to create room');
+    } finally {
+      setIsCreating(false);
     }
   };
   
   const addSubject = () => {
     if (!formData.newSubject.trim()) return;
+    
+    // Prevent duplicate subjects
+    if (formData.subjects.includes(formData.newSubject.trim())) {
+      toast.error('This subject is already added');
+      return;
+    }
     
     setFormData({
       ...formData,
@@ -122,6 +148,21 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
       ...formData,
       subjects: formData.subjects.filter(s => s !== subject)
     });
+  };
+  
+  const handleInputChange = (field: string, value: string) => {
+    setFormData({
+      ...formData,
+      [field]: value
+    });
+    
+    // Clear error for this field if it exists
+    if (formErrors[field]) {
+      setFormErrors({
+        ...formErrors,
+        [field]: ''
+      });
+    }
   };
   
   if (loading) {
@@ -147,6 +188,15 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
           Create Study Room
         </Button>
       </div>
+      
+      {roomsError && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Error loading study rooms: {roomsError.message}
+          </AlertDescription>
+        </Alert>
+      )}
       
       {filteredRooms.map((room) => (
         <Card key={room.id} className="p-4">
@@ -232,8 +282,12 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
         </div>
       )}
       
-      {/* Create Study Room Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+      <Dialog open={showCreateDialog} onOpenChange={(open) => {
+        setShowCreateDialog(open);
+        if (!open) {
+          setFormErrors({});
+        }
+      }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create Study Room</DialogTitle>
@@ -244,23 +298,35 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
           
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">Room Name</Label>
+              <Label htmlFor="name" className={formErrors.name ? "text-destructive" : ""}>
+                Room Name *
+              </Label>
               <Input 
                 id="name" 
                 placeholder="e.g. Math Study Group" 
                 value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                className={formErrors.name ? "border-destructive" : ""}
               />
+              {formErrors.name && (
+                <p className="text-xs text-destructive">{formErrors.name}</p>
+              )}
             </div>
             
             <div className="grid gap-2">
-              <Label htmlFor="topic">Topic</Label>
+              <Label htmlFor="topic" className={formErrors.topic ? "text-destructive" : ""}>
+                Topic *
+              </Label>
               <Input 
                 id="topic" 
                 placeholder="e.g. Calculus 101" 
                 value={formData.topic}
-                onChange={(e) => setFormData({...formData, topic: e.target.value})}
+                onChange={(e) => handleInputChange('topic', e.target.value)}
+                className={formErrors.topic ? "border-destructive" : ""}
               />
+              {formErrors.topic && (
+                <p className="text-xs text-destructive">{formErrors.topic}</p>
+              )}
             </div>
             
             <div className="grid gap-2">
@@ -269,7 +335,7 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
                 id="description" 
                 placeholder="Describe what you'll be studying..." 
                 value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                onChange={(e) => handleInputChange('description', e.target.value)}
               />
             </div>
             
@@ -280,7 +346,7 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
                   id="schedule" 
                   placeholder="e.g. Daily, 3-5 PM" 
                   value={formData.schedule}
-                  onChange={(e) => setFormData({...formData, schedule: e.target.value})}
+                  onChange={(e) => handleInputChange('schedule', e.target.value)}
                 />
               </div>
               
@@ -290,7 +356,7 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
                   id="duration" 
                   placeholder="e.g. 2 hours" 
                   value={formData.duration}
-                  onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                  onChange={(e) => handleInputChange('duration', e.target.value)}
                 />
               </div>
             </div>
@@ -333,7 +399,19 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
-            <Button onClick={handleCreateRoom}>Create Room</Button>
+            <Button 
+              onClick={handleCreateRoom} 
+              disabled={isCreating}
+            >
+              {isCreating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create Room'
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

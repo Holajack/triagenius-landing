@@ -57,7 +57,7 @@ export function useStudyRooms() {
   const [error, setError] = useState<Error | null>(null);
   const { user } = useUser();
 
-  // Helper function to check if we're in preview/sandbox mode
+  // Helper function to check if we're in preview mode
   const isPreviewMode = () => {
     return !user || user.id.toString().startsWith('sample-');
   };
@@ -247,6 +247,15 @@ export function useStudyRooms() {
         return sampleRoom;
       }
       
+      // Validate required fields
+      if (!data.name.trim()) {
+        throw new Error('Room name is required');
+      }
+      
+      if (!data.topic.trim()) {
+        throw new Error('Room topic is required');
+      }
+      
       // Convert subjects array to string if needed
       const subjectsData = Array.isArray(data.subjects) ? data.subjects : [];
       
@@ -255,49 +264,136 @@ export function useStudyRooms() {
       
       // Prepare the data for insertion
       const roomData = {
-        name: data.name,
-        description: data.description || data.topic, // Use topic as fallback for description
+        name: data.name.trim(),
+        description: data.description?.trim() || data.topic.trim(), // Use topic as fallback for description
         creator_id: user.id,
         is_active: true,
         is_private: false,
-        schedule: data.schedule || null,
-        duration: data.duration || null,
+        schedule: data.schedule?.trim() || null,
+        duration: data.duration?.trim() || null,
         subjects: subjectsData,
         max_participants: data.max_participants || 10,
-        current_participants: 1, // Creator joins automatically
         room_code: roomCode
       };
       
       console.log('Creating room with data:', roomData);
       
-      const { data: createdRoom, error } = await supabase
+      // First insert the room record
+      const { data: createdRoom, error: roomError } = await supabase
         .from('study_rooms')
         .insert(roomData)
         .select()
         .single();
 
-      if (error) {
-        console.error('Supabase error creating room:', error);
-        throw error;
+      if (roomError) {
+        console.error('Supabase error creating room:', roomError);
+        throw roomError;
       }
       
       if (!createdRoom) {
         throw new Error('Failed to create room: No data returned');
       }
 
-      // Join the room automatically as creator
-      await joinRoom(createdRoom.id);
-
+      console.log('Room created successfully:', createdRoom);
       toast.success('Study room created successfully!');
+      
+      // Now join the room as the creator in a separate transaction
+      const joinSuccess = await joinRoomInternal(createdRoom.id, user.id);
+      
+      if (!joinSuccess) {
+        console.warn('Created room but failed to join automatically as creator');
+        // We'll still return the created room even if joining fails
+      }
+
       return createdRoom;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creating study room:', err);
-      toast.error('Failed to create study room. Please try again.');
+      
+      // Provide a more specific error message
+      let errorMessage = 'Failed to create study room';
+      if (err?.message) {
+        if (err.message.includes('duplicate key')) {
+          errorMessage = 'A study room with this name already exists';
+        } else if (err.message.includes('violates foreign key constraint')) {
+          errorMessage = 'Invalid user account';
+        } else {
+          errorMessage = err.message;
+        }
+      } else if (err?.code) {
+        errorMessage = `Database error (${err.code})`;
+      }
+      
+      toast.error(errorMessage);
+      setError(err instanceof Error ? err : new Error(errorMessage));
       return null;
     }
   };
 
-  // Join a study room
+  // Internal helper for joining a room (used by createRoom)
+  const joinRoomInternal = async (roomId: string, userId: string) => {
+    try {
+      console.log(`Attempting to join room ${roomId} for user ${userId}`);
+      
+      // Check if already joined
+      const { data: existingParticipant, error: checkError } = await supabase
+        .from('study_room_participants')
+        .select('*')
+        .eq('room_id', roomId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('Error checking existing participant:', checkError);
+        return false;
+      }
+
+      if (existingParticipant) {
+        // Already joined, just update last active time
+        const { error: updateError } = await supabase
+          .from('study_room_participants')
+          .update({ last_active_at: new Date().toISOString() })
+          .eq('id', existingParticipant.id);
+
+        if (updateError) {
+          console.error('Error updating participant timestamp:', updateError);
+          return false;
+        }
+        
+        return true;
+      }
+
+      // Join the room by creating a new participant record
+      const { error: joinError } = await supabase
+        .from('study_room_participants')
+        .insert({
+          room_id: roomId,
+          user_id: userId,
+          joined_at: new Date().toISOString(),
+          last_active_at: new Date().toISOString()
+        });
+
+      if (joinError) {
+        console.error('Error joining room:', joinError);
+        return false;
+      }
+
+      // Update the room's participant count
+      const { error: countError } = await supabase
+        .rpc('increment_room_participants', { room_id: roomId });
+        
+      if (countError) {
+        console.error('Error updating participant count:', countError);
+        // Not critical, we still joined successfully
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Error in joinRoomInternal:', err);
+      return false;
+    }
+  };
+
+  // Join a study room (public method)
   const joinRoom = async (roomId: string) => {
     if (!user?.id) {
       toast.error('You need to be logged in to join a study room');
@@ -344,37 +440,15 @@ export function useStudyRooms() {
         return true;
       }
       
-      // Check if already joined
-      const { data: existingParticipant } = await supabase
-        .from('study_room_participants')
-        .select('*')
-        .eq('room_id', roomId)
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (existingParticipant) {
-        // Update last active time
-        const { error: updateError } = await supabase
-          .from('study_room_participants')
-          .update({ last_active_at: new Date().toISOString() })
-          .eq('id', existingParticipant.id);
-
-        if (updateError) throw updateError;
-        return true;
+      const success = await joinRoomInternal(roomId, user.id);
+      
+      if (success) {
+        toast.success('Joined study room!');
+      } else {
+        toast.error('Failed to join study room');
       }
-
-      // Join the room
-      const { error } = await supabase
-        .from('study_room_participants')
-        .insert({
-          room_id: roomId,
-          user_id: user.id,
-        });
-
-      if (error) throw error;
-
-      toast.success('Joined study room!');
-      return true;
+      
+      return success;
     } catch (err) {
       console.error('Error joining study room:', err);
       toast.error('Failed to join study room. Please try again.');
