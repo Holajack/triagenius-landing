@@ -5,9 +5,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { ArrowLeft, Send, Users, BookOpen, Clock, Timer, MessageSquare, Loader2 } from "lucide-react";
+import { ArrowLeft, Users, BookOpen, Clock, Timer, MessageSquare, Loader2 } from "lucide-react";
 import { StudyRoomChat } from "@/components/studyroom/StudyRoomChat";
 import { StudyRoomResources } from "@/components/studyroom/StudyRoomResources";
 import { StudyRoomMember } from "@/components/studyroom/StudyRoomMember";
@@ -16,7 +15,6 @@ import { useOnboarding } from "@/contexts/OnboardingContext";
 import { HikingTrail } from "@/components/focus/HikingTrail";
 import { FocusTimer } from "@/components/focus/FocusTimer";
 import { useStudyRooms } from "@/hooks/use-study-rooms";
-import { useRoomMessages } from "@/hooks/use-room-messages";
 import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
 import { requestMediaPermissions } from "@/components/pwa/ServiceWorker";
@@ -44,20 +42,8 @@ const StudyRoom = () => {
   const [loading, setLoading] = useState(true);
   const [participants, setParticipants] = useState<any[]>([]);
   const [resources, setResources] = useState<any[]>([]);
-  const [formattedMessages, setFormattedMessages] = useState<StudyRoomMessage[]>([]);
   
   const { messages: roomMessages, sendMessage: sendRoomMessage } = useRoomMessages(id || "");
-
-  useEffect(() => {
-    const formatted: StudyRoomMessage[] = roomMessages.map(msg => ({
-      id: msg.id,
-      sender: msg.sender?.username || 'Unknown',
-      content: msg.content,
-      timestamp: new Date(msg.created_at).toLocaleTimeString(),
-      avatar: msg.sender?.avatar_url || '/placeholder.svg'
-    }));
-    setFormattedMessages(formatted);
-  }, [roomMessages]);
 
   useEffect(() => {
     const loadRoomData = async () => {
@@ -165,18 +151,6 @@ const StudyRoom = () => {
       supabase.removeChannel(channel);
     };
   }, [id, user?.id]);
-
-  const handleSendMessage = async () => {
-    if (!message.trim() || !id) return;
-    
-    try {
-      await sendRoomMessage(message);
-      setMessage("");
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast.error('Failed to send message');
-    }
-  };
 
   const handleStartFocusSession = (duration: number) => {
     setShowFocusDialog(false);
@@ -354,12 +328,7 @@ const StudyRoom = () => {
           </TabsList>
           
           <TabsContent value="chat">
-            <StudyRoomChat 
-              messages={formattedMessages}
-              onSendMessage={handleSendMessage}
-              message={message}
-              setMessage={setMessage}
-            />
+            <StudyRoomChat roomId={id || ""} />
           </TabsContent>
           
           <TabsContent value="resources">
