@@ -22,6 +22,20 @@ const Card = React.forwardRef<
       default: return "hover:border-purple-300";
     }
   };
+
+  // Get environment-specific background gradient
+  const getEnvBackground = () => {
+    if (!state || !state.environment) return "";
+    
+    switch (state.environment) {
+      case 'office': return "bg-gradient-to-br from-blue-50/70 to-white";
+      case 'park': return "bg-gradient-to-br from-green-50/70 to-white";
+      case 'home': return "bg-gradient-to-br from-orange-50/70 to-white";
+      case 'coffee-shop': return "bg-gradient-to-br from-amber-50/70 to-white";
+      case 'library': return "bg-gradient-to-br from-gray-50/70 to-white";
+      default: return "bg-gradient-to-br from-purple-50/70 to-white";
+    }
+  };
   
   return (
     <div
@@ -29,6 +43,7 @@ const Card = React.forwardRef<
       className={cn(
         "rounded-lg border bg-card text-card-foreground shadow-sm transition-colors duration-200",
         getEnvBorderColor(),
+        getEnvBackground(),
         className
       )}
       {...props}
