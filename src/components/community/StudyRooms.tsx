@@ -123,7 +123,10 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
       
       const joined = await joinRoom(roomId);
       if (joined) {
-        navigate(`/community/room/${roomId}`);
+        // Fix: Navigate to the correct study room URL
+        navigate(`/study-room/${roomId}`);
+      } else {
+        toast.error('Failed to join room');
       }
     } catch (error) {
       console.error('Error joining room:', error);

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
@@ -110,7 +109,6 @@ const StudyRoom = () => {
     
     requestPermissions();
     
-    // Set up room presence with proper channel name
     const channel = supabase.channel(`room_${id}_presence`, {
       config: {
         presence: {
@@ -119,7 +117,6 @@ const StudyRoom = () => {
       },
     });
 
-    // Set up presence handlers
     channel
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
@@ -156,7 +153,6 @@ const StudyRoom = () => {
         });
       });
     
-    // Subscribe to presence channel
     channel.subscribe(async (status) => {
       if (status === 'SUBSCRIBED' && user?.id) {
         await channel.track({
@@ -221,7 +217,6 @@ const StudyRoom = () => {
     if (!id) return;
     
     try {
-      // Untrack presence before leaving
       if (presenceChannel && user?.id) {
         await presenceChannel.untrack();
       }
@@ -249,7 +244,16 @@ const StudyRoom = () => {
   if (!room) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <p>Study room not found</p>
+        <div className="text-center max-w-md p-6">
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+          <h2 className="text-xl font-bold mb-2">Study Room Not Found</h2>
+          <p className="text-muted-foreground mb-4">
+            The study room you're looking for doesn't exist or you don't have access to it.
+          </p>
+          <Button onClick={() => navigate('/community')}>
+            Back to Community
+          </Button>
+        </div>
       </div>
     );
   }
@@ -346,7 +350,6 @@ const StudyRoom = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {/* Left sidebar - Room details on mobile, active users on desktop */}
           <div className="md:col-span-1 order-2 md:order-1">
             <Card className="p-4">
               <h3 className="font-medium mb-3 flex items-center gap-2">
@@ -379,7 +382,6 @@ const StudyRoom = () => {
             </Card>
           </div>
           
-          {/* Main content area - Chat */}
           <div className="md:col-span-3 order-1 md:order-2">
             <StudyRoomChat roomId={id || ""} />
           </div>
