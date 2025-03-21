@@ -16,6 +16,7 @@ import { HikingTrail } from "@/components/focus/HikingTrail";
 import { FocusTimer } from "@/components/focus/FocusTimer";
 import { useStudyRooms } from "@/hooks/use-study-rooms";
 import { useUser } from "@/hooks/use-user";
+import { useRoomMessages } from "@/hooks/use-room-messages";
 import { supabase } from "@/integrations/supabase/client";
 import { requestMediaPermissions } from "@/components/pwa/ServiceWorker";
 
