@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -37,7 +37,10 @@ const StudyRoom = () => {
   const [resources, setResources] = useState<any[]>([]);
   const [presenceChannel, setPresenceChannel] = useState<any>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isJoining, setIsJoining] = useState(false);
+  const hasJoinedRef = useRef(false);
 
+  // Effect for loading room data
   useEffect(() => {
     const loadRoomData = async () => {
       if (!id) {
@@ -93,16 +96,6 @@ const StudyRoom = () => {
           role: p.user_id === roomData.creator_id ? "organizer" : "member"
         }));
         
-        if (user?.id) {
-          console.log(`Joining room ${id} for user ${user.id}`);
-          try {
-            await joinRoom(id);
-            console.log("Successfully joined room");
-          } catch (joinError) {
-            console.error("Error joining room:", joinError);
-          }
-        }
-        
         const enrichedRoomData = {
           ...roomData,
           activeSession: false,
@@ -131,12 +124,42 @@ const StudyRoom = () => {
     
     loadRoomData();
     
+    // Separate useEffect for media permissions
     const requestPermissions = async () => {
       await requestMediaPermissions();
     };
     
     requestPermissions();
+  }, [id]); // Removed joinRoom and navigate from dependencies
+
+  // Separate useEffect for joining the room
+  useEffect(() => {
+    // Only attempt to join if room data is loaded, user exists, and we haven't already joined
+    if (room && user?.id && !hasJoinedRef.current && !isJoining) {
+      const attemptJoinRoom = async () => {
+        setIsJoining(true);
+        try {
+          console.log(`Attempting to join room ${id} for user ${user.id}`);
+          await joinRoom(id || "");
+          console.log("Successfully joined room");
+          hasJoinedRef.current = true;
+        } catch (joinError) {
+          console.error("Error joining room:", joinError);
+          toast.error("Failed to join the study room");
+        } finally {
+          setIsJoining(false);
+        }
+      };
+      
+      attemptJoinRoom();
+    }
+  }, [room, user?.id, id, joinRoom, isJoining]);
+
+  // Separate useEffect for presence channel
+  useEffect(() => {
+    if (!id || !user?.id) return;
     
+    console.log(`Setting up presence channel for room ${id}`);
     const channel = supabase.channel(`room_${id}_presence`, {
       config: {
         presence: {
@@ -197,12 +220,10 @@ const StudyRoom = () => {
     setPresenceChannel(channel);
     
     return () => {
-      if (channel) {
-        console.log('Removing presence channel');
-        supabase.removeChannel(channel);
-      }
+      console.log('Removing presence channel');
+      supabase.removeChannel(channel);
     };
-  }, [id, user?.id, user?.username, joinRoom, navigate]);
+  }, [id, user?.id, user?.username]);
 
   const handleStartFocusSession = (duration: number) => {
     setShowFocusDialog(false);
@@ -260,11 +281,38 @@ const StudyRoom = () => {
     }
   };
 
+  // Loading state with timeout
+  const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
+  
+  useEffect(() => {
+    let timeoutId: number;
+    
+    if (loading) {
+      // Show a warning after 10 seconds if still loading
+      timeoutId = window.setTimeout(() => {
+        setShowTimeoutWarning(true);
+      }, 10000);
+    }
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [loading]);
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
-        <p>Loading study room...</p>
+      <div className="flex flex-col items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+        <p className="mb-2">Loading study room...</p>
+        
+        {showTimeoutWarning && (
+          <div className="max-w-md text-center mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+            <p className="text-amber-700 mb-2">This is taking longer than expected.</p>
+            <Button variant="outline" onClick={() => navigate('/community')}>
+              Return to Community
+            </Button>
+          </div>
+        )}
       </div>
     );
   }

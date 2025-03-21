@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +39,6 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
   });
   const [activeRoomIds, setActiveRoomIds] = useState<Set<string>>(new Set());
   
-  // Set up presence channel for active rooms
   useEffect(() => {
     if (!user?.id) return;
     
@@ -64,7 +62,6 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
       })
       .subscribe();
       
-    // If user is in a study room, track presence
     if (window.location.pathname.includes('/community/room/')) {
       const roomId = window.location.pathname.split('/').pop();
       if (roomId) {
@@ -114,6 +111,8 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
   
   const handleJoinRoom = async (roomId: string) => {
     try {
+      const loadingToast = toast.loading('Joining study room...');
+      
       const permissions = await requestMediaPermissions();
       console.log('Media permissions:', permissions);
       
@@ -122,15 +121,18 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
       }
       
       const joined = await joinRoom(roomId);
+      
+      toast.dismiss(loadingToast);
+      
       if (joined) {
-        // Fix: Navigate to the correct study room URL
+        toast.success('Successfully joined the study room');
         navigate(`/study-room/${roomId}`);
       } else {
         toast.error('Failed to join room');
       }
     } catch (error) {
       console.error('Error joining room:', error);
-      toast.error('Failed to join room');
+      toast.error('Failed to join room. Please try again.');
     }
   };
   
