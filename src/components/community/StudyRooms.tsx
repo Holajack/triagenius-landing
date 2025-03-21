@@ -113,19 +113,13 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
     try {
       const loadingToast = toast.loading('Joining study room...');
       
-      const permissions = await requestMediaPermissions();
-      console.log('Media permissions:', permissions);
-      
-      if (permissions.audio || permissions.video) {
-        toast.success(`${permissions.audio ? 'Microphone' : ''}${permissions.audio && permissions.video ? ' and ' : ''}${permissions.video ? 'Camera' : ''} access granted`);
-      }
+      await requestMediaPermissions();
       
       const joined = await joinRoom(roomId);
       
       toast.dismiss(loadingToast);
       
       if (joined) {
-        toast.success('Successfully joined the study room');
         navigate(`/study-room/${roomId}`);
       } else {
         toast.error('Failed to join room');

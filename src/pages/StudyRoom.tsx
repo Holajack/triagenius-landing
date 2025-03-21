@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
@@ -39,8 +38,8 @@ const StudyRoom = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const hasJoinedRef = useRef(false);
+  const notificationsShownRef = useRef(false);
 
-  // Effect for loading room data
   useEffect(() => {
     const loadRoomData = async () => {
       if (!id) {
@@ -124,17 +123,14 @@ const StudyRoom = () => {
     
     loadRoomData();
     
-    // Separate useEffect for media permissions
     const requestPermissions = async () => {
       await requestMediaPermissions();
     };
     
     requestPermissions();
-  }, [id]); // Removed joinRoom and navigate from dependencies
+  }, [id]);
 
-  // Separate useEffect for joining the room
   useEffect(() => {
-    // Only attempt to join if room data is loaded, user exists, and we haven't already joined
     if (room && user?.id && !hasJoinedRef.current && !isJoining) {
       const attemptJoinRoom = async () => {
         setIsJoining(true);
@@ -143,6 +139,14 @@ const StudyRoom = () => {
           await joinRoom(id || "");
           console.log("Successfully joined room");
           hasJoinedRef.current = true;
+          
+          if (!notificationsShownRef.current) {
+            toast.success(`Welcome to ${room.name}`, {
+              description: `You've joined the study room with ${participants.length} participants`,
+              duration: 4000,
+            });
+            notificationsShownRef.current = true;
+          }
         } catch (joinError) {
           console.error("Error joining room:", joinError);
           toast.error("Failed to join the study room");
@@ -153,9 +157,8 @@ const StudyRoom = () => {
       
       attemptJoinRoom();
     }
-  }, [room, user?.id, id, joinRoom, isJoining]);
+  }, [room, user?.id, id, joinRoom, isJoining, participants.length]);
 
-  // Separate useEffect for presence channel
   useEffect(() => {
     if (!id || !user?.id) return;
     
@@ -167,6 +170,8 @@ const StudyRoom = () => {
         },
       },
     });
+
+    const notifiedUsers = new Set();
 
     channel
       .on('presence', { event: 'sync' }, () => {
@@ -190,18 +195,40 @@ const StudyRoom = () => {
         console.log('Room presence synced, online users:', online.size);
       })
       .on('presence', { event: 'join' }, ({ newPresences }) => {
+        const otherNewUsers = newPresences.filter((presence: any) => 
+          presence.user_id !== user.id && !notifiedUsers.has(presence.user_id)
+        );
+        
+        if (otherNewUsers.length > 0 && hasJoinedRef.current) {
+          otherNewUsers.forEach((presence: any) => {
+            if (presence.user_id) notifiedUsers.add(presence.user_id);
+          });
+          
+          if (otherNewUsers.length === 1) {
+            toast.info(`${otherNewUsers[0].username || 'Someone'} joined the room`, {
+              duration: 3000,
+              position: 'bottom-right',
+            });
+          } else {
+            toast.info(`${otherNewUsers.length} people joined the room`, {
+              duration: 3000,
+              position: 'bottom-right',
+            });
+          }
+        }
+        
         console.log('User joined room:', newPresences);
-        toast.info(`${newPresences[0]?.username || 'Someone'} joined the room`, {
-          duration: 3000,
-          position: 'bottom-right',
-        });
       })
       .on('presence', { event: 'leave' }, ({ leftPresences }) => {
         console.log('User left room:', leftPresences);
-        toast.info(`${leftPresences[0]?.username || 'Someone'} left the room`, {
-          duration: 3000,
-          position: 'bottom-right',
-        });
+        const otherLeftUsers = leftPresences.filter((presence: any) => presence.user_id !== user.id);
+        
+        if (otherLeftUsers.length > 0 && hasJoinedRef.current) {
+          toast.info(`${otherLeftUsers[0]?.username || 'Someone'} left the room`, {
+            duration: 3000,
+            position: 'bottom-right',
+          });
+        }
       });
     
     channel.subscribe(async (status) => {
@@ -281,14 +308,12 @@ const StudyRoom = () => {
     }
   };
 
-  // Loading state with timeout
   const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
   
   useEffect(() => {
     let timeoutId: number;
     
     if (loading) {
-      // Show a warning after 10 seconds if still loading
       timeoutId = window.setTimeout(() => {
         setShowTimeoutWarning(true);
       }, 10000);
