@@ -6,11 +6,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { UserPlus, UserCheck, Search, Users, Loader2, Skeleton } from "lucide-react";
+import { UserPlus, UserCheck, Search, Users, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { FriendRequest } from "@/types/database";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface CommunityUserListProps {
   searchQuery?: string;
