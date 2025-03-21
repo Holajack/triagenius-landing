@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -23,11 +24,11 @@ const environments: Array<{
     description: 'Professional workspace environment',
     icon: <Building className="w-6 h-6" />,
     colors: {
-      primary: 'bg-blue-600',
-      bg: 'from-blue-100 to-blue-50',
-      accent: 'text-blue-700',
-      border: 'border-blue-300',
-      card: 'shadow-blue-100/50',
+      primary: 'bg-blue-700',
+      bg: 'from-blue-200 to-blue-50',
+      accent: 'text-blue-800',
+      border: 'border-blue-400',
+      card: 'shadow-blue-200/60',
     }
   },
   {
@@ -36,11 +37,11 @@ const environments: Array<{
     description: 'Nature-inspired outdoor setting',
     icon: <TreeDeciduous className="w-6 h-6" />,
     colors: {
-      primary: 'bg-green-600',
-      bg: 'from-green-100 to-emerald-50',
-      accent: 'text-emerald-700',
-      border: 'border-green-300',
-      card: 'shadow-green-100/50',
+      primary: 'bg-green-700',
+      bg: 'from-green-200 to-emerald-50',
+      accent: 'text-emerald-800',
+      border: 'border-green-400',
+      card: 'shadow-green-200/60',
     }
   },
   {
@@ -49,11 +50,11 @@ const environments: Array<{
     description: 'Comfortable home atmosphere',
     icon: <Home className="w-6 h-6" />,
     colors: {
-      primary: 'bg-orange-500',
-      bg: 'from-orange-100 to-amber-50',
-      accent: 'text-amber-700',
-      border: 'border-orange-300',
-      card: 'shadow-orange-100/50',
+      primary: 'bg-orange-600',
+      bg: 'from-orange-200 to-amber-50',
+      accent: 'text-amber-800',
+      border: 'border-orange-400',
+      card: 'shadow-orange-200/60',
     }
   },
   {
@@ -62,11 +63,11 @@ const environments: Array<{
     description: 'Relaxed cafe atmosphere',
     icon: <Coffee className="w-6 h-6" />,
     colors: {
-      primary: 'bg-amber-500',
-      bg: 'from-amber-100 to-yellow-50',
-      accent: 'text-amber-800',
-      border: 'border-amber-300',
-      card: 'shadow-amber-100/50',
+      primary: 'bg-amber-600',
+      bg: 'from-amber-200 to-yellow-50',
+      accent: 'text-amber-900',
+      border: 'border-amber-400',
+      card: 'shadow-amber-200/60',
     }
   },
   {
@@ -75,11 +76,11 @@ const environments: Array<{
     description: 'Quiet and focused study space',
     icon: <BookOpen className="w-6 h-6" />,
     colors: {
-      primary: 'bg-gray-600',
-      bg: 'from-gray-100 to-slate-50',
-      accent: 'text-gray-700',
-      border: 'border-gray-300',
-      card: 'shadow-gray-100/50',
+      primary: 'bg-gray-700',
+      bg: 'from-gray-200 to-slate-50',
+      accent: 'text-gray-800',
+      border: 'border-gray-400',
+      card: 'shadow-gray-200/60',
     }
   }
 ];
@@ -135,10 +136,11 @@ export const EnvironmentStep = () => {
           style={{
             borderColor: state.environment === env.id ? `var(--env-primary)` : undefined,
             borderWidth: state.environment === env.id ? '2px' : '1px',
+            transition: 'all 0.3s ease', // Add transition for smooth color changes
           }}
         >
           <div className="flex items-center gap-4">
-            <div className={`p-2 rounded-full ${env.colors.primary} text-white`}>
+            <div className={`p-2 rounded-full ${env.colors.primary} text-white transition-colors duration-300`}>
               {env.icon}
             </div>
             <div className="flex-1">
