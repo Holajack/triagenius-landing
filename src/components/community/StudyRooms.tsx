@@ -67,16 +67,13 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
   
   const handleJoinRoom = async (roomId: string) => {
     try {
-      // Request media permissions when joining a room
       const permissions = await requestMediaPermissions();
       console.log('Media permissions:', permissions);
       
-      // If we've got permissions, toast success
       if (permissions.audio || permissions.video) {
         toast.success(`${permissions.audio ? 'Microphone' : ''}${permissions.audio && permissions.video ? ' and ' : ''}${permissions.video ? 'Camera' : ''} access granted`);
       }
       
-      // Join the room
       const joined = await joinRoom(roomId);
       if (joined) {
         navigate(`/community/room/${roomId}`);
@@ -116,7 +113,6 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
           newSubject: ''
         });
         
-        // Navigate to the new room
         navigate(`/community/room/${newRoom.id}`);
       }
     } catch (error) {
@@ -130,7 +126,6 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
   const addSubject = () => {
     if (!formData.newSubject.trim()) return;
     
-    // Prevent duplicate subjects
     if (formData.subjects.includes(formData.newSubject.trim())) {
       toast.error('This subject is already added');
       return;
@@ -156,7 +151,6 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
       [field]: value
     });
     
-    // Clear error for this field if it exists
     if (formErrors[field]) {
       setFormErrors({
         ...formErrors,
@@ -244,7 +238,7 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
             </div>
             
             <div className="flex flex-wrap gap-1 mt-1">
-              {room.subjects.map((subject, index) => (
+              {room.subjects && room.subjects.map((subject, index) => (
                 <Badge key={index} variant="outline" className="text-xs">
                   {subject}
                 </Badge>

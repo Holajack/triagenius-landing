@@ -41,9 +41,9 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     )
 
-    // Call the SQL function to increment the participant count
+    // Call the SQL function to decrement the participant count
     const { data, error } = await supabaseClient.rpc(
-      'increment_room_participants',
+      'decrement_room_participants',
       { room_id }
     )
 

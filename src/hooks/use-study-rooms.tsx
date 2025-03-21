@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from './use-user';
@@ -146,7 +147,9 @@ export function useStudyRooms() {
             topic: room.description || 'General Study',
             is_active: true,
             subjects: [],
-            participant_count: room.participants?.length || 0
+            participant_count: room.participants?.length || 0,
+            schedule: null,
+            duration: null
           } as StudyRoom;
         }) || [];
 
@@ -240,15 +243,12 @@ export function useStudyRooms() {
       
       const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
       
+      // Use only the columns that exist in the study_rooms table
       const roomData = {
         name: data.name.trim(),
         description: data.description?.trim() || data.topic.trim(),
         creator_id: user.id,
-        is_active: true,
         is_private: false,
-        schedule: data.schedule?.trim() || null,
-        duration: data.duration?.trim() || null,
-        subjects: subjectsData,
         max_participants: data.max_participants || 10,
         room_code: roomCode
       };
@@ -347,23 +347,35 @@ export function useStudyRooms() {
       }
 
       try {
-        const response = await fetch('https://ucculvnodabrfwbkzsnx.supabase.co/functions/v1/increment_room_participants', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabase.auth.getSession().then(({ data }) => data.session?.access_token)}`,
-          },
-          body: JSON.stringify({ room_id: roomId })
-        });
+        // Call the new edge function to increment participant count
+        const session = await supabase.auth.getSession();
+        const accessToken = session.data.session?.access_token;
         
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        if (!accessToken) {
+          console.error('No access token available');
+          return false;
         }
         
-        await response.json();
+        const response = await fetch(
+          `${window.location.origin}/.netlify/functions/increment_room_participants`, 
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({ room_id: roomId })
+          }
+        );
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Error calling increment_room_participants:', errorData);
+          return false;
+        }
       } catch (error) {
         console.error('Error calling increment_room_participants:', error);
-        return false;
+        // Don't fail the whole join process if just the counter fails
       }
 
       return true;
@@ -464,6 +476,29 @@ export function useStudyRooms() {
         .eq('user_id', user.id);
 
       if (error) throw error;
+
+      try {
+        // Call edge function to decrement participant count
+        const session = await supabase.auth.getSession();
+        const accessToken = session.data.session?.access_token;
+        
+        if (accessToken) {
+          await fetch(
+            `${window.location.origin}/.netlify/functions/decrement_room_participants`, 
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({ room_id: roomId })
+            }
+          );
+        }
+      } catch (error) {
+        console.error('Error calling decrement_room_participants:', error);
+        // Don't fail the leave process if just the counter fails
+      }
 
       toast.success('Left study room');
       return true;
