@@ -10,11 +10,11 @@ interface StudyRoom {
   description: string | null;
   topic: string;  // This is derived from description if needed
   creator_id: string;
-  is_active: boolean;
+  is_active: boolean; // Virtual field (not in actual DB)
   is_private: boolean | null;
-  schedule: string | null;
-  duration: string | null;
-  subjects: string[];
+  schedule: string | null; // Virtual field (not in actual DB)
+  duration: string | null; // Virtual field (not in actual DB)
+  subjects: string[]; // Virtual field (not in actual DB)
   max_participants: number;
   current_participants: number | null;
   room_code: string | null;
@@ -145,11 +145,11 @@ export function useStudyRooms() {
           return {
             ...room,
             topic: room.description || 'General Study',
-            is_active: true,
-            subjects: [],
+            is_active: true, // Virtual field
+            subjects: [], // Virtual field
             participant_count: room.participants?.length || 0,
-            schedule: null,
-            duration: null
+            schedule: null, // Virtual field
+            duration: null // Virtual field
           } as StudyRoom;
         }) || [];
 
@@ -239,18 +239,18 @@ export function useStudyRooms() {
         throw new Error('Room topic is required');
       }
       
-      const subjectsData = Array.isArray(data.subjects) ? data.subjects : [];
-      
+      // Generate room code
       const roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
       
-      // Use only the columns that exist in the study_rooms table
+      // Only include fields that actually exist in the study_rooms table
       const roomData = {
         name: data.name.trim(),
         description: data.description?.trim() || data.topic.trim(),
         creator_id: user.id,
         is_private: false,
         max_participants: data.max_participants || 10,
-        room_code: roomCode
+        room_code: roomCode,
+        current_participants: 0 // Initialize to 0
       };
       
       console.log('Creating room with data:', roomData);
@@ -289,6 +289,8 @@ export function useStudyRooms() {
           errorMessage = 'A study room with this name already exists';
         } else if (err.message.includes('violates foreign key constraint')) {
           errorMessage = 'Invalid user account';
+        } else if (err.message.includes('violates row-level security policy')) {
+          errorMessage = 'You do not have permission to create a study room';
         } else {
           errorMessage = err.message;
         }
@@ -319,6 +321,7 @@ export function useStudyRooms() {
       }
 
       if (existingParticipant) {
+        console.log('User is already a participant, updating last active time');
         const { error: updateError } = await supabase
           .from('study_room_participants')
           .update({ last_active_at: new Date().toISOString() })
@@ -332,6 +335,7 @@ export function useStudyRooms() {
         return true;
       }
 
+      console.log('Adding user as new participant');
       const { error: joinError } = await supabase
         .from('study_room_participants')
         .insert({
@@ -343,11 +347,15 @@ export function useStudyRooms() {
 
       if (joinError) {
         console.error('Error joining room:', joinError);
+        if (joinError.message.includes('violates row-level security policy')) {
+          console.error('RLS policy violation. Ensure user is authenticated.');
+        }
         return false;
       }
 
+      // Call the edge function to increment participant count
       try {
-        // Call the new edge function to increment participant count
+        console.log('Calling increment_room_participants edge function');
         const session = await supabase.auth.getSession();
         const accessToken = session.data.session?.access_token;
         
@@ -371,7 +379,8 @@ export function useStudyRooms() {
         if (!response.ok) {
           const errorData = await response.json();
           console.error('Error calling increment_room_participants:', errorData);
-          return false;
+        } else {
+          console.log('Successfully incremented participant count');
         }
       } catch (error) {
         console.error('Error calling increment_room_participants:', error);
@@ -475,15 +484,22 @@ export function useStudyRooms() {
         .eq('room_id', roomId)
         .eq('user_id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error leaving room:', error);
+        if (error.message.includes('violates row-level security policy')) {
+          console.error('RLS policy violation. Ensure user is authenticated.');
+        }
+        throw error;
+      }
 
+      // Call edge function to decrement participant count
       try {
-        // Call edge function to decrement participant count
+        console.log('Calling decrement_room_participants edge function');
         const session = await supabase.auth.getSession();
         const accessToken = session.data.session?.access_token;
         
         if (accessToken) {
-          await fetch(
+          const response = await fetch(
             `${window.location.origin}/.netlify/functions/decrement_room_participants`, 
             {
               method: 'POST',
@@ -494,6 +510,13 @@ export function useStudyRooms() {
               body: JSON.stringify({ room_id: roomId })
             }
           );
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Error calling decrement_room_participants:', errorData);
+          } else {
+            console.log('Successfully decremented participant count');
+          }
         }
       } catch (error) {
         console.error('Error calling decrement_room_participants:', error);

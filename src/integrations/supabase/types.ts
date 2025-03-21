@@ -827,6 +827,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      decrement_room_participants: {
+        Args: {
+          room_id: string
+        }
+        Returns: undefined
+      }
       get_user_follows:
         | {
             Args: Record<PropertyKey, never>
@@ -843,6 +849,12 @@ export type Database = {
               following_id: string
             }[]
           }
+      increment_room_participants: {
+        Args: {
+          room_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

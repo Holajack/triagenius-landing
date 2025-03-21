@@ -9,10 +9,13 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log('Increment participants function called')
+    
     // Get the room ID from the request
     const { room_id } = await req.json()
     
     if (!room_id) {
+      console.error('Missing room_id parameter')
       return new Response(
         JSON.stringify({ error: 'Missing room_id parameter' }),
         { 
@@ -25,6 +28,7 @@ Deno.serve(async (req) => {
     // Get authorization header
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
+      console.error('Missing Authorization header')
       return new Response(
         JSON.stringify({ error: 'Missing Authorization header' }),
         { 
@@ -41,14 +45,21 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     )
 
+    console.log(`Calling increment_room_participants for room ${room_id}`)
+    
     // Call the SQL function to increment the participant count
     const { data, error } = await supabaseClient.rpc(
       'increment_room_participants',
       { room_id }
     )
 
-    if (error) throw error
+    if (error) {
+      console.error('RPC error:', error)
+      throw error
+    }
 
+    console.log('Successfully incremented participant count')
+    
     return new Response(
       JSON.stringify({ success: true }),
       { 
