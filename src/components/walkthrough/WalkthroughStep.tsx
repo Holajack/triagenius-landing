@@ -14,40 +14,18 @@ type HighlightOverlayProps = {
 const HighlightOverlay = ({ targetRect }: HighlightOverlayProps) => {
   if (!targetRect) return null;
 
-  const padding = 8;
-  const highlightRect = {
-    left: targetRect.left - padding,
-    top: targetRect.top - padding,
-    width: targetRect.width + (padding * 2),
-    height: targetRect.height + (padding * 2),
-    right: targetRect.right + padding,
-    bottom: targetRect.bottom + padding,
-  };
-
   return createPortal(
     <div className="fixed inset-0 z-40 pointer-events-none">
       <div className="absolute inset-0 bg-black/60 transition-opacity duration-300" />
-      <div 
-        className="absolute bg-transparent"
-        style={{
-          left: highlightRect.left,
-          top: highlightRect.top,
-          width: highlightRect.width,
-          height: highlightRect.height,
-          boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.6)',
-          borderRadius: '4px',
-          pointerEvents: 'none',
-        }}
-      />
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         className="absolute border-2 border-triage-purple rounded-md pointer-events-none"
         style={{
-          left: highlightRect.left,
-          top: highlightRect.top,
-          width: highlightRect.width,
-          height: highlightRect.height,
+          left: targetRect.left,
+          top: targetRect.top,
+          width: targetRect.width,
+          height: targetRect.height,
           boxShadow: '0 0 0 4px rgba(139, 92, 246, 0.3)',
         }}
       />
@@ -317,8 +295,6 @@ const WalkthroughStep = () => {
   
   return (
     <>
-      <HighlightOverlay targetRect={targetRect} />
-      
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger ref={popoverTriggerRef} asChild>
           <Button
