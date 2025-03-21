@@ -1,4 +1,3 @@
-
 import { LogOut, Menu, Book, Brain, BadgePercent, LayoutDashboard, Users, Bot, BarChart3, UserCircle2, Trophy, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -11,7 +10,6 @@ import {
   SheetTrigger
 } from "@/components/ui/sheet";
 import { useOnboarding } from "@/contexts/OnboardingContext";
-import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -24,7 +22,7 @@ interface SideNavDrawerProps {
 const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
   const navigate = useNavigate();
   const { state } = useOnboarding();
-  const { theme } = useTheme();
+  const [theme] = useState(() => localStorage.getItem('theme') || 'light');
   const { signOut } = useAuthState();
   const [logoutLoading, setLogoutLoading] = useState(false);
 

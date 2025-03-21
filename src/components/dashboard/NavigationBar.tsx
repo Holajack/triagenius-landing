@@ -3,15 +3,15 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { LayoutDashboard, BarChart3, UserCircle2, Users, BadgePercent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOnboarding } from "@/contexts/OnboardingContext";
-import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useState } from "react";
 
 const NavigationBar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { state } = useOnboarding();
-  const { theme } = useTheme();
+  const [theme] = useState(() => localStorage.getItem('theme') || 'light');
   const isMobile = useIsMobile();
   
   // Get accent color based on environment - enhanced for more noticeable theming

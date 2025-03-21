@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -16,7 +15,6 @@ const createTerrainGeometry = (width: number, height: number, resolution: number
     const x = vertices[i];
     const z = vertices[i + 2];
     
-    // Enhanced height generation with terrain features matching .OBJ scale
     const heightValue =
       generateHeight(x * 0.02, z * 0.02, 1.0) * 10.0 +
       generateHeight(x * 0.1, z * 0.1, 0.8) * 4.0 +
@@ -75,17 +73,14 @@ const createHikingPaths = (scene: THREE.Scene, terrain: THREE.Mesh) => {
 };
 
 const updateLighting = (scene: THREE.Scene, isNight: boolean) => {
-  // Remove existing lights
   scene.children = scene.children.filter(child => !(child instanceof THREE.Light));
   
-  // Add ambient light
   const ambientLight = new THREE.AmbientLight(
     isNight ? 0x333366 : 0x777777,
     isNight ? 0.3 : 0.5
   );
   scene.add(ambientLight);
   
-  // Add directional light (sun/moon)
   const directionalLight = new THREE.DirectionalLight(
     isNight ? 0xaabbff : 0xffffbb,
     isNight ? 0.5 : 1.0
@@ -100,7 +95,6 @@ const updateLighting = (scene: THREE.Scene, isNight: boolean) => {
   directionalLight.castShadow = true;
   scene.add(directionalLight);
   
-  // Add hemisphere light for more natural lighting
   const hemisphereLight = new THREE.HemisphereLight(
     isNight ? 0x000033 : 0x0077ff,
     isNight ? 0x000000 : 0x775533,
@@ -108,7 +102,6 @@ const updateLighting = (scene: THREE.Scene, isNight: boolean) => {
   );
   scene.add(hemisphereLight);
   
-  // Add point lights for night mode (moonlight)
   if (isNight) {
     const moonLight = new THREE.PointLight(0x8888ff, 0.8, 30);
     moonLight.position.set(5, 15, 5);
@@ -126,6 +119,7 @@ const TerrainVisualization = () => {
   const sceneRef = useRef<THREE.Scene | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const [theme] = useState(() => localStorage.getItem('theme') || 'light');
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -134,12 +128,8 @@ const TerrainVisualization = () => {
     sceneRef.current = scene;
     scene.background = new THREE.Color(isNightMode ? 0x0a0a20 : 0x87ceeb);
 
-    // Lighting setup
     updateLighting(scene, isNightMode);
     
-    // Fog for atmosphere
-    scene.fog = new THREE.FogExp2(isNightMode ? 0x0a0a20 : 0xd7e5f7, 0.001);
-
     const width = 70;
     const height = 80;
     const resolution = isMobile ? 250 : 400;
@@ -159,7 +149,6 @@ const TerrainVisualization = () => {
     createWaterPlane(scene, width, height);
     createHikingPaths(scene, terrain);
 
-    // Camera
     const camera = new THREE.PerspectiveCamera(
       isMobile ? 90 : 75,
       containerRef.current.clientWidth / containerRef.current.clientHeight,
@@ -169,7 +158,6 @@ const TerrainVisualization = () => {
     cameraRef.current = camera;
     camera.position.set(0, 50, 90);
     
-    // Renderer
     const renderer = new THREE.WebGLRenderer({ 
       antialias: !isMobile,
       powerPreference: "high-performance"
@@ -180,7 +168,6 @@ const TerrainVisualization = () => {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     containerRef.current.appendChild(renderer.domElement);
     
-    // Controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controlsRef.current = controls;
     controls.enableDamping = true;
@@ -194,7 +181,6 @@ const TerrainVisualization = () => {
       controls.zoomSpeed = 0.7;
     }
     
-    // Handle window resize
     const handleResize = () => {
       if (!containerRef.current) return;
       
@@ -230,7 +216,6 @@ const TerrainVisualization = () => {
     };
   }, [isNightMode, isMobile, viewMode]);
 
-  // Update camera position based on view mode
   useEffect(() => {
     if (!cameraRef.current || !controlsRef.current) return;
     
@@ -259,7 +244,6 @@ const TerrainVisualization = () => {
     camera.updateProjectionMatrix();
   }, [viewMode]);
 
-  // Update lighting when night mode changes
   useEffect(() => {
     if (sceneRef.current) {
       updateLighting(sceneRef.current, isNightMode);

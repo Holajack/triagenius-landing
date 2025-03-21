@@ -35,6 +35,11 @@ import InstallPrompt from "./components/pwa/InstallPrompt";
 import FirstVisitPrompt from "./components/pwa/FirstVisitPrompt";
 import { register } from "./components/ServiceWorker";
 
+// Initialize default theme if it doesn't exist yet
+if (!localStorage.getItem('theme')) {
+  localStorage.setItem('theme', 'light');
+}
+
 function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 

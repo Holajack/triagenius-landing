@@ -1,12 +1,9 @@
-
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useOnboarding } from "@/contexts/OnboardingContext";
-import { useTheme } from "@/contexts/ThemeContext";
 import { StudyEnvironment } from "@/types/onboarding";
 import { Building, Coffee, TreeDeciduous, BookOpen, Home } from "lucide-react";
 
-// Define environment themes with their respective colors and more noticeable visual differences
 const environments: Array<{
   id: StudyEnvironment;
   title: string;
@@ -89,19 +86,41 @@ const environments: Array<{
 
 export const EnvironmentStep = () => {
   const { state, dispatch } = useOnboarding();
-  const { setEnvironmentTheme } = useTheme();
+  const [theme] = useState(() => localStorage.getItem('theme') || 'light');
 
-  // Apply environment theme when selected
   useEffect(() => {
     if (state.environment) {
-      setEnvironmentTheme(state.environment);
+      localStorage.setItem('environment', state.environment);
+      
+      if (state.environment) {
+        document.documentElement.classList.remove(
+          'theme-office', 
+          'theme-park', 
+          'theme-home', 
+          'theme-coffee-shop', 
+          'theme-library'
+        );
+        
+        document.documentElement.classList.add(`theme-${state.environment}`);
+        
+        document.documentElement.setAttribute('data-environment', state.environment);
+      }
     }
-  }, [state.environment, setEnvironmentTheme]);
+  }, [state.environment]);
 
   const handleEnvironmentSelection = (envId: StudyEnvironment) => {
     dispatch({ type: 'SET_ENVIRONMENT', payload: envId });
-    // Immediately apply the environment theme
-    setEnvironmentTheme(envId);
+    localStorage.setItem('environment', envId);
+    
+    document.documentElement.classList.remove(
+      'theme-office', 
+      'theme-park', 
+      'theme-home', 
+      'theme-coffee-shop', 
+      'theme-library'
+    );
+    document.documentElement.classList.add(`theme-${envId}`);
+    document.documentElement.setAttribute('data-environment', envId);
   };
 
   return (
@@ -127,7 +146,6 @@ export const EnvironmentStep = () => {
               <p className="text-sm text-gray-600">{env.description}</p>
             </div>
             
-            {/* Color preview - Enhanced for better visibility */}
             <div className="flex items-center space-x-2">
               <div className={`h-5 w-5 rounded-full ${env.colors.primary}`} title="Primary color"></div>
               <div className={`h-5 w-5 rounded-full bg-gradient-to-r ${env.colors.bg}`} title="Background gradient"></div>
@@ -135,7 +153,6 @@ export const EnvironmentStep = () => {
             </div>
           </div>
           
-          {/* Theme preview with more prominent styling */}
           {state.environment === env.id && (
             <div className={`mt-3 p-4 rounded-md bg-gradient-to-r ${env.colors.bg} border ${env.colors.border} text-sm`}>
               <p className={`${env.colors.accent} font-medium`}>This is how your dashboard colors will look</p>
