@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { saveUserSession } from '@/services/sessionPersistence';
+import { saveUserSession, loadUserSession, applySessionPreferences } from '@/services/sessionPersistence';
 
 export function useAuthState() {
   const [session, setSession] = useState(null);
@@ -21,6 +21,17 @@ export function useAuthState() {
         }
         
         setSession(data.session);
+        
+        // If a session exists, load saved user preferences
+        if (data.session?.user?.id) {
+          try {
+            const savedSession = await loadUserSession(data.session.user.id);
+            applySessionPreferences(savedSession);
+            console.log("Applied user preferences from previous session");
+          } catch (err) {
+            console.error("Failed to load previous session data:", err);
+          }
+        }
       } catch (err) {
         console.error('Error getting auth session:', err);
         setError(err);
@@ -55,6 +66,7 @@ export function useAuthState() {
       // Save session data before signing out
       if (session?.user?.id) {
         await saveUserSession(session.user.id);
+        toast.success('Session data saved');
       }
       
       const { error } = await supabase.auth.signOut();

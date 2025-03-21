@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Json } from "@/integrations/supabase/types";
 
 // Defines the structure of saved focus session data
 export interface SavedFocusSession {
@@ -78,14 +79,20 @@ export const saveUserSession = async (userId: string | undefined): Promise<void>
     // Save to localStorage as a backup
     localStorage.setItem(`sessionData_${userId}`, JSON.stringify(sessionData));
     
+    // Create a simple JSON object that can be safely stored in Supabase
+    const preferencesForSupabase: Record<string, Json> = {
+      theme: sessionData.preferences.theme,
+      environment: sessionData.preferences.environment,
+      soundPreference: sessionData.preferences.soundPreference,
+      lowPowerMode: sessionData.preferences.lowPowerMode,
+      lastSessionData: JSON.stringify(sessionData) // Stringify the entire session data
+    };
+    
     // Save to Supabase for persistence across devices
     const { error } = await supabase
       .from('profiles')
       .update({ 
-        preferences: {
-          ...sessionData.preferences,
-          lastSession: sessionData
-        }
+        preferences: preferencesForSupabase
       })
       .eq('id', userId);
       
@@ -121,10 +128,20 @@ export const loadUserSession = async (userId: string | undefined): Promise<Persi
       throw error;
     }
     
-    // Check if preferences and lastSession exist
-    if (data?.preferences?.lastSession) {
-      console.log("Session loaded from Supabase");
-      return data.preferences.lastSession as PersistedSessionData;
+    // Check if preferences and lastSessionData exist
+    if (data?.preferences && typeof data.preferences === 'object') {
+      const prefs = data.preferences as Record<string, Json>;
+      
+      if (prefs.lastSessionData && typeof prefs.lastSessionData === 'string') {
+        try {
+          // Parse the stringified session data
+          const parsedSessionData = JSON.parse(prefs.lastSessionData) as PersistedSessionData;
+          console.log("Session loaded from Supabase");
+          return parsedSessionData;
+        } catch (parseError) {
+          console.error("Error parsing saved session data:", parseError);
+        }
+      }
     }
     
     // Fall back to localStorage if Supabase doesn't have it
