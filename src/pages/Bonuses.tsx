@@ -10,11 +10,14 @@ import NavigationBar from '@/components/dashboard/NavigationBar';
 import LearningStyleQuiz from '@/components/bonuses/LearningStyleQuiz';
 import TerrainVisualization from '@/components/reports/terrain/TerrainVisualization';
 import BonusesWalkthrough from '@/components/walkthrough/BonusesWalkthrough';
+import { useOnboarding } from '@/contexts/OnboardingContext';
+import { cn } from '@/lib/utils';
 
 const Bonuses = () => {
   const navigate = useNavigate();
   const [showBrainMapping, setShowBrainMapping] = useState(false);
   const [showComingSoon, setShowComingSoon] = useState(false);
+  const { state } = useOnboarding();
 
   const handleShowBrainMapping = () => {
     // Instead of showing the brain mapping visualization, show the coming soon dialog
@@ -27,6 +30,46 @@ const Bonuses = () => {
 
   const handleCloseComingSoon = () => {
     setShowComingSoon(false);
+  };
+
+  // Get environment-specific button class
+  const getEnvButtonClass = () => {
+    switch (state.environment) {
+      case 'office': return "bg-blue-600 hover:bg-blue-700";
+      case 'park': return "bg-green-600 hover:bg-green-700";
+      case 'home': return "bg-orange-500 hover:bg-orange-600";
+      case 'coffee-shop': return "bg-amber-500 hover:bg-amber-600";
+      case 'library': return "bg-gray-600 hover:bg-gray-700";
+      default: return "bg-indigo-600 hover:bg-indigo-700";
+    }
+  };
+
+  // Get environment-specific icon background class
+  const getEnvIconBgClass = (defaultClass: string) => {
+    if (!state || !state.environment) return defaultClass;
+    
+    switch (state.environment) {
+      case 'office': return "bg-blue-100 dark:bg-blue-900/40";
+      case 'park': return "bg-green-100 dark:bg-green-900/40";
+      case 'home': return "bg-orange-100 dark:bg-orange-900/40";
+      case 'coffee-shop': return "bg-amber-100 dark:bg-amber-900/40";
+      case 'library': return "bg-gray-100 dark:bg-gray-800/40";
+      default: return defaultClass;
+    }
+  };
+
+  // Get environment-specific icon color class
+  const getEnvIconColorClass = (defaultClass: string) => {
+    if (!state || !state.environment) return defaultClass;
+    
+    switch (state.environment) {
+      case 'office': return "text-blue-600 dark:text-blue-400";
+      case 'park': return "text-green-600 dark:text-green-400";
+      case 'home': return "text-orange-600 dark:text-orange-400";
+      case 'coffee-shop': return "text-amber-600 dark:text-amber-400";
+      case 'library': return "text-gray-600 dark:text-gray-400";
+      default: return defaultClass;
+    }
   };
 
   return (
@@ -42,13 +85,25 @@ const Bonuses = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Learning Style Quiz Card */}
           <div 
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
+            className={cn(
+              "rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors duration-200",
+              state.environment === 'office' ? "bg-gradient-to-br from-blue-50/70 to-white dark:from-blue-900/10 dark:to-gray-800" :
+              state.environment === 'park' ? "bg-gradient-to-br from-green-50/70 to-white dark:from-green-900/10 dark:to-gray-800" :
+              state.environment === 'home' ? "bg-gradient-to-br from-orange-50/70 to-white dark:from-orange-900/10 dark:to-gray-800" :
+              state.environment === 'coffee-shop' ? "bg-gradient-to-br from-amber-50/70 to-white dark:from-amber-900/10 dark:to-gray-800" :
+              state.environment === 'library' ? "bg-gradient-to-br from-gray-50/70 to-white dark:from-gray-900/10 dark:to-gray-800" :
+              "bg-gradient-to-br from-indigo-50/70 to-white dark:from-indigo-900/10 dark:to-gray-800"
+            )}
             data-walkthrough="learning-quiz"
           >
             <div className="p-6">
               <div className="flex items-center mb-4">
-                <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center mr-3">
-                  <Brain className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <div className={cn("w-10 h-10 rounded-full flex items-center justify-center mr-3", 
+                  getEnvIconBgClass("bg-indigo-100 dark:bg-indigo-900/40")
+                )}>
+                  <Brain className={cn("w-5 h-5", 
+                    getEnvIconColorClass("text-indigo-600 dark:text-indigo-400")
+                  )} />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Learning Style Quiz</h3>
               </div>
@@ -60,7 +115,7 @@ const Bonuses = () => {
               <div className="mt-auto">
                 <Button
                   onClick={() => navigate('/learning-quiz')}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                  className={cn("text-white", getEnvButtonClass())}
                 >
                   Take Quiz
                 </Button>
@@ -70,13 +125,25 @@ const Bonuses = () => {
           
           {/* Brain Mapping Visualization Card */}
           <div 
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
+            className={cn(
+              "rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors duration-200",
+              state.environment === 'office' ? "bg-gradient-to-br from-blue-50/70 to-white dark:from-blue-900/10 dark:to-gray-800" :
+              state.environment === 'park' ? "bg-gradient-to-br from-green-50/70 to-white dark:from-green-900/10 dark:to-gray-800" :
+              state.environment === 'home' ? "bg-gradient-to-br from-orange-50/70 to-white dark:from-orange-900/10 dark:to-gray-800" :
+              state.environment === 'coffee-shop' ? "bg-gradient-to-br from-amber-50/70 to-white dark:from-amber-900/10 dark:to-gray-800" :
+              state.environment === 'library' ? "bg-gradient-to-br from-gray-50/70 to-white dark:from-gray-900/10 dark:to-gray-800" :
+              "bg-gradient-to-br from-purple-50/70 to-white dark:from-purple-900/10 dark:to-gray-800"
+            )}
             data-walkthrough="brain-mapping"
           >
             <div className="p-6">
               <div className="flex items-center mb-4">
-                <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center mr-3">
-                  <Zap className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                <div className={cn("w-10 h-10 rounded-full flex items-center justify-center mr-3", 
+                  getEnvIconBgClass("bg-purple-100 dark:bg-purple-900/40")
+                )}>
+                  <Zap className={cn("w-5 h-5", 
+                    getEnvIconColorClass("text-purple-600 dark:text-purple-400")
+                  )} />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Neural Pathway Mapping</h3>
               </div>
@@ -88,7 +155,7 @@ const Bonuses = () => {
               <div className="mt-auto">
                 <Button
                   onClick={handleShowBrainMapping}
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  className={cn("text-white", getEnvButtonClass())}
                 >
                   View Brain Map
                 </Button>
@@ -97,11 +164,25 @@ const Bonuses = () => {
           </div>
           
           {/* Study Technique Guides Card */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div 
+            className={cn(
+              "rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors duration-200",
+              state.environment === 'office' ? "bg-gradient-to-br from-blue-50/70 to-white dark:from-blue-900/10 dark:to-gray-800" :
+              state.environment === 'park' ? "bg-gradient-to-br from-green-50/70 to-white dark:from-green-900/10 dark:to-gray-800" :
+              state.environment === 'home' ? "bg-gradient-to-br from-orange-50/70 to-white dark:from-orange-900/10 dark:to-gray-800" :
+              state.environment === 'coffee-shop' ? "bg-gradient-to-br from-amber-50/70 to-white dark:from-amber-900/10 dark:to-gray-800" :
+              state.environment === 'library' ? "bg-gradient-to-br from-gray-50/70 to-white dark:from-gray-900/10 dark:to-gray-800" :
+              "bg-gradient-to-br from-teal-50/70 to-white dark:from-teal-900/10 dark:to-gray-800"
+            )}
+          >
             <div className="p-6">
               <div className="flex items-center mb-4">
-                <div className="w-10 h-10 rounded-full bg-teal-100 dark:bg-teal-900/40 flex items-center justify-center mr-3">
-                  <BookOpen className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                <div className={cn("w-10 h-10 rounded-full flex items-center justify-center mr-3", 
+                  getEnvIconBgClass("bg-teal-100 dark:bg-teal-900/40")
+                )}>
+                  <BookOpen className={cn("w-5 h-5", 
+                    getEnvIconColorClass("text-teal-600 dark:text-teal-400")
+                  )} />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Study Technique Guides</h3>
               </div>
@@ -113,7 +194,7 @@ const Bonuses = () => {
               <div className="mt-auto">
                 <Button
                   onClick={() => navigate('/learning-toolkit')}
-                  className="bg-teal-600 hover:bg-teal-700 text-white"
+                  className={cn("text-white", getEnvButtonClass())}
                 >
                   Explore Guides
                 </Button>
@@ -134,7 +215,15 @@ const Bonuses = () => {
         <AlertDialog open={showComingSoon} onOpenChange={setShowComingSoon}>
           <AlertDialogContent className="max-w-md">
             <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2 text-xl text-purple-600 dark:text-purple-400">
+              <AlertDialogTitle className={cn(
+                "flex items-center gap-2 text-xl", 
+                state.environment === 'office' ? "text-blue-600 dark:text-blue-400" :
+                state.environment === 'park' ? "text-green-600 dark:text-green-400" :
+                state.environment === 'home' ? "text-orange-600 dark:text-orange-400" :
+                state.environment === 'coffee-shop' ? "text-amber-600 dark:text-amber-400" :
+                state.environment === 'library' ? "text-gray-600 dark:text-gray-400" :
+                "text-purple-600 dark:text-purple-400"
+              )}>
                 <Sparkles className="h-5 w-5" /> 
                 Neural Pathway Mapping - Coming Soon!
               </AlertDialogTitle>
@@ -142,8 +231,24 @@ const Bonuses = () => {
                 <p>
                   We're developing an advanced visualization tool that maps your neural pathways as they strengthen through focused learning sessions.
                 </p>
-                <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg border border-purple-100 dark:border-purple-800/30">
-                  <h4 className="font-medium flex items-center gap-2 text-purple-700 dark:text-purple-300">
+                <div className={cn(
+                  "p-4 rounded-lg border",
+                  state.environment === 'office' ? "bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800/30" :
+                  state.environment === 'park' ? "bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-800/30" :
+                  state.environment === 'home' ? "bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800/30" :
+                  state.environment === 'coffee-shop' ? "bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800/30" :
+                  state.environment === 'library' ? "bg-gray-50 dark:bg-gray-900/20 border-gray-100 dark:border-gray-800/30" :
+                  "bg-purple-50 dark:bg-purple-900/20 border-purple-100 dark:border-purple-800/30"
+                )}>
+                  <h4 className={cn(
+                    "font-medium flex items-center gap-2",
+                    state.environment === 'office' ? "text-blue-700 dark:text-blue-300" :
+                    state.environment === 'park' ? "text-green-700 dark:text-green-300" :
+                    state.environment === 'home' ? "text-orange-700 dark:text-orange-300" :
+                    state.environment === 'coffee-shop' ? "text-amber-700 dark:text-amber-300" :
+                    state.environment === 'library' ? "text-gray-700 dark:text-gray-300" :
+                    "text-purple-700 dark:text-purple-300"
+                  )}>
                     <CalendarClock className="h-4 w-4" /> 
                     Planned Features:
                   </h4>
@@ -161,7 +266,15 @@ const Bonuses = () => {
             </AlertDialogHeader>
             <Button 
               onClick={handleCloseComingSoon} 
-              className="w-full mt-2 bg-purple-600 hover:bg-purple-700"
+              className={cn(
+                "w-full mt-2 text-white",
+                state.environment === 'office' ? "bg-blue-600 hover:bg-blue-700" :
+                state.environment === 'park' ? "bg-green-600 hover:bg-green-700" :
+                state.environment === 'home' ? "bg-orange-500 hover:bg-orange-600" :
+                state.environment === 'coffee-shop' ? "bg-amber-500 hover:bg-amber-600" :
+                state.environment === 'library' ? "bg-gray-600 hover:bg-gray-700" :
+                "bg-purple-600 hover:bg-purple-700"
+              )}
             >
               I can't wait!
             </Button>
