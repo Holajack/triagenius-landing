@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { useUser } from "@/hooks/use-user";
 import { requestMediaPermissions } from "@/components/pwa/ServiceWorker";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
 
 interface StudyRoomsProps {
   searchQuery?: string;
@@ -36,6 +38,48 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
     subjects: [] as string[],
     newSubject: ''
   });
+  const [activeRoomIds, setActiveRoomIds] = useState<Set<string>>(new Set());
+  
+  // Set up presence channel for active rooms
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const channel = supabase.channel('active-study-rooms');
+    
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const activeRooms = new Set<string>();
+        
+        Object.keys(state).forEach(presenceKey => {
+          const presences = state[presenceKey] as any[];
+          presences.forEach(presence => {
+            if (presence.roomId) {
+              activeRooms.add(presence.roomId);
+            }
+          });
+        });
+        
+        setActiveRoomIds(activeRooms);
+      })
+      .subscribe();
+      
+    // If user is in a study room, track presence
+    if (window.location.pathname.includes('/community/room/')) {
+      const roomId = window.location.pathname.split('/').pop();
+      if (roomId) {
+        channel.track({
+          userId: user.id,
+          roomId: roomId,
+          joined_at: new Date().toISOString(),
+        });
+      }
+    }
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
   
   const filteredRooms = rooms.filter(room => {
     const searchLower = searchQuery.toLowerCase();
@@ -48,7 +92,10 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
     if (searchQuery && !matchesSearch) return false;
     
     return true;
-  });
+  }).map(room => ({
+    ...room,
+    is_active: activeRoomIds.has(room.id) || room.is_active
+  }));
   
   const validateForm = () => {
     const errors: { [key: string]: string } = {};

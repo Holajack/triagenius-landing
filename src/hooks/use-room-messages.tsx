@@ -136,6 +136,24 @@ export function useRoomMessages(roomId: string) {
             setMessages((prev) => [...prev, newMessage]);
           }
         )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'messages',
+            filter: `room_id=eq.${roomId}`,
+          },
+          (payload) => {
+            console.log('Room message updated:', payload);
+            
+            if (!isMounted) return;
+            
+            setMessages((prev) =>
+              prev.map((msg) => (msg.id === payload.new.id ? { ...msg, ...payload.new } : msg))
+            );
+          }
+        )
         .subscribe((status) => {
           if (status !== 'SUBSCRIBED' && isMounted) {
             console.warn(`Channel subscription status: ${status}`);
@@ -151,6 +169,8 @@ export function useRoomMessages(roomId: string) {
             } else if (isMounted) {
               toast.error('Could not connect to message service. Please refresh the page.');
             }
+          } else {
+            console.log(`Successfully subscribed to room ${roomId} messages`);
           }
         });
     };

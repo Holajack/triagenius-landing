@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from './use-user';
 import { toast } from 'sonner';
@@ -20,12 +20,22 @@ interface Message {
   };
 }
 
+interface TypingState {
+  [userId: string]: {
+    isTyping: boolean;
+    timeout: NodeJS.Timeout | null;
+  };
+}
+
 export function useRealtimeMessages() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const { user } = useUser();
-
+  const messagesChannelRef = useRef<any>(null);
+  const typingStatesRef = useRef<TypingState>({});
+  const [typingUsers, setTypingUsers] = useState<{[userId: string]: boolean}>({});
+  
   // Load initial messages
   useEffect(() => {
     if (!user?.id) return;
@@ -72,55 +82,122 @@ export function useRealtimeMessages() {
     fetchMessages();
   }, [user?.id]);
 
-  // Subscribe to new messages
+  // Subscribe to real-time updates
   useEffect(() => {
     if (!user?.id) return;
 
-    const channel = supabase
-      .channel('messages_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `recipient_id=eq.${user.id}`,
-        },
-        async (payload) => {
-          console.log('New message received:', payload);
-          
-          // Fetch the sender details
-          const { data: senderData } = await supabase
-            .from('profiles')
-            .select('id, username, avatar_url')
-            .eq('id', payload.new.sender_id)
-            .single();
+    // Create and subscribe to messages channel
+    const setupMessagesChannel = () => {
+      // Clean up existing channel if it exists
+      if (messagesChannelRef.current) {
+        supabase.removeChannel(messagesChannelRef.current);
+      }
+      
+      messagesChannelRef.current = supabase
+        .channel('messages-realtime')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `recipient_id=eq.${user.id}`,
+          },
+          async (payload) => {
+            console.log('New message received:', payload);
+            
+            // Fetch the sender details
+            const { data: senderData } = await supabase
+              .from('profiles')
+              .select('id, username, avatar_url')
+              .eq('id', payload.new.sender_id)
+              .single();
 
-          const newMessage = {
-            ...payload.new,
-            sender: senderData || undefined,
-          } as Message;
-          
-          setMessages((prev) => [newMessage, ...prev]);
-          
-          // Show notification for new message
-          if (Notification.permission === 'granted' && payload.new.recipient_id === user.id) {
-            sendNotification(
-              `New message from ${senderData?.username || 'Someone'}`, 
-              {
-                body: payload.new.content,
-                data: { url: `/community/chat/${payload.new.sender_id}` }
-              }
+            const newMessage = {
+              ...payload.new,
+              sender: senderData || undefined,
+            } as Message;
+            
+            setMessages((prev) => [newMessage, ...prev]);
+            
+            // Show notification for new message
+            if (Notification.permission === 'granted' && payload.new.recipient_id === user.id) {
+              sendNotification(
+                `New message from ${senderData?.username || 'Someone'}`, 
+                {
+                  body: payload.new.content,
+                  data: { url: `/community/chat/${payload.new.sender_id}` }
+                }
+              );
+            }
+            
+            toast.success(`New message from ${senderData?.username || 'Someone'}`);
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'messages',
+          },
+          (payload) => {
+            console.log('Message updated:', payload);
+            
+            setMessages((prev) =>
+              prev.map((msg) => (msg.id === payload.new.id ? { ...msg, ...payload.new } : msg))
             );
           }
+        )
+        .subscribe((status) => {
+          console.log(`Messages channel status: ${status}`);
           
-          toast.success(`New message from ${senderData?.username || 'Someone'}`);
-        }
-      )
+          if (status !== 'SUBSCRIBED') {
+            console.warn('Messages channel subscription failed, retrying in 3s...');
+            setTimeout(() => {
+              if (user?.id) {
+                setupMessagesChannel();
+              }
+            }, 3000);
+          }
+        });
+    };
+    
+    // Set up presence channel for typing indicators
+    const typingChannel = supabase.channel('typing-indicators');
+    
+    typingChannel
+      .on('presence', { event: 'sync' }, () => {
+        const newTypingStates: {[userId: string]: boolean} = {};
+        const state = typingChannel.presenceState();
+        
+        Object.keys(state).forEach(presenceKey => {
+          const presences = state[presenceKey] as any[];
+          presences.forEach(presence => {
+            if (presence.isTyping && presence.userId !== user.id) {
+              newTypingStates[presence.userId] = true;
+            }
+          });
+        });
+        
+        setTypingUsers(newTypingStates);
+      })
+      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
+        console.log('User joined typing:', key, newPresences);
+      })
+      .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+        console.log('User left typing:', key, leftPresences);
+      })
       .subscribe();
+    
+    // Initialize messages channel
+    setupMessagesChannel();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (messagesChannelRef.current) {
+        supabase.removeChannel(messagesChannelRef.current);
+      }
+      supabase.removeChannel(typingChannel);
     };
   }, [user?.id]);
 
@@ -155,11 +232,63 @@ export function useRealtimeMessages() {
       } as Message;
 
       setMessages((prev) => [newMessage, ...prev]);
+      
+      // Clear typing indicator after sending a message
+      setTypingStatus(recipientId, false);
+      
       return data;
     } catch (err) {
       console.error('Error sending message:', err);
       toast.error('Failed to send message. Please try again.');
       return null;
+    }
+  };
+
+  // Function to set typing status
+  const setTypingStatus = (recipientId: string, isTyping: boolean) => {
+    if (!user?.id) return;
+    
+    const typingChannel = supabase.channel('typing-indicators');
+    
+    if (isTyping) {
+      // Set typing indicator
+      typingChannel.track({
+        userId: user.id,
+        recipientId,
+        isTyping: true,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Auto-clear typing after 3 seconds of inactivity
+      if (typingStatesRef.current[recipientId]?.timeout) {
+        clearTimeout(typingStatesRef.current[recipientId].timeout!);
+      }
+      
+      typingStatesRef.current[recipientId] = {
+        isTyping: true,
+        timeout: setTimeout(() => {
+          setTypingStatus(recipientId, false);
+        }, 3000)
+      };
+    } else {
+      // Clear typing indicator
+      typingChannel.track({
+        userId: user.id,
+        recipientId,
+        isTyping: false,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Clear timeout
+      if (typingStatesRef.current[recipientId]?.timeout) {
+        clearTimeout(typingStatesRef.current[recipientId].timeout!);
+        typingStatesRef.current[recipientId].timeout = null;
+      }
+      
+      typingStatesRef.current[recipientId] = {
+        isTyping: false,
+        timeout: null
+      };
     }
   };
 
@@ -189,6 +318,11 @@ export function useRealtimeMessages() {
         (msg.sender_id === user?.id && msg.recipient_id === otherUserId) ||
         (msg.sender_id === otherUserId && msg.recipient_id === user?.id)
     ).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  };
+
+  // Check if a user is currently typing
+  const isUserTyping = (userId: string) => {
+    return !!typingUsers[userId];
   };
 
   // Get unique conversations (grouped by the other participant)
@@ -248,5 +382,7 @@ export function useRealtimeMessages() {
     getConversation,
     getConversations,
     getUnreadCount,
+    setTypingStatus,
+    isUserTyping,
   };
 }

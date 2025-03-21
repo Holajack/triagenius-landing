@@ -1,10 +1,10 @@
+
 import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, MoreVertical, Phone, Video } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useUser } from "@/hooks/use-user";
 import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
@@ -28,11 +28,60 @@ const Chat = () => {
   const messageEndRef = useRef<HTMLDivElement>(null);
   const [contact, setContact] = useState<ChatProfile | null>(null);
   const [newMessage, setNewMessage] = useState("");
+  const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const { user } = useUser();
-  const { getConversation, sendMessage, markAsRead } = useRealtimeMessages();
+  const { getConversation, sendMessage, markAsRead, setTypingStatus, isUserTyping } = useRealtimeMessages();
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   
   const messages = id ? getConversation(id) : [];
+  const isContactTyping = id && isUserTyping(id);
+  
+  // Set up presence channel for online status
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const channel = supabase.channel('online-users');
+    
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const online = new Set<string>();
+        
+        Object.keys(state).forEach(presenceKey => {
+          const presences = state[presenceKey] as any[];
+          presences.forEach(presence => {
+            if (presence.userId) {
+              online.add(presence.userId);
+            }
+          });
+        });
+        
+        setOnlineUsers(online);
+        
+        if (contact && id) {
+          setContact(prev => {
+            if (!prev) return prev;
+            const isOnline = online.has(prev.id);
+            return {
+              ...prev,
+              online: isOnline,
+              status: isOnline ? "Online" : prev.status
+            };
+          });
+        }
+      })
+      .subscribe();
+      
+    // Track current user's presence
+    channel.track({
+      userId: user.id,
+      online_at: new Date().toISOString(),
+    });
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, contact, id]);
   
   useEffect(() => {
     const fetchProfile = async () => {
@@ -47,12 +96,15 @@ const Chat = () => {
         
         if (error) throw error;
         
+        const isOnline = onlineUsers.has(id);
+        
         setContact({
           id: data.id,
           username: data.username || `User-${data.id.substring(0, 4)}`,
           avatar_url: data.avatar_url,
-          online: false,
-          status: "Offline"
+          online: isOnline,
+          status: isOnline ? "Online" : "Offline",
+          typing: isUserTyping(id)
         });
       } catch (err) {
         console.error('Error fetching profile:', err);
@@ -61,50 +113,7 @@ const Chat = () => {
     };
     
     fetchProfile();
-    
-    const channel = supabase.channel('online-users')
-      .on('presence', { event: 'sync' }, () => {
-        const state = channel.presenceState();
-        const online = new Set<string>();
-        
-        Object.values(state).forEach(presence => {
-          const presences = presence as Array<{[key: string]: any}>;
-          presences.forEach(p => {
-            if (p.user_id) online.add(p.user_id);
-            if (p.presence_ref) {
-              const match = p.presence_ref.match(/user_id=([^&]+)/);
-              if (match && match[1]) online.add(match[1]);
-            }
-          });
-        });
-        
-        setOnlineUsers(online);
-        
-        if (contact) {
-          setContact(prev => {
-            if (!prev) return prev;
-            const isOnline = online.has(prev.id);
-            return {
-              ...prev,
-              online: isOnline,
-              status: isOnline ? "Online" : `Last seen ${formatDistanceToNow(new Date(), { addSuffix: true })}`,
-            };
-          });
-        }
-      })
-      .subscribe();
-    
-    if (user?.id) {
-      channel.track({
-        user_id: user.id,
-        online_at: new Date().toISOString()
-      });
-    }
-    
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [id, user?.id]);
+  }, [id, onlineUsers, isUserTyping]);
   
   useEffect(() => {
     if (!id || !user?.id) return;
@@ -120,12 +129,42 @@ const Chat = () => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
   
+  // Update typing status when user is typing
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    
+    if (!id) return;
+    
+    // Send typing indicator
+    setTypingStatus(id, true);
+    
+    // Clear previous timeout if it exists
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+    }
+    
+    // Set a timeout to clear the typing status
+    const timeout = setTimeout(() => {
+      if (id) {
+        setTypingStatus(id, false);
+      }
+    }, 3000);
+    
+    setTypingTimeout(timeout);
+  };
+  
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !id || !user?.id) return;
     
     const sent = await sendMessage(id, newMessage);
     if (sent) {
       setNewMessage("");
+      
+      // Clear typing indicator
+      if (typingTimeout) {
+        clearTimeout(typingTimeout);
+      }
+      setTypingStatus(id, false);
     }
   };
   
@@ -209,7 +248,7 @@ const Chat = () => {
             <div>
               <h2 className="font-medium text-sm">{contact.username}</h2>
               <p className="text-xs text-muted-foreground">
-                {contact.typing ? "typing..." : contact.status}
+                {isContactTyping ? "typing..." : contact.status}
               </p>
             </div>
           </div>
@@ -277,6 +316,17 @@ const Chat = () => {
             <p className="text-sm mt-2">Send a message to start the conversation</p>
           </div>
         )}
+        {isContactTyping && (
+          <div className="flex justify-start">
+            <div className="bg-muted p-3 rounded-lg">
+              <div className="flex space-x-1">
+                <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
+                <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "100ms" }}></div>
+                <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "200ms" }}></div>
+              </div>
+            </div>
+          </div>
+        )}
         <div ref={messageEndRef} />
       </div>
       
@@ -295,7 +345,7 @@ const Chat = () => {
             placeholder="Type a message..."
             className="rounded-full"
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 handleSendMessage();

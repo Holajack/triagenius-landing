@@ -8,6 +8,7 @@ import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
 import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
+import { useNavigate } from "react-router-dom";
 
 interface MessageInboxProps {
   searchQuery?: string;
@@ -19,13 +20,16 @@ interface ConversationWithUser {
   lastMessage: any;
   username: string;
   avatarUrl: string | null;
+  isTyping?: boolean;
 }
 
 export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxProps) => {
-  const { getConversations, loading } = useRealtimeMessages();
+  const navigate = useNavigate();
+  const { getConversations, loading, isUserTyping } = useRealtimeMessages();
   const { user } = useUser();
   const [conversationsWithUsers, setConversationsWithUsers] = useState<ConversationWithUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   
   // Request notification permission on component mount
   useEffect(() => {
@@ -42,6 +46,41 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
     
     requestNotificationPermission();
   }, []);
+  
+  // Set up presence channel for online status
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const channel = supabase.channel('online-users');
+    
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const online = new Set<string>();
+        
+        Object.keys(state).forEach(presenceKey => {
+          const presences = state[presenceKey] as any[];
+          presences.forEach(presence => {
+            if (presence.userId && presence.userId !== user.id) {
+              online.add(presence.userId);
+            }
+          });
+        });
+        
+        setOnlineUsers(online);
+      })
+      .subscribe();
+      
+    // Track current user's presence
+    channel.track({
+      userId: user.id,
+      online_at: new Date().toISOString(),
+    });
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
   
   // Load user details for conversations
   useEffect(() => {
@@ -69,7 +108,8 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
               userId: convo.userId,
               lastMessage: convo.lastMessage,
               username: otherUser.username || `User-${convo.userId.substring(0, 4)}`,
-              avatarUrl: otherUser.avatar_url
+              avatarUrl: otherUser.avatar_url,
+              isTyping: isUserTyping(convo.userId)
             });
           }
         }
@@ -83,7 +123,23 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
     };
     
     loadConversationUsers();
-  }, [getConversations]);
+    
+    // Set up an interval to refresh the conversation list
+    const intervalId = setInterval(() => {
+      loadConversationUsers();
+    }, 5000);
+    
+    return () => clearInterval(intervalId);
+  }, [getConversations, isUserTyping]);
+  
+  // Handle click on conversation
+  const handleConversationClick = (userId: string) => {
+    if (onMessageClick) {
+      onMessageClick(userId);
+    } else {
+      navigate(`/community/chat/${userId}`);
+    }
+  };
   
   // Filter conversations based on search query
   const filteredConversations = conversationsWithUsers.filter(convo => {
@@ -111,12 +167,13 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
         const { lastMessage } = conversation;
         const isUnread = lastMessage.recipient_id === user?.id && !lastMessage.is_read;
         const messageTime = formatDistanceToNow(new Date(lastMessage.created_at), { addSuffix: true });
+        const isOnline = onlineUsers.has(conversation.userId);
         
         return (
           <Card 
             key={conversation.userId} 
             className={`p-4 ${isUnread ? 'bg-muted/50' : ''} cursor-pointer hover:bg-muted/30 transition-colors`}
-            onClick={() => onMessageClick && onMessageClick(conversation.userId)}
+            onClick={() => handleConversationClick(conversation.userId)}
           >
             <div className="flex items-center gap-4">
               <div className="relative">
@@ -124,6 +181,9 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
                   <AvatarImage src={conversation.avatarUrl || ""} alt={conversation.username || "User"} />
                   <AvatarFallback>{conversation.username?.[0] || "U"}</AvatarFallback>
                 </Avatar>
+                {isOnline && (
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
+                )}
               </div>
               
               <div className="flex-1 min-w-0">
@@ -132,6 +192,11 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
                     <h3 className={`font-medium ${isUnread ? 'font-semibold' : ''}`}>
                       {conversation.username}
                     </h3>
+                    {isOnline && (
+                      <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 border-green-200">
+                        Online
+                      </Badge>
+                    )}
                   </div>
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <Clock className="h-3 w-3" />
@@ -139,7 +204,13 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
                   </span>
                 </div>
                 <p className={`text-sm truncate ${isUnread ? 'text-foreground' : 'text-muted-foreground'}`}>
-                  {lastMessage.sender_id === user?.id ? 'You: ' : ''}{lastMessage.content}
+                  {conversation.isTyping ? (
+                    <span className="italic text-primary">typing...</span>
+                  ) : (
+                    <>
+                      {lastMessage.sender_id === user?.id ? 'You: ' : ''}{lastMessage.content}
+                    </>
+                  )}
                 </p>
                 
                 <div className="mt-1 flex items-center justify-end gap-1">

@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import PageHeader from '@/components/common/PageHeader';
 import NavigationBar from '@/components/dashboard/NavigationBar';
@@ -8,9 +7,41 @@ import { StudyRooms } from '@/components/community/StudyRooms';
 import { MessageInbox } from '@/components/community/MessageInbox';
 import CommunityUserList from '@/components/community/CommunityUserList';
 import CommunityWalkthrough from '@/components/walkthrough/CommunityWalkthrough';
+import { supabase } from '@/integrations/supabase/client';
+import { useUser } from '@/hooks/use-user';
+import { useNavigate } from 'react-router-dom';
 
 const Community = () => {
   const [activeTab, setActiveTab] = useState("users");
+  const [searchQuery, setSearchQuery] = useState("");
+  const { user } = useUser();
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const presenceChannel = supabase.channel('online-status');
+    
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        console.log('Presence state synced');
+      })
+      .subscribe();
+      
+    presenceChannel.track({
+      user_id: user.id,
+      online_at: new Date().toISOString(),
+      username: user.username,
+    });
+    
+    return () => {
+      supabase.removeChannel(presenceChannel);
+    };
+  }, [user?.id, user?.username]);
+
+  const handleMessageClick = (userId: string) => {
+    navigate(`/community/chat/${userId}`);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -20,7 +51,6 @@ const Community = () => {
         data-walkthrough="community-header"
       />
 
-      {/* Main content */}
       <div className="container mx-auto px-4 py-8 pb-24">
         <Tabs defaultValue="users" className="w-full" onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-3">
@@ -29,23 +59,21 @@ const Community = () => {
             <TabsTrigger value="study-rooms" data-walkthrough="study-rooms">Study Rooms</TabsTrigger>
           </TabsList>
           <TabsContent value="users" className="space-y-4 mt-4">
-            <CommunityUserList />
+            <CommunityUserList searchQuery={searchQuery} />
           </TabsContent>
           <TabsContent value="messages" className="space-y-4 mt-4">
-            <MessageInbox />
+            <MessageInbox searchQuery={searchQuery} onMessageClick={handleMessageClick} />
           </TabsContent>
           <TabsContent value="study-rooms" className="space-y-4 mt-4">
-            <StudyRooms />
+            <StudyRooms searchQuery={searchQuery} />
           </TabsContent>
         </Tabs>
       </div>
 
-      {/* Add navigation bar with data-walkthrough attribute */}
       <div data-walkthrough="navigation-bar">
         <NavigationBar />
       </div>
 
-      {/* Add the community walkthrough component */}
       <CommunityWalkthrough />
     </div>
   );

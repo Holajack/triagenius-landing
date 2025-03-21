@@ -55,7 +55,6 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
       setLoading(true);
       setError(null);
       
-      // Make sure to log any SQL issues
       console.log("Fetching users for user ID:", user.id);
       
       // Changed the query to fetch all profiles except the current user
@@ -119,9 +118,55 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     }
   }, [user]);
   
+  // Subscribe to profiles changes in real-time
   useEffect(() => {
+    if (!user?.id) return;
+    
+    // First fetch users
     fetchAllUsers();
-  }, [fetchAllUsers]);
+    
+    // Then set up Supabase Realtime listener for profiles
+    const profilesChannel = supabase
+      .channel('profiles-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profiles'
+        },
+        (payload) => {
+          console.log("Profile changed:", payload);
+          
+          if (payload.eventType === 'INSERT') {
+            // Exclude the current user
+            if (payload.new.id !== user.id) {
+              setAllUsers(prev => {
+                // Check if user already exists to prevent duplicates
+                if (!prev.some(profile => profile.id === payload.new.id)) {
+                  const newProfile = payload.new as Profile;
+                  return [...prev, newProfile];
+                }
+                return prev;
+              });
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            setAllUsers(prev => 
+              prev.map(profile => 
+                profile.id === payload.new.id ? { ...profile, ...payload.new } : profile
+              )
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setAllUsers(prev => prev.filter(profile => profile.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(profilesChannel);
+    };
+  }, [user?.id, fetchAllUsers]);
   
   const fetchFriendRequests = useCallback(async () => {
     if (!user) return;
@@ -162,29 +207,50 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     }
   }, [user]);
   
+  // Set up Supabase Realtime listener for friend requests
   useEffect(() => {
+    if (!user?.id) return;
+    
+    // First fetch friend requests
     fetchFriendRequests();
 
-    const channel = supabase
-      .channel('schema-db-changes')
+    // Then set up Supabase Realtime listener for friend requests
+    const friendRequestsChannel = supabase
+      .channel('friend-requests-changes')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'friend_requests'
+          table: 'friend_requests',
+          filter: `sender_id=eq.${user.id}`,
         },
         (payload) => {
-          console.log("Friend request changed:", payload);
+          console.log("Friend request changed for sender:", payload);
           fetchFriendRequests();
         }
       )
-      .subscribe();
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'friend_requests',
+          filter: `recipient_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log("Friend request changed for recipient:", payload);
+          fetchFriendRequests();
+        }
+      )
+      .subscribe((status) => {
+        console.log("Friend requests channel status:", status);
+      });
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(friendRequestsChannel);
     };
-  }, [user, fetchFriendRequests]);
+  }, [user?.id, fetchFriendRequests]);
   
   useEffect(() => {
     if (searchTerm.trim() === '') {
