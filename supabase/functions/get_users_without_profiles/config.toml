@@ -1,0 +1,6 @@
+
+# project_id is always required
+project_id = "ucculvnodabrfwbkzsnx"
+handlers = [
+  { mimeType = "application/vnd.typescript", path = "index.ts" },
+]

@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { UserPlus, UserCheck, Search, Users, Loader2 } from "lucide-react";
+import { UserPlus, UserCheck, Search, Users, Loader2, UserX } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -28,16 +28,25 @@ interface Profile {
   show_state?: boolean;
 }
 
+interface UserWithoutProfile {
+  id: string;
+  email: string | null;
+}
+
 const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserListProps) => {
   const { user } = useUser();
   const [searchTerm, setSearchTerm] = useState(searchQuery);
   const [allUsers, setAllUsers] = useState<Profile[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<Profile[]>([]);
+  const [usersWithoutProfiles, setUsersWithoutProfiles] = useState<UserWithoutProfile[]>([]);
+  const [filteredUsersWithoutProfiles, setFilteredUsersWithoutProfiles] = useState<UserWithoutProfile[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [pendingFriendIds, setPendingFriendIds] = useState<string[]>([]);
   const [acceptedFriendIds, setAcceptedFriendIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [noProfilesLoading, setNoProfilesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [noProfilesError, setNoProfilesError] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -76,11 +85,44 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
       setLoading(false);
     }
   }, [user]);
+
+  const fetchUsersWithoutProfiles = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      setNoProfilesLoading(true);
+      setNoProfilesError(null);
+      
+      console.log("Fetching users without profiles");
+      
+      const { data, error } = await supabase.functions.invoke('get_users_without_profiles');
+      
+      if (error) {
+        console.error('Error fetching users without profiles:', error);
+        setNoProfilesError(`Failed to load users without profiles: ${error.message}`);
+        return;
+      }
+      
+      if (data && data.users) {
+        console.log("Fetched users without profiles:", data.users.length);
+        
+        const filteredUsers = data.users.filter((u: UserWithoutProfile) => u.id !== user.id);
+        setUsersWithoutProfiles(filteredUsers);
+        setFilteredUsersWithoutProfiles(filteredUsers);
+      }
+    } catch (error: any) {
+      console.error('Error in fetchUsersWithoutProfiles:', error);
+      setNoProfilesError(`Unexpected error: ${error.message}`);
+    } finally {
+      setNoProfilesLoading(false);
+    }
+  }, [user]);
   
   useEffect(() => {
     if (!user?.id) return;
     
     fetchAllUsers();
+    fetchUsersWithoutProfiles();
     
     const profilesChannel = supabase
       .channel('profiles-changes')
@@ -103,6 +145,13 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
                 }
                 return prev;
               });
+              
+              setUsersWithoutProfiles(prev => 
+                prev.filter(u => u.id !== payload.new.id)
+              );
+              setFilteredUsersWithoutProfiles(prev => 
+                prev.filter(u => u.id !== payload.new.id)
+              );
             }
           } else if (payload.eventType === 'UPDATE') {
             setAllUsers(prev => 
@@ -112,6 +161,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
             );
           } else if (payload.eventType === 'DELETE') {
             setAllUsers(prev => prev.filter(profile => profile.id !== payload.old.id));
+            fetchUsersWithoutProfiles();
           }
         }
       )
@@ -120,7 +170,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     return () => {
       supabase.removeChannel(profilesChannel);
     };
-  }, [user?.id, fetchAllUsers]);
+  }, [user?.id, fetchAllUsers, fetchUsersWithoutProfiles]);
   
   const fetchFriendRequests = useCallback(async () => {
     if (!user) return;
@@ -207,21 +257,27 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     const delayDebounceFn = setTimeout(() => {
       if (searchTerm.trim() === '') {
         setFilteredUsers(allUsers);
+        setFilteredUsersWithoutProfiles(usersWithoutProfiles);
         return;
       }
       
       const term = searchTerm.toLowerCase();
+      
       const filtered = allUsers.filter(profile => 
         profile.username?.toLowerCase().includes(term) ||
         profile.university?.toLowerCase().includes(term) ||
         profile.state?.toLowerCase().includes(term)
       );
-      
       setFilteredUsers(filtered);
+      
+      const filteredNoProfiles = usersWithoutProfiles.filter(user => 
+        user.email?.toLowerCase().includes(term)
+      );
+      setFilteredUsersWithoutProfiles(filteredNoProfiles);
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm, allUsers]);
+  }, [searchTerm, allUsers, usersWithoutProfiles]);
   
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -469,6 +525,84 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     );
   };
   
+  const renderUsersWithoutProfilesList = () => {
+    if (noProfilesError) {
+      return (
+        <div className="py-8 text-center">
+          <div className="text-red-500 mb-2">Error: {noProfilesError}</div>
+          <Button onClick={fetchUsersWithoutProfiles} variant="outline" size="sm">
+            Retry
+          </Button>
+        </div>
+      );
+    }
+    
+    if (noProfilesLoading) {
+      return (
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="flex items-center space-x-3 p-3 rounded-lg border">
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <div className="space-y-2 flex-1">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+              <Skeleton className="h-8 w-16" />
+            </div>
+          ))}
+        </div>
+      );
+    }
+    
+    if (filteredUsersWithoutProfiles.length === 0) {
+      return (
+        <div className="py-8 text-center">
+          <UserX className="mx-auto h-12 w-12 text-muted-foreground/50" />
+          <h3 className="mt-4 text-lg font-medium">No users without profiles</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {searchTerm ? "Try a different search term or check your spelling." : "All users have created profiles!"}
+          </p>
+        </div>
+      );
+    }
+    
+    return (
+      <ScrollArea className="h-[400px] pr-4">
+        <div className="space-y-4">
+          {filteredUsersWithoutProfiles.map((user) => (
+            <div 
+              key={user.id}
+              className="flex items-center justify-between p-3 rounded-lg border"
+            >
+              <div className="flex items-center space-x-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback>
+                    {user.email?.charAt(0)?.toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{user.email || "No Email"}</p>
+                  <p className="text-xs text-muted-foreground">No profile created</p>
+                </div>
+              </div>
+              
+              <div className="flex space-x-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  disabled
+                >
+                  <UserX className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">No Profile</span>
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
+    );
+  };
+  
   return (
     <Card className="col-span-1 h-full">
       <CardHeader>
@@ -491,8 +625,9 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="all" className="w-full">
-          <TabsList className="mb-4 w-full grid grid-cols-3">
+          <TabsList className="mb-4 w-full grid grid-cols-4">
             <TabsTrigger value="all">All Users</TabsTrigger>
+            <TabsTrigger value="no-profiles">No Profiles</TabsTrigger>
             <TabsTrigger value="pending">Pending</TabsTrigger>
             <TabsTrigger value="friends">Friends</TabsTrigger>
           </TabsList>
@@ -502,6 +637,10 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
               filteredUsers, 
               "No other users have registered yet. Be the first to invite others!"
             )}
+          </TabsContent>
+          
+          <TabsContent value="no-profiles">
+            {renderUsersWithoutProfilesList()}
           </TabsContent>
           
           <TabsContent value="pending">
@@ -514,7 +653,6 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
                       <div className="h-4 bg-muted rounded w-24"></div>
                       <div className="h-3 bg-muted rounded w-32"></div>
                     </div>
-                    <div className="h-8 w-16 bg-muted rounded"></div>
                   </div>
                 ))}
               </div>
