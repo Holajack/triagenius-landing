@@ -15,6 +15,7 @@ const Auth = () => {
   const initialMode = location.state?.mode || "login";
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [savedSessionFound, setSavedSessionFound] = useState(false);
 
   useEffect(() => {
     // Check if user is already authenticated
@@ -27,6 +28,18 @@ const Auth = () => {
       // Check for email confirmation from URL hash
       const hash = location.hash;
       const isEmailConfirmation = hash && hash.includes("type=signup");
+      
+      // Check for saved session data in localStorage
+      try {
+        const keys = Object.keys(localStorage);
+        const sessionKeys = keys.filter(key => key.startsWith('sessionData_'));
+        
+        if (sessionKeys.length > 0) {
+          setSavedSessionFound(true);
+        }
+      } catch (error) {
+        console.error("Error checking for saved sessions:", error);
+      }
       
       // If already authenticated or just confirmed email, redirect to appropriate page
       if (isLoggedIn) {
@@ -99,6 +112,14 @@ const Auth = () => {
             <h1 className="text-2xl font-bold mb-6 text-center">
               {initialMode === "login" ? "Welcome Back" : "Join The Triage System"}
             </h1>
+          )}
+          
+          {savedSessionFound && (
+            <div className="mb-6 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+              <p className="text-sm text-blue-700">
+                We found saved sessions from a previous login. Sign in to restore your preferences and continue your progress.
+              </p>
+            </div>
           )}
           
           <Tabs defaultValue={isFromStartFocusing ? "signup" : initialMode} className="w-full">

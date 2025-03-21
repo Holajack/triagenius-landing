@@ -19,6 +19,11 @@ const LearningStyleQuiz = () => {
       return;
     }
     
+    // Save environment preference before navigating
+    if (state.environment) {
+      localStorage.setItem('environment', state.environment);
+    }
+    
     // Navigate to quiz page
     navigate("/learning-quiz");
   };

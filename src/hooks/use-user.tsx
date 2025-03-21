@@ -3,6 +3,9 @@ import { useState, useEffect, createContext, useContext, ReactNode } from "react
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UserProfile } from "@/types/database";
+import { saveUserSession, loadUserSession, applySessionPreferences } from "@/services/sessionPersistence";
+import { useNavigate } from "react-router-dom";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface UserData {
   id: string;
@@ -20,6 +23,7 @@ interface UserContextType {
   error: Error | null;
   clearError: () => void;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -28,6 +32,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const navigate = useNavigate();
+  const { setTheme, setEnvironmentTheme } = useTheme();
   
   const clearError = () => setError(null);
   
@@ -113,6 +119,39 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         profile: profileData as UserProfile
       });
       
+      // Load and apply saved session after successful login
+      const savedSession = await loadUserSession(authUser.id);
+      if (savedSession) {
+        applySessionPreferences(savedSession, setTheme, setEnvironmentTheme);
+        
+        // Check if we should redirect to last route
+        if (savedSession.lastRoute && savedSession.lastRoute !== window.location.pathname) {
+          // Only redirect to certain safe routes, not to auth pages for example
+          const safeRoutes = ['/dashboard', '/focus-session', '/bonuses', '/reports', '/profile', '/settings'];
+          if (safeRoutes.some(route => savedSession.lastRoute.startsWith(route))) {
+            // If there's a saved focus session and the last route was the focus session page
+            if (savedSession.focusSession && savedSession.lastRoute === '/focus-session') {
+              toast.info("You have a saved focus session. Continue where you left off?", {
+                action: {
+                  label: "Resume",
+                  onClick: () => navigate('/focus-session')
+                },
+                duration: 10000
+              });
+            } else if (savedSession.lastRoute !== '/dashboard') {
+              // For other routes, show a toast with option to navigate back
+              toast.info(`You were last on ${savedSession.lastRoute}`, {
+                action: {
+                  label: "Go back",
+                  onClick: () => navigate(savedSession.lastRoute)
+                },
+                duration: 5000
+              });
+            }
+          }
+        }
+      }
+      
     } catch (error: any) {
       console.error("Failed to fetch user data:", error);
       setError(error);
@@ -148,6 +187,26 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(false);
     }
   };
+
+  // Enhanced logout function to save session before logging out
+  const logout = async () => {
+    try {
+      if (user?.id) {
+        // Save the current session state before logout
+        await saveUserSession(user.id);
+      }
+      
+      // Proceed with logout
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast.success("Successfully signed out");
+      navigate('/');
+    } catch (error: any) {
+      console.error("Error signing out:", error);
+      toast.error(error.message || "Failed to sign out");
+    }
+  };
   
   // Initial fetch
   useEffect(() => {
@@ -174,7 +233,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       isLoading,
       error,
       clearError,
-      updateProfile
+      updateProfile,
+      logout
     }}>
       {children}
     </UserContext.Provider>

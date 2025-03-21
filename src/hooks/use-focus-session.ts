@@ -1,8 +1,15 @@
+
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase, handleSupabaseError } from "@/integrations/supabase/client";
 import { useUser } from "@/hooks/use-user";
+import { 
+  saveFocusSessionState, 
+  getSavedFocusSession,
+  clearFocusSessionState,
+  SavedFocusSession
+} from "@/services/sessionPersistence";
 
 export const useFocusSession = () => {
   const navigate = useNavigate();
@@ -14,8 +21,9 @@ export const useFocusSession = () => {
   const [lowPowerMode, setLowPowerMode] = useState(false);
   const [segmentProgress, setSegmentProgress] = useState(0);
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
+  const [resumingSession, setResumingSession] = useState(false);
   const isEndingRef = useRef(false);
-  const timerRef = useRef<{ stopTimer: () => void } | null>(null);
+  const timerRef = useRef<{ stopTimer: () => void; setRemainingTime?: (time: number) => void } | null>(null);
   const isPwaRef = useRef(localStorage.getItem('isPWA') === 'true' || window.matchMedia('(display-mode: standalone)').matches);
   const workerRef = useRef<Worker | null>(null);
   const operationInProgressRef = useRef(false);
@@ -58,6 +66,59 @@ export const useFocusSession = () => {
       }
     } catch (error) {
       console.error('useFocusSession: Error detecting PWA state:', error);
+    }
+    
+    // Try to load saved session if available
+    try {
+      const savedSession = getSavedFocusSession();
+      if (savedSession) {
+        console.log("Found saved focus session:", savedSession);
+        
+        // Check if session is not too old (within 24 hours)
+        const sessionTime = new Date(savedSession.timestamp).getTime();
+        const currentTime = new Date().getTime();
+        const timeDifference = currentTime - sessionTime;
+        const maxSessionAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+        
+        if (timeDifference <= maxSessionAge) {
+          setResumingSession(true);
+          
+          // Restore session state
+          setCurrentMilestone(savedSession.milestone || 0);
+          setSegmentProgress(savedSession.segmentProgress || 0);
+          setIsPaused(true); // Always start as paused when resuming
+          
+          // Restore environment from saved session
+          if (savedSession.environment) {
+            localStorage.setItem('environment', savedSession.environment);
+            document.documentElement.classList.remove(
+              'theme-office', 
+              'theme-park', 
+              'theme-home', 
+              'theme-coffee-shop', 
+              'theme-library'
+            );
+            document.documentElement.classList.add(`theme-${savedSession.environment}`);
+            document.documentElement.setAttribute('data-environment', savedSession.environment);
+          }
+          
+          // Show toast with session resume info
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              toast.info("Resuming your previous focus session", {
+                description: `You were ${savedSession.milestone > 0 ? `at milestone ${savedSession.milestone}` : 'just getting started'}`,
+                duration: 5000
+              });
+            }
+          }, 1000);
+        } else {
+          // Session is too old, clear it
+          clearFocusSessionState();
+          toast.info("Your previous session was too old and has been cleared");
+        }
+      }
+    } catch (error) {
+      console.error("Error loading saved focus session:", error);
     }
     
     // Only initialize worker in PWA mode to save resources
@@ -207,14 +268,65 @@ export const useFocusSession = () => {
     }
   };
   
+  // Save the current state of the focus session for potential resumption
+  const saveCurrentFocusState = () => {
+    try {
+      if (!timerRef.current) return;
+      
+      // Get timer inner state (if exposed by timer component)
+      const timerElement = document.querySelector('.timer-display');
+      let remainingTime = 0;
+      
+      if (timerElement) {
+        const timeText = timerElement.textContent;
+        if (timeText) {
+          const [minutes, seconds] = timeText.split(':').map(Number);
+          remainingTime = minutes * 60 + seconds;
+        }
+      }
+      
+      const focusData: Partial<SavedFocusSession> = {
+        milestone: currentMilestone,
+        isPaused,
+        segmentProgress,
+        remainingTime,
+        environment: localStorage.getItem('environment') || 'default'
+      };
+      
+      saveFocusSessionState(focusData);
+    } catch (error) {
+      console.error("Error saving focus state:", error);
+    }
+  };
+  
+  // Periodically save focus session state
+  useEffect(() => {
+    // Set up periodic saving of focus session state
+    const saveInterval = setInterval(() => {
+      if (isMountedRef.current) {
+        saveCurrentFocusState();
+      }
+    }, 15000); // Save every 15 seconds
+    
+    return () => {
+      clearInterval(saveInterval);
+    };
+  }, [isPaused, currentMilestone, segmentProgress]);
+  
   const handlePause = () => {
     setIsPaused(true);
     setShowMotivation(true);
+    saveCurrentFocusState(); // Save state immediately on pause
   };
   
   const handleResume = () => {
     setIsPaused(false);
     setShowMotivation(false);
+    
+    // If resuming from a saved session, clear the resuming flag
+    if (resumingSession) {
+      setResumingSession(false);
+    }
   };
   
   // Improved session end handler with better synchronization
@@ -237,6 +349,9 @@ export const useFocusSession = () => {
     
     // Save session data
     const sessionData = await saveSessionData(false);
+    
+    // Clear saved focus session state since we're ending normally
+    clearFocusSessionState();
     
     // Generate a unique report ID
     const reportId = `session_${Date.now()}`;
@@ -323,6 +438,9 @@ export const useFocusSession = () => {
         timerRef.current.stopTimer();
         console.log("useFocusSession: handleEndSessionEarly - Timer stopped");
       }
+      
+      // Clear saved focus session as we're ending it
+      clearFocusSessionState();
       
       // Generate a unique report ID that we'll use consistently
       const reportId = `session_${Date.now()}`;
@@ -413,6 +531,9 @@ export const useFocusSession = () => {
     setIsCelebrating(true);
     setSegmentProgress(0);
     
+    // Save focus state when milestone is reached
+    saveCurrentFocusState();
+    
     setTimeout(() => {
       if (isMountedRef.current) {
         setIsCelebrating(false);
@@ -453,6 +574,9 @@ export const useFocusSession = () => {
       const newMode = !lowPowerMode;
       setLowPowerMode(newMode);
       
+      // Save preference to localStorage
+      localStorage.setItem('lowPowerMode', newMode ? 'true' : 'false');
+      
       // Use minimal processing for toast in PWA to prevent jank
       setTimeout(() => {
         if (isMountedRef.current) {
@@ -474,8 +598,13 @@ export const useFocusSession = () => {
       }
     } else {
       // Standard behavior for non-PWA
-      setLowPowerMode(!lowPowerMode);
-      toast.info(!lowPowerMode ? 
+      const newMode = !lowPowerMode;
+      setLowPowerMode(newMode);
+      
+      // Save preference to localStorage
+      localStorage.setItem('lowPowerMode', newMode ? 'true' : 'false');
+      
+      toast.info(newMode ? 
         "Low power mode activated - reduced animations" : 
         "Enhanced visual mode activated",
         { duration: 3000 }
@@ -493,6 +622,7 @@ export const useFocusSession = () => {
     lowPowerMode,
     segmentProgress,
     showEndConfirmation,
+    resumingSession,
     
     // Refs
     timerRef,
@@ -507,6 +637,7 @@ export const useFocusSession = () => {
     handleMilestoneReached,
     handleProgressUpdate,
     toggleLowPowerMode,
+    saveCurrentFocusState,
     
     // Setters
     setShowMotivation,

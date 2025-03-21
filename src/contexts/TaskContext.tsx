@@ -1,6 +1,8 @@
 
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { Task, SubTask, PriorityLevel } from '@/types/tasks';
+import { supabase } from '@/integrations/supabase/client';
+import { useUser } from '@/hooks/use-user';
 
 interface TaskState {
   tasks: Task[];
@@ -168,24 +170,125 @@ const taskReducer = (state: TaskState, action: TaskAction): TaskState => {
 type TaskContextType = {
   state: TaskState;
   dispatch: React.Dispatch<TaskAction>;
+  syncTasksWithSupabase: () => Promise<void>;
 };
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
 export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(taskReducer, initialState);
+  const { user } = useUser();
+  
+  // Sync with Supabase when user changes
+  useEffect(() => {
+    if (user && user.id) {
+      loadTasksFromSupabase();
+    }
+  }, [user?.id]);
+  
+  // Load tasks from Supabase
+  const loadTasksFromSupabase = async () => {
+    if (!user || !user.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+        
+      if (error) {
+        throw error;
+      }
+      
+      if (data && data.length > 0) {
+        // Convert Supabase tasks to our local task format
+        const tasks: Task[] = data.map(dbTask => ({
+          id: dbTask.id,
+          title: dbTask.title,
+          priority: (dbTask.priority as PriorityLevel) || 'medium',
+          completed: dbTask.status === 'completed',
+          subtasks: [] // We'll load subtasks separately in the future if needed
+        }));
+        
+        dispatch({ type: 'LOAD_TASKS', payload: { tasks } });
+      } else {
+        // If no tasks in Supabase, use localStorage tasks
+        console.log("No tasks found in Supabase, using localStorage tasks");
+      }
+    } catch (error) {
+      console.error('Error loading tasks from Supabase:', error);
+    }
+  };
+  
+  // Sync local tasks to Supabase
+  const syncTasksWithSupabase = async () => {
+    if (!user || !user.id) return;
+    
+    try {
+      // For simplicity, we'll just delete all existing tasks and re-add them
+      // In a real app, you'd want to do a proper sync with updates/deletes/inserts
+      
+      // Delete all existing tasks for this user
+      const { error: deleteError } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('user_id', user.id);
+        
+      if (deleteError) {
+        throw deleteError;
+      }
+      
+      // Skip if no tasks to sync
+      if (state.tasks.length === 0) return;
+      
+      // Insert all current tasks
+      const tasksToInsert = state.tasks.map(task => ({
+        title: task.title,
+        user_id: user.id,
+        priority: task.priority,
+        status: task.completed ? 'completed' : 'pending',
+        description: '' // No description in our local model
+      }));
+      
+      const { error: insertError } = await supabase
+        .from('tasks')
+        .insert(tasksToInsert);
+        
+      if (insertError) {
+        throw insertError;
+      }
+      
+      console.log('Tasks synced to Supabase successfully');
+    } catch (error) {
+      console.error('Error syncing tasks to Supabase:', error);
+    }
+  };
   
   // Sync with localStorage when state changes
   useEffect(() => {
     try {
       localStorage.setItem('userTasks', JSON.stringify(state.tasks));
+      
+      // Optionally sync with Supabase if user is logged in
+      if (user?.id) {
+        const debouncedSync = setTimeout(() => {
+          syncTasksWithSupabase();
+        }, 2000); // Debounce to avoid too many calls
+        
+        return () => clearTimeout(debouncedSync);
+      }
     } catch (e) {
       console.error('Failed to sync tasks to localStorage', e);
     }
-  }, [state.tasks]);
+  }, [state.tasks, user?.id]);
 
   return (
-    <TaskContext.Provider value={{ state, dispatch }}>
+    <TaskContext.Provider value={{ 
+      state, 
+      dispatch,
+      syncTasksWithSupabase
+    }}>
       {children}
     </TaskContext.Provider>
   );
