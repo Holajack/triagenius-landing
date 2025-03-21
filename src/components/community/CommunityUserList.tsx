@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { UserPlus, UserCheck, Search, Users, Loader2 } from "lucide-react";
+import { UserPlus, UserCheck, Search, Users, Loader2, UserX } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -26,6 +27,8 @@ interface Profile {
   state?: string | null;
   show_university?: boolean;
   show_state?: boolean;
+  has_profile?: boolean;
+  email?: string | null;
 }
 
 const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserListProps) => {
@@ -37,7 +40,10 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
   const [pendingFriendIds, setPendingFriendIds] = useState<string[]>([]);
   const [acceptedFriendIds, setAcceptedFriendIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingNoProfiles, setLoadingNoProfiles] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [usersWithoutProfiles, setUsersWithoutProfiles] = useState<Profile[]>([]);
+  const [activeTab, setActiveTab] = useState("all");
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -66,8 +72,15 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
       }
       
       console.log("Fetched profiles:", profiles?.length || 0);
-      setAllUsers(profiles || []);
-      setFilteredUsers(profiles || []);
+      
+      // Add has_profile flag to profiles
+      const profilesWithFlag = profiles?.map(profile => ({
+        ...profile,
+        has_profile: true
+      })) || [];
+      
+      setAllUsers(profilesWithFlag);
+      setFilteredUsers(profilesWithFlag);
     } catch (error: any) {
       console.error('Error in fetchAllUsers:', error);
       setError(`Unexpected error: ${error.message}`);
@@ -77,10 +90,37 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     }
   }, [user]);
   
+  const fetchUsersWithoutProfiles = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      setLoadingNoProfiles(true);
+      
+      console.log("Fetching users without profiles");
+      
+      const { data, error } = await supabase.functions.invoke('get_users_without_profiles');
+      
+      if (error) {
+        console.error('Error fetching users without profiles:', error);
+        return;
+      }
+      
+      if (data && data.users) {
+        console.log("Fetched users without profiles:", data.users.length);
+        setUsersWithoutProfiles(data.users as Profile[]);
+      }
+    } catch (error: any) {
+      console.error('Error in fetchUsersWithoutProfiles:', error);
+    } finally {
+      setLoadingNoProfiles(false);
+    }
+  }, [user]);
+  
   useEffect(() => {
     if (!user?.id) return;
     
     fetchAllUsers();
+    fetchUsersWithoutProfiles();
     
     const profilesChannel = supabase
       .channel('profiles-changes')
@@ -98,16 +138,21 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
             if (payload.new.id !== user.id) {
               setAllUsers(prev => {
                 if (!prev.some(profile => profile.id === payload.new.id)) {
-                  const newProfile = payload.new as Profile;
+                  const newProfile = { ...payload.new, has_profile: true } as Profile;
                   return [...prev, newProfile];
                 }
                 return prev;
               });
+              
+              // Remove from users without profiles if they just created a profile
+              setUsersWithoutProfiles(prev => 
+                prev.filter(u => u.id !== payload.new.id)
+              );
             }
           } else if (payload.eventType === 'UPDATE') {
             setAllUsers(prev => 
               prev.map(profile => 
-                profile.id === payload.new.id ? { ...profile, ...payload.new } : profile
+                profile.id === payload.new.id ? { ...profile, ...payload.new, has_profile: true } : profile
               )
             );
           } else if (payload.eventType === 'DELETE') {
@@ -120,7 +165,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     return () => {
       supabase.removeChannel(profilesChannel);
     };
-  }, [user?.id, fetchAllUsers]);
+  }, [user?.id, fetchAllUsers, fetchUsersWithoutProfiles]);
   
   const fetchFriendRequests = useCallback(async () => {
     if (!user) return;
@@ -203,28 +248,41 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     };
   }, [user?.id, fetchFriendRequests]);
   
+  // This effect controls the filtered users based on active tab and search term
   useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      if (searchTerm.trim() === '') {
-        setFilteredUsers(allUsers);
-        return;
-      }
-      
+    // Determine which user list to filter based on active tab
+    let usersToFilter: Profile[] = [];
+    
+    if (activeTab === "all") {
+      usersToFilter = [...allUsers]; 
+    } else if (activeTab === "pending") {
+      usersToFilter = allUsers.filter(user => pendingFriendIds.includes(user.id));
+    } else if (activeTab === "friends") {
+      usersToFilter = allUsers.filter(user => acceptedFriendIds.includes(user.id));
+    } else if (activeTab === "no-profiles") {
+      usersToFilter = [...usersWithoutProfiles];
+    }
+    
+    // Apply search filtering if there's a search term
+    if (searchTerm.trim() !== '') {
       const term = searchTerm.toLowerCase();
-      const filtered = allUsers.filter(profile => 
-        profile.username?.toLowerCase().includes(term) ||
-        profile.university?.toLowerCase().includes(term) ||
-        profile.state?.toLowerCase().includes(term)
+      usersToFilter = usersToFilter.filter(profile => 
+        (profile.username?.toLowerCase().includes(term)) ||
+        (profile.email?.toLowerCase().includes(term)) ||
+        (profile.university?.toLowerCase().includes(term)) ||
+        (profile.state?.toLowerCase().includes(term))
       );
-      
-      setFilteredUsers(filtered);
-    }, 300);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm, allUsers]);
+    }
+    
+    setFilteredUsers(usersToFilter);
+  }, [searchTerm, allUsers, usersWithoutProfiles, activeTab, pendingFriendIds, acceptedFriendIds]);
   
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
+  };
+  
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
   };
   
   const isFriendRequestPending = (userId: string) => {
@@ -358,7 +416,9 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
       );
     }
     
-    if (loading) {
+    const isLoading = activeTab === "no-profiles" ? loadingNoProfiles : loading;
+    
+    if (isLoading) {
       return (
         <div className="space-y-4">
           {[...Array(5)].map((_, i) => (
@@ -395,6 +455,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
             const isAlreadyFriend = isFriend(profile.id);
             const friendRequest = getFriendRequest(profile.id);
             const isReceivedRequest = friendRequest && friendRequest.sender_id === profile.id;
+            const hasProfile = profile.has_profile !== false; // If undefined or true, treat as having a profile
             
             return (
               <div 
@@ -405,17 +466,29 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={profile.avatar_url || ""} />
                     <AvatarFallback>
-                      {profile.username?.charAt(0)?.toUpperCase() || "U"}
+                      {hasProfile 
+                        ? (profile.username?.charAt(0)?.toUpperCase() || "U") 
+                        : profile.email?.charAt(0)?.toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium">{profile.username || "Anonymous"}</p>
+                    <p className="font-medium">{
+                      hasProfile
+                        ? (profile.username || "Anonymous")
+                        : (profile.email || "No Email")
+                    }</p>
                     <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
-                      {profile.show_university && profile.university && (
-                        <span>{profile.university}</span>
-                      )}
-                      {profile.show_state && profile.state && (
-                        <span>{profile.state}</span>
+                      {hasProfile ? (
+                        <>
+                          {profile.show_university && profile.university && (
+                            <span>{profile.university}</span>
+                          )}
+                          {profile.show_state && profile.state && (
+                            <span>{profile.state}</span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-orange-500">No profile created yet</span>
                       )}
                     </div>
                   </div>
@@ -490,9 +563,10 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
         )}
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="all" className="w-full">
-          <TabsList className="mb-4 w-full grid grid-cols-3">
+        <Tabs defaultValue="all" className="w-full" value={activeTab} onValueChange={handleTabChange}>
+          <TabsList className="mb-4 w-full grid grid-cols-4">
             <TabsTrigger value="all">All Users</TabsTrigger>
+            <TabsTrigger value="no-profiles">No Profiles</TabsTrigger>
             <TabsTrigger value="pending">Pending</TabsTrigger>
             <TabsTrigger value="friends">Friends</TabsTrigger>
           </TabsList>
@@ -501,6 +575,13 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
             {renderUserList(
               filteredUsers, 
               "No other users have registered yet. Be the first to invite others!"
+            )}
+          </TabsContent>
+          
+          <TabsContent value="no-profiles">
+            {renderUserList(
+              usersWithoutProfiles,
+              "All registered users have created profiles."
             )}
           </TabsContent>
           
