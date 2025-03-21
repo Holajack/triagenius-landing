@@ -144,17 +144,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           }
         }
         
-        // Load and apply saved session after successful login
-        const savedSession = await loadUserSession(authUser.id);
-        if (savedSession) {
-          applySessionPreferences(savedSession, setTheme, setEnvironmentTheme);
-          
-          // Check if we should redirect to last route
-          if (savedSession.lastRoute && savedSession.lastRoute !== window.location.pathname) {
-            // Only redirect to certain safe routes, not to auth pages for example
-            const safeRoutes = ['/dashboard', '/focus-session', '/bonuses', '/reports', '/profile', '/settings'];
-            if (safeRoutes.some(route => savedSession.lastRoute.startsWith(route))) {
-              // If there's a saved focus session and the last route was the focus session page
+        // Check if we should redirect to last route
+        if (savedSession.lastRoute && savedSession.lastRoute !== window.location.pathname) {
+          // Only redirect to certain safe routes, not to auth pages for example
+          const safeRoutes = ['/dashboard', '/focus-session', '/bonuses', '/reports', '/profile', '/settings'];
+          if (safeRoutes.some(route => savedSession.lastRoute.startsWith(route))) {
+            // If there's a saved focus session and the last route was the focus session page
               if (savedSession.focusSession && savedSession.lastRoute === '/focus-session') {
                 toast.info("You have a saved focus session. Continue where you left off?", {
                   action: {
@@ -176,7 +171,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             }
           }
         }
-      }
       
     } catch (error: any) {
       console.error("Failed to fetch user data:", error);
