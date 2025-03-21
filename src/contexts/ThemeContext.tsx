@@ -6,6 +6,8 @@ type ThemeContextType = {
   setTheme: (theme: string) => void;
   environmentTheme: string | null;
   setEnvironmentTheme: (environment: string | null) => void;
+  toggleTheme: () => void; // Added this property
+  applyEnvironmentTheme: (environment: string | null) => void; // Added this property
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -25,9 +27,20 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     applyTheme(newTheme);
   };
 
+  // Toggle between light and dark themes
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+  };
+
   // Set environment theme (doesn't affect localStorage)
   const setEnvironmentTheme = (environment: string | null) => {
     setEnvironmentThemeState(environment);
+  };
+
+  // Apply environment theme
+  const applyEnvironmentTheme = (environment: string | null) => {
+    setEnvironmentTheme(environment);
   };
 
   // Apply theme to document
@@ -50,7 +63,9 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
         theme, 
         setTheme, 
         environmentTheme, 
-        setEnvironmentTheme 
+        setEnvironmentTheme,
+        toggleTheme,
+        applyEnvironmentTheme 
       }}
     >
       {children}
