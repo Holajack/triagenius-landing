@@ -59,8 +59,8 @@ function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        <UserProvider>
-          <ThemeProvider>
+        <ThemeProvider>
+          <UserProvider>
             <OnboardingProvider>
               <WalkthroughProvider>
                 <TaskProvider>
@@ -101,8 +101,8 @@ function App() {
                 </TaskProvider>
               </WalkthroughProvider>
             </OnboardingProvider>
-          </ThemeProvider>
-        </UserProvider>
+          </UserProvider>
+        </ThemeProvider>
       </BrowserRouter>
     </ErrorBoundary>
   );
