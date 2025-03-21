@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -7,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { UserPlus, UserCheck, Search, Users } from "lucide-react";
+import { UserPlus, UserCheck, Search, Users, Loader2, Skeleton } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -44,10 +43,6 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     setSearchTerm(searchQuery);
   }, [searchQuery]);
 
-  useEffect(() => {
-    console.log("Applying filters:", filters);
-  }, [filters]);
-
   const fetchAllUsers = useCallback(async () => {
     if (!user) return;
     
@@ -57,7 +52,6 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
       
       console.log("Fetching users for user ID:", user.id);
       
-      // Changed the query to fetch all profiles except the current user
       const { data: profiles, error } = await supabase
         .from('profiles')
         .select('id, username, avatar_url, university, state, show_university, show_state')
@@ -71,44 +65,8 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
       }
       
       console.log("Fetched profiles:", profiles?.length || 0);
-      
-      if (profiles && profiles.length > 0) {
-        setAllUsers(profiles);
-        setFilteredUsers(profiles);
-      } else {
-        // If in preview mode, add dummy data for testing
-        console.log("No profiles found, checking if we're in preview mode");
-        const isPreview = window.location.hostname.includes('lovable.app');
-        
-        if (isPreview) {
-          console.log("Adding sample profiles for preview");
-          const sampleProfiles: Profile[] = [
-            {
-              id: "sample-1",
-              username: "SampleUser1",
-              avatar_url: null,
-              university: "Sample University",
-              state: "CA",
-              show_university: true,
-              show_state: true
-            },
-            {
-              id: "sample-2",
-              username: "SampleUser2",
-              avatar_url: null,
-              university: "Another University",
-              state: "NY",
-              show_university: true,
-              show_state: true
-            }
-          ];
-          setAllUsers(sampleProfiles);
-          setFilteredUsers(sampleProfiles);
-        } else {
-          setAllUsers(profiles || []);
-          setFilteredUsers(profiles || []);
-        }
-      }
+      setAllUsers(profiles || []);
+      setFilteredUsers(profiles || []);
     } catch (error: any) {
       console.error('Error in fetchAllUsers:', error);
       setError(`Unexpected error: ${error.message}`);
@@ -118,14 +76,11 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     }
   }, [user]);
   
-  // Subscribe to profiles changes in real-time
   useEffect(() => {
     if (!user?.id) return;
     
-    // First fetch users
     fetchAllUsers();
     
-    // Then set up Supabase Realtime listener for profiles
     const profilesChannel = supabase
       .channel('profiles-changes')
       .on(
@@ -139,10 +94,8 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
           console.log("Profile changed:", payload);
           
           if (payload.eventType === 'INSERT') {
-            // Exclude the current user
             if (payload.new.id !== user.id) {
               setAllUsers(prev => {
-                // Check if user already exists to prevent duplicates
                 if (!prev.some(profile => profile.id === payload.new.id)) {
                   const newProfile = payload.new as Profile;
                   return [...prev, newProfile];
@@ -207,14 +160,11 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     }
   }, [user]);
   
-  // Set up Supabase Realtime listener for friend requests
   useEffect(() => {
     if (!user?.id) return;
     
-    // First fetch friend requests
     fetchFriendRequests();
 
-    // Then set up Supabase Realtime listener for friend requests
     const friendRequestsChannel = supabase
       .channel('friend-requests-changes')
       .on(
@@ -253,19 +203,23 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
   }, [user?.id, fetchFriendRequests]);
   
   useEffect(() => {
-    if (searchTerm.trim() === '') {
-      setFilteredUsers(allUsers);
-      return;
-    }
-    
-    const term = searchTerm.toLowerCase();
-    const filtered = allUsers.filter(profile => 
-      profile.username?.toLowerCase().includes(term) ||
-      profile.university?.toLowerCase().includes(term) ||
-      profile.state?.toLowerCase().includes(term)
-    );
-    
-    setFilteredUsers(filtered);
+    const delayDebounceFn = setTimeout(() => {
+      if (searchTerm.trim() === '') {
+        setFilteredUsers(allUsers);
+        return;
+      }
+      
+      const term = searchTerm.toLowerCase();
+      const filtered = allUsers.filter(profile => 
+        profile.username?.toLowerCase().includes(term) ||
+        profile.university?.toLowerCase().includes(term) ||
+        profile.state?.toLowerCase().includes(term)
+      );
+      
+      setFilteredUsers(filtered);
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
   }, [searchTerm, allUsers]);
   
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -343,7 +297,6 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
       }
       
       if (data && data.friendRequest) {
-        // Update the local state
         setFriendRequests(
           friendRequests.map(req => req.id === requestId ? data.friendRequest : req)
         );
@@ -380,7 +333,6 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
       }
       
       if (data && data.friendRequest) {
-        // Update the local state
         setFriendRequests(
           friendRequests.map(req => req.id === requestId ? data.friendRequest : req)
         );
@@ -405,12 +357,31 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
       );
     }
     
+    if (loading) {
+      return (
+        <div className="space-y-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="flex items-center space-x-3 p-3 rounded-lg border">
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <div className="space-y-2 flex-1">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+              <Skeleton className="h-8 w-16" />
+            </div>
+          ))}
+        </div>
+      );
+    }
+    
     if (users.length === 0) {
       return (
         <div className="py-8 text-center">
           <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
           <h3 className="mt-4 text-lg font-medium">No users found</h3>
-          <p className="mt-2 text-sm text-muted-foreground">{emptyMessage}</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {searchTerm ? "Try a different search term or check your spelling." : emptyMessage}
+          </p>
         </div>
       );
     }
@@ -512,6 +483,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
               className="pl-8"
               value={searchTerm}
               onChange={handleSearch}
+              aria-label="Search users"
             />
           </div>
         )}
@@ -525,24 +497,9 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
           </TabsList>
           
           <TabsContent value="all">
-            {loading ? (
-              <div className="animate-pulse space-y-4">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="flex items-center space-x-3 p-3 rounded-lg border">
-                    <div className="h-10 w-10 rounded-full bg-muted"></div>
-                    <div className="space-y-2 flex-1">
-                      <div className="h-4 bg-muted rounded w-24"></div>
-                      <div className="h-3 bg-muted rounded w-32"></div>
-                    </div>
-                    <div className="h-8 w-16 bg-muted rounded"></div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              renderUserList(
-                filteredUsers, 
-                "Try adjusting your search or check back later for new users to connect with."
-              )
+            {renderUserList(
+              filteredUsers, 
+              "No other users have registered yet. Be the first to invite others!"
             )}
           </TabsContent>
           

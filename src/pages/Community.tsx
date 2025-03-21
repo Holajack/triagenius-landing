@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import PageHeader from '@/components/common/PageHeader';
@@ -10,6 +11,8 @@ import CommunityWalkthrough from '@/components/walkthrough/CommunityWalkthrough'
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@/hooks/use-user';
 import { useNavigate } from 'react-router-dom';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 
 const Community = () => {
   const [activeTab, setActiveTab] = useState("users");
@@ -41,6 +44,10 @@ const Community = () => {
 
   const handleMessageClick = (userId: string) => {
     navigate(`/community/chat/${userId}`);
+  };
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
   };
 
   return (
