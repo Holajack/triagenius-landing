@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
@@ -9,14 +9,18 @@ import { useOnboarding } from "@/contexts/OnboardingContext";
 import { toast } from "sonner";
 import { UserGoal, WorkStyle, StudyEnvironment, SoundPreference } from "@/types/onboarding";
 import { PencilIcon, SaveIcon, Loader2Icon } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
 const ProfilePreferences = () => {
   const {
     state,
     dispatch,
     saveOnboardingState,
-    isLoading: contextLoading
+    isLoading: contextLoading,
+    hasUnsavedChanges,
+    setHasUnsavedChanges
   } = useOnboarding();
+  
   const [isEditing, setIsEditing] = useState(false);
   const [editedState, setEditedState] = useState({
     ...state
@@ -32,9 +36,18 @@ const ProfilePreferences = () => {
   
   const handleCancel = () => {
     setIsEditing(false);
+    setHasUnsavedChanges(false);
     setEditedState({
       ...state
     });
+  };
+  
+  const handleChange = (key: string, value: any) => {
+    setEditedState(prev => ({
+      ...prev,
+      [key]: value
+    }));
+    setHasUnsavedChanges(true);
   };
   
   const handleSave = async () => {
@@ -91,27 +104,20 @@ const ProfilePreferences = () => {
       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle>Preferences</CardTitle>
-          {!isEditing ? <Button onClick={handleEditStart} variant="outline" size="sm" disabled={isLoading || contextLoading}>
+          {!isEditing ? (
+            <Button onClick={handleEditStart} variant="outline" size="sm" disabled={isLoading || contextLoading}>
               <PencilIcon className="h-4 w-4 mr-2" />
               Edit
-            </Button> : <div className="flex space-x-2">
-              <Button onClick={handleCancel} variant="outline" size="sm" disabled={isLoading || contextLoading}>
-                Cancel
-              </Button>
-              <Button onClick={handleSave} size="sm" disabled={isLoading || contextLoading}>
-                {isLoading || contextLoading ? <>
-                    <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </> : <>
-                    <SaveIcon className="h-4 w-4 mr-2" />
-                    Save
-                  </>}
-              </Button>
-            </div>}
+            </Button>
+          ) : (
+            <Button onClick={handleCancel} variant="outline" size="sm" disabled={isLoading || contextLoading}>
+              Cancel
+            </Button>
+          )}
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-6 my-0 py-[58px]">
+      <CardContent className="space-y-6 my-0 pb-8">
         {contextLoading && <div className="w-full flex justify-center py-4">
             <Loader2Icon className="h-6 w-6 animate-spin text-primary" />
           </div>}
@@ -120,10 +126,16 @@ const ProfilePreferences = () => {
             <div className="space-y-2">
               <Label htmlFor="weekly-focus-goal">Weekly Focus Goal</Label>
               <div className="flex items-center space-x-2">
-                <Slider id="weekly-focus-goal" disabled={!isEditing || isLoading} value={[editedState.weeklyFocusGoal || state.weeklyFocusGoal || 10]} min={1} max={40} step={1} onValueChange={value => setEditedState(prev => ({
-              ...prev,
-              weeklyFocusGoal: value[0]
-            }))} className="flex-1" />
+                <Slider 
+                  id="weekly-focus-goal" 
+                  disabled={!isEditing || isLoading} 
+                  value={[editedState.weeklyFocusGoal || state.weeklyFocusGoal || 10]} 
+                  min={1} 
+                  max={40} 
+                  step={1} 
+                  onValueChange={value => handleChange('weeklyFocusGoal', value[0])}
+                  className="flex-1" 
+                />
                 <span className="text-sm font-medium w-12 text-right">
                   {editedState.weeklyFocusGoal || state.weeklyFocusGoal || 10} hrs
                 </span>
@@ -132,10 +144,11 @@ const ProfilePreferences = () => {
 
             <div className="space-y-2">
               <Label htmlFor="user-goal">Main Goal</Label>
-              <Select disabled={!isEditing || isLoading} value={editedState.userGoal || state.userGoal || ""} onValueChange={value => setEditedState(prev => ({
-            ...prev,
-            userGoal: value as UserGoal
-          }))}>
+              <Select 
+                disabled={!isEditing || isLoading} 
+                value={editedState.userGoal || state.userGoal || ""} 
+                onValueChange={value => handleChange('userGoal', value as UserGoal)}
+              >
                 <SelectTrigger id="user-goal">
                   <SelectValue placeholder="Select your main goal" />
                 </SelectTrigger>
@@ -149,10 +162,11 @@ const ProfilePreferences = () => {
 
             <div className="space-y-2">
               <Label htmlFor="work-style">Work Style</Label>
-              <Select disabled={!isEditing || isLoading} value={editedState.workStyle || state.workStyle || ""} onValueChange={value => setEditedState(prev => ({
-            ...prev,
-            workStyle: value as WorkStyle
-          }))}>
+              <Select 
+                disabled={!isEditing || isLoading} 
+                value={editedState.workStyle || state.workStyle || ""} 
+                onValueChange={value => handleChange('workStyle', value as WorkStyle)}
+              >
                 <SelectTrigger id="work-style">
                   <SelectValue placeholder="Select your work style" />
                 </SelectTrigger>
@@ -166,10 +180,11 @@ const ProfilePreferences = () => {
 
             <div className="space-y-2">
               <Label htmlFor="environment">Environment</Label>
-              <Select disabled={!isEditing || isLoading} value={editedState.environment || state.environment || ""} onValueChange={value => setEditedState(prev => ({
-            ...prev,
-            environment: value as StudyEnvironment
-          }))}>
+              <Select 
+                disabled={!isEditing || isLoading} 
+                value={editedState.environment || state.environment || ""} 
+                onValueChange={value => handleChange('environment', value as StudyEnvironment)}
+              >
                 <SelectTrigger id="environment">
                   <SelectValue placeholder="Select your preferred environment" />
                 </SelectTrigger>
@@ -185,10 +200,11 @@ const ProfilePreferences = () => {
 
             <div className="space-y-2">
               <Label htmlFor="sound-preference">Sound Preference</Label>
-              <Select disabled={!isEditing || isLoading} value={editedState.soundPreference || state.soundPreference || ""} onValueChange={value => setEditedState(prev => ({
-            ...prev,
-            soundPreference: value as SoundPreference
-          }))}>
+              <Select 
+                disabled={!isEditing || isLoading} 
+                value={editedState.soundPreference || state.soundPreference || ""} 
+                onValueChange={value => handleChange('soundPreference', value as SoundPreference)}
+              >
                 <SelectTrigger id="sound-preference">
                   <SelectValue placeholder="Select your sound preference" />
                 </SelectTrigger>
@@ -203,6 +219,34 @@ const ProfilePreferences = () => {
             </div>
           </div>}
       </CardContent>
+      
+      <AnimatePresence>
+        {isEditing && hasUnsavedChanges && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.2 }}
+          >
+            <CardFooter className="pt-2 pb-4 px-6 flex justify-end">
+              <Button onClick={handleSave} disabled={isLoading || contextLoading}>
+                {isLoading || contextLoading ? (
+                  <>
+                    <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <SaveIcon className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </CardFooter>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Card>;
 };
+
 export default ProfilePreferences;

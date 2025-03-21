@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { OnboardingState, UserGoal, WorkStyle, StudyEnvironment, SoundPreference } from '@/types/onboarding';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,15 +50,17 @@ type OnboardingContextType = {
   state: OnboardingState;
   dispatch: React.Dispatch<OnboardingAction>;
   saveOnboardingState: () => Promise<void>;
-  isLoading: boolean; // Added loading state
+  isLoading: boolean;
+  hasUnsavedChanges: boolean;
+  setHasUnsavedChanges: (value: boolean) => void;
 };
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
 
-// Explicitly type the component as React.FC to ensure React recognizes it properly
 export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(onboardingReducer, initialState);
-  const [isLoading, setIsLoading] = React.useState(false); // Added loading state
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
   
   // Save onboarding state to Supabase
   const saveOnboardingState = async () => {
@@ -121,6 +124,16 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
         throw new Error(saveError.message);
       }
       
+      // Save to localStorage for faster loading
+      localStorage.setItem('userPreferences', JSON.stringify({
+        userGoal: state.userGoal,
+        workStyle: state.workStyle,
+        environment: state.environment,
+        soundPreference: state.soundPreference,
+        weeklyFocusGoal: state.weeklyFocusGoal,
+      }));
+      
+      setHasUnsavedChanges(false);
       toast.success("Preferences saved successfully");
     } catch (error: any) {
       console.error('Error in saveOnboardingState:', error);
@@ -136,6 +149,15 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
     const loadOnboardingState = async () => {
       try {
         setIsLoading(true);
+        
+        // First try to load from localStorage for faster display
+        const savedPrefs = localStorage.getItem('userPreferences');
+        if (savedPrefs) {
+          const localPrefs = JSON.parse(savedPrefs);
+          dispatch({ type: 'LOAD_ONBOARDING_STATE', payload: localPrefs });
+        }
+        
+        // Then fetch from Supabase for accurate data
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
@@ -161,6 +183,15 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
             };
             
             dispatch({ type: 'LOAD_ONBOARDING_STATE', payload: onboardingState });
+            
+            // Update localStorage with the latest data from the database
+            localStorage.setItem('userPreferences', JSON.stringify({
+              userGoal: data.user_goal,
+              workStyle: data.work_style,
+              environment: data.learning_environment,
+              soundPreference: data.sound_preference,
+              weeklyFocusGoal: data.weekly_focus_goal || 10,
+            }));
           }
         }
       } catch (error) {
@@ -188,7 +219,9 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
     state,
     dispatch,
     saveOnboardingState,
-    isLoading
+    isLoading,
+    hasUnsavedChanges,
+    setHasUnsavedChanges
   };
 
   return (

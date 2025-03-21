@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -54,7 +53,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       
-      // Set initial user data
       setUser({
         id: authUser.id,
         email: authUser.email,
@@ -64,7 +62,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         profile: null
       });
       
-      // Fetch profile data
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -72,9 +69,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         .single();
       
       if (profileError) {
-        // Check if profile doesn't exist yet
         if (profileError.code === 'PGRST116') {
-          // Create profile if it doesn't exist
           const { error: insertError } = await supabase
             .from('profiles')
             .insert({
@@ -92,7 +87,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             console.error("Error creating profile:", insertError);
           }
           
-          // Update with default data
           setUser({
             id: authUser.id,
             email: authUser.email,
@@ -109,7 +103,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       
-      // Update with profile data
       setUser({
         id: authUser.id,
         email: profileData.email || authUser.email,
@@ -119,17 +112,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         profile: profileData as UserProfile
       });
       
-      // Load and apply saved session after successful login
       const savedSession = await loadUserSession(authUser.id);
       if (savedSession) {
         applySessionPreferences(savedSession, setTheme, setEnvironmentTheme);
         
-        // Check if we should redirect to last route
         if (savedSession.lastRoute && savedSession.lastRoute !== window.location.pathname) {
-          // Only redirect to certain safe routes, not to auth pages for example
           const safeRoutes = ['/dashboard', '/focus-session', '/bonuses', '/reports', '/profile', '/settings'];
           if (safeRoutes.some(route => savedSession.lastRoute.startsWith(route))) {
-            // If there's a saved focus session and the last route was the focus session page
             if (savedSession.focusSession && savedSession.lastRoute === '/focus-session') {
               toast.info("You have a saved focus session. Continue where you left off?", {
                 action: {
@@ -139,7 +128,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
                 duration: 10000
               });
             } else if (savedSession.lastRoute !== '/dashboard') {
-              // For other routes, show a toast with option to navigate back
               toast.info(`You were last on ${savedSession.lastRoute}`, {
                 action: {
                   label: "Go back",
@@ -149,6 +137,26 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
               });
             }
           }
+        }
+        
+        try {
+          const { data: prefsData, error: prefsError } = await supabase
+            .from('onboarding_preferences')
+            .select('*')
+            .eq('user_id', authUser.id)
+            .maybeSingle();
+            
+          if (!prefsError && prefsData) {
+            localStorage.setItem('userPreferences', JSON.stringify({
+              userGoal: prefsData.user_goal,
+              workStyle: prefsData.work_style,
+              environment: prefsData.learning_environment,
+              soundPreference: prefsData.sound_preference,
+              weeklyFocusGoal: prefsData.weekly_focus_goal || 10,
+            }));
+          }
+        } catch (prefsLoadError) {
+          console.error("Error pre-loading preferences:", prefsLoadError);
         }
       }
       
@@ -178,7 +186,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (error) throw error;
       
       toast.success("Profile updated successfully");
-      await fetchUserData(); // Refresh user data
+      await fetchUserData();
       
     } catch (error: any) {
       console.error("Failed to update profile:", error);
@@ -188,15 +196,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Enhanced logout function to save session before logging out
   const logout = async () => {
     try {
       if (user?.id) {
-        // Save the current session state before logout
         await saveUserSession(user.id);
       }
       
-      // Proceed with logout
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
@@ -208,11 +213,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Initial fetch
   useEffect(() => {
     fetchUserData();
     
-    // Subscribe to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         fetchUserData();
