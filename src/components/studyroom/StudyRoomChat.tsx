@@ -98,7 +98,7 @@ export const StudyRoomChat = ({ roomId }: StudyRoomChatProps) => {
                   
                   {isCurrentUser && (
                     <Avatar className="h-8 w-8 flex-shrink-0">
-                      <AvatarImage src={user?.avatar_url || ""} />
+                      <AvatarImage src={user?.avatarUrl || ""} />
                       <AvatarFallback>{(user?.username || "?")[0]}</AvatarFallback>
                     </Avatar>
                   )}
