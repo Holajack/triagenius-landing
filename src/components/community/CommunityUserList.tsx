@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -34,6 +33,7 @@ interface Profile {
 interface AuthUser {
   id: string;
   email: string | null;
+  username: string | null;
   created_at: string;
   full_name: string | null;
   last_sign_in_at: string | null;
@@ -190,7 +190,6 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     };
   }, [user?.id, fetchFriendRequests]);
   
-  // Filter users based on search query
   useEffect(() => {
     if (allUsers.length === 0) return;
     
@@ -202,10 +201,10 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
       usersToFilter = allUsers.filter(authUser => acceptedFriendIds.includes(authUser.id));
     }
     
-    // Apply search filtering if there's a search term
     if (searchQuery.trim() !== '') {
       const term = searchQuery.toLowerCase();
       usersToFilter = usersToFilter.filter(authUser => 
+        (authUser.username?.toLowerCase().includes(term)) ||
         (authUser.email?.toLowerCase().includes(term)) ||
         (authUser.full_name?.toLowerCase().includes(term))
       );
@@ -387,8 +386,8 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
             const friendRequest = getFriendRequest(authUser.id);
             const isReceivedRequest = friendRequest && friendRequest.sender_id === authUser.id;
             const isCurrentUser = authUser.id === user?.id;
+            const displayName = authUser.username || authUser.email?.split('@')[0] || 'User';
             
-            // Skip rendering if it's the current user and we're in pending/friends tab
             if ((activeTab === "pending" || activeTab === "friends") && isCurrentUser) {
               return null;
             }
@@ -402,12 +401,12 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={""} />
                     <AvatarFallback>
-                      {authUser.email?.charAt(0)?.toUpperCase() || "U"}
+                      {displayName?.charAt(0)?.toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <div className="font-medium flex items-center">
-                      {authUser.email || "Anonymous"}
+                      {displayName}
                       {isCurrentUser && (
                         <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                           You

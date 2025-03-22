@@ -62,6 +62,7 @@ serve(async (req) => {
     const filteredUsers = users.map(user => ({
       id: user.id,
       email: user.email,
+      username: user.user_metadata?.username || user.email?.split('@')[0] || 'User',
       created_at: user.created_at,
       full_name: user.user_metadata?.full_name || null,
       last_sign_in_at: user.last_sign_in_at
