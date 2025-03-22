@@ -47,6 +47,7 @@ import {
 import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
 import LeaderboardSkeletonList from "@/components/leaderboard/LeaderboardSkeletonList";
+import ActivityFeed from "@/components/leaderboard/ActivityFeed";
 import confetti from 'canvas-confetti';
 
 const Leaderboard = () => {
@@ -229,11 +230,7 @@ const Leaderboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ActivityFeed 
-                isNewUser={isNewUser} 
-                isLoading={isLoading}
-                activityData={activityData}
-              />
+              <ActivityFeed />
             </CardContent>
           </Card>
         </div>
@@ -830,122 +827,6 @@ const GlobalRankingsTab = () => {
         </div>
       </div>
     </TooltipProvider>
-  );
-};
-
-const ActivityFeed = ({ 
-  isNewUser, 
-  isLoading,
-  activityData 
-}: { 
-  isNewUser: boolean,
-  isLoading: boolean,
-  activityData: any[]
-}) => {
-  if (isLoading) {
-    return (
-      <div className="animate-pulse space-y-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="p-4 border rounded-lg">
-            <div className="flex items-start gap-3">
-              <div className="h-9 w-9 bg-muted rounded-full"></div>
-              <div className="flex-1">
-                <div className="h-4 bg-muted rounded w-24 mb-2"></div>
-                <div className="h-3 bg-muted rounded w-full mb-3"></div>
-                <div className="flex gap-4">
-                  <div className="h-3 bg-muted rounded w-16"></div>
-                  <div className="h-3 bg-muted rounded w-10"></div>
-                  <div className="h-3 bg-muted rounded w-10"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-  
-  if (isNewUser || activityData.length === 0) {
-    return (
-      <div className="py-10 text-center">
-        <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground/50" />
-        <h3 className="mt-4 text-sm font-medium">No Community Activity Yet</h3>
-        <p className="mt-2 text-xs text-muted-foreground max-w-xs mx-auto">
-          Complete focus sessions and interact with other users to see community activity here.
-        </p>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="mt-4"
-          onClick={() => window.location.href = "/community"}
-        >
-          Explore Community
-        </Button>
-      </div>
-    );
-  }
-  
-  return (
-    <div className="space-y-4">
-      {activityData.map((activity) => (
-        <div 
-          key={activity.id} 
-          className={`p-4 border rounded-lg ${activity.isAI ? "bg-purple-50 dark:bg-purple-900/10" : ""}`}
-        >
-          <div className="flex items-start gap-3">
-            <Avatar className="h-9 w-9">
-              <AvatarImage src={activity.avatar} alt={activity.user} />
-              <AvatarFallback>{activity.user.charAt(0)}</AvatarFallback>
-            </Avatar>
-            
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{activity.user}</span>
-                {activity.isAI && (
-                  <Badge variant="outline" className="text-xs flex items-center gap-1">
-                    <Brain className="h-3 w-3" />
-                    AI Insight
-                  </Badge>
-                )}
-              </div>
-              
-              <p className="text-sm mt-1">{activity.action}</p>
-              
-              <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                <span>{activity.time}</span>
-                <button className="flex items-center gap-1">
-                  <MessageCircle className="h-4 w-4" />
-                  <span>{activity.comments}</span>
-                </button>
-                <button className={`flex items-center gap-1 ${activity.isLiked ? "text-red-500" : ""}`}>
-                  <Heart className="h-4 w-4" />
-                  <span>{activity.likes}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
-      
-      {activityData.length > 5 && (
-        <>
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Earlier Activity</span>
-            </div>
-          </div>
-          
-          <div className="flex justify-center">
-            <Button variant="outline" size="sm">
-              View More
-            </Button>
-          </div>
-        </>
-      )}
-    </div>
   );
 };
 

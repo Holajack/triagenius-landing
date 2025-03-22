@@ -63,11 +63,27 @@ export const getUserDisplayInfo = (profile: Partial<UserProfile> | null): {
 };
 
 /**
+ * Generate initials from a display name
+ * Used for avatar fallbacks
+ */
+export const getInitials = (displayName: string): string => {
+  if (!displayName) return '?';
+  
+  const parts = displayName.split(' ');
+  if (parts.length === 1) {
+    return displayName.charAt(0).toUpperCase();
+  }
+  
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+};
+
+/**
  * Hook to get functions for retrieving user display information
  */
 export const useDisplayName = () => {
   return {
     getDisplayName,
-    getUserDisplayInfo
+    getUserDisplayInfo,
+    getInitials
   };
 };
