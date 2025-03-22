@@ -33,21 +33,41 @@ serve(async (req) => {
       }
     );
 
-    // Get the authenticated user
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    
-    if (userError || !user) {
+    // Parse request body
+    let requestData;
+    try {
+      requestData = await req.json();
+    } catch (e) {
+      console.error("Error parsing request JSON:", e);
       return new Response(
-        JSON.stringify({ error: 'Unauthorized', details: userError?.message || 'User not found' }), 
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+        JSON.stringify({ error: 'Invalid JSON in request body' }), 
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
 
-    // Parse request body
-    let { userId, feedType, limit = 50 } = await req.json() as ActivityRequest;
+    // Get the authenticated user - without throwing error if not authenticated
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser();
     
-    // Default to the authenticated user if userId not provided
-    userId = userId || user.id;
+    if (userError) {
+      console.error("Auth error:", userError.message);
+    }
+    
+    const user = userData?.user;
+    
+    // Extract request parameters with defaults
+    let userId = requestData?.userId || user?.id;
+    const feedType = requestData?.feedType || 'global';
+    const limit = requestData?.limit || 50;
+    
+    // Check if we have a valid userId (either from request or from auth)
+    if (!userId && feedType === 'friends') {
+      console.log("No user ID available for friends feed, defaulting to global");
+      // For friends feed without authentication, default to global feed
+      return new Response(
+        JSON.stringify({ data: [] }), 
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
 
     let activitiesQuery = supabaseClient
       .from('activities')
@@ -71,7 +91,7 @@ serve(async (req) => {
       .limit(limit);
 
     // For friends feed, we need to filter by user's friends
-    if (feedType === 'friends') {
+    if (feedType === 'friends' && userId) {
       // Get the friends list
       const { data: friendsData, error: friendsError } = await supabaseClient
         .from('friends')
@@ -80,10 +100,7 @@ serve(async (req) => {
       
       if (friendsError) {
         console.error('Error fetching friends:', friendsError);
-        return new Response(
-          JSON.stringify({ error: 'Error fetching friends', details: friendsError.message }), 
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
-        );
+        // Don't fail the whole request, just log it and proceed with an empty friends list
       }
 
       // If there are friends, filter activities by friend IDs
@@ -110,7 +127,7 @@ serve(async (req) => {
     }
 
     // Process activities to get the correct display name and check if the current user has reacted
-    const processedActivities = activities.map(activity => {
+    const processedActivities = (activities || []).map(activity => {
       const profileData = activity.profiles;
       const username = profileData?.username || 'Anonymous';
       const fullName = profileData?.full_name || null;
@@ -123,13 +140,13 @@ serve(async (req) => {
       }
 
       // Check if current user has liked this activity
-      const userReactions = activity.reactions.filter(r => r.reactor_id === userId);
+      const userReactions = (activity.reactions || []).filter(r => r.reactor_id === userId);
       const hasLiked = userReactions.some(r => r.reaction_type === 'like');
       const hasEncouraged = userReactions.some(r => r.reaction_type === 'encouragement');
       
       // Count reactions by type
-      const likesCount = activity.reactions.filter(r => r.reaction_type === 'like').length;
-      const encouragementsCount = activity.reactions.filter(r => r.reaction_type === 'encouragement').length;
+      const likesCount = (activity.reactions || []).filter(r => r.reaction_type === 'like').length;
+      const encouragementsCount = (activity.reactions || []).filter(r => r.reaction_type === 'encouragement').length;
 
       // Calculate time ago
       const timestamp = new Date(activity.timestamp);
@@ -167,7 +184,7 @@ serve(async (req) => {
           encouragements: encouragementsCount,
           hasLiked,
           hasEncouraged,
-          details: activity.reactions.map(r => ({
+          details: (activity.reactions || []).map(r => ({
             id: r.id,
             type: r.reaction_type,
             message: r.message,

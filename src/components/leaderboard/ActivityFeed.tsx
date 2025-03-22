@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Heart, MessageCircle, Clock, User, Trophy, Flame, Brain, Sparkles } from "lucide-react";
@@ -73,6 +72,7 @@ const ActivityFeed = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [encourageActivity, setEncourageActivity] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   
   const getActionIcon = (actionType: string) => {
     switch (actionType) {
@@ -91,13 +91,14 @@ const ActivityFeed = () => {
     }
   };
   
-  // Fetch activities
   const fetchActivities = async () => {
     if (!user?.id) return;
     
     setIsLoading(true);
+    setError(null);
+    
     try {
-      const { data, error } = await supabase.functions.invoke('get-community-activity', {
+      const response = await supabase.functions.invoke('get-community-activity', {
         body: {
           userId: user.id,
           feedType: feedType,
@@ -105,18 +106,36 @@ const ActivityFeed = () => {
         }
       });
       
-      if (error) {
-        console.error('Error fetching activities:', error);
+      if (response.error) {
+        console.error('Error fetching activities:', response.error);
+        setError(response.error.message || 'Failed to load activities');
         toast({
           title: "Error loading activities",
-          description: error.message,
+          description: response.error.message || 'An unexpected error occurred',
           variant: "destructive"
         });
-      } else if (data?.data) {
-        setActivities(data.data);
+      } else if (response.data?.data) {
+        setActivities(response.data.data);
+      } else if (response.data?.error) {
+        console.error('Server error:', response.data.error);
+        setError(response.data.error);
+        toast({
+          title: "Error loading activities",
+          description: response.data.error,
+          variant: "destructive"
+        });
+      } else {
+        console.error('Unexpected response format:', response);
+        setError('Received an invalid response from the server');
+        toast({
+          title: "Error loading activities",
+          description: "Received an invalid response from the server",
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error('Error invoking function:', error);
+      setError('Network error. Please check your connection and try again.');
       toast({
         title: "Couldn't load activities",
         description: "Please try again later",
@@ -127,7 +146,6 @@ const ActivityFeed = () => {
     }
   };
   
-  // React to activity
   const reactToActivity = async (activityId: string, reactionType: "like" | "encouragement", message?: string) => {
     if (!user?.id) {
       toast({
@@ -154,8 +172,14 @@ const ActivityFeed = () => {
           description: error.message,
           variant: "destructive"
         });
+      } else if (data?.error) {
+        console.error('Server error:', data.error);
+        toast({
+          title: "Error",
+          description: data.error,
+          variant: "destructive"
+        });
       } else {
-        // Update the local state to reflect the change immediately
         setActivities(currentActivities => {
           return currentActivities.map(activity => {
             if (activity.id === activityId) {
@@ -174,7 +198,6 @@ const ActivityFeed = () => {
                   updatedReactions.encouragements += 1;
                   updatedReactions.hasEncouraged = true;
                   
-                  // Add the new reaction to details
                   if (data.data?.id) {
                     updatedReactions.details.push({
                       id: data.data.id,
@@ -190,7 +213,6 @@ const ActivityFeed = () => {
                   updatedReactions.encouragements = Math.max(0, updatedReactions.encouragements - 1);
                   updatedReactions.hasEncouraged = false;
                   
-                  // Remove the reaction from details
                   updatedReactions.details = updatedReactions.details.filter(
                     r => !(r.reactorId === user.id && r.type === 'encouragement')
                   );
@@ -222,19 +244,16 @@ const ActivityFeed = () => {
       });
     }
     
-    // Reset the encourage state
     if (reactionType === 'encouragement') {
       setEncourageActivity(null);
     }
   };
   
-  // Set up real-time subscriptions
   useEffect(() => {
     if (!user?.id) return;
     
     fetchActivities();
     
-    // Subscribe to real-time updates
     const channel = supabase
       .channel('activity_changes')
       .on('postgres_changes', 
@@ -287,6 +306,26 @@ const ActivityFeed = () => {
         <p className="mt-2 text-xs text-muted-foreground max-w-xs mx-auto">
           You need to be signed in to see community activity.
         </p>
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="py-10 text-center">
+        <MessageCircle className="mx-auto h-12 w-12 text-red-500/50" />
+        <h3 className="mt-4 text-sm font-medium">Error Loading Activities</h3>
+        <p className="mt-2 text-xs text-muted-foreground max-w-xs mx-auto">
+          {error}
+        </p>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="mt-4"
+          onClick={fetchActivities}
+        >
+          Try Again
+        </Button>
       </div>
     );
   }
@@ -426,7 +465,6 @@ const ActivityCard = ({
               </TooltipContent>
             </Tooltip>
             
-            {/* EncouragementActions */}
             {encourageActivity === activity.id ? (
               <div className="flex flex-wrap gap-2 mt-2">
                 {ENCOURAGEMENT_OPTIONS.map((message, index) => (
