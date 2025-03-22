@@ -22,6 +22,7 @@ interface EditProfileDialogProps {
 const formSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Please enter a valid email"),
+  full_name: z.string().min(2, "Full name must be at least 2 characters"),
 });
 
 const AVATAR_MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -38,6 +39,7 @@ export function EditProfileDialog({ open, onOpenChange, onUpdate }: EditProfileD
     defaultValues: {
       username: "",
       email: "",
+      full_name: "",
     },
   });
   
@@ -47,6 +49,7 @@ export function EditProfileDialog({ open, onOpenChange, onUpdate }: EditProfileD
       form.reset({
         username: user.username || "",
         email: user.email || "",
+        full_name: user.profile?.full_name || "",
       });
       
       // Reset avatar preview
@@ -130,6 +133,7 @@ export function EditProfileDialog({ open, onOpenChange, onUpdate }: EditProfileD
       const updateData: any = {
         username: values.username,
         email: values.email,
+        full_name: values.full_name,
       };
       
       // Only add avatar_url if we have a new one
@@ -227,6 +231,20 @@ export function EditProfileDialog({ open, onOpenChange, onUpdate }: EditProfileD
                   <FormLabel>Username</FormLabel>
                   <FormControl>
                     <Input placeholder="Your username" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="full_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Full Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Your full name" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

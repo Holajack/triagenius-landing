@@ -36,6 +36,7 @@ interface AuthUser {
   username: string | null;
   created_at: string;
   full_name: string | null;
+  display_name_preference?: string;
   last_sign_in_at: string | null;
 }
 
@@ -335,6 +336,13 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
       toast.error("Failed to reject friend request");
     }
   };
+
+  const getDisplayName = (authUser: AuthUser): string => {
+    if (authUser.display_name_preference === 'full_name' && authUser.full_name) {
+      return authUser.full_name;
+    }
+    return authUser.username || authUser.email?.split('@')[0] || 'User';
+  };
   
   const renderUserList = (users: AuthUser[], emptyMessage: string) => {
     if (error) {
@@ -386,7 +394,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
             const friendRequest = getFriendRequest(authUser.id);
             const isReceivedRequest = friendRequest && friendRequest.sender_id === authUser.id;
             const isCurrentUser = authUser.id === user?.id;
-            const displayName = authUser.username || authUser.email?.split('@')[0] || 'User';
+            const displayName = getDisplayName(authUser);
             
             if ((activeTab === "pending" || activeTab === "friends") && isCurrentUser) {
               return null;

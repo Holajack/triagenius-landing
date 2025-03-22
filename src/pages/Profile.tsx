@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import NavigationBar from "@/components/dashboard/NavigationBar";
@@ -32,6 +33,7 @@ const Profile = () => {
     username: "",
     email: "",
     avatar_url: "",
+    full_name: "",
     
     university: "",
     major: "",
@@ -43,7 +45,8 @@ const Profile = () => {
     show_university: true,
     show_business: true,
     show_state: true,
-    show_classes: true
+    show_classes: true,
+    display_name_preference: "username" as "username" | "full_name"
   });
   const [loading, setLoading] = useState(true);
   const [editedData, setEditedData] = useState({...profileData});
@@ -63,7 +66,7 @@ const Profile = () => {
       
       const { data, error } = await supabase
         .from('profiles')
-        .select('username, email, avatar_url, university, major, business, profession, state, classes, show_university, show_business, show_state, show_classes')
+        .select('username, email, avatar_url, full_name, university, major, business, profession, state, classes, show_university, show_business, show_state, show_classes, display_name_preference')
         .eq('id', user.id)
         .single();
       
@@ -73,6 +76,7 @@ const Profile = () => {
         username: data.username || "",
         email: data.email || "",
         avatar_url: data.avatar_url || "",
+        full_name: data.full_name || "",
         university: data.university || "",
         major: data.major || "",
         business: data.business || "",
@@ -82,13 +86,15 @@ const Profile = () => {
         show_university: data.show_university !== false,
         show_business: data.show_business !== false,
         show_state: data.show_state !== false,
-        show_classes: data.show_classes !== false
+        show_classes: data.show_classes !== false,
+        display_name_preference: data.display_name_preference || "username"
       });
       
       setEditedData({
         username: data.username || "",
         email: data.email || "",
         avatar_url: data.avatar_url || "",
+        full_name: data.full_name || "",
         university: data.university || "",
         major: data.major || "",
         business: data.business || "",
@@ -98,7 +104,8 @@ const Profile = () => {
         show_university: data.show_university !== false,
         show_business: data.show_business !== false,
         show_state: data.show_state !== false,
-        show_classes: data.show_classes !== false
+        show_classes: data.show_classes !== false,
+        display_name_preference: data.display_name_preference || "username"
       });
     } catch (error) {
       console.error("Error loading profile:", error);
@@ -147,6 +154,7 @@ const Profile = () => {
           username: editedData.username,
           email: editedData.email,
           avatar_url: editedData.avatar_url,
+          full_name: editedData.full_name,
           university: editedData.university,
           major: editedData.major,
           business: editedData.business,
@@ -156,7 +164,8 @@ const Profile = () => {
           show_university: editedData.show_university,
           show_business: editedData.show_business,
           show_state: editedData.show_state,
-          show_classes: editedData.show_classes
+          show_classes: editedData.show_classes,
+          display_name_preference: editedData.display_name_preference
         })
         .eq('id', user.id);
       
@@ -275,6 +284,23 @@ const Profile = () => {
                         />
                       ) : (
                         <p className="text-sm">{profileData.email || "Not set"}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center">
+                        <UserIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+                        <Label htmlFor="full_name">Full Name</Label>
+                      </div>
+                      {isEditing ? (
+                        <Input 
+                          id="full_name" 
+                          value={editedData.full_name} 
+                          onChange={(e) => handleChange('full_name', e.target.value)}
+                          placeholder="e.g. Taylor Jordan"
+                        />
+                      ) : (
+                        <p className="text-sm">{profileData.full_name || "Not set"}</p>
                       )}
                     </div>
                   </div>
@@ -440,6 +466,22 @@ const Profile = () => {
                 </p>
                 
                 <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">Show Full Name in Community</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Use your full name instead of username in community
+                      </p>
+                    </div>
+                    <Switch 
+                      checked={editedData.display_name_preference === "full_name"}
+                      onCheckedChange={(checked) => 
+                        handleChange('display_name_preference', checked ? "full_name" : "username")
+                      }
+                      disabled={!isEditing}
+                    />
+                  </div>
+
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-medium">Show University Information</h4>

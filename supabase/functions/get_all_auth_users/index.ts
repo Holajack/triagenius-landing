@@ -58,15 +58,40 @@ serve(async (req) => {
       )
     }
 
+    // Get profiles to fetch display preferences
+    const { data: profiles, error: profilesError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, username, full_name, display_name_preference')
+    
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError)
+      // Continue without profiles data
+    }
+
+    const profileMap = new Map();
+    if (profiles) {
+      profiles.forEach(profile => {
+        profileMap.set(profile.id, profile);
+      });
+    }
+
     // Filter and format the user data to include only necessary information
-    const filteredUsers = users.map(user => ({
-      id: user.id,
-      email: user.email,
-      username: user.user_metadata?.username || user.email?.split('@')[0] || 'User',
-      created_at: user.created_at,
-      full_name: user.user_metadata?.full_name || null,
-      last_sign_in_at: user.last_sign_in_at
-    }))
+    const filteredUsers = users.map(user => {
+      const profile = profileMap.get(user.id);
+      const displayNamePreference = profile?.display_name_preference || 'username';
+      const profileFullName = profile?.full_name;
+      const metadataFullName = user.user_metadata?.full_name;
+      
+      return {
+        id: user.id,
+        email: user.email,
+        username: user.user_metadata?.username || user.email?.split('@')[0] || 'User',
+        created_at: user.created_at,
+        full_name: profileFullName || metadataFullName || null,
+        display_name_preference: displayNamePreference,
+        last_sign_in_at: user.last_sign_in_at
+      };
+    });
 
     console.log(`Successfully fetched ${filteredUsers.length} users`)
     

@@ -455,7 +455,9 @@ export type Database = {
           business: string | null
           classes: string[] | null
           created_at: string
+          display_name_preference: string | null
           email: string | null
+          full_name: string | null
           id: string
           major: string | null
           password_hash: string | null
@@ -476,7 +478,9 @@ export type Database = {
           business?: string | null
           classes?: string[] | null
           created_at?: string
+          display_name_preference?: string | null
           email?: string | null
+          full_name?: string | null
           id: string
           major?: string | null
           password_hash?: string | null
@@ -497,7 +501,9 @@ export type Database = {
           business?: string | null
           classes?: string[] | null
           created_at?: string
+          display_name_preference?: string | null
           email?: string | null
+          full_name?: string | null
           id?: string
           major?: string | null
           password_hash?: string | null

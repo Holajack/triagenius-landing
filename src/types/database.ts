@@ -39,6 +39,8 @@ export interface UserProfile {
   username?: string | null;
   email?: string | null;
   avatar_url?: string | null;
+  full_name?: string | null;
+  display_name_preference?: 'username' | 'full_name' | null;
   preferences?: Record<string, any> | null;
   privacy_settings?: Record<string, any> | null;
   university?: string | null;

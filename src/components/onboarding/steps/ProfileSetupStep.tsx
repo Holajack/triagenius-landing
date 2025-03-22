@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@/hooks/use-user';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,13 +14,15 @@ export const ProfileSetupStep = () => {
   const { user } = useUser();
   const [profileData, setProfileData] = useState({
     username: '',
+    full_name: '',
     university: '',
     major: '',
     business: '',
     profession: '',
     state: '',
     classes: [] as string[],
-    avatar_url: ''
+    avatar_url: '',
+    display_name_preference: 'username'
   });
   const [loading, setLoading] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
@@ -33,7 +36,7 @@ export const ProfileSetupStep = () => {
         
         const { data, error } = await supabase
           .from('profiles')
-          .select('username, avatar_url, university, major, business, profession, state, classes')
+          .select('username, full_name, avatar_url, university, major, business, profession, state, classes, display_name_preference')
           .eq('id', user.id)
           .single();
         
@@ -42,13 +45,15 @@ export const ProfileSetupStep = () => {
         // Prefill with existing data if available
         setProfileData({
           username: data.username || user.email?.split('@')[0] || '',
+          full_name: data.full_name || '',
           university: data.university || '',
           major: data.major || '',
           business: data.business || '',
           profession: data.profession || '',
           state: data.state || '',
           classes: Array.isArray(data.classes) ? data.classes : [],
-          avatar_url: data.avatar_url || ''
+          avatar_url: data.avatar_url || '',
+          display_name_preference: data.display_name_preference || 'username'
         });
       } catch (error) {
         console.error("Error loading profile data:", error);
@@ -98,13 +103,15 @@ export const ProfileSetupStep = () => {
         .from('profiles')
         .update({
           username: profileData.username || user.email?.split('@')[0],
+          full_name: profileData.full_name,
           university: profileData.university,
           major: profileData.major,
           business: profileData.business,
           profession: profileData.profession,
           state: profileData.state,
           classes: formattedClasses,
-          avatar_url: profileData.avatar_url
+          avatar_url: profileData.avatar_url,
+          display_name_preference: profileData.display_name_preference
         })
         .eq('id', user.id);
       
@@ -164,6 +171,20 @@ export const ProfileSetupStep = () => {
             value={profileData.username} 
             onChange={(e) => handleChange('username', e.target.value)}
             placeholder="Choose a username"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center">
+            <UserIcon className="w-4 h-4 mr-2 text-muted-foreground" />
+            <Label htmlFor="full_name">Full Name *</Label>
+          </div>
+          <Input 
+            id="full_name" 
+            value={profileData.full_name} 
+            onChange={(e) => handleChange('full_name', e.target.value)}
+            placeholder="e.g. Taylor Jordan"
+            required
           />
         </div>
         
