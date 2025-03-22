@@ -34,7 +34,7 @@ serve(async (req) => {
     );
 
     // Parse request body
-    let requestData;
+    let requestData: ActivityRequest | null = null;
     try {
       requestData = await req.json();
     } catch (e) {
@@ -45,30 +45,23 @@ serve(async (req) => {
       );
     }
 
-    // Get the authenticated user - without throwing error if not authenticated
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+    // Default values if request data is missing
+    const userId = requestData?.userId || null;
+    const feedType = requestData?.feedType || 'global';
+    const limit = requestData?.limit || 50;
     
+    // Get the authenticated user if available
+    const { data: userData, error: userError } = await supabaseClient.auth.getUser();
     if (userError) {
       console.error("Auth error:", userError.message);
     }
     
-    const user = userData?.user;
+    const authenticatedUserId = userData?.user?.id;
     
-    // Extract request parameters with defaults
-    let userId = requestData?.userId || user?.id;
-    const feedType = requestData?.feedType || 'global';
-    const limit = requestData?.limit || 50;
+    // Use authenticated user ID if no userId provided in request
+    const effectiveUserId = userId || authenticatedUserId;
     
-    // Check if we have a valid userId (either from request or from auth)
-    if (!userId && feedType === 'friends') {
-      console.log("No user ID available for friends feed, defaulting to global");
-      // For friends feed without authentication, default to global feed
-      return new Response(
-        JSON.stringify({ data: [] }), 
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-      );
-    }
-
+    // Initialize query to get activities
     let activitiesQuery = supabaseClient
       .from('activities')
       .select(`
@@ -91,27 +84,27 @@ serve(async (req) => {
       .limit(limit);
 
     // For friends feed, we need to filter by user's friends
-    if (feedType === 'friends' && userId) {
+    if (feedType === 'friends' && effectiveUserId) {
       // Get the friends list
       const { data: friendsData, error: friendsError } = await supabaseClient
         .from('friends')
         .select('friend_id')
-        .eq('user_id', userId);
+        .eq('user_id', effectiveUserId);
       
       if (friendsError) {
         console.error('Error fetching friends:', friendsError);
-        // Don't fail the whole request, just log it and proceed with an empty friends list
+        // Continue with empty friends list instead of failing
       }
 
       // If there are friends, filter activities by friend IDs
       if (friendsData && friendsData.length > 0) {
         const friendIds = friendsData.map(f => f.friend_id);
         // Include current user in friends feed
-        friendIds.push(userId);
+        friendIds.push(effectiveUserId);
         activitiesQuery = activitiesQuery.in('user_id', friendIds);
       } else {
         // If no friends, only show the current user's activities
-        activitiesQuery = activitiesQuery.eq('user_id', userId);
+        activitiesQuery = activitiesQuery.eq('user_id', effectiveUserId);
       }
     }
 
@@ -140,7 +133,7 @@ serve(async (req) => {
       }
 
       // Check if current user has liked this activity
-      const userReactions = (activity.reactions || []).filter(r => r.reactor_id === userId);
+      const userReactions = (activity.reactions || []).filter(r => r.reactor_id === effectiveUserId);
       const hasLiked = userReactions.some(r => r.reaction_type === 'like');
       const hasEncouraged = userReactions.some(r => r.reaction_type === 'encouragement');
       
@@ -158,7 +151,7 @@ serve(async (req) => {
       
       let timeAgo;
       if (diffMins < 60) {
-        timeAgo = `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+        timeAgo = `${diffMins === 0 ? 'just now' : `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`}`;
       } else if (diffHours < 24) {
         timeAgo = `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
       } else {
@@ -177,7 +170,7 @@ serve(async (req) => {
           username,
           fullName,
           avatarUrl: profileData?.avatar_url || '/placeholder.svg',
-          isCurrentUser: activity.user_id === userId
+          isCurrentUser: activity.user_id === effectiveUserId
         },
         reactions: {
           likes: likesCount,

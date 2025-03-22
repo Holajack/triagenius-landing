@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Heart, MessageCircle, Clock, User, Trophy, Flame, Brain, Sparkles } from "lucide-react";
@@ -92,16 +93,17 @@ const ActivityFeed = () => {
   };
   
   const fetchActivities = async () => {
-    if (!user?.id) return;
-    
     setIsLoading(true);
     setError(null);
     
     try {
+      // Always pass the user ID if available for proper filtering
+      const userId = user?.id || null;
+      
       const response = await supabase.functions.invoke('get-community-activity', {
         body: {
-          userId: user.id,
-          feedType: feedType,
+          userId,
+          feedType,
           limit: 50
         }
       });
@@ -250,10 +252,9 @@ const ActivityFeed = () => {
   };
   
   useEffect(() => {
-    if (!user?.id) return;
-    
     fetchActivities();
     
+    // Setup realtime subscription for activity updates
     const channel = supabase
       .channel('activity_changes')
       .on('postgres_changes', 
@@ -273,7 +274,7 @@ const ActivityFeed = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, feedType]);
+  }, [feedType, user?.id]);
   
   if (isLoading) {
     return (
@@ -405,8 +406,8 @@ const ActivityFeed = () => {
           </div>
           
           <div className="flex justify-center mt-4">
-            <Button variant="outline" size="sm">
-              View More
+            <Button variant="outline" size="sm" onClick={fetchActivities}>
+              Refresh Activities
             </Button>
           </div>
         </>
@@ -443,6 +444,9 @@ const ActivityCard = ({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-medium">{activity.user.displayName}</span>
+            {activity.user.isCurrentUser && (
+              <Badge variant="secondary" className="text-xs">You</Badge>
+            )}
             <Badge variant="outline" className="text-xs flex items-center gap-1">
               {getActionIcon(activity.actionType)}
               {activity.actionType === "focus_complete" && "Focus Session"}
