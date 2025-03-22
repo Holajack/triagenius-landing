@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -523,6 +524,7 @@ const GlobalRankingsTab = () => {
     const fetchGlobalData = async () => {
       setLoading(true);
       try {
+        // Use the updated getGlobalLeaderboardData function to get all users
         const data = await getGlobalLeaderboardData();
         setGlobalData(data);
         
@@ -536,6 +538,22 @@ const GlobalRankingsTab = () => {
     };
     
     fetchGlobalData();
+    
+    // Set up real-time subscription for leaderboard updates
+    const channel = supabase
+      .channel('global-leaderboard-updates')
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'leaderboard_stats' }, 
+        async () => {
+          const data = await getGlobalLeaderboardData();
+          setGlobalData(data);
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
   
   const getProgressColor = () => {
