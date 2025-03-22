@@ -24,10 +24,50 @@ export const getDisplayName = (profile: Partial<UserProfile> | null): string => 
 };
 
 /**
- * Hook to get a function for retrieving a user's display name based on preferences
+ * Gets the full display information for a user, including display name and original name
+ * Used for tooltips and detailed displays
+ */
+export const getUserDisplayInfo = (profile: Partial<UserProfile> | null): {
+  displayName: string;
+  originalName: string | null;
+  hasCustomName: boolean;
+} => {
+  if (!profile) {
+    return {
+      displayName: 'Unknown User',
+      originalName: null,
+      hasCustomName: false
+    };
+  }
+
+  const displayName = getDisplayName(profile);
+  let originalName = null;
+  let hasCustomName = false;
+  
+  // If using full_name as display, provide username as original
+  if (profile.display_name_preference === 'full_name' && profile.username) {
+    originalName = profile.username;
+    hasCustomName = true;
+  } 
+  // If using username as display, provide full_name as original if it exists
+  else if (profile.display_name_preference === 'username' && profile.full_name) {
+    originalName = profile.full_name;
+    hasCustomName = true;
+  }
+
+  return {
+    displayName,
+    originalName,
+    hasCustomName
+  };
+};
+
+/**
+ * Hook to get functions for retrieving user display information
  */
 export const useDisplayName = () => {
   return {
-    getDisplayName
+    getDisplayName,
+    getUserDisplayInfo
   };
 };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +6,17 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { 
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import NavigationBar from "@/components/dashboard/NavigationBar";
 import { 
   Award, 
@@ -22,7 +33,8 @@ import {
   Sparkles,
   Crown,
   Medal,
-  ChevronDown
+  ChevronDown,
+  Info
 } from "lucide-react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { 
@@ -35,6 +47,7 @@ import {
 import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
 import LeaderboardSkeletonList from "@/components/leaderboard/LeaderboardSkeletonList";
+import confetti from 'canvas-confetti';
 
 const Leaderboard = () => {
   const { state } = useOnboarding();
@@ -142,90 +155,92 @@ const Leaderboard = () => {
   };
   
   return (
-    <div className="container pb-20">
-      <PageHeader 
-        title="Leaderboard" 
-        subtitle="Track your progress and compare with others"
-      />
-      
-      <div className="space-y-8">
-        <PersonalStats 
-          weeklyFocusGoal={state.weeklyFocusGoal} 
-          getAccentColor={getAccentColor} 
-          isNewUser={isNewUser}
-          isLoading={isLoading}
-          stats={personalStats}
+    <TooltipProvider>
+      <div className="container pb-20">
+        <PageHeader 
+          title="Leaderboard" 
+          subtitle="Track your progress and compare with others"
         />
         
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-xl flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-triage-purple" />
-              Leaderboard Rankings
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Tabs 
-              defaultValue="friends" 
-              value={leaderboardTab} 
-              onValueChange={(value) => setLeaderboardTab(value as "friends" | "global")}
-              className="w-full"
-            >
-              <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="friends" className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  <span>Friends</span>
-                </TabsTrigger>
-                <TabsTrigger value="global" className="flex items-center gap-2">
-                  <Trophy className="h-4 w-4" />
-                  <span>Global</span>
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="friends" className="mt-0">
-                <LeaderboardList 
-                  type="friends" 
-                  getAccentColor={getAccentColor} 
-                  isNewUser={isNewUser} 
-                  isLoading={isLoading}
-                  data={friendsData}
-                  rankingMessage={friendsRankingMessage}
-                />
-                
-                <div className="flex justify-center mt-4">
-                  <Button variant="outline" className="flex items-center gap-2" onClick={() => window.location.href = "/community"}>
+        <div className="space-y-8">
+          <PersonalStats 
+            weeklyFocusGoal={state.weeklyFocusGoal} 
+            getAccentColor={getAccentColor} 
+            isNewUser={isNewUser}
+            isLoading={isLoading}
+            stats={personalStats}
+          />
+          
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-xl flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-triage-purple" />
+                Leaderboard Rankings
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Tabs 
+                defaultValue="friends" 
+                value={leaderboardTab} 
+                onValueChange={(value) => setLeaderboardTab(value as "friends" | "global")}
+                className="w-full"
+              >
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="friends" className="flex items-center gap-2">
                     <Users className="h-4 w-4" />
-                    Add Friends
-                  </Button>
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="global" className="mt-0">
-                <GlobalRankingsTab />
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+                    <span>Friends</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="global" className="flex items-center gap-2">
+                    <Trophy className="h-4 w-4" />
+                    <span>Global</span>
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="friends" className="mt-0">
+                  <LeaderboardList 
+                    type="friends" 
+                    getAccentColor={getAccentColor} 
+                    isNewUser={isNewUser} 
+                    isLoading={isLoading}
+                    data={friendsData}
+                    rankingMessage={friendsRankingMessage}
+                  />
+                  
+                  <div className="flex justify-center mt-4">
+                    <Button variant="outline" className="flex items-center gap-2" onClick={() => window.location.href = "/community"}>
+                      <Users className="h-4 w-4" />
+                      Add Friends
+                    </Button>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="global" className="mt-0">
+                  <GlobalRankingsTab />
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-xl flex items-center gap-2">
+                <MessageCircle className="w-5 h-5 text-triage-purple" />
+                Community Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ActivityFeed 
+                isNewUser={isNewUser} 
+                isLoading={isLoading}
+                activityData={activityData}
+              />
+            </CardContent>
+          </Card>
+        </div>
         
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-xl flex items-center gap-2">
-              <MessageCircle className="w-5 h-5 text-triage-purple" />
-              Community Activity
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ActivityFeed 
-              isNewUser={isNewUser} 
-              isLoading={isLoading}
-              activityData={activityData}
-            />
-          </CardContent>
-        </Card>
+        <NavigationBar />
       </div>
-      
-      <NavigationBar />
-    </div>
+    </TooltipProvider>
   );
 };
 
@@ -391,6 +406,42 @@ const LeaderboardList = ({
   rankingMessage: string
 }) => {
   const accentColor = getAccentColor();
+  const [celebratedUsers, setCelebratedUsers] = useState<Set<string>>(new Set());
+  const currentUserId = useRef<string | null>(null);
+
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        currentUserId.current = user.id;
+      }
+    };
+    
+    fetchCurrentUser();
+  }, []);
+
+  useEffect(() => {
+    if (isLoading || isNewUser || data.length === 0) return;
+    
+    const currentUserInTop3 = data.find(
+      (user) => user.isCurrentUser && user.rank <= 3 && !celebratedUsers.has(user.id as string)
+    );
+    
+    if (currentUserInTop3) {
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#9b87f5', '#D946EF', '#F97316', '#0EA5E9']
+      });
+      
+      setCelebratedUsers(prev => {
+        const updated = new Set(prev);
+        updated.add(currentUserInTop3.id as string);
+        return updated;
+      });
+    }
+  }, [data, isLoading, isNewUser, celebratedUsers]);
   
   const getRankBadge = (rank: number) => {
     switch (rank) {
@@ -449,49 +500,104 @@ const LeaderboardList = ({
       
       {data.length > 0 ? (
         data.map((user) => (
-          <div 
-            key={user.rank}
-            className={`grid grid-cols-12 items-center py-3 px-2 rounded-md ${
-              user.isCurrentUser ? "bg-muted/50" : ""
-            }`}
-          >
-            <div className="col-span-1 flex items-center justify-center">
-              {getRankBadge(user.rank)}
-            </div>
-            
-            <div className="col-span-5 flex items-center gap-3">
-              <Avatar className="h-8 w-8 border">
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-              </Avatar>
+          <Tooltip key={user.rank}>
+            <TooltipTrigger asChild>
+              <div 
+                className={`grid grid-cols-12 items-center py-3 px-2 rounded-md cursor-pointer hover:bg-muted/30 transition-colors ${
+                  user.isCurrentUser ? "bg-muted/50" : ""
+                } ${
+                  user.rank <= 3 ? "border-l-4 " + (
+                    user.rank === 1 ? "border-l-yellow-500" : 
+                    user.rank === 2 ? "border-l-gray-400" : 
+                    "border-l-amber-600"
+                  ) : ""
+                }`}
+              >
+                <div className="col-span-1 flex items-center justify-center">
+                  {getRankBadge(user.rank)}
+                </div>
+                
+                <div className="col-span-5 flex items-center gap-3">
+                  <Avatar className={`h-8 w-8 border ${user.rank <= 3 ? "ring-2 " + (
+                    user.rank === 1 ? "ring-yellow-500" : 
+                    user.rank === 2 ? "ring-gray-400" : 
+                    "ring-amber-600"
+                  ) : ""}`}>
+                    <AvatarImage src={user.avatar} alt={user.name} />
+                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  
+                  <div className="min-w-0">
+                    <p className={`text-sm font-medium truncate ${user.isCurrentUser ? accentColor : ""}`}>
+                      {user.name}
+                    </p>
+                    {user.badge && (
+                      <Badge variant="outline" className="text-xs">
+                        {user.badge}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="col-span-2 text-center font-semibold">
+                  {user.points}
+                </div>
+                
+                <div className="col-span-2 text-center">
+                  <span className="text-sm">{user.focusHours.toFixed(1)}h</span>
+                </div>
+                
+                <div className="col-span-2 text-center">
+                  <div className="flex items-center justify-center gap-1">
+                    <Flame className={`h-4 w-4 ${user.streak > 5 ? "text-orange-500" : "text-muted-foreground"}`} />
+                    <span className="text-sm">{user.streak}</span>
+                  </div>
+                </div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="p-4 space-y-2 w-64 backdrop-blur-sm bg-popover/95">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10 border">
+                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <h4 className="font-semibold">{user.name}</h4>
+                  {user.username !== user.name && user.username && (
+                    <p className="text-xs text-muted-foreground">@{user.username}</p>
+                  )}
+                </div>
+              </div>
               
-              <div className="min-w-0">
-                <p className={`text-sm font-medium truncate ${user.isCurrentUser ? accentColor : ""}`}>
-                  {user.name}
-                </p>
-                {user.badge && (
-                  <Badge variant="outline" className="text-xs">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-yellow-500" />
+                  <span>Rank: #{user.rank}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Award className="h-4 w-4 text-purple-500" />
+                  <span>Points: {user.points}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-blue-500" />
+                  <span>Focus: {user.focusHours.toFixed(1)}h</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Flame className="h-4 w-4 text-orange-500" />
+                  <span>Streak: {user.streak} days</span>
+                </div>
+              </div>
+              
+              {user.badge && (
+                <div className="pt-1 border-t">
+                  <Badge className="w-full justify-center gap-1 py-1">
+                    <Sparkles className="h-3.5 w-3.5" />
                     {user.badge}
                   </Badge>
-                )}
-              </div>
-            </div>
-            
-            <div className="col-span-2 text-center font-semibold">
-              {user.points}
-            </div>
-            
-            <div className="col-span-2 text-center">
-              <span className="text-sm">{user.focusHours.toFixed(1)}h</span>
-            </div>
-            
-            <div className="col-span-2 text-center">
-              <div className="flex items-center justify-center gap-1">
-                <Flame className={`h-4 w-4 ${user.streak > 5 ? "text-orange-500" : "text-muted-foreground"}`} />
-                <span className="text-sm">{user.streak}</span>
-              </div>
-            </div>
-          </div>
+                </div>
+              )}
+            </TooltipContent>
+          </Tooltip>
         ))
       ) : (
         <div className="py-8 text-center">
@@ -518,6 +624,7 @@ const GlobalRankingsTab = () => {
   const [globalData, setGlobalData] = useState<LeaderboardUser[]>([]);
   const [userRankMessage, setUserRankMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [celebratedUsers, setCelebratedUsers] = useState<Set<string>>(new Set());
   
   useEffect(() => {
     const fetchGlobalData = async () => {
@@ -553,6 +660,29 @@ const GlobalRankingsTab = () => {
     };
   }, []);
   
+  useEffect(() => {
+    if (loading || globalData.length === 0) return;
+    
+    const currentUserInTop3 = globalData.find(
+      (user) => user.isCurrentUser && user.rank <= 3 && !celebratedUsers.has(user.id as string)
+    );
+    
+    if (currentUserInTop3) {
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#9b87f5', '#D946EF', '#F97316', '#0EA5E9']
+      });
+      
+      setCelebratedUsers(prev => {
+        const updated = new Set(prev);
+        updated.add(currentUserInTop3.id as string);
+        return updated;
+      });
+    }
+  }, [globalData, loading, celebratedUsers]);
+  
   const getProgressColor = () => {
     switch (state.environment) {
       case 'office': return "bg-blue-600";
@@ -582,67 +712,124 @@ const GlobalRankingsTab = () => {
   }
   
   return (
-    <div className="space-y-4">
+    <TooltipProvider>
       <div className="space-y-4">
-        {globalData.map((user, index) => {
-          if (user.isSeparator) {
+        <div className="space-y-4">
+          {globalData.map((user, index) => {
+            if (user.isSeparator) {
+              return (
+                <div key={`separator-${index}`} className="flex justify-center py-2">
+                  <ChevronDown className="h-6 w-6 text-muted-foreground" />
+                </div>
+              );
+            }
+            
             return (
-              <div key={`separator-${index}`} className="flex justify-center py-2">
-                <ChevronDown className="h-6 w-6 text-muted-foreground" />
-              </div>
-            );
-          }
-          
-          return (
-            <div 
-              key={`${user.rank}-${index}`}
-              className={`flex items-center gap-3 p-3 rounded-md ${
-                user.isCurrentUser ? "bg-muted/50" : ""
-              }`}
-            >
-              <div className="w-8 h-8 flex items-center justify-center">
-                {getRankBadge(user.rank)}
-              </div>
-              
-              <Avatar className="h-8 w-8 border">
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-              </Avatar>
-              
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-center mb-1">
-                  <div className="flex items-center">
-                    <p className={`text-sm font-medium truncate ${user.isCurrentUser ? "text-triage-purple" : ""}`}>
-                      {user.name}
-                    </p>
-                    {user.badge && (
-                      <Badge variant="outline" className="ml-2 text-xs">
+              <Tooltip key={`${user.rank}-${index}`}>
+                <TooltipTrigger asChild>
+                  <div 
+                    className={`flex items-center gap-3 p-3 rounded-md cursor-pointer hover:bg-muted/30 transition-colors ${
+                      user.isCurrentUser ? "bg-muted/50" : ""
+                    } ${
+                      user.rank <= 3 ? "border-l-4 " + (
+                        user.rank === 1 ? "border-l-yellow-500" : 
+                        user.rank === 2 ? "border-l-gray-400" : 
+                        "border-l-amber-600"
+                      ) : ""
+                    }`}
+                  >
+                    <div className="w-8 h-8 flex items-center justify-center">
+                      {getRankBadge(user.rank)}
+                    </div>
+                    
+                    <Avatar className={`h-8 w-8 border ${user.rank <= 3 ? "ring-2 " + (
+                      user.rank === 1 ? "ring-yellow-500" : 
+                      user.rank === 2 ? "ring-gray-400" : 
+                      "ring-amber-600"
+                    ) : ""}`}>
+                      <AvatarImage src={user.avatar} alt={user.name} />
+                      <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-center mb-1">
+                        <div className="flex items-center">
+                          <p className={`text-sm font-medium truncate ${user.isCurrentUser ? "text-triage-purple" : ""}`}>
+                            {user.name}
+                          </p>
+                          {user.badge && (
+                            <Badge variant="outline" className="ml-2 text-xs">
+                              {user.badge}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{user.focusHours.toFixed(1)}h</span>
+                          <span>{user.points} pts</span>
+                        </div>
+                      </div>
+                      <Progress 
+                        value={Math.min(100, user.points / 10)} 
+                        className="h-1.5" 
+                        indicatorClassName={user.isCurrentUser ? getProgressColor() : ""}
+                      />
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="p-4 space-y-2 w-64 backdrop-blur-sm bg-popover/95">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10 border">
+                      <AvatarImage src={user.avatar} alt={user.name} />
+                      <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h4 className="font-semibold">{user.name}</h4>
+                      {user.username !== user.name && user.username && (
+                        <p className="text-xs text-muted-foreground">@{user.username}</p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Trophy className="h-4 w-4 text-yellow-500" />
+                      <span>Rank: #{user.rank}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Award className="h-4 w-4 text-purple-500" />
+                      <span>Points: {user.points}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-blue-500" />
+                      <span>Focus: {user.focusHours.toFixed(1)}h</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Flame className="h-4 w-4 text-orange-500" />
+                      <span>Streak: {user.streak} days</span>
+                    </div>
+                  </div>
+                  
+                  {user.badge && (
+                    <div className="pt-1 border-t">
+                      <Badge className="w-full justify-center gap-1 py-1">
+                        <Sparkles className="h-3.5 w-3.5" />
                         {user.badge}
                       </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>{user.focusHours.toFixed(1)}h</span>
-                    <span>{user.points} pts</span>
-                  </div>
-                </div>
-                <Progress 
-                  value={Math.min(100, user.points / 10)} 
-                  className="h-1.5" 
-                  indicatorClassName={user.isCurrentUser ? getProgressColor() : ""}
-                />
-              </div>
-            </div>
-          );
-        })}
+                    </div>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+        
+        <div className="text-center mt-6">
+          <p className="text-sm text-muted-foreground">
+            {userRankMessage}
+          </p>
+        </div>
       </div>
-      
-      <div className="text-center mt-6">
-        <p className="text-sm text-muted-foreground">
-          {userRankMessage}
-        </p>
-      </div>
-    </div>
+    </TooltipProvider>
   );
 };
 
@@ -763,3 +950,4 @@ const ActivityFeed = ({
 };
 
 export default Leaderboard;
+

@@ -1,4 +1,3 @@
-
 // First part of the file with imports and existing type definitions
 import { supabase } from "@/integrations/supabase/client";
 import { getDisplayName } from "@/hooks/use-display-name";
