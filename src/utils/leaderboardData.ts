@@ -1,11 +1,16 @@
 
+// First part of the file with imports and existing type definitions
 import { supabase } from "@/integrations/supabase/client";
+import { getDisplayName } from "@/hooks/use-display-name";
 
 // Types for leaderboard data
 export interface LeaderboardUser {
   rank: number;
   id: string | number;
   name: string;
+  username: string | null;
+  full_name: string | null;
+  display_name_preference: 'username' | 'full_name' | null;
   avatar: string;
   points: number;
   focusHours: number;
@@ -28,6 +33,9 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
         rank: 1, 
         id: "1", 
         name: "You", 
+        username: "You",
+        full_name: null,
+        display_name_preference: null,
         avatar: "/placeholder.svg", 
         points: 0, 
         focusHours: 0, 
@@ -54,19 +62,27 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
       return [];
     }
     
-    // Get friends list - avoiding the user_connections table query if it's not available yet
+    // Get friends list from the friends table
     let friendIds: string[] = [];
     try {
-      // Make a direct RPC call to get friend IDs
-      const { data: followingData, error: followingError } = await supabase.rpc(
-        'get_user_follows',
-        { user_id_param: user.id }
-      );
-      
-      if (!followingError && followingData) {
-        // Explicitly type the returned data as an array of UserFollow objects
-        const typedFollowingData = followingData as UserFollow[];
-        friendIds = typedFollowingData.map(connection => connection.following_id);
+      const { data: friendsData, error: friendsError } = await supabase
+        .from('friends')
+        .select('friend_id')
+        .eq('user_id', user.id);
+        
+      if (!friendsError && friendsData && friendsData.length > 0) {
+        friendIds = friendsData.map(f => f.friend_id);
+      } else {
+        // Fall back to follows if not found in friends table
+        const { data: followingData, error: followingError } = await supabase.rpc(
+          'get_user_follows',
+          { user_id_param: user.id }
+        );
+        
+        if (!followingError && followingData) {
+          const typedFollowingData = followingData as UserFollow[];
+          friendIds = typedFollowingData.map(connection => connection.following_id);
+        }
       }
     } catch (error) {
       console.error('Error fetching friend IDs:', error);
@@ -84,7 +100,7 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
         weekly_focus_time, 
         current_streak, 
         user_id,
-        profiles:user_id(username, avatar_url)
+        profiles:user_id(username, full_name, display_name_preference, avatar_url)
       `)
       .in('user_id', friendIds)
       .order('points', { ascending: false });
@@ -98,8 +114,19 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
     let result = friendsStats.map((stat, index) => {
       const profileData = stat.profiles as any;
       const username = profileData?.username || 'Unknown';
+      const full_name = profileData?.full_name || null;
+      const display_name_preference = profileData?.display_name_preference as 'username' | 'full_name' | null;
       const avatarUrl = profileData?.avatar_url || '/placeholder.svg';
       const isCurrentUser = stat.user_id === user.id;
+      
+      // Get display name based on preference
+      const displayName = isCurrentUser 
+        ? "You"
+        : getDisplayName({
+            username,
+            full_name: full_name || '',
+            display_name_preference
+          });
       
       // Get appropriate badge based on ranking
       let badge;
@@ -111,7 +138,10 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
       return {
         rank: index + 1,
         id: stat.user_id, // Using user_id as the id
-        name: isCurrentUser ? "You" : username,
+        name: displayName,
+        username,
+        full_name,
+        display_name_preference,
         avatar: avatarUrl,
         points: stat.points || 0,
         focusHours: (stat.weekly_focus_time || 0) / 60, // Convert minutes to hours
@@ -123,11 +153,21 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
     
     // If somehow the current user is not in the list, add them
     if (!result.some(user => user.isCurrentUser)) {
+      // Get current user profile
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('username, full_name, display_name_preference, avatar_url')
+        .eq('id', user.id)
+        .single();
+      
       result.push({
         rank: result.length + 1,
         id: user.id, // Using user.id as the id
         name: "You",
-        avatar: "/placeholder.svg",
+        username: userProfile?.username || user.email?.split('@')[0] || null,
+        full_name: userProfile?.full_name || null,
+        display_name_preference: userProfile?.display_name_preference as 'username' | 'full_name' | null,
+        avatar: userProfile?.avatar_url || "/placeholder.svg",
         points: currentUserStats.points || 0,
         focusHours: (currentUserStats.weekly_focus_time || 0) / 60,
         streak: currentUserStats.current_streak || 0,
@@ -150,7 +190,10 @@ export const getGlobalLeaderboardData = async (isEmpty = false): Promise<Leaderb
       { 
         rank: 1, 
         id: "1", 
-        name: "You", 
+        name: "You",
+        username: "You",
+        full_name: null,
+        display_name_preference: null,
         avatar: "/placeholder.svg", 
         points: 0, 
         focusHours: 0, 
@@ -174,9 +217,11 @@ export const getGlobalLeaderboardData = async (isEmpty = false): Promise<Leaderb
         weekly_focus_time, 
         current_streak, 
         user_id,
-        profiles:user_id(username, avatar_url)
+        profiles:user_id(username, full_name, display_name_preference, avatar_url)
       `)
-      .order('points', { ascending: false });
+      .order('points', { ascending: false })
+      .order('current_streak', { ascending: false })
+      .order('weekly_focus_time', { ascending: false });
       
     if (statsError) {
       console.error('Error fetching global leaderboard stats:', statsError);
@@ -205,6 +250,9 @@ export const getGlobalLeaderboardData = async (isEmpty = false): Promise<Leaderb
         rank: -1,
         id: "separator", // Adding a string ID for the separator
         name: "...",
+        username: null,
+        full_name: null,
+        display_name_preference: null,
         avatar: "",
         points: 0,
         focusHours: 0,
@@ -234,6 +282,9 @@ export const getGlobalLeaderboardData = async (isEmpty = false): Promise<Leaderb
           rank: -1,
           id: "separator",
           name: "...",
+          username: null,
+          full_name: null,
+          display_name_preference: null,
           avatar: "",
           points: 0,
           focusHours: 0,
@@ -244,8 +295,19 @@ export const getGlobalLeaderboardData = async (isEmpty = false): Promise<Leaderb
       const realRank = allStats.findIndex(s => s.id === stat.id) + 1;
       const profileData = stat.profiles as any;
       const username = profileData?.username || 'Anonymous';
+      const full_name = profileData?.full_name || null;
+      const display_name_preference = profileData?.display_name_preference as 'username' | 'full_name' | null;
       const avatarUrl = profileData?.avatar_url || '/placeholder.svg';
       const isCurrentUser = stat.user_id === user.id;
+      
+      // Get display name based on preference
+      const displayName = isCurrentUser 
+        ? "You"
+        : getDisplayName({
+            username,
+            full_name: full_name || '',
+            display_name_preference
+          });
       
       // Get appropriate badge based on ranking
       let badge;
@@ -258,7 +320,10 @@ export const getGlobalLeaderboardData = async (isEmpty = false): Promise<Leaderb
       return {
         rank: realRank,
         id: stat.id || stat.user_id,
-        name: isCurrentUser ? "You" : username,
+        name: displayName,
+        username,
+        full_name,
+        display_name_preference,
         avatar: avatarUrl,
         points: stat.points || 0,
         focusHours: (stat.weekly_focus_time || 0) / 60, // Convert minutes to hours

@@ -12,6 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { FriendRequest } from "@/types/database";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getDisplayName } from "@/hooks/use-display-name";
 
 interface CommunityUserListProps {
   searchQuery?: string;

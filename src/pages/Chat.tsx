@@ -11,10 +11,13 @@ import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { requestMediaPermissions, sendNotification } from "@/components/pwa/ServiceWorker";
+import { getDisplayName } from "@/hooks/use-display-name";
 
 interface ChatProfile {
   id: string;
   username: string | null;
+  full_name: string | null;
+  display_name_preference: 'username' | 'full_name' | null;
   avatar_url: string | null;
   online?: boolean;
   status?: string;
@@ -101,6 +104,8 @@ const Chat = () => {
         setContact({
           id: data.id,
           username: data.username || `User-${data.id.substring(0, 4)}`,
+          full_name: data.full_name,
+          display_name_preference: data.display_name_preference as 'username' | 'full_name' | null,
           avatar_url: data.avatar_url,
           online: isOnline,
           status: isOnline ? "Online" : "Offline",
@@ -225,6 +230,13 @@ const Chat = () => {
       </div>
     );
   }
+
+  // Get display name based on preference
+  const contactDisplayName = getDisplayName({
+    username: contact.username || '',
+    full_name: contact.full_name || '',
+    display_name_preference: contact.display_name_preference
+  });
   
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -237,8 +249,8 @@ const Chat = () => {
           <div className="flex items-center gap-3">
             <div className="relative">
               <Avatar>
-                <AvatarImage src={contact.avatar_url || ""} alt={contact.username || ""} />
-                <AvatarFallback>{contact.username?.[0] || "U"}</AvatarFallback>
+                <AvatarImage src={contact.avatar_url || ""} alt={contactDisplayName} />
+                <AvatarFallback>{contactDisplayName[0]}</AvatarFallback>
               </Avatar>
               {contact.online && (
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
@@ -246,7 +258,7 @@ const Chat = () => {
             </div>
             
             <div>
-              <h2 className="font-medium text-sm">{contact.username}</h2>
+              <h2 className="font-medium text-sm">{contactDisplayName}</h2>
               <p className="text-xs text-muted-foreground">
                 {isContactTyping ? "typing..." : contact.status}
               </p>

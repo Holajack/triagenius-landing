@@ -9,6 +9,7 @@ import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import { getDisplayName } from "@/hooks/use-display-name";
 
 interface MessageInboxProps {
   searchQuery?: string;
@@ -19,6 +20,8 @@ interface ConversationWithUser {
   userId: string;
   lastMessage: any;
   username: string;
+  full_name: string | null;
+  display_name_preference: 'username' | 'full_name' | null;
   avatarUrl: string | null;
   isTyping?: boolean;
 }
@@ -108,6 +111,8 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
               userId: convo.userId,
               lastMessage: convo.lastMessage,
               username: otherUser.username || `User-${convo.userId.substring(0, 4)}`,
+              full_name: otherUser.full_name,
+              display_name_preference: otherUser.display_name_preference as 'username' | 'full_name' | null,
               avatarUrl: otherUser.avatar_url,
               isTyping: isUserTyping(convo.userId)
             });
@@ -145,10 +150,14 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
   const filteredConversations = conversationsWithUsers.filter(convo => {
     if (!searchQuery) return true;
     
-    const username = convo.username.toLowerCase();
+    const displayName = getDisplayName({
+      username: convo.username,
+      full_name: convo.full_name || '',
+      display_name_preference: convo.display_name_preference
+    });
     const messageContent = convo.lastMessage.content.toLowerCase();
     
-    return username.includes(searchQuery.toLowerCase()) || 
+    return displayName.toLowerCase().includes(searchQuery.toLowerCase()) || 
            messageContent.includes(searchQuery.toLowerCase());
   });
   
@@ -168,6 +177,11 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
         const isUnread = lastMessage.recipient_id === user?.id && !lastMessage.is_read;
         const messageTime = formatDistanceToNow(new Date(lastMessage.created_at), { addSuffix: true });
         const isOnline = onlineUsers.has(conversation.userId);
+        const displayName = getDisplayName({
+          username: conversation.username,
+          full_name: conversation.full_name || '',
+          display_name_preference: conversation.display_name_preference
+        });
         
         return (
           <Card 
@@ -178,8 +192,8 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
             <div className="flex items-center gap-4">
               <div className="relative">
                 <Avatar>
-                  <AvatarImage src={conversation.avatarUrl || ""} alt={conversation.username || "User"} />
-                  <AvatarFallback>{conversation.username?.[0] || "U"}</AvatarFallback>
+                  <AvatarImage src={conversation.avatarUrl || ""} alt={displayName} />
+                  <AvatarFallback>{displayName[0]}</AvatarFallback>
                 </Avatar>
                 {isOnline && (
                   <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
@@ -190,7 +204,7 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <h3 className={`font-medium ${isUnread ? 'font-semibold' : ''}`}>
-                      {conversation.username}
+                      {displayName}
                     </h3>
                     {isOnline && (
                       <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 border-green-200">

@@ -11,6 +11,7 @@ import { getFriendsLeaderboardData } from "@/utils/leaderboardData";
 import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
 import { LeaderboardUser } from "@/utils/leaderboardData";
+import { getDisplayName } from "@/hooks/use-display-name";
 
 const Leaderboard = () => {
   const { state } = useOnboarding();

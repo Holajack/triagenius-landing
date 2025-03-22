@@ -207,6 +207,24 @@ export type Database = {
         }
         Relationships: []
       }
+      friends: {
+        Row: {
+          created_at: string | null
+          friend_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          friend_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          friend_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       leaderboard_stats: {
         Row: {
           created_at: string
@@ -838,6 +856,12 @@ export type Database = {
           room_id: string
         }
         Returns: undefined
+      }
+      get_display_name: {
+        Args: {
+          user_profile: Json
+        }
+        Returns: string
       }
       get_user_follows:
         | {
