@@ -182,7 +182,7 @@ const ActivityFeed = () => {
                       message: message || null,
                       reactorId: user.id,
                       reactorName: user.username || 'You',
-                      reactorAvatar: user.avatar_url || '/placeholder.svg',
+                      reactorAvatar: user.avatarUrl || '/placeholder.svg',
                       timestamp: new Date().toISOString()
                     });
                   }
