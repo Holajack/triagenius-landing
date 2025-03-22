@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -192,19 +191,19 @@ const Leaderboard = () => {
                   data={friendsData}
                   rankingMessage={friendsRankingMessage}
                 />
+                
+                <div className="flex justify-center mt-4">
+                  <Button variant="outline" className="flex items-center gap-2" onClick={() => window.location.href = "/community"}>
+                    <Users className="h-4 w-4" />
+                    Add Friends
+                  </Button>
+                </div>
               </TabsContent>
               
               <TabsContent value="global" className="mt-0">
                 <GlobalRankingsTab />
               </TabsContent>
             </Tabs>
-            
-            <div className="flex justify-center mt-4">
-              <Button variant="outline" className="flex items-center gap-2" onClick={() => window.location.href = "/community"}>
-                <Users className="h-4 w-4" />
-                Add Friends
-              </Button>
-            </div>
           </CardContent>
         </Card>
         
@@ -524,7 +523,6 @@ const GlobalRankingsTab = () => {
     const fetchGlobalData = async () => {
       setLoading(true);
       try {
-        // Use the updated getGlobalLeaderboardData function to get all users
         const data = await getGlobalLeaderboardData();
         setGlobalData(data);
         
@@ -539,7 +537,6 @@ const GlobalRankingsTab = () => {
     
     fetchGlobalData();
     
-    // Set up real-time subscription for leaderboard updates
     const channel = supabase
       .channel('global-leaderboard-updates')
       .on('postgres_changes', 

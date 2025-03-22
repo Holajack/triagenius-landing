@@ -1,3 +1,4 @@
+
 // First part of the file with imports and existing type definitions
 import { supabase } from "@/integrations/supabase/client";
 import { getDisplayName } from "@/hooks/use-display-name";
@@ -207,7 +208,7 @@ export const getGlobalLeaderboardData = async (isEmpty = false): Promise<Leaderb
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return [];
     
-    // Get all leaderboard stats ordered by points - don't filter by friends
+    // Get ALL leaderboard stats ordered by points - don't filter by anything
     const { data: allStats, error: statsError } = await supabase
       .from('leaderboard_stats')
       .select(`
@@ -223,13 +224,13 @@ export const getGlobalLeaderboardData = async (isEmpty = false): Promise<Leaderb
       .order('weekly_focus_time', { ascending: false })
       .limit(100); // Add a reasonable limit
       
-    if (statsError) {
+    if (statsError || !allStats) {
       console.error('Error fetching global leaderboard stats:', statsError);
       return [];
     }
     
     // Find current user's position
-    const userRank = allStats?.findIndex(stat => stat.user_id === user.id) + 1 || 0;
+    const userRank = allStats.findIndex(stat => stat.user_id === user.id) + 1 || 0;
     
     // Get relevant stats to display
     const displayStats = [];
@@ -239,7 +240,7 @@ export const getGlobalLeaderboardData = async (isEmpty = false): Promise<Leaderb
     displayStats.push(...topUsers);
     
     // If current user is not in top 10, include them and a few nearby users
-    if (userRank >= 10 && userRank <= allStats.length) {
+    if (userRank > 10 && userRank <= allStats.length) {
       // Add separator
       displayStats.push({ 
         isSeparator: true,
