@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import NavigationBar from "@/components/dashboard/NavigationBar";
@@ -46,7 +45,7 @@ const Profile = () => {
     show_business: true,
     show_state: true,
     show_classes: true,
-    display_name_preference: "username" as "username" | "full_name"
+    display_name_preference: "username" as 'username' | 'full_name'
   });
   const [loading, setLoading] = useState(true);
   const [editedData, setEditedData] = useState({...profileData});
@@ -87,7 +86,7 @@ const Profile = () => {
         show_business: data.show_business !== false,
         show_state: data.show_state !== false,
         show_classes: data.show_classes !== false,
-        display_name_preference: data.display_name_preference || "username"
+        display_name_preference: (data.display_name_preference as 'username' | 'full_name') || "username"
       });
       
       setEditedData({
@@ -105,7 +104,7 @@ const Profile = () => {
         show_business: data.show_business !== false,
         show_state: data.show_state !== false,
         show_classes: data.show_classes !== false,
-        display_name_preference: data.display_name_preference || "username"
+        display_name_preference: (data.display_name_preference as 'username' | 'full_name') || "username"
       });
     } catch (error) {
       console.error("Error loading profile:", error);

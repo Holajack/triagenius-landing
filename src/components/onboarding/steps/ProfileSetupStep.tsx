@@ -22,7 +22,7 @@ export const ProfileSetupStep = () => {
     state: '',
     classes: [] as string[],
     avatar_url: '',
-    display_name_preference: 'username'
+    display_name_preference: 'username' as 'username' | 'full_name'
   });
   const [loading, setLoading] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
@@ -53,7 +53,7 @@ export const ProfileSetupStep = () => {
           state: data.state || '',
           classes: Array.isArray(data.classes) ? data.classes : [],
           avatar_url: data.avatar_url || '',
-          display_name_preference: data.display_name_preference || 'username'
+          display_name_preference: (data.display_name_preference as 'username' | 'full_name') || 'username'
         });
       } catch (error) {
         console.error("Error loading profile data:", error);
