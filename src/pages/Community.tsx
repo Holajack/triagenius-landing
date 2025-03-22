@@ -65,6 +65,19 @@ const Community = () => {
             <TabsTrigger value="messages" data-walkthrough="message-inbox">Messages</TabsTrigger>
             <TabsTrigger value="study-rooms" data-walkthrough="study-rooms">Study Rooms</TabsTrigger>
           </TabsList>
+          
+          <div className="relative mt-4">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search..."
+              className="pl-8"
+              value={searchQuery}
+              onChange={handleSearch}
+              aria-label="Search users, messages, or study rooms"
+            />
+          </div>
+          
           <TabsContent value="users" className="space-y-4 mt-4">
             <CommunityUserList searchQuery={searchQuery} />
           </TabsContent>

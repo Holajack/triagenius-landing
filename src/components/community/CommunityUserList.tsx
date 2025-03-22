@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { UserPlus, UserCheck, Search, Users, Loader2, UserX } from "lucide-react";
+import { UserPlus, UserCheck, Users, Loader2, UserX } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -31,58 +31,51 @@ interface Profile {
   email?: string | null;
 }
 
+interface AuthUser {
+  id: string;
+  email: string | null;
+  created_at: string;
+  full_name: string | null;
+  last_sign_in_at: string | null;
+}
+
 const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserListProps) => {
   const { user } = useUser();
-  const [searchTerm, setSearchTerm] = useState(searchQuery);
-  const [allUsers, setAllUsers] = useState<Profile[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<Profile[]>([]);
+  const [allUsers, setAllUsers] = useState<AuthUser[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<AuthUser[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [pendingFriendIds, setPendingFriendIds] = useState<string[]>([]);
   const [acceptedFriendIds, setAcceptedFriendIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingNoProfiles, setLoadingNoProfiles] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [usersWithoutProfiles, setUsersWithoutProfiles] = useState<Profile[]>([]);
   const [activeTab, setActiveTab] = useState("all");
   const isMobile = useIsMobile();
 
-  useEffect(() => {
-    setSearchTerm(searchQuery);
-  }, [searchQuery]);
-
-  const fetchAllUsers = useCallback(async () => {
+  const fetchAllAuthUsers = useCallback(async () => {
     if (!user) return;
     
     try {
       setLoading(true);
       setError(null);
       
-      console.log("Fetching users for user ID:", user.id);
+      console.log("Fetching all auth users");
       
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url, university, state, show_university, show_state')
-        .neq('id', user.id);
+      const { data, error } = await supabase.functions.invoke('get_all_auth_users');
       
       if (error) {
-        console.error('Error fetching users:', error);
+        console.error('Error fetching auth users:', error);
         setError(`Failed to load users: ${error.message}`);
         toast.error("Failed to load users");
         return;
       }
       
-      console.log("Fetched profiles:", profiles?.length || 0);
-      
-      // Add has_profile flag to profiles
-      const profilesWithFlag = profiles?.map(profile => ({
-        ...profile,
-        has_profile: true
-      })) || [];
-      
-      setAllUsers(profilesWithFlag);
-      setFilteredUsers(profilesWithFlag);
+      if (data && data.users) {
+        console.log("Fetched auth users:", data.users.length);
+        setAllUsers(data.users);
+        setFilteredUsers(data.users);
+      }
     } catch (error: any) {
-      console.error('Error in fetchAllUsers:', error);
+      console.error('Error in fetchAllAuthUsers:', error);
       setError(`Unexpected error: ${error.message}`);
       toast.error("Failed to load users");
     } finally {
@@ -90,82 +83,31 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     }
   }, [user]);
   
-  const fetchUsersWithoutProfiles = useCallback(async () => {
-    if (!user) return;
-    
-    try {
-      setLoadingNoProfiles(true);
-      
-      console.log("Fetching users without profiles");
-      
-      const { data, error } = await supabase.functions.invoke('get_users_without_profiles');
-      
-      if (error) {
-        console.error('Error fetching users without profiles:', error);
-        return;
-      }
-      
-      if (data && data.users) {
-        console.log("Fetched users without profiles:", data.users.length);
-        setUsersWithoutProfiles(data.users as Profile[]);
-      }
-    } catch (error: any) {
-      console.error('Error in fetchUsersWithoutProfiles:', error);
-    } finally {
-      setLoadingNoProfiles(false);
-    }
-  }, [user]);
-  
   useEffect(() => {
     if (!user?.id) return;
     
-    fetchAllUsers();
-    fetchUsersWithoutProfiles();
+    fetchAllAuthUsers();
     
-    const profilesChannel = supabase
-      .channel('profiles-changes')
+    const usersChannel = supabase
+      .channel('auth-users-changes')
       .on(
         'postgres_changes',
         {
           event: '*',
-          schema: 'public',
-          table: 'profiles'
+          schema: 'auth',
+          table: 'users'
         },
         (payload) => {
-          console.log("Profile changed:", payload);
-          
-          if (payload.eventType === 'INSERT') {
-            if (payload.new.id !== user.id) {
-              setAllUsers(prev => {
-                if (!prev.some(profile => profile.id === payload.new.id)) {
-                  const newProfile = { ...payload.new, has_profile: true } as Profile;
-                  return [...prev, newProfile];
-                }
-                return prev;
-              });
-              
-              // Remove from users without profiles if they just created a profile
-              setUsersWithoutProfiles(prev => 
-                prev.filter(u => u.id !== payload.new.id)
-              );
-            }
-          } else if (payload.eventType === 'UPDATE') {
-            setAllUsers(prev => 
-              prev.map(profile => 
-                profile.id === payload.new.id ? { ...profile, ...payload.new, has_profile: true } : profile
-              )
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setAllUsers(prev => prev.filter(profile => profile.id !== payload.old.id));
-          }
+          console.log("Auth user changed:", payload);
+          fetchAllAuthUsers();
         }
       )
       .subscribe();
       
     return () => {
-      supabase.removeChannel(profilesChannel);
+      supabase.removeChannel(usersChannel);
     };
-  }, [user?.id, fetchAllUsers, fetchUsersWithoutProfiles]);
+  }, [user?.id, fetchAllAuthUsers]);
   
   const fetchFriendRequests = useCallback(async () => {
     if (!user) return;
@@ -248,38 +190,29 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     };
   }, [user?.id, fetchFriendRequests]);
   
-  // This effect controls the filtered users based on active tab and search term
+  // Filter users based on search query
   useEffect(() => {
-    // Determine which user list to filter based on active tab
-    let usersToFilter: Profile[] = [];
+    if (allUsers.length === 0) return;
     
-    if (activeTab === "all") {
-      usersToFilter = [...allUsers]; 
-    } else if (activeTab === "pending") {
-      usersToFilter = allUsers.filter(user => pendingFriendIds.includes(user.id));
+    let usersToFilter = [...allUsers];
+    
+    if (activeTab === "pending") {
+      usersToFilter = allUsers.filter(authUser => pendingFriendIds.includes(authUser.id));
     } else if (activeTab === "friends") {
-      usersToFilter = allUsers.filter(user => acceptedFriendIds.includes(user.id));
-    } else if (activeTab === "no-profiles") {
-      usersToFilter = [...usersWithoutProfiles];
+      usersToFilter = allUsers.filter(authUser => acceptedFriendIds.includes(authUser.id));
     }
     
     // Apply search filtering if there's a search term
-    if (searchTerm.trim() !== '') {
-      const term = searchTerm.toLowerCase();
-      usersToFilter = usersToFilter.filter(profile => 
-        (profile.username?.toLowerCase().includes(term)) ||
-        (profile.email?.toLowerCase().includes(term)) ||
-        (profile.university?.toLowerCase().includes(term)) ||
-        (profile.state?.toLowerCase().includes(term))
+    if (searchQuery.trim() !== '') {
+      const term = searchQuery.toLowerCase();
+      usersToFilter = usersToFilter.filter(authUser => 
+        (authUser.email?.toLowerCase().includes(term)) ||
+        (authUser.full_name?.toLowerCase().includes(term))
       );
     }
     
     setFilteredUsers(usersToFilter);
-  }, [searchTerm, allUsers, usersWithoutProfiles, activeTab, pendingFriendIds, acceptedFriendIds]);
-  
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  };
+  }, [searchQuery, allUsers, activeTab, pendingFriendIds, acceptedFriendIds]);
   
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -404,21 +337,19 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     }
   };
   
-  const renderUserList = (users: Profile[], emptyMessage: string) => {
+  const renderUserList = (users: AuthUser[], emptyMessage: string) => {
     if (error) {
       return (
         <div className="py-8 text-center">
           <div className="text-red-500 mb-2">Error: {error}</div>
-          <Button onClick={fetchAllUsers} variant="outline" size="sm">
+          <Button onClick={fetchAllAuthUsers} variant="outline" size="sm">
             Retry
           </Button>
         </div>
       );
     }
     
-    const isLoading = activeTab === "no-profiles" ? loadingNoProfiles : loading;
-    
-    if (isLoading) {
+    if (loading) {
       return (
         <div className="space-y-4">
           {[...Array(5)].map((_, i) => (
@@ -441,7 +372,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
           <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
           <h3 className="mt-4 text-lg font-medium">No users found</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            {searchTerm ? "Try a different search term or check your spelling." : emptyMessage}
+            {searchQuery ? "Try a different search term or check your spelling." : emptyMessage}
           </p>
         </div>
       );
@@ -450,90 +381,87 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     return (
       <ScrollArea className="h-[400px] pr-4">
         <div className="space-y-4">
-          {users.map((profile) => {
-            const isPending = isFriendRequestPending(profile.id);
-            const isAlreadyFriend = isFriend(profile.id);
-            const friendRequest = getFriendRequest(profile.id);
-            const isReceivedRequest = friendRequest && friendRequest.sender_id === profile.id;
-            const hasProfile = profile.has_profile !== false; // If undefined or true, treat as having a profile
+          {users.map((authUser) => {
+            const isPending = isFriendRequestPending(authUser.id);
+            const isAlreadyFriend = isFriend(authUser.id);
+            const friendRequest = getFriendRequest(authUser.id);
+            const isReceivedRequest = friendRequest && friendRequest.sender_id === authUser.id;
+            const isCurrentUser = authUser.id === user?.id;
+            
+            // Skip rendering if it's the current user and we're in pending/friends tab
+            if ((activeTab === "pending" || activeTab === "friends") && isCurrentUser) {
+              return null;
+            }
             
             return (
               <div 
-                key={profile.id}
+                key={authUser.id}
                 className="flex items-center justify-between p-3 rounded-lg border"
               >
                 <div className="flex items-center space-x-3">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={profile.avatar_url || ""} />
+                    <AvatarImage src={""} />
                     <AvatarFallback>
-                      {hasProfile 
-                        ? (profile.username?.charAt(0)?.toUpperCase() || "U") 
-                        : profile.email?.charAt(0)?.toUpperCase() || "U"}
+                      {authUser.email?.charAt(0)?.toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium">{
-                      hasProfile
-                        ? (profile.username || "Anonymous")
-                        : (profile.email || "No Email")
-                    }</p>
-                    <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
-                      {hasProfile ? (
-                        <>
-                          {profile.show_university && profile.university && (
-                            <span>{profile.university}</span>
-                          )}
-                          {profile.show_state && profile.state && (
-                            <span>{profile.state}</span>
-                          )}
-                        </>
-                      ) : (
-                        <span className="text-orange-500">No profile created yet</span>
+                    <div className="font-medium flex items-center">
+                      {authUser.email || "Anonymous"}
+                      {isCurrentUser && (
+                        <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                          You
+                        </span>
                       )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Joined {new Date(authUser.created_at).toLocaleDateString()}
                     </div>
                   </div>
                 </div>
                 
-                <div className="flex space-x-2">
-                  {isAlreadyFriend ? (
-                    <Button variant="ghost" size="sm" disabled>
-                      <UserCheck className="h-4 w-4 mr-1" />
-                      <span className="hidden sm:inline">Friend</span>
-                    </Button>
-                  ) : isPending ? (
-                    isReceivedRequest ? (
-                      <>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => acceptFriendRequest(friendRequest.id, profile.id)}
-                        >
-                          Accept
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => rejectFriendRequest(friendRequest.id, profile.id)}
-                        >
-                          Reject
-                        </Button>
-                      </>
-                    ) : (
+                {!isCurrentUser && (
+                  <div className="flex space-x-2">
+                    {isAlreadyFriend ? (
                       <Button variant="ghost" size="sm" disabled>
-                        Pending
+                        <UserCheck className="h-4 w-4 mr-1" />
+                        <span className="hidden sm:inline">Friend</span>
                       </Button>
-                    )
-                  ) : (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => sendFriendRequest(profile.id)}
-                    >
-                      <UserPlus className="h-4 w-4 mr-1" />
-                      <span className="hidden sm:inline">Add</span>
-                    </Button>
-                  )}
-                </div>
+                    ) : isPending ? (
+                      isReceivedRequest ? (
+                        <>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => acceptFriendRequest(friendRequest.id, authUser.id)}
+                          >
+                            Accept
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => rejectFriendRequest(friendRequest.id, authUser.id)}
+                          >
+                            Reject
+                          </Button>
+                        </>
+                      ) : (
+                        <Button variant="ghost" size="sm" disabled>
+                          Pending
+                        </Button>
+                      )
+                    ) : (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => sendFriendRequest(authUser.id)}
+                      >
+                        <UserPlus className="h-4 w-4 mr-1" />
+                        <span className="hidden sm:inline">Add</span>
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -547,26 +475,11 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
       <CardHeader>
         <CardTitle>People</CardTitle>
         <CardDescription>Find and connect with other users</CardDescription>
-        
-        {!searchQuery && (
-          <div className="relative mt-2">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search users..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={handleSearch}
-              aria-label="Search users"
-            />
-          </div>
-        )}
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="all" className="w-full" value={activeTab} onValueChange={handleTabChange}>
-          <TabsList className="mb-4 w-full grid grid-cols-4">
+          <TabsList className="mb-4 w-full grid grid-cols-3">
             <TabsTrigger value="all">All Users</TabsTrigger>
-            <TabsTrigger value="no-profiles">No Profiles</TabsTrigger>
             <TabsTrigger value="pending">Pending</TabsTrigger>
             <TabsTrigger value="friends">Friends</TabsTrigger>
           </TabsList>
@@ -575,13 +488,6 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
             {renderUserList(
               filteredUsers, 
               "No other users have registered yet. Be the first to invite others!"
-            )}
-          </TabsContent>
-          
-          <TabsContent value="no-profiles">
-            {renderUserList(
-              usersWithoutProfiles,
-              "All registered users have created profiles."
             )}
           </TabsContent>
           
