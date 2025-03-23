@@ -6,13 +6,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { UserPlus, UserCheck, Users, Loader2, UserX } from "lucide-react";
+import { UserPlus, UserCheck, Users, Loader2, UserX, MessageSquare } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { FriendRequest } from "@/types/database";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getDisplayName } from "@/hooks/use-display-name";
+import { useNavigate } from "react-router-dom";
 
 interface CommunityUserListProps {
   searchQuery?: string;
@@ -43,6 +44,7 @@ interface AuthUser {
 
 const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserListProps) => {
   const { user } = useUser();
+  const navigate = useNavigate();
   const [allUsers, setAllUsers] = useState<AuthUser[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<AuthUser[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
@@ -344,7 +346,11 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     }
     return authUser.username || authUser.email?.split('@')[0] || 'User';
   };
-  
+
+  const startMessaging = (userId: string) => {
+    navigate(`/community/chat/${userId}`);
+  };
+
   const renderUserList = (users: AuthUser[], emptyMessage: string) => {
     if (error) {
       return (
@@ -430,6 +436,16 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
                 
                 {!isCurrentUser && (
                   <div className="flex space-x-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => startMessaging(authUser.id)}
+                      className="flex items-center gap-1"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-1" />
+                      <span className="hidden sm:inline">Message</span>
+                    </Button>
+                    
                     {isAlreadyFriend ? (
                       <Button variant="ghost" size="sm" disabled>
                         <UserCheck className="h-4 w-4 mr-1" />
