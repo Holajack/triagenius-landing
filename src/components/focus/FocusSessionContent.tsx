@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect } from "react";
 import { FocusTimer } from "@/components/focus/FocusTimer";
 import { HikingTrail } from "@/components/focus/HikingTrail";
@@ -118,7 +119,14 @@ const FocusSessionContent: React.FC<FocusSessionContentProps> = ({
       <FocusTimer ref={timerRef} onPause={onPause} onResume={onResume} onComplete={onComplete} onMilestoneReached={onMilestoneReached} onProgressUpdate={handleProgressUpdate} isPaused={isPaused} autoStart={true} showControls={false} onEndSessionClick={handleEndClick} />
       
       {/* Only render the HikingTrail when not in low power mode */}
-      {!lowPowerMode}
+      {!lowPowerMode && (
+        <HikingTrail 
+          environment={safeEnvironment} 
+          currentMilestone={currentMilestone} 
+          isCelebrating={isCelebrating}
+          segmentProgress={segmentProgress}
+        />
+      )}
       
       <SessionGoals />
     </div>;

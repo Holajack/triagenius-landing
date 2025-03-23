@@ -133,6 +133,30 @@ export type Database = {
           },
         ]
       }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          participant_one: string
+          participant_two: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          participant_one: string
+          participant_two: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          participant_one?: string
+          participant_two?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       focus_sessions: {
         Row: {
           completed: boolean | null

@@ -1,5 +1,5 @@
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, MoreVertical, Phone, Video } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useUser } from "@/hooks/use-user";
 import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
-import { supabase, handleSupabaseError } from "@/integrations/supabase/client";
+import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from "date-fns";
 import { requestMediaPermissions, sendNotification } from "@/components/pwa/ServiceWorker";
 import { getDisplayName, getInitials } from "@/hooks/use-display-name";
@@ -38,11 +38,92 @@ const Chat = () => {
   const [isCheckingFriend, setIsCheckingFriend] = useState(true);
   const [hasTriedAuth, setHasTriedAuth] = useState(false);
   const { user } = useUser();
-  const { getConversation, sendMessage, markAsRead, setTypingStatus, isUserTyping } = useRealtimeMessages();
+  const { 
+    getConversation, 
+    sendMessage, 
+    markAsRead, 
+    setTypingStatus, 
+    isUserTyping,
+    subscribeToConversation 
+  } = useRealtimeMessages();
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const [currentMessages, setCurrentMessages] = useState<any[]>([]);
+  const channelRef = useRef<any>(null);
   
-  const messages = id ? getConversation(id) : [];
   const isContactTyping = id && isUserTyping(id);
+
+  // Function to fetch messages for the current conversation
+  const fetchConversationMessages = useCallback(async () => {
+    if (!id || !user?.id) return;
+    
+    try {
+      const conversationMessages = await getConversation(id);
+      setCurrentMessages(conversationMessages);
+    } catch (err) {
+      console.error('Error fetching conversation messages:', err);
+    }
+  }, [id, user?.id, getConversation]);
+
+  // Initialize the messages for this conversation
+  useEffect(() => {
+    fetchConversationMessages();
+  }, [fetchConversationMessages]);
+
+  // Subscribe to real-time updates for this conversation
+  useEffect(() => {
+    if (!id || !user?.id) return;
+
+    const setupSubscription = async () => {
+      // Clean up existing subscription
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+
+      // Set up subscription to conversation updates
+      const channel = await subscribeToConversation(id, (newMessage) => {
+        console.log('New real-time message received:', newMessage);
+        
+        // Update the messages state
+        setCurrentMessages(prev => {
+          // Avoid duplicates
+          if (prev.some(msg => msg.id === newMessage.id)) {
+            return prev;
+          }
+          
+          const updatedMessages = [...prev, newMessage];
+          return updatedMessages.sort((a, b) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        });
+        
+        // Mark as read if the recipient is the current user
+        if (newMessage.recipient_id === user.id && !newMessage.is_read) {
+          markAsRead(newMessage.id);
+        }
+      });
+      
+      channelRef.current = channel;
+    };
+    
+    setupSubscription();
+    
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+    };
+  }, [id, user?.id, subscribeToConversation, markAsRead]);
+
+  // Mark messages as read when viewed
+  useEffect(() => {
+    if (!id || !user?.id) return;
+    
+    currentMessages.forEach(msg => {
+      if (msg.sender_id === id && !msg.is_read) {
+        markAsRead(msg.id);
+      }
+    });
+  }, [id, currentMessages, user?.id, markAsRead]);
 
   // Check if the user is a friend - improved with better error handling
   useEffect(() => {
@@ -265,21 +346,10 @@ const Chat = () => {
     fetchProfile();
   }, [id, onlineUsers, isUserTyping]);
   
-  // Mark messages as read
-  useEffect(() => {
-    if (!id || !user?.id) return;
-    
-    messages.forEach(msg => {
-      if (msg.sender_id === id && !msg.is_read) {
-        markAsRead(msg.id);
-      }
-    });
-  }, [id, messages, user?.id, markAsRead]);
-  
   // Auto-scroll to latest message
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [currentMessages]);
   
   // Handle typing status
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -333,6 +403,9 @@ const Chat = () => {
         clearTimeout(typingTimeout);
       }
       setTypingStatus(id, false);
+      
+      // Update messages immediately
+      fetchConversationMessages();
     }
   };
   
@@ -528,8 +601,8 @@ const Chat = () => {
           </div>
         )}
         
-        {messages.length > 0 ? (
-          messages.map((message) => {
+        {currentMessages.length > 0 ? (
+          currentMessages.map((message) => {
             const isUnread = !message.is_read;
             const isCurrentUserSender = message.sender_id === user?.id;
             const messageTime = formatDistanceToNow(new Date(message.created_at), { addSuffix: true });

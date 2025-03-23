@@ -36,6 +36,8 @@ export function useRealtimeMessages() {
   const messagesChannelRef = useRef<any>(null);
   const typingStatesRef = useRef<TypingState>({});
   const [typingUsers, setTypingUsers] = useState<{[userId: string]: boolean}>({});
+  // Track conversation cache to avoid redundant calls
+  const conversationCacheRef = useRef<{[key: string]: string}>({});
   
   // Load initial messages
   useEffect(() => {
@@ -51,6 +53,12 @@ export function useRealtimeMessages() {
             body: { table_name: 'messages' }
           });
           console.log('Realtime enabled for messages table');
+          
+          // Also enable for conversations table
+          await supabase.functions.invoke('enable_realtime_for_table', {
+            body: { table_name: 'conversations' }
+          });
+          console.log('Realtime enabled for conversations table');
         } catch (err) {
           console.error('Failed to enable realtime:', err);
         }
@@ -225,11 +233,49 @@ export function useRealtimeMessages() {
     };
   }, [user?.id]);
 
-  // Function to generate a consistent conversation ID between two users
-  const getConversationId = (userId1: string, userId2: string) => {
-    // Sort the IDs to ensure the same conversation ID regardless of who initiates
-    const sortedIds = [userId1, userId2].sort();
-    return `${sortedIds[0]}_${sortedIds[1]}`;
+  // Function to get conversation ID from the conversations table
+  const getConversationId = async (userId1: string, userId2: string): Promise<string> => {
+    if (!userId1 || !userId2) {
+      throw new Error('Both user IDs are required');
+    }
+    
+    // Generate a cache key for this pair (order doesn't matter)
+    const cacheKey = [userId1, userId2].sort().join('_');
+    
+    // Return cached ID if available
+    if (conversationCacheRef.current[cacheKey]) {
+      return conversationCacheRef.current[cacheKey];
+    }
+    
+    try {
+      // Call the edge function to get or create a conversation
+      const { data, error } = await supabase.functions.invoke('get_or_create_conversation', {
+        body: { user_id: userId1, other_user_id: userId2 }
+      });
+      
+      if (error) {
+        console.error('Error getting conversation:', error);
+        throw new Error('Failed to get conversation ID');
+      }
+      
+      if (data?.conversation_id) {
+        // Cache the result
+        conversationCacheRef.current[cacheKey] = data.conversation_id;
+        return data.conversation_id;
+      } else {
+        throw new Error('No conversation ID returned');
+      }
+    } catch (err) {
+      console.error('Error in getConversationId:', err);
+      
+      // Fallback to the old method using sorted user IDs
+      const sortedIds = [userId1, userId2].sort();
+      const fallbackId = `${sortedIds[0]}_${sortedIds[1]}`;
+      
+      // Cache the fallback ID
+      conversationCacheRef.current[cacheKey] = fallbackId;
+      return fallbackId;
+    }
   };
 
   // Function to send a message
@@ -266,8 +312,8 @@ export function useRealtimeMessages() {
         return null;
       }
 
-      // Generate a consistent conversation ID
-      const conversationId = getConversationId(user.id, recipientId);
+      // Generate a consistent conversation ID using the conversations table
+      const conversationId = await getConversationId(user.id, recipientId);
 
       // Send the message
       const { data, error } = await supabase
@@ -374,28 +420,27 @@ export function useRealtimeMessages() {
   };
 
   // Get conversation messages between two users using conversation_id
-  const getConversation = (otherUserId: string) => {
+  const getConversation = async (otherUserId: string) => {
     if (!user?.id) return [];
     
-    // Generate consistent conversation ID
-    const conversationId = getConversationId(user.id, otherUserId);
-    
-    // First try to get messages with conversation_id
-    const messagesWithConvId = messages.filter(msg => msg.conversation_id === conversationId);
-    
-    // If we have messages with conversation_id, return those
-    if (messagesWithConvId.length > 0) {
-      return messagesWithConvId.sort((a, b) => 
-        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-      );
+    try {
+      // Get the conversation ID from the conversations table
+      const conversationId = await getConversationId(user.id, otherUserId);
+      
+      // Filter messages by conversation_id
+      return messages
+        .filter(msg => msg.conversation_id === conversationId)
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    } catch (err) {
+      console.error('Error getting conversation:', err);
+      
+      // Fallback to the old method for backward compatibility
+      return messages.filter(
+        (msg) =>
+          (msg.sender_id === user.id && msg.recipient_id === otherUserId) ||
+          (msg.sender_id === otherUserId && msg.recipient_id === user.id)
+      ).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     }
-    
-    // Fallback to the old method for backward compatibility
-    return messages.filter(
-      (msg) =>
-        (msg.sender_id === user.id && msg.recipient_id === otherUserId) ||
-        (msg.sender_id === otherUserId && msg.recipient_id === user.id)
-    ).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   };
 
   // Check if a user is currently typing
@@ -451,32 +496,37 @@ export function useRealtimeMessages() {
     return query.length;
   };
 
-  // Subscribe to conversation updates by ID 
-  const subscribeToConversation = (otherUserId: string, callback: (message: Message) => void) => {
+  // Subscribe to conversation updates by conversation ID
+  const subscribeToConversation = async (otherUserId: string, callback: (message: Message) => void) => {
     if (!user?.id) return null;
     
-    // Generate conversation ID
-    const conversationId = getConversationId(user.id, otherUserId);
-    
-    // Create subscription
-    const conversationChannel = supabase
-      .channel(`conversation-${conversationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`
-        },
-        (payload) => {
-          console.log('Real-time conversation update:', payload);
-          callback(payload.new as Message);
-        }
-      )
-      .subscribe();
+    try {
+      // Get the conversation ID
+      const conversationId = await getConversationId(user.id, otherUserId);
       
-    return conversationChannel;
+      // Create subscription
+      const conversationChannel = supabase
+        .channel(`conversation-${conversationId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `conversation_id=eq.${conversationId}`
+          },
+          (payload) => {
+            console.log('Real-time conversation update:', payload);
+            callback(payload.new as Message);
+          }
+        )
+        .subscribe();
+        
+      return conversationChannel;
+    } catch (err) {
+      console.error('Error in subscribeToConversation:', err);
+      return null;
+    }
   };
 
   return {
