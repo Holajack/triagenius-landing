@@ -4,16 +4,16 @@ import { StudyEnvironment } from "@/types/onboarding";
 
 interface HikingTrailProps {
   environment?: StudyEnvironment;
-  milestone: number;
+  currentMilestone?: number; // Changed from milestone to currentMilestone
   isCelebrating?: boolean;
-  progress?: number;
+  segmentProgress?: number;
 }
 
 export const HikingTrail = ({
   environment = 'office',
-  milestone = 0,
+  currentMilestone = 0, // Changed from milestone to currentMilestone
   isCelebrating = false,
-  progress = 0
+  segmentProgress = 0
 }: HikingTrailProps) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const skyImages = ['/lovable-uploads/3e1d695a-83eb-4783-8669-0703955b486e.png',
@@ -90,14 +90,14 @@ export const HikingTrail = ({
         
         {[0, 1, 2, 3].map(checkpointIndex => <div key={checkpointIndex} className="absolute top-0" style={{
         left: `${10 + checkpointIndex * 25}%`,
-        opacity: checkpointIndex <= milestone ? 1 : 0.3
+        opacity: checkpointIndex <= currentMilestone ? 1 : 0.3 // Updated to use currentMilestone
       }}>
             
           </div>)}
         
         {/* Finish flag */}
         <div className="absolute top-0 left-[85%] -translate-x-1/2 -translate-y-1/2" style={{
-        opacity: milestone >= 3 ? 1 : 0.3
+        opacity: currentMilestone >= 3 ? 1 : 0.3 // Updated to use currentMilestone
       }}>
           
         </div>
