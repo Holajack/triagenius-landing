@@ -93,6 +93,14 @@ export function useRealtimeMessages() {
         supabase.removeChannel(messagesChannelRef.current);
       }
       
+      // Enable REPLICA IDENTITY on messages table for realtime events
+      supabase.from('messages')
+        .select('id')
+        .limit(1)
+        .then(() => {
+          console.log('Connected to messages table');
+        });
+      
       messagesChannelRef.current = supabase
         .channel('messages-realtime')
         .on(
@@ -378,11 +386,77 @@ export function useRealtimeMessages() {
     loading,
     error,
     sendMessage,
-    markAsRead,
-    getConversation,
-    getConversations,
-    getUnreadCount,
+    markAsRead: async (messageId: string) => {
+      try {
+        const { error } = await supabase
+          .from('messages')
+          .update({ is_read: true })
+          .eq('id', messageId)
+          .eq('recipient_id', user?.id);
+  
+        if (error) throw error;
+  
+        setMessages((prev) =>
+          prev.map((msg) => (msg.id === messageId ? { ...msg, is_read: true } : msg))
+        );
+      } catch (err) {
+        console.error('Error marking message as read:', err);
+      }
+    },
+    getConversation: (otherUserId: string) => {
+      return messages.filter(
+        (msg) =>
+          (msg.sender_id === user?.id && msg.recipient_id === otherUserId) ||
+          (msg.sender_id === otherUserId && msg.recipient_id === user?.id)
+      ).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    },
+    getConversations: () => {
+      if (!user?.id) return [];
+  
+      const userIds = new Set<string>();
+      const conversations: { userId: string; lastMessage: Message }[] = [];
+  
+      messages.forEach((msg) => {
+        const otherId = msg.sender_id === user.id ? msg.recipient_id : msg.sender_id;
+        
+        if (!userIds.has(otherId)) {
+          userIds.add(otherId);
+          
+          // Find last message with this user
+          const lastMessage = messages
+            .filter(m => 
+              (m.sender_id === user.id && m.recipient_id === otherId) || 
+              (m.sender_id === otherId && m.recipient_id === user.id)
+            )
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+          
+          if (lastMessage) {
+            conversations.push({
+              userId: otherId,
+              lastMessage,
+            });
+          }
+        }
+      });
+  
+      return conversations;
+    },
+    getUnreadCount: (fromUserId?: string) => {
+      if (!user?.id) return 0;
+  
+      const query = messages.filter(
+        (msg) => msg.recipient_id === user.id && !msg.is_read
+      );
+  
+      if (fromUserId) {
+        return query.filter((msg) => msg.sender_id === fromUserId).length;
+      }
+  
+      return query.length;
+    },
     setTypingStatus,
-    isUserTyping,
+    isUserTyping: (userId: string) => {
+      return !!typingUsers[userId];
+    },
   };
 }

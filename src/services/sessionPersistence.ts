@@ -88,6 +88,18 @@ export const saveUserSession = async (userId: string | undefined): Promise<void>
       lastSessionData: JSON.stringify(sessionData) // Stringify the entire session data
     };
     
+    // Also update last_selected_environment directly in profiles table
+    const { error: envError } = await supabase
+      .from('profiles')
+      .update({ 
+        last_selected_environment: environment
+      })
+      .eq('id', userId);
+      
+    if (envError) {
+      console.error("Error saving environment preference:", envError);
+    }
+    
     // Save to Supabase for persistence across devices
     const { error } = await supabase
       .from('profiles')
@@ -120,12 +132,17 @@ export const loadUserSession = async (userId: string | undefined): Promise<Persi
     // Try to get from Supabase first
     const { data, error } = await supabase
       .from('profiles')
-      .select('preferences')
+      .select('preferences, last_selected_environment')
       .eq('id', userId)
       .single();
       
     if (error) {
       throw error;
+    }
+    
+    // Check for the dedicated environment field first
+    if (data?.last_selected_environment) {
+      localStorage.setItem('environment', data.last_selected_environment);
     }
     
     // Check if preferences and lastSessionData exist
@@ -137,10 +154,24 @@ export const loadUserSession = async (userId: string | undefined): Promise<Persi
           // Parse the stringified session data
           const parsedSessionData = JSON.parse(prefs.lastSessionData) as PersistedSessionData;
           console.log("Session loaded from Supabase");
+          
+          // If we have a dedicated environment field but no environment in session data, update it
+          if (data?.last_selected_environment && parsedSessionData?.preferences) {
+            parsedSessionData.preferences.environment = data.last_selected_environment;
+          }
+          
           return parsedSessionData;
         } catch (parseError) {
           console.error("Error parsing saved session data:", parseError);
         }
+      }
+      
+      // If we have direct environment value but no lastSessionData
+      if (data?.last_selected_environment && prefs.environment !== data.last_selected_environment) {
+        // Create a session with the environment from the dedicated field
+        const sessionWithEnvironment = {...defaultSessionData};
+        sessionWithEnvironment.preferences.environment = data.last_selected_environment;
+        return sessionWithEnvironment;
       }
     }
     

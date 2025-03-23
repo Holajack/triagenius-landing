@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useRoomMessages } from "@/hooks/use-room-messages";
 import { useUser } from "@/hooks/use-user";
+import { supabase } from "@/integrations/supabase/client";
 
 interface StudyRoomChatProps {
   roomId: string;
@@ -17,6 +18,7 @@ export const StudyRoomChat = ({ roomId }: StudyRoomChatProps) => {
   const { user } = useUser();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [inputMessage, setInputMessage] = useState("");
+  const messagesChannelRef = useRef<any>(null);
   
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -24,6 +26,38 @@ export const StudyRoomChat = ({ roomId }: StudyRoomChatProps) => {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [roomMessages]);
+  
+  // Set up real-time subscription to messages
+  useEffect(() => {
+    if (!roomId) return;
+    
+    // Remove existing channel if it exists
+    if (messagesChannelRef.current) {
+      supabase.removeChannel(messagesChannelRef.current);
+    }
+    
+    // Subscribe to messages for this room
+    messagesChannelRef.current = supabase.channel(`room-messages-${roomId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `room_id=eq.${roomId}`
+        },
+        (payload) => {
+          console.log('New message received in real-time:', payload);
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      if (messagesChannelRef.current) {
+        supabase.removeChannel(messagesChannelRef.current);
+      }
+    };
+  }, [roomId]);
   
   // Handle sending a message
   const handleSendMessage = async () => {

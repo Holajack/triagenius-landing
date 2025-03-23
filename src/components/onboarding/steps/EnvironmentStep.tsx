@@ -1,9 +1,10 @@
-
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { StudyEnvironment } from "@/types/onboarding";
 import { Building, Coffee, TreeDeciduous, BookOpen, Home } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useUser } from "@/hooks/use-user";
 
 const environments: Array<{
   id: StudyEnvironment;
@@ -88,6 +89,7 @@ const environments: Array<{
 export const EnvironmentStep = () => {
   const { state, dispatch } = useOnboarding();
   const [theme] = useState(() => localStorage.getItem('theme') || 'light');
+  const { user } = useUser();
 
   useEffect(() => {
     if (state.environment) {
@@ -106,8 +108,20 @@ export const EnvironmentStep = () => {
         
         document.documentElement.setAttribute('data-environment', state.environment);
       }
+
+      if (user?.id) {
+        supabase
+          .from('profiles')
+          .update({ last_selected_environment: state.environment })
+          .eq('id', user.id)
+          .then(({ error }) => {
+            if (error) {
+              console.error("Error saving environment preference:", error);
+            }
+          });
+      }
     }
-  }, [state.environment]);
+  }, [state.environment, user?.id]);
 
   const handleEnvironmentSelection = (envId: StudyEnvironment) => {
     dispatch({ type: 'SET_ENVIRONMENT', payload: envId });
@@ -122,6 +136,18 @@ export const EnvironmentStep = () => {
     );
     document.documentElement.classList.add(`theme-${envId}`);
     document.documentElement.setAttribute('data-environment', envId);
+
+    if (user?.id) {
+      supabase
+        .from('profiles')
+        .update({ last_selected_environment: envId })
+        .eq('id', user.id)
+        .then(({ error }) => {
+          if (error) {
+            console.error("Error saving environment preference:", error);
+          }
+        });
+    }
   };
 
   return (
@@ -136,7 +162,7 @@ export const EnvironmentStep = () => {
           style={{
             borderColor: state.environment === env.id ? `var(--env-primary)` : undefined,
             borderWidth: state.environment === env.id ? '2px' : '1px',
-            transition: 'all 0.3s ease', // Add transition for smooth color changes
+            transition: 'all 0.3s ease',
           }}
         >
           <div className="flex items-center gap-4">

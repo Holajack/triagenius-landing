@@ -32,12 +32,46 @@ const Chat = () => {
   const [contact, setContact] = useState<ChatProfile | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [isFriend, setIsFriend] = useState<boolean | null>(null);
+  const [isCheckingFriend, setIsCheckingFriend] = useState(true);
   const { user } = useUser();
   const { getConversation, sendMessage, markAsRead, setTypingStatus, isUserTyping } = useRealtimeMessages();
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   
   const messages = id ? getConversation(id) : [];
   const isContactTyping = id && isUserTyping(id);
+
+  // Check if the user is a friend
+  useEffect(() => {
+    const checkFriendStatus = async () => {
+      if (!id || !user?.id) return;
+      
+      setIsCheckingFriend(true);
+      
+      try {
+        // Check friends table
+        const { data: friendData, error: friendError } = await supabase
+          .from('friends')
+          .select('*')
+          .or(`and(user_id.eq.${user.id},friend_id.eq.${id}),and(user_id.eq.${id},friend_id.eq.${user.id})`)
+          .maybeSingle();
+          
+        if (friendError) {
+          console.error('Error checking friend status:', friendError);
+          setIsFriend(false);
+        } else {
+          setIsFriend(!!friendData);
+        }
+      } catch (error) {
+        console.error('Error checking friend status:', error);
+        setIsFriend(false);
+      } finally {
+        setIsCheckingFriend(false);
+      }
+    };
+    
+    checkFriendStatus();
+  }, [id, user?.id]);
   
   // Set up presence channel for online status
   useEffect(() => {
@@ -161,6 +195,21 @@ const Chat = () => {
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !id || !user?.id) return;
     
+    // Don't allow sending if not friends and friend-only messaging is enabled
+    if (isFriend === false) {
+      toast.error("You need to be friends with this user to send a message");
+      
+      // Show friend request option
+      toast("Send a friend request?", {
+        action: {
+          label: "Send Request",
+          onClick: handleSendFriendRequest
+        },
+        duration: 5000
+      });
+      return;
+    }
+    
     const sent = await sendMessage(id, newMessage);
     if (sent) {
       setNewMessage("");
@@ -170,6 +219,44 @@ const Chat = () => {
         clearTimeout(typingTimeout);
       }
       setTypingStatus(id, false);
+    }
+  };
+  
+  const handleSendFriendRequest = async () => {
+    if (!id || !user?.id) return;
+    
+    try {
+      // Check if a request already exists
+      const { data: existingRequest } = await supabase
+        .from('friend_requests')
+        .select('*')
+        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${id}),and(sender_id.eq.${id},recipient_id.eq.${user.id})`)
+        .maybeSingle();
+        
+      if (existingRequest) {
+        if (existingRequest.sender_id === user.id) {
+          toast.info("You've already sent a friend request to this user");
+        } else {
+          toast.info("This user has already sent you a friend request");
+        }
+        return;
+      }
+      
+      // Send friend request
+      const { error } = await supabase
+        .from('friend_requests')
+        .insert({
+          sender_id: user.id,
+          recipient_id: id,
+          status: 'pending'
+        });
+        
+      if (error) throw error;
+      
+      toast.success("Friend request sent!");
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+      toast.error("Failed to send friend request");
     }
   };
   
@@ -290,6 +377,16 @@ const Chat = () => {
       </div>
       
       <div className="flex-1 p-4 overflow-y-auto space-y-4">
+        {/* Friend restriction notice */}
+        {isFriend === false && !isCheckingFriend && (
+          <div className="bg-muted p-3 rounded-lg text-center">
+            <p className="text-sm mb-2">You need to be friends to message this user</p>
+            <Button size="sm" onClick={handleSendFriendRequest}>
+              Send Friend Request
+            </Button>
+          </div>
+        )}
+        
         {messages.length > 0 ? (
           messages.map((message) => (
             <div 
@@ -320,6 +417,13 @@ const Chat = () => {
                   )}
                 </div>
               </div>
+              
+              {message.sender_id === user?.id && (
+                <Avatar className="h-8 w-8 ml-2 mt-1">
+                  <AvatarImage src={user?.avatarUrl || ""} />
+                  <AvatarFallback>{(user?.username || "?")[0]}</AvatarFallback>
+                </Avatar>
+              )}
             </div>
           ))
         ) : (
@@ -376,7 +480,7 @@ const Chat = () => {
           
           <Button 
             className="rounded-full h-10 w-10 p-0"
-            disabled={!newMessage.trim()}
+            disabled={!newMessage.trim() || isFriend === false}
             onClick={handleSendMessage}
           >
             <Send className="h-5 w-5" />

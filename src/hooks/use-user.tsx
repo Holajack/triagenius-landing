@@ -64,7 +64,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, last_selected_environment')
         .eq('id', authUser.id)
         .single();
       
@@ -80,7 +80,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
               privacy_settings: {
                 showEmail: false,
                 showActivity: true
-              }
+              },
+              last_selected_environment: 'office'
             });
             
           if (insertError) {
@@ -111,6 +112,23 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         isLoading: false,
         profile: profileData as UserProfile
       });
+      
+      if (profileData.last_selected_environment) {
+        localStorage.setItem('environment', profileData.last_selected_environment);
+        
+        document.documentElement.classList.remove(
+          'theme-office', 
+          'theme-park', 
+          'theme-home', 
+          'theme-coffee-shop', 
+          'theme-library'
+        );
+        
+        document.documentElement.classList.add(`theme-${profileData.last_selected_environment}`);
+        document.documentElement.setAttribute('data-environment', profileData.last_selected_environment);
+        
+        setEnvironmentTheme(profileData.last_selected_environment);
+      }
       
       const savedSession = await loadUserSession(authUser.id);
       if (savedSession) {
