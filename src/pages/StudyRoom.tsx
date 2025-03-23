@@ -442,7 +442,7 @@ const StudyRoom = () => {
           />
           
           <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden">
-            <HikingTrail environment={state.environment} milestone={0} />
+            <HikingTrail environment={state.environment} currentMilestone={0} />
           </div>
           
           <div className="text-center">
