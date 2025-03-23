@@ -477,6 +477,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          last_selected_environment: string | null
           major: string | null
           password_hash: string | null
           preferences: Json | null
@@ -500,6 +501,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          last_selected_environment?: string | null
           major?: string | null
           password_hash?: string | null
           preferences?: Json | null
@@ -523,6 +525,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          last_selected_environment?: string | null
           major?: string | null
           password_hash?: string | null
           preferences?: Json | null

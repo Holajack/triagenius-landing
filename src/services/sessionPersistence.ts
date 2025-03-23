@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Json } from "@/integrations/supabase/types";
@@ -137,16 +136,17 @@ export const loadUserSession = async (userId: string | undefined): Promise<Persi
       .single();
       
     if (error) {
+      console.error("Error loading session from database:", error);
       throw error;
     }
     
     // Check for the dedicated environment field first
-    if (data?.last_selected_environment) {
+    if (data && data.last_selected_environment) {
       localStorage.setItem('environment', data.last_selected_environment);
     }
     
     // Check if preferences and lastSessionData exist
-    if (data?.preferences && typeof data.preferences === 'object') {
+    if (data && data.preferences && typeof data.preferences === 'object') {
       const prefs = data.preferences as Record<string, Json>;
       
       if (prefs.lastSessionData && typeof prefs.lastSessionData === 'string') {
@@ -156,7 +156,7 @@ export const loadUserSession = async (userId: string | undefined): Promise<Persi
           console.log("Session loaded from Supabase");
           
           // If we have a dedicated environment field but no environment in session data, update it
-          if (data?.last_selected_environment && parsedSessionData?.preferences) {
+          if (data.last_selected_environment && parsedSessionData?.preferences) {
             parsedSessionData.preferences.environment = data.last_selected_environment;
           }
           
@@ -167,7 +167,7 @@ export const loadUserSession = async (userId: string | undefined): Promise<Persi
       }
       
       // If we have direct environment value but no lastSessionData
-      if (data?.last_selected_environment && prefs.environment !== data.last_selected_environment) {
+      if (data.last_selected_environment) {
         // Create a session with the environment from the dedicated field
         const sessionWithEnvironment = {...defaultSessionData};
         sessionWithEnvironment.preferences.environment = data.last_selected_environment;

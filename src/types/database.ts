@@ -53,6 +53,7 @@ export interface UserProfile {
   show_business?: boolean;
   show_classes?: boolean;
   classes?: string[] | null;
+  last_selected_environment?: string | null;
   created_at: string;
   updated_at: string;
 }

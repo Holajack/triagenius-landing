@@ -1,3 +1,4 @@
+
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -104,6 +105,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       
+      // Successfully fetched profile data
       setUser({
         id: authUser.id,
         email: profileData.email || authUser.email,
@@ -113,6 +115,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         profile: profileData as UserProfile
       });
       
+      // Apply environment theme if available
       if (profileData.last_selected_environment) {
         localStorage.setItem('environment', profileData.last_selected_environment);
         
