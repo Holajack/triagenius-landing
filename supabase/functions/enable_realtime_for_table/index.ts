@@ -32,6 +32,46 @@ serve(async (req) => {
       );
     }
     
+    // Check if the table is 'messages' and ensure it has a conversation_id column
+    if (table_name === 'messages') {
+      // Check if conversation_id column exists
+      const { data: columnExists, error: columnCheckError } = await supabase.rpc(
+        'execute_sql',
+        {
+          sql_query: `
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+            AND table_name = 'messages' 
+            AND column_name = 'conversation_id';
+          `
+        }
+      );
+      
+      if (columnCheckError) {
+        console.error('Error checking for conversation_id column:', columnCheckError);
+      } else {
+        // If the column doesn't exist, add it
+        if (!columnExists || (Array.isArray(columnExists) && columnExists.length === 0)) {
+          const { error: addColumnError } = await supabase.rpc(
+            'execute_sql',
+            {
+              sql_query: `
+                ALTER TABLE public.messages 
+                ADD COLUMN IF NOT EXISTS conversation_id TEXT;
+              `
+            }
+          );
+          
+          if (addColumnError) {
+            console.error('Error adding conversation_id column:', addColumnError);
+          } else {
+            console.log('Added conversation_id column to messages table');
+          }
+        }
+      }
+    }
+    
     // Execute SQL to set REPLICA IDENTITY FULL for the table
     const { error: replicaError } = await supabase.rpc(
       'execute_sql', 

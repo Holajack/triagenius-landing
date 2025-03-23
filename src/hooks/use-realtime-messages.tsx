@@ -13,6 +13,7 @@ interface Message {
   is_read: boolean;
   created_at: string;
   updated_at: string;
+  conversation_id?: string;
   sender?: {
     id: string;
     username: string;
@@ -224,6 +225,13 @@ export function useRealtimeMessages() {
     };
   }, [user?.id]);
 
+  // Function to generate a consistent conversation ID between two users
+  const getConversationId = (userId1: string, userId2: string) => {
+    // Sort the IDs to ensure the same conversation ID regardless of who initiates
+    const sortedIds = [userId1, userId2].sort();
+    return `${sortedIds[0]}_${sortedIds[1]}`;
+  };
+
   // Function to send a message
   const sendMessage = async (recipientId: string, content: string) => {
     if (!user?.id) {
@@ -258,6 +266,9 @@ export function useRealtimeMessages() {
         return null;
       }
 
+      // Generate a consistent conversation ID
+      const conversationId = getConversationId(user.id, recipientId);
+
       // Send the message
       const { data, error } = await supabase
         .from('messages')
@@ -265,6 +276,7 @@ export function useRealtimeMessages() {
           sender_id: user.id,
           recipient_id: recipientId,
           content,
+          conversation_id: conversationId
         })
         .select()
         .single();
@@ -361,12 +373,28 @@ export function useRealtimeMessages() {
     }
   };
 
-  // Get conversation messages between two users
+  // Get conversation messages between two users using conversation_id
   const getConversation = (otherUserId: string) => {
+    if (!user?.id) return [];
+    
+    // Generate consistent conversation ID
+    const conversationId = getConversationId(user.id, otherUserId);
+    
+    // First try to get messages with conversation_id
+    const messagesWithConvId = messages.filter(msg => msg.conversation_id === conversationId);
+    
+    // If we have messages with conversation_id, return those
+    if (messagesWithConvId.length > 0) {
+      return messagesWithConvId.sort((a, b) => 
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+    }
+    
+    // Fallback to the old method for backward compatibility
     return messages.filter(
       (msg) =>
-        (msg.sender_id === user?.id && msg.recipient_id === otherUserId) ||
-        (msg.sender_id === otherUserId && msg.recipient_id === user?.id)
+        (msg.sender_id === user.id && msg.recipient_id === otherUserId) ||
+        (msg.sender_id === otherUserId && msg.recipient_id === user.id)
     ).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   };
 
@@ -423,6 +451,34 @@ export function useRealtimeMessages() {
     return query.length;
   };
 
+  // Subscribe to conversation updates by ID 
+  const subscribeToConversation = (otherUserId: string, callback: (message: Message) => void) => {
+    if (!user?.id) return null;
+    
+    // Generate conversation ID
+    const conversationId = getConversationId(user.id, otherUserId);
+    
+    // Create subscription
+    const conversationChannel = supabase
+      .channel(`conversation-${conversationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`
+        },
+        (payload) => {
+          console.log('Real-time conversation update:', payload);
+          callback(payload.new as Message);
+        }
+      )
+      .subscribe();
+      
+    return conversationChannel;
+  };
+
   return {
     messages,
     loading,
@@ -434,5 +490,7 @@ export function useRealtimeMessages() {
     getUnreadCount,
     setTypingStatus,
     isUserTyping,
+    subscribeToConversation,
+    getConversationId,
   };
 }
