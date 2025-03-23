@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 interface CommunityUserListProps {
   searchQuery?: string;
   filters?: string[];
+  tabView?: "all" | "friends" | "pending"; // Added this prop to support different views
 }
 
 interface Profile {
@@ -42,7 +44,7 @@ interface AuthUser {
   last_sign_in_at: string | null;
 }
 
-const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserListProps) => {
+const CommunityUserList = ({ searchQuery = "", filters = [], tabView = "all" }: CommunityUserListProps) => {
   const { user } = useUser();
   const navigate = useNavigate();
   const [allUsers, setAllUsers] = useState<AuthUser[]>([]);
@@ -52,8 +54,13 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
   const [acceptedFriendIds, setAcceptedFriendIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState(tabView);
   const isMobile = useIsMobile();
+
+  useEffect(() => {
+    // Update activeTab when tabView prop changes
+    setActiveTab(tabView);
+  }, [tabView]);
 
   const fetchAllAuthUsers = useCallback(async () => {
     if (!user) return;
@@ -199,6 +206,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     
     let usersToFilter = [...allUsers];
     
+    // Filter based on activeTab
     if (activeTab === "pending") {
       usersToFilter = allUsers.filter(authUser => pendingFriendIds.includes(authUser.id));
     } else if (activeTab === "friends") {
@@ -340,13 +348,6 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     }
   };
 
-  const getDisplayName = (authUser: AuthUser): string => {
-    if (authUser.display_name_preference === 'full_name' && authUser.full_name) {
-      return authUser.full_name;
-    }
-    return authUser.username || authUser.email?.split('@')[0] || 'User';
-  };
-
   const startMessaging = (userId: string) => {
     navigate(`/community/chat/${userId}`);
   };
@@ -401,9 +402,13 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
             const friendRequest = getFriendRequest(authUser.id);
             const isReceivedRequest = friendRequest && friendRequest.sender_id === authUser.id;
             const isCurrentUser = authUser.id === user?.id;
-            const displayName = getDisplayName(authUser);
+            const displayName = getDisplayName({
+              username: authUser.username || '',
+              full_name: authUser.full_name || '',
+              display_name_preference: authUser.display_name_preference as 'username' | 'full_name' | null || null
+            });
             
-            if ((activeTab === "pending" || activeTab === "friends") && isCurrentUser) {
+            if (isCurrentUser) {
               return null;
             }
             
@@ -494,6 +499,29 @@ const CommunityUserList = ({ searchQuery = "", filters = [] }: CommunityUserList
     );
   };
   
+  // For direct viewing mode (when used as a tab in the Community page)
+  if (tabView === "friends") {
+    return renderUserList(
+      filteredUsers.filter(user => acceptedFriendIds.includes(user.id)),
+      "You haven't connected with any users yet. Add friends to see them here."
+    );
+  }
+  
+  if (tabView === "pending") {
+    return renderUserList(
+      filteredUsers.filter(user => pendingFriendIds.includes(user.id)),
+      "No pending friend requests."
+    );
+  }
+  
+  if (tabView === "all") {
+    return renderUserList(
+      filteredUsers,
+      "No other users have registered yet. Be the first to invite others!"
+    );
+  }
+  
+  // Original component with tabs for standalone usage
   return (
     <Card className="col-span-1 h-full">
       <CardHeader>

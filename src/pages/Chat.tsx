@@ -11,7 +11,7 @@ import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { requestMediaPermissions, sendNotification } from "@/components/pwa/ServiceWorker";
-import { getDisplayName } from "@/hooks/use-display-name";
+import { getDisplayName, getInitials } from "@/hooks/use-display-name";
 
 interface ChatProfile {
   id: string;
@@ -30,6 +30,8 @@ const Chat = () => {
   const navigate = useNavigate();
   const messageEndRef = useRef<HTMLDivElement>(null);
   const [contact, setContact] = useState<ChatProfile | null>(null);
+  const [contactLoading, setContactLoading] = useState(true);
+  const [contactError, setContactError] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isFriend, setIsFriend] = useState<boolean | null>(null);
@@ -125,29 +127,56 @@ const Chat = () => {
       if (!id) return;
       
       try {
+        setContactLoading(true);
+        setContactError(null);
+        
         const { data, error } = await supabase
           .from('profiles')
-          .select('*')
+          .select('id, username, full_name, display_name_preference, avatar_url')
           .eq('id', id)
-          .single();
+          .maybeSingle();
         
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching profile:', error);
+          setContactError('Could not load contact information');
+          return;
+        }
         
-        const isOnline = onlineUsers.has(id);
+        // Use a fallback if no data is found
+        let contactData: ChatProfile;
         
-        setContact({
-          id: data.id,
-          username: data.username || `User-${data.id.substring(0, 4)}`,
-          full_name: data.full_name,
-          display_name_preference: data.display_name_preference as 'username' | 'full_name' | null,
-          avatar_url: data.avatar_url,
-          online: isOnline,
-          status: isOnline ? "Online" : "Offline",
-          typing: isUserTyping(id)
-        });
+        if (!data) {
+          // Create fallback profile with minimal data
+          contactData = {
+            id,
+            username: `User-${id.substring(0, 4)}`,
+            full_name: null,
+            display_name_preference: null,
+            avatar_url: null,
+            status: 'Unknown'
+          };
+          console.log('Using fallback profile for user:', id);
+        } else {
+          const isOnline = onlineUsers.has(id);
+          
+          contactData = {
+            id: data.id,
+            username: data.username || `User-${data.id.substring(0, 4)}`,
+            full_name: data.full_name,
+            display_name_preference: data.display_name_preference as 'username' | 'full_name' | null,
+            avatar_url: data.avatar_url,
+            online: isOnline,
+            status: isOnline ? "Online" : "Offline",
+            typing: isUserTyping(id)
+          };
+        }
+        
+        setContact(contactData);
       } catch (err) {
-        console.error('Error fetching profile:', err);
-        toast.error('Could not load contact information');
+        console.error('Error in fetchProfile:', err);
+        setContactError('Could not load contact information');
+      } finally {
+        setContactLoading(false);
       }
     };
     
@@ -310,20 +339,34 @@ const Chat = () => {
     }
   };
   
-  if (!contact || !id) {
+  if ((!contact || !id) && !contactLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <p>Chat not found</p>
+        <p>User not found</p>
       </div>
     );
   }
 
+  // Show loading state while contact info is being fetched
+  if (contactLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p>Loading contact information...</p>
+        </div>
+      </div>
+    );
+  }
+  
   // Get display name based on preference
-  const contactDisplayName = getDisplayName({
+  const contactDisplayName = contact ? getDisplayName({
     username: contact.username || '',
     full_name: contact.full_name || '',
     display_name_preference: contact.display_name_preference
-  });
+  }) : "Unknown User";
+  
+  const contactInitials = contact ? getInitials(contactDisplayName) : "?";
   
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -336,10 +379,10 @@ const Chat = () => {
           <div className="flex items-center gap-3">
             <div className="relative">
               <Avatar>
-                <AvatarImage src={contact.avatar_url || ""} alt={contactDisplayName} />
-                <AvatarFallback>{contactDisplayName[0]}</AvatarFallback>
+                <AvatarImage src={contact?.avatar_url || ""} alt={contactDisplayName} />
+                <AvatarFallback>{contactInitials}</AvatarFallback>
               </Avatar>
-              {contact.online && (
+              {contact?.online && (
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
               )}
             </div>
@@ -347,7 +390,7 @@ const Chat = () => {
             <div>
               <h2 className="font-medium text-sm">{contactDisplayName}</h2>
               <p className="text-xs text-muted-foreground">
-                {isContactTyping ? "typing..." : contact.status}
+                {isContactTyping ? "typing..." : contact?.status || "Offline"}
               </p>
             </div>
           </div>
@@ -387,6 +430,12 @@ const Chat = () => {
           </div>
         )}
         
+        {contactError && (
+          <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg text-center">
+            <p className="text-sm text-red-500 dark:text-red-400">{contactError}</p>
+          </div>
+        )}
+        
         {messages.length > 0 ? (
           messages.map((message) => (
             <div 
@@ -395,8 +444,8 @@ const Chat = () => {
             >
               {message.sender_id !== user?.id && (
                 <Avatar className="h-8 w-8 mr-2 mt-1">
-                  <AvatarImage src={contact.avatar_url || ""} alt={contact.username || ""} />
-                  <AvatarFallback>{contact.username?.[0] || "U"}</AvatarFallback>
+                  <AvatarImage src={contact?.avatar_url || ""} alt={contactDisplayName} />
+                  <AvatarFallback>{contactInitials}</AvatarFallback>
                 </Avatar>
               )}
               

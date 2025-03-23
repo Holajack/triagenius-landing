@@ -15,7 +15,8 @@ import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 
 const Community = () => {
-  const [activeTab, setActiveTab] = useState("users");
+  // Changed default tab to 'friends' to match the new order
+  const [activeTab, setActiveTab] = useState("friends");
   const [searchQuery, setSearchQuery] = useState("");
   const { user } = useUser();
   const navigate = useNavigate();
@@ -59,11 +60,12 @@ const Community = () => {
       />
 
       <div className="container mx-auto px-4 py-8 pb-24">
-        <Tabs defaultValue="users" className="w-full" onValueChange={setActiveTab}>
+        <Tabs defaultValue="friends" className="w-full" onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="users" data-walkthrough="users">Users</TabsTrigger>
+            {/* Reordered tabs: Friends → Messages → All Users */}
+            <TabsTrigger value="friends" data-walkthrough="friends">Friends</TabsTrigger>
             <TabsTrigger value="messages" data-walkthrough="message-inbox">Messages</TabsTrigger>
-            <TabsTrigger value="study-rooms" data-walkthrough="study-rooms">Study Rooms</TabsTrigger>
+            <TabsTrigger value="users" data-walkthrough="users">All Users</TabsTrigger>
           </TabsList>
           
           <div className="relative mt-4">
@@ -78,14 +80,15 @@ const Community = () => {
             />
           </div>
           
-          <TabsContent value="users" className="space-y-4 mt-4">
-            <CommunityUserList searchQuery={searchQuery} />
+          {/* Reordered tab content to match the new tab order */}
+          <TabsContent value="friends" className="space-y-4 mt-4">
+            <CommunityUserList searchQuery={searchQuery} tabView="friends" />
           </TabsContent>
           <TabsContent value="messages" className="space-y-4 mt-4">
             <MessageInbox searchQuery={searchQuery} onMessageClick={handleMessageClick} />
           </TabsContent>
-          <TabsContent value="study-rooms" className="space-y-4 mt-4">
-            <StudyRooms searchQuery={searchQuery} />
+          <TabsContent value="users" className="space-y-4 mt-4">
+            <CommunityUserList searchQuery={searchQuery} tabView="all" />
           </TabsContent>
         </Tabs>
       </div>
