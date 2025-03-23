@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,7 @@ import { useNavigate } from "react-router-dom";
 interface CommunityUserListProps {
   searchQuery?: string;
   filters?: string[];
-  tabView?: "all" | "friends" | "pending"; // Added this prop to support different views
+  tabView?: "all" | "friends" | "pending"; // Tab view is strictly typed
 }
 
 interface Profile {
@@ -54,12 +53,11 @@ const CommunityUserList = ({ searchQuery = "", filters = [], tabView = "all" }: 
   const [acceptedFriendIds, setAcceptedFriendIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState(tabView);
+  const [activeTab, setActiveTab] = useState<"all" | "friends" | "pending">(tabView);
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    // Update activeTab when tabView prop changes
-    setActiveTab(tabView);
+    setActiveTab(tabView as "all" | "friends" | "pending");
   }, [tabView]);
 
   const fetchAllAuthUsers = useCallback(async () => {
@@ -206,7 +204,6 @@ const CommunityUserList = ({ searchQuery = "", filters = [], tabView = "all" }: 
     
     let usersToFilter = [...allUsers];
     
-    // Filter based on activeTab
     if (activeTab === "pending") {
       usersToFilter = allUsers.filter(authUser => pendingFriendIds.includes(authUser.id));
     } else if (activeTab === "friends") {
@@ -226,7 +223,7 @@ const CommunityUserList = ({ searchQuery = "", filters = [], tabView = "all" }: 
   }, [searchQuery, allUsers, activeTab, pendingFriendIds, acceptedFriendIds]);
   
   const handleTabChange = (value: string) => {
-    setActiveTab(value);
+    setActiveTab(value as "all" | "friends" | "pending");
   };
   
   const isFriendRequestPending = (userId: string) => {
@@ -499,7 +496,6 @@ const CommunityUserList = ({ searchQuery = "", filters = [], tabView = "all" }: 
     );
   };
   
-  // For direct viewing mode (when used as a tab in the Community page)
   if (tabView === "friends") {
     return renderUserList(
       filteredUsers.filter(user => acceptedFriendIds.includes(user.id)),
@@ -521,7 +517,6 @@ const CommunityUserList = ({ searchQuery = "", filters = [], tabView = "all" }: 
     );
   }
   
-  // Original component with tabs for standalone usage
   return (
     <Card className="col-span-1 h-full">
       <CardHeader>
