@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
@@ -81,6 +82,7 @@ function App() {
                       <Route path="/community" element={<Community />} />
                       <Route path="/leaderboard" element={<Leaderboard />} />
                       <Route path="/chat" element={<Chat />} />
+                      <Route path="/community/chat/:id" element={<Chat />} />
                       <Route path="/bonuses" element={<Bonuses />} />
                       <Route path="/study-room/:id" element={<StudyRoom />} />
                       <Route path="/nora" element={<Nora />} />
