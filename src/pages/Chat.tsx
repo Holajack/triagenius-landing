@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useUser } from "@/hooks/use-user";
 import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, handleSupabaseError } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { requestMediaPermissions, sendNotification } from "@/components/pwa/ServiceWorker";
 import { getDisplayName, getInitials } from "@/hooks/use-display-name";
@@ -122,6 +122,7 @@ const Chat = () => {
     };
   }, [user?.id, contact, id]);
   
+  // Fetch contact profile data
   useEffect(() => {
     const fetchProfile = async () => {
       if (!id) return;
@@ -130,6 +131,7 @@ const Chat = () => {
         setContactLoading(true);
         setContactError(null);
         
+        // Check if this user exists in auth.users (via profiles table)
         const { data, error } = await supabase
           .from('profiles')
           .select('id, username, full_name, display_name_preference, avatar_url')
@@ -138,15 +140,14 @@ const Chat = () => {
         
         if (error) {
           console.error('Error fetching profile:', error);
-          setContactError('Could not load contact information');
-          return;
+          throw handleSupabaseError(error, 'Could not load contact information');
         }
         
-        // Use a fallback if no data is found
+        // Create a fallback profile if no data is found
         let contactData: ChatProfile;
         
         if (!data) {
-          // Create fallback profile with minimal data
+          console.log('No profile found, creating fallback for ID:', id);
           contactData = {
             id,
             username: `User-${id.substring(0, 4)}`,
@@ -155,10 +156,8 @@ const Chat = () => {
             avatar_url: null,
             status: 'Unknown'
           };
-          console.log('Using fallback profile for user:', id);
         } else {
           const isOnline = onlineUsers.has(id);
-          
           contactData = {
             id: data.id,
             username: data.username || `User-${data.id.substring(0, 4)}`,
@@ -172,9 +171,22 @@ const Chat = () => {
         }
         
         setContact(contactData);
+        setContactError(null);
       } catch (err) {
         console.error('Error in fetchProfile:', err);
-        setContactError('Could not load contact information');
+        
+        // Create fallback profile even if there's an error
+        setContact({
+          id,
+          username: `User-${id.substring(0, 4)}`,
+          full_name: null,
+          display_name_preference: null,
+          avatar_url: null,
+          status: 'Unknown'
+        });
+        
+        // Still show the error
+        setContactError(err instanceof Error ? err.message : 'Could not load contact information');
       } finally {
         setContactLoading(false);
       }
@@ -183,6 +195,7 @@ const Chat = () => {
     fetchProfile();
   }, [id, onlineUsers, isUserTyping]);
   
+  // Mark messages as read
   useEffect(() => {
     if (!id || !user?.id) return;
     
@@ -193,11 +206,12 @@ const Chat = () => {
     });
   }, [id, messages, user?.id, markAsRead]);
   
+  // Auto-scroll to latest message
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
   
-  // Update typing status when user is typing
+  // Handle typing status
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value);
     
@@ -221,6 +235,7 @@ const Chat = () => {
     setTypingTimeout(timeout);
   };
   
+  // Send message
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !id || !user?.id) return;
     
@@ -251,6 +266,7 @@ const Chat = () => {
     }
   };
   
+  // Send friend request
   const handleSendFriendRequest = async () => {
     if (!id || !user?.id) return;
     
@@ -289,6 +305,7 @@ const Chat = () => {
     }
   };
   
+  // Handle audio call
   const handleAudioCall = async () => {
     try {
       const permissions = await requestMediaPermissions();
@@ -314,6 +331,7 @@ const Chat = () => {
     }
   };
   
+  // Handle video call
   const handleVideoCall = async () => {
     try {
       const permissions = await requestMediaPermissions();
@@ -339,10 +357,11 @@ const Chat = () => {
     }
   };
   
-  if ((!contact || !id) && !contactLoading) {
+  // Handle user not found case
+  if ((!id)) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <p>User not found</p>
+        <p>No user selected. Please select a conversation.</p>
       </div>
     );
   }
@@ -433,48 +452,55 @@ const Chat = () => {
         {contactError && (
           <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg text-center">
             <p className="text-sm text-red-500 dark:text-red-400">{contactError}</p>
+            <p className="text-xs text-muted-foreground mt-1">Using limited profile information</p>
           </div>
         )}
         
         {messages.length > 0 ? (
-          messages.map((message) => (
-            <div 
-              key={message.id} 
-              className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
-            >
-              {message.sender_id !== user?.id && (
-                <Avatar className="h-8 w-8 mr-2 mt-1">
-                  <AvatarImage src={contact?.avatar_url || ""} alt={contactDisplayName} />
-                  <AvatarFallback>{contactInitials}</AvatarFallback>
-                </Avatar>
-              )}
-              
+          messages.map((message) => {
+            const isUnread = !message.is_read;
+            const isCurrentUserSender = message.sender_id === user?.id;
+            const messageTime = formatDistanceToNow(new Date(message.created_at), { addSuffix: true });
+            
+            return (
               <div 
-                className={`max-w-[75%] p-3 rounded-lg ${
-                  message.sender_id === user?.id 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-muted'
-                }`}
+                key={message.id} 
+                className={`flex ${isCurrentUserSender ? 'justify-end' : 'justify-start'}`}
               >
-                <p className="text-sm">{message.content}</p>
-                <div className={`flex items-center justify-end gap-1 mt-1 text-xs ${
-                  message.sender_id === user?.id ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                }`}>
-                  <span>{formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}</span>
-                  {message.sender_id === user?.id && (
-                    <span>{message.is_read ? '✓✓' : '✓'}</span>
-                  )}
+                {!isCurrentUserSender && (
+                  <Avatar className="h-8 w-8 mr-2 mt-1">
+                    <AvatarImage src={contact?.avatar_url || ""} alt={contactDisplayName} />
+                    <AvatarFallback>{contactInitials}</AvatarFallback>
+                  </Avatar>
+                )}
+                
+                <div 
+                  className={`max-w-[75%] p-3 rounded-lg ${
+                    isCurrentUserSender 
+                      ? 'bg-primary text-primary-foreground' 
+                      : isUnread ? 'bg-muted/80' : 'bg-muted'
+                  }`}
+                >
+                  <p className="text-sm">{message.content}</p>
+                  <div className={`flex items-center justify-end gap-1 mt-1 text-xs ${
+                    isCurrentUserSender ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                  }`}>
+                    <span>{messageTime}</span>
+                    {isCurrentUserSender && (
+                      <span>{message.is_read ? '✓✓' : '✓'}</span>
+                    )}
+                  </div>
                 </div>
+                
+                {isCurrentUserSender && (
+                  <Avatar className="h-8 w-8 ml-2 mt-1">
+                    <AvatarImage src={user?.avatarUrl || ""} />
+                    <AvatarFallback>{(user?.username || "?")[0]}</AvatarFallback>
+                  </Avatar>
+                )}
               </div>
-              
-              {message.sender_id === user?.id && (
-                <Avatar className="h-8 w-8 ml-2 mt-1">
-                  <AvatarImage src={user?.avatarUrl || ""} />
-                  <AvatarFallback>{(user?.username || "?")[0]}</AvatarFallback>
-                </Avatar>
-              )}
-            </div>
-          ))
+            );
+          })
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
             <p>No messages yet</p>
