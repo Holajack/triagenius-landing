@@ -44,6 +44,9 @@ export function useRealtimeMessages() {
       try {
         setLoading(true);
         
+        // Enable realtime for messages table
+        await supabase.rpc('enable_realtime_for_table', { table_name: 'messages' });
+        
         // First, fetch messages
         const { data: messagesData, error: messagesError } = await supabase
           .from('messages')
@@ -62,7 +65,7 @@ export function useRealtimeMessages() {
             .from('profiles')
             .select('id, username, avatar_url')
             .eq('id', msg.sender_id)
-            .single();
+            .maybeSingle();
             
           messagesWithSenders.push({
             ...msg,
@@ -93,12 +96,13 @@ export function useRealtimeMessages() {
         supabase.removeChannel(messagesChannelRef.current);
       }
       
-      // Enable REPLICA IDENTITY on messages table for realtime events
-      supabase.from('messages')
-        .select('id')
-        .limit(1)
+      // Make sure the messages table has REPLICA IDENTITY set
+      supabase.rpc('enable_realtime_for_table', { table_name: 'messages' })
         .then(() => {
-          console.log('Connected to messages table');
+          console.log('Realtime enabled for messages table');
+        })
+        .catch(err => {
+          console.error('Failed to enable realtime:', err);
         });
       
       messagesChannelRef.current = supabase
@@ -119,7 +123,7 @@ export function useRealtimeMessages() {
               .from('profiles')
               .select('id, username, avatar_url')
               .eq('id', payload.new.sender_id)
-              .single();
+              .maybeSingle();
 
             const newMessage = {
               ...payload.new,
@@ -217,6 +221,33 @@ export function useRealtimeMessages() {
     }
 
     try {
+      // First check if users are friends
+      const { data: friendData, error: friendError } = await supabase
+        .from('friends')
+        .select('*')
+        .or(`and(user_id.eq.${user.id},friend_id.eq.${recipientId}),and(user_id.eq.${recipientId},friend_id.eq.${user.id})`)
+        .maybeSingle();
+      
+      let areFriends = !!friendData;
+
+      // If not directly in the friends table, check accepted friend requests
+      if (!areFriends) {
+        const { data: requestData, error: requestError } = await supabase
+          .from('friend_requests')
+          .select('*')
+          .or(`and(sender_id.eq.${user.id},recipient_id.eq.${recipientId}),and(sender_id.eq.${recipientId},recipient_id.eq.${user.id})`)
+          .eq('status', 'accepted')
+          .maybeSingle();
+          
+        areFriends = !!requestData;
+      }
+
+      if (!areFriends) {
+        toast.error('You need to be friends with this user to send messages');
+        return null;
+      }
+
+      // Send the message
       const { data, error } = await supabase
         .from('messages')
         .insert({
@@ -386,77 +417,11 @@ export function useRealtimeMessages() {
     loading,
     error,
     sendMessage,
-    markAsRead: async (messageId: string) => {
-      try {
-        const { error } = await supabase
-          .from('messages')
-          .update({ is_read: true })
-          .eq('id', messageId)
-          .eq('recipient_id', user?.id);
-  
-        if (error) throw error;
-  
-        setMessages((prev) =>
-          prev.map((msg) => (msg.id === messageId ? { ...msg, is_read: true } : msg))
-        );
-      } catch (err) {
-        console.error('Error marking message as read:', err);
-      }
-    },
-    getConversation: (otherUserId: string) => {
-      return messages.filter(
-        (msg) =>
-          (msg.sender_id === user?.id && msg.recipient_id === otherUserId) ||
-          (msg.sender_id === otherUserId && msg.recipient_id === user?.id)
-      ).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-    },
-    getConversations: () => {
-      if (!user?.id) return [];
-  
-      const userIds = new Set<string>();
-      const conversations: { userId: string; lastMessage: Message }[] = [];
-  
-      messages.forEach((msg) => {
-        const otherId = msg.sender_id === user.id ? msg.recipient_id : msg.sender_id;
-        
-        if (!userIds.has(otherId)) {
-          userIds.add(otherId);
-          
-          // Find last message with this user
-          const lastMessage = messages
-            .filter(m => 
-              (m.sender_id === user.id && m.recipient_id === otherId) || 
-              (m.sender_id === otherId && m.recipient_id === user.id)
-            )
-            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-          
-          if (lastMessage) {
-            conversations.push({
-              userId: otherId,
-              lastMessage,
-            });
-          }
-        }
-      });
-  
-      return conversations;
-    },
-    getUnreadCount: (fromUserId?: string) => {
-      if (!user?.id) return 0;
-  
-      const query = messages.filter(
-        (msg) => msg.recipient_id === user.id && !msg.is_read
-      );
-  
-      if (fromUserId) {
-        return query.filter((msg) => msg.sender_id === fromUserId).length;
-      }
-  
-      return query.length;
-    },
+    markAsRead,
+    getConversation,
+    getConversations,
+    getUnreadCount,
     setTypingStatus,
-    isUserTyping: (userId: string) => {
-      return !!typingUsers[userId];
-    },
+    isUserTyping,
   };
 }

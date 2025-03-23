@@ -36,6 +36,7 @@ const Chat = () => {
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isFriend, setIsFriend] = useState<boolean | null>(null);
   const [isCheckingFriend, setIsCheckingFriend] = useState(true);
+  const [hasTriedAuth, setHasTriedAuth] = useState(false);
   const { user } = useUser();
   const { getConversation, sendMessage, markAsRead, setTypingStatus, isUserTyping } = useRealtimeMessages();
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
@@ -43,15 +44,20 @@ const Chat = () => {
   const messages = id ? getConversation(id) : [];
   const isContactTyping = id && isUserTyping(id);
 
-  // Check if the user is a friend
+  // Check if the user is a friend - improved with better error handling
   useEffect(() => {
     const checkFriendStatus = async () => {
-      if (!id || !user?.id) return;
+      if (!id || !user?.id) {
+        if (user?.id && !hasTriedAuth) {
+          setHasTriedAuth(true);
+        }
+        return;
+      }
       
       setIsCheckingFriend(true);
       
       try {
-        // Check friends table
+        // First, try to find a direct friend connection
         const { data: friendData, error: friendError } = await supabase
           .from('friends')
           .select('*')
@@ -60,9 +66,28 @@ const Chat = () => {
           
         if (friendError) {
           console.error('Error checking friend status:', friendError);
+          // Continue with the check, don't set isFriend to false yet
+        } else if (friendData) {
+          // Direct entry in friends table found
+          setIsFriend(true);
+          setIsCheckingFriend(false);
+          return;
+        }
+        
+        // If no direct connection, check for approved friend requests
+        const { data: requestData, error: requestError } = await supabase
+          .from('friend_requests')
+          .select('*')
+          .or(`and(sender_id.eq.${user.id},recipient_id.eq.${id}),and(sender_id.eq.${id},recipient_id.eq.${user.id})`)
+          .eq('status', 'accepted')
+          .maybeSingle();
+          
+        if (requestError) {
+          console.error('Error checking friend requests:', requestError);
           setIsFriend(false);
         } else {
-          setIsFriend(!!friendData);
+          // Set isFriend based on whether we found an accepted request
+          setIsFriend(!!requestData);
         }
       } catch (error) {
         console.error('Error checking friend status:', error);
@@ -73,7 +98,7 @@ const Chat = () => {
     };
     
     checkFriendStatus();
-  }, [id, user?.id]);
+  }, [id, user?.id, hasTriedAuth]);
   
   // Set up presence channel for online status
   useEffect(() => {
@@ -122,7 +147,7 @@ const Chat = () => {
     };
   }, [user?.id, contact, id]);
   
-  // Fetch contact profile data
+  // Fetch contact profile data with improved error handling and fallbacks
   useEffect(() => {
     const fetchProfile = async () => {
       if (!id) return;
@@ -131,24 +156,82 @@ const Chat = () => {
         setContactLoading(true);
         setContactError(null);
         
-        // Check if this user exists in auth.users (via profiles table)
-        const { data, error } = await supabase
+        // First try to get from profiles table
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('id, username, full_name, display_name_preference, avatar_url')
           .eq('id', id)
           .maybeSingle();
         
-        if (error) {
-          console.error('Error fetching profile:', error);
-          throw handleSupabaseError(error, 'Could not load contact information');
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error('Error fetching profile:', profileError);
+          // Don't throw yet, we'll try the auth.users table
         }
         
-        // Create a fallback profile if no data is found
-        let contactData: ChatProfile;
+        // If we found a profile, use it
+        if (profileData) {
+          const isOnline = onlineUsers.has(id);
+          const contactData: ChatProfile = {
+            id: profileData.id,
+            username: profileData.username || `User-${id.substring(0, 4)}`,
+            full_name: profileData.full_name,
+            display_name_preference: profileData.display_name_preference as 'username' | 'full_name' | null,
+            avatar_url: profileData.avatar_url,
+            online: isOnline,
+            status: isOnline ? "Online" : "Offline",
+            typing: isUserTyping(id)
+          };
+          
+          setContact(contactData);
+          setContactError(null);
+          setContactLoading(false);
+          return;
+        }
         
-        if (!data) {
-          console.log('No profile found, creating fallback for ID:', id);
-          contactData = {
+        // If no profile found in the profiles table, create a fallback profile
+        console.log('No profile found in profiles table, using fallback for ID:', id);
+        
+        // Try to get at least some info from Supabase auth
+        try {
+          // This may fail in many environments due to permissions
+          const { data: authData, error: authError } = await supabase.auth.admin.getUserById(id);
+          
+          if (authError) {
+            throw authError;
+          }
+          
+          if (authData && authData.user) {
+            const contactData: ChatProfile = {
+              id,
+              username: authData.user.email?.split('@')[0] || `User-${id.substring(0, 4)}`,
+              full_name: null,
+              display_name_preference: null,
+              avatar_url: null,
+              status: 'Offline',
+              online: onlineUsers.has(id)
+            };
+            
+            setContact(contactData);
+            setContactError("Limited profile information available");
+          } else {
+            // Last resort fallback
+            const contactData: ChatProfile = {
+              id,
+              username: `User-${id.substring(0, 4)}`,
+              full_name: null,
+              display_name_preference: null,
+              avatar_url: null,
+              status: 'Unknown'
+            };
+            
+            setContact(contactData);
+            setContactError("Limited user information available");
+          }
+        } catch (authErr) {
+          console.log('Auth fetch failed, using basic fallback', authErr);
+          
+          // Complete fallback when we can't access auth data
+          const contactData: ChatProfile = {
             id,
             username: `User-${id.substring(0, 4)}`,
             full_name: null,
@@ -156,22 +239,10 @@ const Chat = () => {
             avatar_url: null,
             status: 'Unknown'
           };
-        } else {
-          const isOnline = onlineUsers.has(id);
-          contactData = {
-            id: data.id,
-            username: data.username || `User-${data.id.substring(0, 4)}`,
-            full_name: data.full_name,
-            display_name_preference: data.display_name_preference as 'username' | 'full_name' | null,
-            avatar_url: data.avatar_url,
-            online: isOnline,
-            status: isOnline ? "Online" : "Offline",
-            typing: isUserTyping(id)
-          };
+          
+          setContact(contactData);
+          setContactError("Limited user information available");
         }
-        
-        setContact(contactData);
-        setContactError(null);
       } catch (err) {
         console.error('Error in fetchProfile:', err);
         
@@ -185,8 +256,7 @@ const Chat = () => {
           status: 'Unknown'
         });
         
-        // Still show the error
-        setContactError(err instanceof Error ? err.message : 'Could not load contact information');
+        setContactError("Could not load complete contact information");
       } finally {
         setContactLoading(false);
       }
@@ -421,6 +491,7 @@ const Chat = () => {
             size="icon" 
             className="rounded-full h-8 w-8"
             onClick={handleAudioCall}
+            disabled={isFriend === false}
           >
             <Phone className="h-4 w-4" />
           </Button>
@@ -429,6 +500,7 @@ const Chat = () => {
             size="icon" 
             className="rounded-full h-8 w-8"
             onClick={handleVideoCall}
+            disabled={isFriend === false}
           >
             <Video className="h-4 w-4" />
           </Button>
@@ -439,6 +511,13 @@ const Chat = () => {
       </div>
       
       <div className="flex-1 p-4 overflow-y-auto space-y-4">
+        {/* Contact error notice */}
+        {contactError && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg text-center">
+            <p className="text-sm text-amber-600 dark:text-amber-400">{contactError}</p>
+          </div>
+        )}
+        
         {/* Friend restriction notice */}
         {isFriend === false && !isCheckingFriend && (
           <div className="bg-muted p-3 rounded-lg text-center">
@@ -446,13 +525,6 @@ const Chat = () => {
             <Button size="sm" onClick={handleSendFriendRequest}>
               Send Friend Request
             </Button>
-          </div>
-        )}
-        
-        {contactError && (
-          <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg text-center">
-            <p className="text-sm text-red-500 dark:text-red-400">{contactError}</p>
-            <p className="text-xs text-muted-foreground mt-1">Using limited profile information</p>
           </div>
         )}
         
@@ -528,6 +600,7 @@ const Chat = () => {
             size="icon" 
             className="rounded-full"
             onClick={() => toast.info("File sharing coming soon")}
+            disabled={isFriend === false}
           >
             <Paperclip className="h-5 w-5 text-muted-foreground" />
           </Button>
@@ -542,6 +615,7 @@ const Chat = () => {
                 handleSendMessage();
               }
             }}
+            disabled={isFriend === false}
           />
           
           <Button 
@@ -549,6 +623,7 @@ const Chat = () => {
             size="icon" 
             className="rounded-full"
             onClick={() => toast.info("Emoji picker coming soon")}
+            disabled={isFriend === false}
           >
             <Smile className="h-5 w-5 text-muted-foreground" />
           </Button>
