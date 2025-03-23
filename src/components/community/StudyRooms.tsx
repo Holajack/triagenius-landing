@@ -299,12 +299,18 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
               </div>
               
               <div className="flex -space-x-2">
-                {room.participants?.slice(0, 3).map((participant, index) => (
-                  <Avatar key={index} className="h-6 w-6 border-2 border-background">
-                    <AvatarImage src={participant.user.avatar_url || ""} />
-                    <AvatarFallback>{participant.user.username?.[0] || "U"}</AvatarFallback>
-                  </Avatar>
-                ))}
+                {room.participants?.slice(0, 3).map((participant, index) => {
+                  if (!participant.user) {
+                    return null;
+                  }
+                  
+                  return (
+                    <Avatar key={index} className="h-6 w-6 border-2 border-background">
+                      <AvatarImage src={participant.user.avatar_url || ""} />
+                      <AvatarFallback>{participant.user.username?.[0] || "U"}</AvatarFallback>
+                    </Avatar>
+                  );
+                })}
                 {(room.participant_count || 0) > 3 && (
                   <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs border-2 border-background">
                     +{(room.participant_count || 0) - 3}
