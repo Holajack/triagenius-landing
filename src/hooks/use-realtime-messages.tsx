@@ -44,8 +44,15 @@ export function useRealtimeMessages() {
       try {
         setLoading(true);
         
-        // Enable realtime for messages table
-        await supabase.rpc('enable_realtime_for_table', { table_name: 'messages' });
+        // Enable realtime for messages table using our edge function
+        try {
+          await supabase.functions.invoke('enable_realtime_for_table', {
+            body: { table_name: 'messages' }
+          });
+          console.log('Realtime enabled for messages table');
+        } catch (err) {
+          console.error('Failed to enable realtime:', err);
+        }
         
         // First, fetch messages
         const { data: messagesData, error: messagesError } = await supabase
@@ -96,14 +103,18 @@ export function useRealtimeMessages() {
         supabase.removeChannel(messagesChannelRef.current);
       }
       
-      // Make sure the messages table has REPLICA IDENTITY set
-      supabase.rpc('enable_realtime_for_table', { table_name: 'messages' })
-        .then(() => {
+      // Make sure the messages table has REPLICA IDENTITY set using our edge function
+      try {
+        supabase.functions.invoke('enable_realtime_for_table', {
+          body: { table_name: 'messages' }
+        }).then(() => {
           console.log('Realtime enabled for messages table');
-        })
-        .catch(err => {
+        }).catch(err => {
           console.error('Failed to enable realtime:', err);
         });
+      } catch (err) {
+        console.error('Failed to invoke function:', err);
+      }
       
       messagesChannelRef.current = supabase
         .channel('messages-realtime')
