@@ -19,8 +19,13 @@ export const getDisplayName = (profile: Partial<UserProfile> | null): string => 
     return profile.full_name;
   }
   
-  // Default to username
-  return profile.username || 'Unknown User';
+  // Default to username if available
+  if (profile.username && profile.username.trim() !== '') {
+    return profile.username;
+  }
+  
+  // Final fallback
+  return 'Unknown User';
 };
 
 /**
@@ -50,7 +55,7 @@ export const getUserDisplayInfo = (profile: Partial<UserProfile> | null): {
     hasCustomName = true;
   } 
   // If using username as display, provide full_name as original if it exists
-  else if (profile.display_name_preference === 'username' && profile.full_name) {
+  else if (profile.display_name_preference !== 'full_name' && profile.full_name) {
     originalName = profile.full_name;
     hasCustomName = true;
   }
@@ -67,9 +72,9 @@ export const getUserDisplayInfo = (profile: Partial<UserProfile> | null): {
  * Used for avatar fallbacks
  */
 export const getInitials = (displayName: string): string => {
-  if (!displayName) return '?';
+  if (!displayName || displayName === 'Unknown User') return '?';
   
-  const parts = displayName.split(' ');
+  const parts = displayName.trim().split(/\s+/);
   if (parts.length === 1) {
     return displayName.charAt(0).toUpperCase();
   }

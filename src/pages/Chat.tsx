@@ -237,20 +237,21 @@ const Chat = () => {
         setContactLoading(true);
         setContactError(null);
         
-        // First try to get from profiles table
+        // First try to get from profiles table with a direct query
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('id, username, full_name, display_name_preference, avatar_url')
           .eq('id', id)
-          .maybeSingle();
+          .single();
         
         if (profileError && profileError.code !== 'PGRST116') {
           console.error('Error fetching profile:', profileError);
-          // Don't throw yet, we'll try the auth.users table
+          // Continue with fallback options
         }
         
         // If we found a profile, use it
         if (profileData) {
+          console.log('Found profile data:', profileData);
           const isOnline = onlineUsers.has(id);
           const contactData: ChatProfile = {
             id: profileData.id,
@@ -269,61 +270,59 @@ const Chat = () => {
           return;
         }
         
-        // If no profile found in the profiles table, create a fallback profile
-        console.log('No profile found in profiles table, using fallback for ID:', id);
+        console.log('No profile found in profiles table, trying fallback');
         
-        // Try to get at least some info from Supabase auth
+        // Fallback to auth.users reference from conversations or messages
         try {
-          // This may fail in many environments due to permissions
-          const { data: authData, error: authError } = await supabase.auth.admin.getUserById(id);
-          
-          if (authError) {
-            throw authError;
-          }
-          
-          if (authData && authData.user) {
-            const contactData: ChatProfile = {
-              id,
-              username: authData.user.email?.split('@')[0] || `User-${id.substring(0, 4)}`,
-              full_name: null,
-              display_name_preference: null,
-              avatar_url: null,
-              status: 'Offline',
-              online: onlineUsers.has(id)
-            };
+          console.log('Attempting to get user info from conversations or messages');
+          // Try to get sender information from messages
+          const { data: messageData, error: messageError } = await supabase
+            .from('messages')
+            .select('sender_id, content')
+            .eq('sender_id', id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
             
-            setContact(contactData);
-            setContactError("Limited profile information available");
-          } else {
-            // Last resort fallback
+          if (messageData && messageData.sender_id) {
+            console.log('Found message from this user:', messageData);
+            // Create a basic profile with the available information
             const contactData: ChatProfile = {
               id,
               username: `User-${id.substring(0, 4)}`,
               full_name: null,
               display_name_preference: null,
               avatar_url: null,
-              status: 'Unknown'
+              online: onlineUsers.has(id),
+              status: onlineUsers.has(id) ? 'Online' : 'Offline'
             };
             
             setContact(contactData);
             setContactError("Limited user information available");
+            setContactLoading(false);
+            return;
+          } else {
+            console.log('No messages found for this user, using minimal profile');
           }
-        } catch (authErr) {
-          console.log('Auth fetch failed, using basic fallback', authErr);
-          
-          // Complete fallback when we can't access auth data
-          const contactData: ChatProfile = {
-            id,
-            username: `User-${id.substring(0, 4)}`,
-            full_name: null,
-            display_name_preference: null,
-            avatar_url: null,
-            status: 'Unknown'
-          };
-          
-          setContact(contactData);
-          setContactError("Limited user information available");
+        } catch (fallbackErr) {
+          console.error('Error in message fallback:', fallbackErr);
         }
+        
+        // Final fallback - create minimal profile
+        const contactData: ChatProfile = {
+          id,
+          username: `User-${id.substring(0, 4)}`,
+          full_name: null,
+          display_name_preference: null,
+          avatar_url: null,
+          status: onlineUsers.has(id) ? 'Online' : 'Offline',
+          online: onlineUsers.has(id)
+        };
+        
+        setContact(contactData);
+        setContactError("Limited contact information available");
+        setContactLoading(false);
+        
       } catch (err) {
         console.error('Error in fetchProfile:', err);
         
@@ -338,7 +337,6 @@ const Chat = () => {
         });
         
         setContactError("Could not load complete contact information");
-      } finally {
         setContactLoading(false);
       }
     };

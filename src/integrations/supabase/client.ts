@@ -29,6 +29,8 @@ export const handleSupabaseError = (error: any, customMessage?: string): Error =
     errorMessage = error.error_description;
   } else if (error?.details) {
     errorMessage = error.details;
+  } else if (typeof error === 'string') {
+    errorMessage = error;
   }
   
   // Use custom message if provided
@@ -36,5 +38,9 @@ export const handleSupabaseError = (error: any, customMessage?: string): Error =
     errorMessage = `${customMessage}: ${errorMessage}`;
   }
   
-  return new Error(errorMessage);
+  // Create and return a more descriptive error
+  const enhancedError = new Error(errorMessage);
+  enhancedError.name = error?.code || 'SupabaseError';
+  
+  return enhancedError;
 };
