@@ -124,6 +124,19 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
         throw new Error(saveError.message);
       }
       
+      // Update the last_selected_environment in profiles table to ensure synchronization
+      const { error: profileUpdateError } = await supabase
+        .from('profiles')
+        .update({
+          last_selected_environment: state.environment
+        })
+        .eq('id', user.id);
+      
+      if (profileUpdateError) {
+        console.error('Error updating profile environment:', profileUpdateError);
+        // Don't throw here, as we've already updated the main preferences
+      }
+      
       // Save to localStorage for faster loading
       localStorage.setItem('userPreferences', JSON.stringify({
         userGoal: state.userGoal,
@@ -132,6 +145,11 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
         soundPreference: state.soundPreference,
         weeklyFocusGoal: state.weeklyFocusGoal,
       }));
+      
+      // Also update the environment in localStorage directly for immediate application
+      if (state.environment) {
+        localStorage.setItem('environment', state.environment);
+      }
       
       setHasUnsavedChanges(false);
       toast.success("Preferences saved successfully");
@@ -161,6 +179,23 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
+          // First check if there's a last_selected_environment in profiles
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('last_selected_environment')
+            .eq('id', user.id)
+            .maybeSingle();
+            
+          let selectedEnvironment: StudyEnvironment | undefined = undefined;
+          
+          if (!profileError && profileData && profileData.last_selected_environment) {
+            selectedEnvironment = profileData.last_selected_environment as StudyEnvironment;
+            
+            // Update localStorage with the latest environment from profiles
+            localStorage.setItem('environment', selectedEnvironment);
+          }
+          
+          // Then get the rest of the onboarding preferences
           const { data, error } = await supabase
             .from('onboarding_preferences')
             .select('*')
@@ -177,7 +212,8 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
               isComplete: data.is_onboarding_complete || false,
               userGoal: data.user_goal as UserGoal,
               workStyle: data.work_style as WorkStyle,
-              environment: data.learning_environment as StudyEnvironment,
+              // Use the selected environment from profiles if available, otherwise use the one from onboarding_preferences
+              environment: selectedEnvironment || (data.learning_environment as StudyEnvironment),
               soundPreference: data.sound_preference as SoundPreference,
               weeklyFocusGoal: data.weekly_focus_goal || 10,
             };
@@ -188,10 +224,31 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
             localStorage.setItem('userPreferences', JSON.stringify({
               userGoal: data.user_goal,
               workStyle: data.work_style,
-              environment: data.learning_environment,
+              environment: selectedEnvironment || data.learning_environment,
               soundPreference: data.sound_preference,
               weeklyFocusGoal: data.weekly_focus_goal || 10,
             }));
+            
+            // Update the onboarding_preferences table if there's a mismatch between profiles and onboarding_preferences
+            if (selectedEnvironment && data.learning_environment !== selectedEnvironment) {
+              console.log('Syncing environment preferences, updating onboarding_preferences to match profiles');
+              
+              await supabase
+                .from('onboarding_preferences')
+                .update({
+                  learning_environment: selectedEnvironment
+                })
+                .eq('user_id', user.id);
+            }
+          } else if (selectedEnvironment) {
+            // If we only have an environment from profiles but no onboarding preferences,
+            // at least update the environment in the state
+            dispatch({ 
+              type: 'LOAD_ONBOARDING_STATE', 
+              payload: { environment: selectedEnvironment } 
+            });
+            
+            localStorage.setItem('environment', selectedEnvironment);
           }
         }
       } catch (error) {

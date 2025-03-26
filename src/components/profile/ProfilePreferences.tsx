@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import { UserGoal, WorkStyle, StudyEnvironment, SoundPreference } from "@/types/onboarding";
 import { PencilIcon, SaveIcon, Loader2Icon } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const ProfilePreferences = () => {
   const {
@@ -21,6 +23,7 @@ const ProfilePreferences = () => {
     setHasUnsavedChanges
   } = useOnboarding();
   
+  const { setEnvironmentTheme } = useTheme();
   const [isEditing, setIsEditing] = useState(false);
   const [editedState, setEditedState] = useState({
     ...state
@@ -48,6 +51,11 @@ const ProfilePreferences = () => {
       [key]: value
     }));
     setHasUnsavedChanges(true);
+    
+    // Immediately apply environment theme changes for better UI feedback
+    if (key === 'environment' && value) {
+      setEnvironmentTheme(value);
+    }
   };
   
   const handleSave = async () => {
@@ -89,7 +97,7 @@ const ProfilePreferences = () => {
         }
       });
 
-      // Save to database
+      // Save to database using the onboarding context
       await saveOnboardingState();
       setIsEditing(false);
     } catch (error) {

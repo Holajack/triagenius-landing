@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -63,11 +62,22 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         profile: null
       });
       
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*, last_selected_environment')
-        .eq('id', authUser.id)
-        .single();
+      const [profileResponse, prefsResponse] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('*, last_selected_environment')
+          .eq('id', authUser.id)
+          .single(),
+        
+        supabase
+          .from('onboarding_preferences')
+          .select('*')
+          .eq('user_id', authUser.id)
+          .maybeSingle()
+      ]);
+      
+      const { data: profileData, error: profileError } = profileResponse;
+      const { data: prefsData, error: prefsError } = prefsResponse;
       
       if (profileError) {
         if (profileError.code === 'PGRST116') {
@@ -105,7 +115,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       
-      // Successfully fetched profile data
       setUser({
         id: authUser.id,
         email: profileData.email || authUser.email,
@@ -115,9 +124,20 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         profile: profileData as UserProfile
       });
       
-      // Apply environment theme if available
-      if (profileData.last_selected_environment) {
-        localStorage.setItem('environment', profileData.last_selected_environment);
+      let environmentToApply = profileData.last_selected_environment;
+      
+      if (!environmentToApply && prefsData && prefsData.learning_environment) {
+        environmentToApply = prefsData.learning_environment;
+        
+        await supabase
+          .from('profiles')
+          .update({ last_selected_environment: environmentToApply })
+          .eq('id', authUser.id);
+      }
+      
+      if (environmentToApply) {
+        console.log(`Applying environment theme: ${environmentToApply}`);
+        localStorage.setItem('environment', environmentToApply);
         
         document.documentElement.classList.remove(
           'theme-office', 
@@ -127,10 +147,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           'theme-library'
         );
         
-        document.documentElement.classList.add(`theme-${profileData.last_selected_environment}`);
-        document.documentElement.setAttribute('data-environment', profileData.last_selected_environment);
+        document.documentElement.classList.add(`theme-${environmentToApply}`);
+        document.documentElement.setAttribute('data-environment', environmentToApply);
         
-        setEnvironmentTheme(profileData.last_selected_environment);
+        setEnvironmentTheme(environmentToApply);
+      }
+      
+      if (prefsData && profileData.last_selected_environment && 
+          prefsData.learning_environment !== profileData.last_selected_environment) {
+        console.log('Syncing environment: updating onboarding_preferences to match profile');
+        await supabase
+          .from('onboarding_preferences')
+          .update({
+            learning_environment: profileData.last_selected_environment
+          })
+          .eq('user_id', authUser.id);
       }
       
       const savedSession = await loadUserSession(authUser.id);
@@ -160,24 +191,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           }
         }
         
-        try {
-          const { data: prefsData, error: prefsError } = await supabase
-            .from('onboarding_preferences')
-            .select('*')
-            .eq('user_id', authUser.id)
-            .maybeSingle();
-            
-          if (!prefsError && prefsData) {
-            localStorage.setItem('userPreferences', JSON.stringify({
-              userGoal: prefsData.user_goal,
-              workStyle: prefsData.work_style,
-              environment: prefsData.learning_environment,
-              soundPreference: prefsData.sound_preference,
-              weeklyFocusGoal: prefsData.weekly_focus_goal || 10,
-            }));
-          }
-        } catch (prefsLoadError) {
-          console.error("Error pre-loading preferences:", prefsLoadError);
+        if (prefsData) {
+          localStorage.setItem('userPreferences', JSON.stringify({
+            userGoal: prefsData.user_goal,
+            workStyle: prefsData.work_style,
+            environment: environmentToApply || prefsData.learning_environment,
+            soundPreference: prefsData.sound_preference,
+            weeklyFocusGoal: prefsData.weekly_focus_goal || 10,
+          }));
         }
       }
       
