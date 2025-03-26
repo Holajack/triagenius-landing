@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -134,8 +133,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         .eq('id', authUser.id)
         .maybeSingle();
       
+      // Fix: this variable needs to be declared with 'let' so it can be reassigned
+      let userProfileData = profileData;
+      
       // If profile doesn't exist, create it
-      if (profileError || !profileData) {
+      if (profileError || !userProfileData) {
         console.log("[useUser] Profile not found or error:", profileError);
         
         // Create a new profile
@@ -157,7 +159,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           throw new Error("Failed to retrieve user profile after creation");
         }
         
-        profileData = newProfileData;
+        userProfileData = newProfileData;
       }
       
       // Fetch onboarding preferences
@@ -174,15 +176,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       // Update user state with profile data
       setUser({
         id: authUser.id,
-        email: profileData.email || authUser.email,
-        username: profileData.username || authUser.email?.split('@')[0] || null,
-        avatarUrl: profileData.avatar_url,
+        email: userProfileData.email || authUser.email,
+        username: userProfileData.username || authUser.email?.split('@')[0] || null,
+        avatarUrl: userProfileData.avatar_url,
         isLoading: false,
-        profile: profileData as UserProfile
+        profile: userProfileData as UserProfile
       });
       
       // Apply environment theme
-      let environmentToApply = profileData.last_selected_environment;
+      let environmentToApply = userProfileData.last_selected_environment;
       
       if (DEBUG_ENV) console.log('[useUser] Profile environment from DB:', environmentToApply);
       if (DEBUG_ENV && prefsData) console.log('[useUser] Onboarding preferences environment:', prefsData.learning_environment);
