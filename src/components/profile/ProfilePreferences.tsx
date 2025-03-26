@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,6 +13,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useUser } from "@/hooks/use-user";
+import { useLocation, useNavigate } from "react-router-dom";
 
 // Enable this for debugging environment issues
 const DEBUG_ENV = true;
@@ -29,6 +30,8 @@ const ProfilePreferences = () => {
   
   const { user, refreshUser } = useUser();
   const { setEnvironmentTheme } = useTheme();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [editedState, setEditedState] = useState({
     ...state
@@ -37,6 +40,7 @@ const ProfilePreferences = () => {
   const [isSavingEnvironment, setIsSavingEnvironment] = useState(false);
   const [lastSavedEnvironment, setLastSavedEnvironment] = useState<string | null>(null);
   const [environmentUpdateQueue, setEnvironmentUpdateQueue] = useState<string | null>(null);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   
   // Add effect to track when environment changes in profile or onboarding
   useEffect(() => {
@@ -184,26 +188,73 @@ const ProfilePreferences = () => {
     }
   };
   
+  // Auto-save handler
+  const savePreferencesOnExit = useCallback(async () => {
+    if (hasUnsavedChanges && isEditing && autoSaveEnabled) {
+      if (DEBUG_ENV) console.log("[ProfilePreferences] Auto-saving preferences before exit");
+      await handleSave();
+      return true;
+    }
+    
+    // If there's a pending environment change, try to save it
+    if (environmentUpdateQueue && user?.id) {
+      if (DEBUG_ENV) console.log("[ProfilePreferences] Saving pending environment before exit");
+      await saveEnvironmentToDatabase(environmentUpdateQueue);
+      setEnvironmentUpdateQueue(null);
+      return true;
+    }
+    
+    return false;
+  }, [hasUnsavedChanges, isEditing, environmentUpdateQueue, user?.id, autoSaveEnabled]);
+  
   // Save pending environment changes when leaving the component
   useEffect(() => {
-    const handleBeforeUnload = () => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // If there are unsaved changes, show confirmation dialog
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+      
       // If there's a pending environment change, try to save it
       if (environmentUpdateQueue && user?.id) {
         saveEnvironmentToDatabase(environmentUpdateQueue);
       }
     };
     
+    // Listen for navigation events
+    const handleRouteChange = async () => {
+      await savePreferencesOnExit();
+    };
+    
     window.addEventListener('beforeunload', handleBeforeUnload);
     
+    // Clean up listeners
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       
-      // Also try to save on unmount
-      if (environmentUpdateQueue && user?.id) {
-        saveEnvironmentToDatabase(environmentUpdateQueue);
+      // Save on unmount
+      savePreferencesOnExit();
+    };
+  }, [environmentUpdateQueue, user?.id, hasUnsavedChanges, savePreferencesOnExit]);
+
+  // Watch for tab changes within profile page
+  useEffect(() => {
+    // If location hash changes and we have unsaved changes, save them
+    const handleHashChange = async () => {
+      if (location.hash !== "#preferences" && hasUnsavedChanges && isEditing) {
+        await savePreferencesOnExit();
       }
     };
-  }, [environmentUpdateQueue, user?.id]);
+
+    // Add listener for URL hash changes
+    window.addEventListener('hashchange', handleHashChange);
+    
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, [location.hash, hasUnsavedChanges, isEditing, savePreferencesOnExit]);
   
   const handleSave = async () => {
     try {
@@ -293,6 +344,8 @@ const ProfilePreferences = () => {
       }
       
       setIsEditing(false);
+      setHasUnsavedChanges(false);
+      toast.success("Preferences saved successfully");
     } catch (error) {
       console.error("Error updating preferences:", error);
       // Toast error is already shown in the saveOnboardingState function
@@ -311,9 +364,14 @@ const ProfilePreferences = () => {
               Edit
             </Button>
           ) : (
-            <Button onClick={handleCancel} variant="outline" size="sm" disabled={isLoading || contextLoading || isSavingEnvironment}>
-              Cancel
-            </Button>
+            <div className="flex space-x-2">
+              <Button onClick={handleCancel} variant="outline" size="sm" disabled={isLoading || contextLoading || isSavingEnvironment}>
+                Cancel
+              </Button>
+              <Button onClick={handleSave} variant="outline" size="sm" disabled={isLoading || contextLoading || isSavingEnvironment || !hasUnsavedChanges}>
+                Save Changes
+              </Button>
+            </div>
           )}
         </div>
       </CardHeader>

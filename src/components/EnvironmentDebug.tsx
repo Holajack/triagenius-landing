@@ -66,8 +66,7 @@ const EnvironmentDebug = () => {
         return;
       }
       
-      // For sync, we'll prioritize the DB value first (source of truth)
-      // Only if that's not available, use the visual state
+      // ALWAYS prioritize the DB value (source of truth)
       let environmentToSync = user.profile?.last_selected_environment;
       
       if (!environmentToSync) {
