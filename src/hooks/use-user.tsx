@@ -43,6 +43,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     console.log('[useUser] Creating new profile for user:', authUser.id);
     
     try {
+      // Get environment from localStorage if available, otherwise default to 'office'
+      const savedEnvironment = localStorage.getItem('environment') || 'office';
+      if (DEBUG_ENV) console.log('[useUser] Using environment for new profile:', savedEnvironment);
+      
       const { error: insertError } = await supabase
         .from('profiles')
         .insert({
@@ -54,7 +58,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             showEmail: false,
             showActivity: true
           },
-          last_selected_environment: 'office'
+          last_selected_environment: savedEnvironment
         });
         
       if (insertError) {
@@ -69,7 +73,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         .from('onboarding_preferences')
         .insert({
           user_id: authUser.id,
-          learning_environment: 'office'
+          learning_environment: savedEnvironment
         });
         
       if (onboardingError && onboardingError.code !== '23505') { // Ignore duplicate key errors
@@ -183,13 +187,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         profile: userProfileData as UserProfile
       });
       
-      // Apply environment theme
+      // Get environment from database - THIS IS OUR SOURCE OF TRUTH
       let environmentToApply = userProfileData.last_selected_environment;
       
       if (DEBUG_ENV) console.log('[useUser] Profile environment from DB:', environmentToApply);
       if (DEBUG_ENV && prefsData) console.log('[useUser] Onboarding preferences environment:', prefsData.learning_environment);
       
-      // Sync environments if needed
+      // Sync environments if needed - make sure both DB tables have the same value
       if (prefsData && prefsData.learning_environment !== environmentToApply) {
         if (DEBUG_ENV) console.log('[useUser] Syncing onboarding_preferences to match profile environment:', environmentToApply);
         
@@ -204,8 +208,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       // Apply environment theme
       if (environmentToApply) {
         if (DEBUG_ENV) console.log(`[useUser] Applying environment theme on login: ${environmentToApply}`);
+        
+        // Set localStorage AFTER we've fetched from DB to ensure DB is source of truth
         localStorage.setItem('environment', environmentToApply);
         
+        // Apply theme to document
         document.documentElement.classList.remove(
           'theme-office', 
           'theme-park', 
@@ -217,14 +224,20 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         document.documentElement.classList.add(`theme-${environmentToApply}`);
         document.documentElement.setAttribute('data-environment', environmentToApply);
         
+        // Update theme context with DB value
         setEnvironmentTheme(environmentToApply);
       }
       
-      // Apply saved session preferences if available
+      // Apply saved session preferences if available, but don't override the environment
+      // that we just set from the database - which is our source of truth
       try {
         const savedSession = await loadUserSession(authUser.id);
         if (savedSession) {
-          applySessionPreferences(savedSession, setTheme, setEnvironmentTheme, environmentToApply);
+          // Don't override the environment
+          const savedEnvironment = environmentToApply;
+          
+          // Apply other preferences from saved session
+          applySessionPreferences(savedSession, setTheme, setEnvironmentTheme, savedEnvironment);
           
           // Show toast for resuming session
           if (savedSession.lastRoute && savedSession.lastRoute !== window.location.pathname) {
@@ -256,7 +269,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           localStorage.setItem('userPreferences', JSON.stringify({
             userGoal: prefsData.user_goal,
             workStyle: prefsData.work_style,
-            environment: environmentToApply,
+            environment: environmentToApply, // Use the DB value
             soundPreference: prefsData.sound_preference,
             weeklyFocusGoal: prefsData.weekly_focus_goal || 10,
           }));
@@ -321,6 +334,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     try {
       if (user?.id) {
+        // Save the current environment before logout so it can be restored on next login
+        const currentEnvironment = localStorage.getItem('environment');
+        if (currentEnvironment && user.profile) {
+          // Update the database with the latest environment
+          await supabase
+            .from('profiles')
+            .update({ 
+              last_selected_environment: currentEnvironment 
+            })
+            .eq('id', user.id);
+            
+          console.log("[useUser] Saved environment before logout:", currentEnvironment);
+        }
+        
+        // Save session data
         await saveUserSession(user.id);
       }
       

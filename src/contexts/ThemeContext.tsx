@@ -1,3 +1,4 @@
+
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 
 // Enable this for debugging environment issues
@@ -49,17 +50,22 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       setEnvironmentThemeState(environment);
       localStorage.setItem('environment', environment);
       
-      // Apply CSS classes immediately
-      document.documentElement.classList.remove(
-        'theme-office', 
-        'theme-park', 
-        'theme-home', 
-        'theme-coffee-shop', 
-        'theme-library'
-      );
-      document.documentElement.classList.add(`theme-${environment}`);
-      document.documentElement.setAttribute('data-environment', environment);
+      // Apply CSS classes immediately - this function is called during login and profile load
+      applyEnvironmentCSS(environment);
     }
+  };
+  
+  // Helper function to apply environment CSS
+  const applyEnvironmentCSS = (environment: string) => {
+    document.documentElement.classList.remove(
+      'theme-office', 
+      'theme-park', 
+      'theme-home', 
+      'theme-coffee-shop', 
+      'theme-library'
+    );
+    document.documentElement.classList.add(`theme-${environment}`);
+    document.documentElement.setAttribute('data-environment', environment);
   };
 
   // Apply environment theme
@@ -77,24 +83,38 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Apply theme on initial render
+  // Apply theme on initial render and when changed
   useEffect(() => {
     applyTheme(theme);
     
     // Also make sure environment is applied on initial load
     if (environmentTheme) {
       if (DEBUG_ENV) console.log('[ThemeContext] useEffect applying environment:', environmentTheme);
-      document.documentElement.classList.remove(
-        'theme-office', 
-        'theme-park', 
-        'theme-home', 
-        'theme-coffee-shop', 
-        'theme-library'
-      );
-      document.documentElement.classList.add(`theme-${environmentTheme}`);
-      document.documentElement.setAttribute('data-environment', environmentTheme);
+      applyEnvironmentCSS(environmentTheme);
     }
   }, [theme, environmentTheme]);
+
+  // Listen for localStorage changes from other components
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'environment' && e.newValue) {
+        if (DEBUG_ENV) console.log('[ThemeContext] Storage event: environment changed to', e.newValue);
+        if (e.newValue !== environmentTheme) {
+          setEnvironmentThemeState(e.newValue);
+        }
+      }
+      
+      if (e.key === 'theme' && e.newValue) {
+        if (e.newValue !== theme) {
+          setThemeState(e.newValue);
+          applyTheme(e.newValue);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [environmentTheme, theme]);
 
   return (
     <ThemeContext.Provider 

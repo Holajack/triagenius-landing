@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
@@ -65,13 +64,17 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
 
   const createProfile = async (userId: string) => {
     try {
+      // Get the current environment setting if available, use as initial value
+      const currentEnvironment = localStorage.getItem('environment') || 'office';
+      console.log('[AuthForm] Creating profile with environment:', currentEnvironment);
+      
       const { error } = await supabase
         .from('profiles')
         .insert({
           id: userId,
           email: email,
           username: username || email.split('@')[0],
-          last_selected_environment: 'office',
+          last_selected_environment: currentEnvironment,
           privacy_settings: {
             showEmail: false,
             showActivity: true
@@ -81,6 +84,20 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
       if (error) {
         console.error("Error creating profile:", error);
         return false;
+      }
+      
+      console.log('[AuthForm] Profile created successfully');
+      
+      // Also create onboarding preferences
+      const { error: onboardingError } = await supabase
+        .from('onboarding_preferences')
+        .insert({
+          user_id: userId,
+          learning_environment: currentEnvironment
+        });
+        
+      if (onboardingError && onboardingError.code !== '23505') { // Ignore duplicate key errors
+        console.error("[AuthForm] Error creating onboarding preferences:", onboardingError);
       }
       
       return true;

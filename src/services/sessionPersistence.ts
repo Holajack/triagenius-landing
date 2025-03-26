@@ -149,10 +149,15 @@ export const loadUserSession = async (userId: string | undefined): Promise<Persi
       throw error;
     }
     
-    // Check for the dedicated environment field first
+    // IMPORTANT: Get the environment from the dedicated field - this is our source of truth
+    let environmentToUse = 'office'; // Default fallback
+    
     if (data && data.last_selected_environment) {
-      if (DEBUG_ENV) console.log("[sessionPersistence] Using last_selected_environment from profile:", data.last_selected_environment);
-      localStorage.setItem('environment', data.last_selected_environment);
+      environmentToUse = data.last_selected_environment;
+      if (DEBUG_ENV) console.log("[sessionPersistence] Using last_selected_environment from profile:", environmentToUse);
+      
+      // Always update localStorage with the DB value to ensure consistency
+      localStorage.setItem('environment', environmentToUse);
     }
     
     // Check if preferences and lastSessionData exist
@@ -165,9 +170,9 @@ export const loadUserSession = async (userId: string | undefined): Promise<Persi
           const parsedSessionData = JSON.parse(prefs.lastSessionData) as PersistedSessionData;
           console.log("Session loaded from Supabase");
           
-          // If we have a dedicated environment field but no environment in session data, update it
-          if (data.last_selected_environment && parsedSessionData?.preferences) {
-            parsedSessionData.preferences.environment = data.last_selected_environment;
+          // ALWAYS use the dedicated environment field as source of truth
+          if (environmentToUse && parsedSessionData?.preferences) {
+            parsedSessionData.preferences.environment = environmentToUse;
           }
           
           return parsedSessionData;
@@ -177,10 +182,10 @@ export const loadUserSession = async (userId: string | undefined): Promise<Persi
       }
       
       // If we have direct environment value but no lastSessionData
-      if (data.last_selected_environment) {
+      if (environmentToUse) {
         // Create a session with the environment from the dedicated field
         const sessionWithEnvironment = {...defaultSessionData};
-        sessionWithEnvironment.preferences.environment = data.last_selected_environment;
+        sessionWithEnvironment.preferences.environment = environmentToUse;
         return sessionWithEnvironment;
       }
     }
@@ -189,7 +194,21 @@ export const loadUserSession = async (userId: string | undefined): Promise<Persi
     const localData = localStorage.getItem(`sessionData_${userId}`);
     if (localData) {
       console.log("Session loaded from localStorage");
-      return JSON.parse(localData) as PersistedSessionData;
+      const parsedData = JSON.parse(localData) as PersistedSessionData;
+      
+      // Even when loading from localStorage, we should prioritize DB environment
+      if (environmentToUse && parsedData?.preferences) {
+        parsedData.preferences.environment = environmentToUse;
+      }
+      
+      return parsedData;
+    }
+    
+    // If we got here but have an environment, use it with default data
+    if (environmentToUse !== 'office') {
+      const defaultWithEnvironment = {...defaultSessionData};
+      defaultWithEnvironment.preferences.environment = environmentToUse;
+      return defaultWithEnvironment;
     }
     
     console.log("No saved session found, using defaults");
@@ -222,10 +241,11 @@ export const applySessionPreferences = (
   environmentOverride?: string // New parameter to take precedence over session
 ): void => {
   try {
-    // Apply theme
+    // Get theme and sound preferences
     const { theme, soundPreference, lowPowerMode } = sessionData.preferences;
     
-    // Use the environmentOverride if provided, otherwise fall back to session data
+    // IMPORTANT: Use the environmentOverride if provided, otherwise fall back to session data
+    // This ensures DB value is always prioritized
     const environment = environmentOverride || sessionData.preferences.environment;
     
     if (DEBUG_ENV) console.log('[sessionPersistence] Applying session preferences:', {
@@ -236,6 +256,7 @@ export const applySessionPreferences = (
       lowPowerMode
     });
     
+    // Apply preferences to localStorage
     localStorage.setItem('theme', theme);
     localStorage.setItem('environment', environment);
     localStorage.setItem('soundPreference', soundPreference);
@@ -246,8 +267,9 @@ export const applySessionPreferences = (
       setTheme(theme as 'light' | 'dark');
     }
     
-    // Use provided environment setter if available
-    if (setEnvironmentTheme && environment) {
+    // Use provided environment setter if available and only if we should apply it
+    // Don't override if environmentOverride is provided
+    if (setEnvironmentTheme && environment && !environmentOverride) {
       setEnvironmentTheme(environment);
     }
     
