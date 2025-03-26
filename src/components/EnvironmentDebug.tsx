@@ -4,7 +4,7 @@ import { useOnboarding } from "@/contexts/OnboardingContext";
 import { useEffect, useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import { ReloadIcon } from "@radix-ui/react-icons";
+import { RefreshCw } from "lucide-react"; // Import from lucide-react instead of @radix-ui/react-icons
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -160,7 +160,7 @@ const EnvironmentDebug = () => {
         >
           {isSyncing ? (
             <>
-              <ReloadIcon className="h-3 w-3 mr-1 animate-spin" />
+              <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
               Syncing...
             </>
           ) : (
