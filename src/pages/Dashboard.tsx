@@ -23,9 +23,14 @@ import EnvironmentDebug from "@/components/EnvironmentDebug";
 const DEBUG_ENV = true;
 
 const Dashboard = () => {
-  const { state, forceEnvironmentSync } = useOnboarding();
+  const {
+    state,
+    forceEnvironmentSync,
+    isLoading: onboardingLoading
+  } = useOnboarding();
+  
   const navigate = useNavigate();
-  const { theme, applyEnvironmentTheme } = useTheme();
+  const { theme, applyEnvironmentTheme, environmentTheme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [preferredChartType, setPreferredChartType] = useState(() => {
     return localStorage.getItem('preferredChartType') || 'bar';
@@ -37,6 +42,10 @@ const Dashboard = () => {
   // Apply environment theme when component mounts to ensure consistency
   useEffect(() => {
     const syncEnvironment = async () => {
+      if (onboardingLoading) {
+        return; // Wait until onboarding context is loaded
+      }
+      
       // First, make sure database is in sync with context
       await forceEnvironmentSync();
       
@@ -82,7 +91,24 @@ const Dashboard = () => {
     };
     
     syncEnvironment();
-  }, [state.environment, applyEnvironmentTheme, user, forceEnvironmentSync, refreshUser, syncAttempts]);
+  }, [state.environment, applyEnvironmentTheme, user, forceEnvironmentSync, refreshUser, syncAttempts, onboardingLoading]);
+
+  // Listen for storage events that could change environment
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'environment' && e.newValue !== environmentTheme) {
+        if (DEBUG_ENV) console.log(`[Dashboard] Environment changed in storage to: ${e.newValue}`);
+        refreshUser();
+        forceEnvironmentSync();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [environmentTheme, refreshUser, forceEnvironmentSync]);
 
   // Modified redirection logic to only redirect if explicitly coming from the index page
   useEffect(() => {

@@ -52,9 +52,39 @@ const EnvironmentDebug = () => {
     });
   };
   
+  // Update the values whenever any dependencies change
   useEffect(() => {
     updateValues();
   }, [environmentTheme, state.environment, user]);
+  
+  // Add a MutationObserver to detect DOM changes to data-environment attribute
+  useEffect(() => {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'data-environment') {
+          updateValues();
+        }
+      });
+    });
+    
+    observer.observe(document.documentElement, { attributes: true });
+    
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+  
+  // Listen for storage events to update when environment changes in other tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'environment' || e.key === 'userPreferences') {
+        updateValues();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
   
   const handleForceSync = async () => {
     try {

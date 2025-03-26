@@ -9,7 +9,6 @@ import { useOnboarding } from "@/contexts/OnboardingContext";
 import { toast } from "sonner";
 import { UserGoal, WorkStyle, StudyEnvironment, SoundPreference } from "@/types/onboarding";
 import { PencilIcon, SaveIcon, Loader2Icon } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useUser } from "@/hooks/use-user";
@@ -25,7 +24,8 @@ const ProfilePreferences = () => {
     saveOnboardingState,
     isLoading: contextLoading,
     hasUnsavedChanges,
-    setHasUnsavedChanges
+    setHasUnsavedChanges,
+    forceEnvironmentSync
   } = useOnboarding();
   
   const { user, refreshUser } = useUser();
@@ -93,8 +93,26 @@ const ProfilePreferences = () => {
       // Update the last saved environment state
       setLastSavedEnvironment(envValue);
       
+      // Update user preferences in localStorage
+      const userPrefs = localStorage.getItem('userPreferences');
+      if (userPrefs) {
+        try {
+          const parsedPrefs = JSON.parse(userPrefs);
+          parsedPrefs.environment = envValue;
+          localStorage.setItem('userPreferences', JSON.stringify(parsedPrefs));
+        } catch (e) {
+          console.error("Error updating userPreferences:", e);
+        }
+      }
+      
       // Force refresh to update the debug view
       await refreshUser();
+      
+      // Dispatch the environment change to update context
+      dispatch({
+        type: 'SET_ENVIRONMENT',
+        payload: envValue as StudyEnvironment
+      });
       
       if (DEBUG_ENV) console.log("[ProfilePreferences] Successfully saved environment to database");
       return true;
@@ -123,6 +141,10 @@ const ProfilePreferences = () => {
     // If we have a pending environment change, revert the visual preview
     if (pendingEnvironment) {
       setPendingEnvironment(null);
+      
+      // Revert to the last saved environment visual state
+      const envToRestore = state.environment || lastSavedEnvironment || 'office';
+      previewEnvironmentVisually(envToRestore);
     }
   };
   
@@ -143,7 +165,7 @@ const ProfilePreferences = () => {
   // Apply the environment both visually and to the theme context after saving
   const applyEnvironmentFully = (value: string) => {
     // Update theme context
-    setEnvironmentTheme(value);
+    setEnvironmentTheme(value as StudyEnvironment);
     
     // Apply CSS classes directly for immediate visual feedback 
     document.documentElement.classList.remove(
@@ -155,6 +177,10 @@ const ProfilePreferences = () => {
     );
     document.documentElement.classList.add(`theme-${value}`);
     document.documentElement.setAttribute('data-environment', value);
+    
+    // Trigger the environmental debug refresh
+    const event = new Event('environmentChanged');
+    document.dispatchEvent(event);
   };
   
   const handleChange = async (key: string, value: any) => {
@@ -243,6 +269,9 @@ const ProfilePreferences = () => {
           // Only now apply the environment change to the theme context
           applyEnvironmentFully(pendingEnvironment);
           setPendingEnvironment(null);
+          
+          // Force a synchronization of all environment states
+          await forceEnvironmentSync();
         } else {
           // If save failed, show error
           toast.error("Failed to save environment preference");
@@ -328,6 +357,12 @@ const ProfilePreferences = () => {
           }
         }
       }
+      
+      // Trigger a global update event
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'environment',
+        newValue: editedState.environment
+      }));
       
       setIsEditing(false);
       setHasUnsavedChanges(false);
