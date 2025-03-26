@@ -171,7 +171,7 @@ const ProfilePreferences = () => {
           // Reset the edited state to the last known good value
           setEditedState(prev => ({
             ...prev,
-            environment: lastSavedEnvironment || prev.environment
+            environment: (lastSavedEnvironment as StudyEnvironment) || prev.environment
           }));
           
           setEnvironmentUpdateQueue(null);

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react"; // Import from lucide-react instead of @radix-ui/react-icons
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { StudyEnvironment } from "@/types/onboarding";
 
 // Set to true to enable debugging
 const SHOW_DEBUG = true;
