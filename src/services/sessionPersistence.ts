@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Json } from "@/integrations/supabase/types";
@@ -55,6 +56,9 @@ export const saveUserSession = async (userId: string | undefined): Promise<void>
     const theme = localStorage.getItem('theme') || 'light';
     const environment = localStorage.getItem('environment') || 'office';
     if (DEBUG_ENV) console.log('[sessionPersistence] Saving session with environment:', environment);
+    
+    // Get sound preference
+    const soundPreference = localStorage.getItem('soundPreference') || 'none';
     
     // Get focus session data if exists
     const focusSessionStr = localStorage.getItem('currentFocusSession');
