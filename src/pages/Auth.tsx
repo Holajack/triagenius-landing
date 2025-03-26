@@ -8,6 +8,9 @@ import AuthForm from "@/components/auth/AuthForm";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+// Enable for debugging
+const DEBUG_AUTH = true;
+
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -21,8 +24,16 @@ const Auth = () => {
     // Check if user is already authenticated
     const checkAuth = async () => {
       setIsCheckingAuth(true);
-      const { data } = await supabase.auth.getSession();
+      const { data, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error("Error checking auth session:", error);
+        setIsCheckingAuth(false);
+        return;
+      }
+      
       const isLoggedIn = !!data.session;
+      if (DEBUG_AUTH) console.log('[Auth] User authenticated:', isLoggedIn);
       setIsAuthenticated(isLoggedIn);
       
       // Check for email confirmation from URL hash
@@ -41,7 +52,7 @@ const Auth = () => {
         console.error("Error checking for saved sessions:", error);
       }
       
-      // If already authenticated or just confirmed email, redirect to appropriate page
+      // If already authenticated, redirect to appropriate page
       if (isLoggedIn) {
         if (isEmailConfirmation) {
           navigate("/onboarding");
@@ -58,16 +69,21 @@ const Auth = () => {
     
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (DEBUG_AUTH) console.log('[Auth] Auth state change:', event);
       const isLoggedIn = !!session;
       setIsAuthenticated(isLoggedIn);
       
       if (event === 'SIGNED_IN') {
-        // Handle signed in event
-        if (isFromStartFocusing) {
-          navigate("/onboarding");
-        } else {
-          navigate("/dashboard");
-        }
+        toast.success("Signed in successfully!");
+        
+        // Add a small delay before redirecting to ensure profile is loaded
+        setTimeout(() => {
+          if (isFromStartFocusing) {
+            navigate("/onboarding");
+          } else {
+            navigate("/dashboard");
+          }
+        }, 500);
       }
     });
     
@@ -85,7 +101,11 @@ const Auth = () => {
   }
   
   if (isAuthenticated) {
-    return null; // Don't render anything while redirecting
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-triage-purple">Redirecting to dashboard...</div>
+      </div>
+    );
   }
   
   return (

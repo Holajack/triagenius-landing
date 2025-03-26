@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
@@ -9,6 +10,9 @@ import { auth } from "@/integrations/firebase/client";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+// Enable for debugging
+const DEBUG_AUTH = true;
 
 type AuthMode = "login" | "signup";
 
@@ -59,6 +63,33 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
     checkEmailConfirmation();
   }, [location, navigate]);
 
+  const createProfile = async (userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          email: email,
+          username: username || email.split('@')[0],
+          last_selected_environment: 'office',
+          privacy_settings: {
+            showEmail: false,
+            showActivity: true
+          }
+        });
+        
+      if (error) {
+        console.error("Error creating profile:", error);
+        return false;
+      }
+      
+      return true;
+    } catch (err) {
+      console.error("Error creating profile:", err);
+      return false;
+    }
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -68,7 +99,9 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
     
     try {
       if (mode === "login") {
-        // Try Supabase login first
+        if (DEBUG_AUTH) console.log('[AuthForm] Attempting login with email:', email);
+        
+        // Try Supabase login
         const { data: supabaseData, error: supabaseError } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -77,20 +110,41 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
         if (supabaseError) {
           // If Supabase login fails, try Firebase login
           try {
+            if (DEBUG_AUTH) console.log('[AuthForm] Supabase login failed, trying Firebase');
             await signInWithEmailAndPassword(auth, email, password);
             toast.success("Welcome back!");
             navigate("/dashboard");
             return;
           } catch (firebaseError: any) {
+            if (DEBUG_AUTH) console.log('[AuthForm] Firebase login also failed');
             throw supabaseError; // Use original Supabase error for consistency
           }
         } else {
+          if (DEBUG_AUTH) console.log('[AuthForm] Login successful, checking profile');
+          
+          // Check if profile exists, create if needed
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', supabaseData.user.id)
+            .maybeSingle();
+            
+          if (!profileData) {
+            if (DEBUG_AUTH) console.log('[AuthForm] Profile not found, creating');
+            const profileCreated = await createProfile(supabaseData.user.id);
+            if (!profileCreated) {
+              toast.warning("Profile creation issues. Some features may be limited.");
+            }
+          }
+          
           toast.success("Welcome back!");
           navigate("/dashboard");
         }
       } else {
         // For signup, try both providers with better error handling
         try {
+          if (DEBUG_AUTH) console.log('[AuthForm] Attempting signup with email:', email);
+          
           // Try Supabase signup first
           const { data: supabaseData, error: supabaseError } = await supabase.auth.signUp({
             email,
@@ -119,8 +173,19 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
                 description: "You'll need to verify your email before you can log in.",
                 duration: 8000,
               });
+              
+              // Try to create profile anyway to avoid issues later
+              if (supabaseData?.user?.id) {
+                await createProfile(supabaseData.user.id);
+              }
+              
               return;
             } else {
+              // Create profile for the new user
+              if (supabaseData?.user?.id) {
+                await createProfile(supabaseData.user.id);
+              }
+              
               toast.success("Account created successfully!");
               navigate("/onboarding");
               return;
@@ -133,7 +198,14 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
         
         // Try Firebase signup regardless of Supabase result due to email issues
         try {
-          await createUserWithEmailAndPassword(auth, email, password);
+          if (DEBUG_AUTH) console.log('[AuthForm] Trying Firebase signup');
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          
+          // Try to create a profile in our database for this Firebase user
+          if (userCredential?.user?.uid) {
+            await createProfile(userCredential.user.uid);
+          }
+          
           toast.success("Account created with Firebase successfully!");
           navigate("/onboarding");
           return;
@@ -145,6 +217,7 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
         }
       }
     } catch (error: any) {
+      console.error("Authentication error:", error);
       setError(error.message || "Authentication failed");
       toast.error(error.message || "Authentication failed");
     } finally {

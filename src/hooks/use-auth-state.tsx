@@ -4,6 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { saveUserSession, loadUserSession, applySessionPreferences } from '@/services/sessionPersistence';
 
+// Enable this for debugging environment issues
+const DEBUG_AUTH = true;
+
 export function useAuthState() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -20,6 +23,7 @@ export function useAuthState() {
           throw error;
         }
         
+        if (DEBUG_AUTH) console.log('[useAuthState] Initial session:', data.session?.user?.id ? 'User logged in' : 'No session');
         setSession(data.session);
         
         // If a session exists, load saved user preferences
@@ -44,8 +48,9 @@ export function useAuthState() {
 
     // Set up listener for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
+      async (event, currentSession) => {
+        if (DEBUG_AUTH) console.log('[useAuthState] Auth state change event:', event);
+        setSession(currentSession);
         setLoading(false);
       }
     );
@@ -76,10 +81,6 @@ export function useAuthState() {
       }
       
       toast.success('Successfully signed out');
-      
-      // Note: We don't use navigate here anymore since this hook shouldn't depend on React Router
-      // The component using this hook should handle navigation after signOut
-      // This makes the hook more reusable
     } catch (err) {
       console.error('Error signing out:', err);
       toast.error('Failed to sign out');
