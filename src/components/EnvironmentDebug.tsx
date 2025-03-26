@@ -65,21 +65,27 @@ const EnvironmentDebug = () => {
         return;
       }
       
-      // Get current environment from local state (visual)
-      const currentVisualEnv = environmentTheme || 
-                              domEnv || 
-                              localStorage.getItem('environment') || 
-                              'office';
+      // For sync, we'll prioritize the DB value first (source of truth)
+      // Only if that's not available, use the visual state
+      let environmentToSync = user.profile?.last_selected_environment;
       
-      console.log(`[ENV DEBUG] Force syncing environment to: ${currentVisualEnv}`);
+      if (!environmentToSync) {
+        // If no DB value, use the current visual state
+        environmentToSync = environmentTheme || 
+                          domEnv || 
+                          localStorage.getItem('environment') || 
+                          'office';
+      }
       
-      // Update all relevant places
+      console.log(`[ENV DEBUG] Force syncing environment to: ${environmentToSync}`);
+      
+      // Update all relevant places - starting with DB
       
       // 1. Update profile table (source of truth)
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ 
-          last_selected_environment: currentVisualEnv 
+          last_selected_environment: environmentToSync 
         })
         .eq('id', user.id);
         
@@ -93,7 +99,7 @@ const EnvironmentDebug = () => {
       const { error: prefError } = await supabase
         .from('onboarding_preferences')
         .update({ 
-          learning_environment: currentVisualEnv 
+          learning_environment: environmentToSync 
         })
         .eq('user_id', user.id);
         
@@ -102,14 +108,14 @@ const EnvironmentDebug = () => {
       }
       
       // 3. Update localStorage
-      localStorage.setItem('environment', currentVisualEnv);
+      localStorage.setItem('environment', environmentToSync);
       
       // 4. Update user preferences
       const userPrefs = localStorage.getItem('userPreferences');
       if (userPrefs) {
         try {
           const parsedPrefs = JSON.parse(userPrefs);
-          parsedPrefs.environment = currentVisualEnv;
+          parsedPrefs.environment = environmentToSync;
           localStorage.setItem('userPreferences', JSON.stringify(parsedPrefs));
         } catch (e) {
           console.error("Error updating userPreferences:", e);
@@ -120,12 +126,23 @@ const EnvironmentDebug = () => {
       await forceEnvironmentSync();
       
       // 6. Apply to theme context
-      setEnvironmentTheme(currentVisualEnv);
+      setEnvironmentTheme(environmentToSync);
       
-      // 7. Refresh user data
+      // 7. Apply CSS directly for immediate visual feedback
+      document.documentElement.classList.remove(
+        'theme-office', 
+        'theme-park', 
+        'theme-home', 
+        'theme-coffee-shop', 
+        'theme-library'
+      );
+      document.documentElement.classList.add(`theme-${environmentToSync}`);
+      document.documentElement.setAttribute('data-environment', environmentToSync);
+      
+      // 8. Refresh user data
       await refreshUser();
       
-      // 8. Update values in debug panel
+      // 9. Update values in debug panel
       updateValues();
       
       toast.success("Environment synchronized successfully");

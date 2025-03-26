@@ -34,7 +34,9 @@ const ProfilePreferences = () => {
     ...state
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isSavingEnvironment, setIsSavingEnvironment] = useState(false);
   const [lastSavedEnvironment, setLastSavedEnvironment] = useState<string | null>(null);
+  const [environmentUpdateQueue, setEnvironmentUpdateQueue] = useState<string | null>(null);
   
   // Add effect to track when environment changes in profile or onboarding
   useEffect(() => {
@@ -43,6 +45,62 @@ const ProfilePreferences = () => {
       if (DEBUG_ENV) console.log(`[ProfilePreferences] Initial database environment: ${user.profile.last_selected_environment}`);
     }
   }, [user?.profile?.last_selected_environment]);
+  
+  // Save function for environment changes only
+  const saveEnvironmentToDatabase = async (envValue: string): Promise<boolean> => {
+    if (!user || !user.id) {
+      console.error("[ProfilePreferences] Cannot save environment - no user");
+      return false;
+    }
+    
+    try {
+      setIsSavingEnvironment(true);
+      
+      if (DEBUG_ENV) console.log(`[ProfilePreferences] Saving environment to DB: ${envValue}`);
+      
+      // First update profiles table - source of truth
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          last_selected_environment: envValue 
+        })
+        .eq('id', user.id);
+        
+      if (profileError) {
+        console.error("[ProfilePreferences] Error updating profile environment:", profileError);
+        return false;
+      }
+      
+      // Then sync with onboarding_preferences for consistency
+      const { error: prefError } = await supabase
+        .from('onboarding_preferences')
+        .update({ 
+          learning_environment: envValue 
+        })
+        .eq('user_id', user.id);
+        
+      if (prefError) {
+        console.error("[ProfilePreferences] Error updating onboarding preferences environment:", prefError);
+      }
+      
+      // Update localStorage after DB update
+      localStorage.setItem('environment', envValue);
+      
+      // Update the last saved environment state
+      setLastSavedEnvironment(envValue);
+      
+      // Force refresh to update the debug view
+      await refreshUser();
+      
+      if (DEBUG_ENV) console.log("[ProfilePreferences] Successfully saved environment to database");
+      return true;
+    } catch (error) {
+      console.error("[ProfilePreferences] Failed to save environment:", error);
+      return false;
+    } finally {
+      setIsSavingEnvironment(false);
+    }
+  };
   
   const handleEditStart = () => {
     setIsEditing(true);
@@ -57,6 +115,30 @@ const ProfilePreferences = () => {
     setEditedState({
       ...state
     });
+    
+    // If we have a queued environment change that hasn't been applied, revert to last saved
+    if (environmentUpdateQueue && lastSavedEnvironment) {
+      // Reapply the last saved environment
+      applyEnvironmentVisually(lastSavedEnvironment);
+      setEnvironmentUpdateQueue(null);
+    }
+  };
+  
+  // Apply the environment visually but don't save to DB
+  const applyEnvironmentVisually = (value: string) => {
+    // Update theme context
+    setEnvironmentTheme(value);
+    
+    // Apply CSS classes directly for immediate visual feedback 
+    document.documentElement.classList.remove(
+      'theme-office', 
+      'theme-park', 
+      'theme-home', 
+      'theme-coffee-shop', 
+      'theme-library'
+    );
+    document.documentElement.classList.add(`theme-${value}`);
+    document.documentElement.setAttribute('data-environment', value);
   };
   
   const handleChange = async (key: string, value: any) => {
@@ -66,74 +148,72 @@ const ProfilePreferences = () => {
     }));
     setHasUnsavedChanges(true);
     
-    // For environment changes, apply them immediately for better user experience
-    // but also update the database directly to ensure consistency
+    // Special handling for environment changes
     if (key === 'environment' && value) {
-      if (DEBUG_ENV) console.log(`[ProfilePreferences] Immediate environment update: ${value}`);
+      if (DEBUG_ENV) console.log(`[ProfilePreferences] Environment change requested: ${value}`);
       
-      // Update theme context
-      setEnvironmentTheme(value);
+      // Queue the environment value to be saved
+      setEnvironmentUpdateQueue(value);
       
-      // Update localStorage
-      localStorage.setItem('environment', value);
-      
-      // Apply CSS classes directly for immediate visual feedback 
-      document.documentElement.classList.remove(
-        'theme-office', 
-        'theme-park', 
-        'theme-home', 
-        'theme-coffee-shop', 
-        'theme-library'
-      );
-      document.documentElement.classList.add(`theme-${value}`);
-      document.documentElement.setAttribute('data-environment', value);
-      
-      // Update profile directly - this is our source of truth
+      // First save to DB before visual changes
       if (user && user.id) {
-        try {
-          // First update profiles table - source of truth
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .update({ 
-              last_selected_environment: value 
-            })
-            .eq('id', user.id);
-            
-          if (profileError) {
-            console.error("[ProfilePreferences] Error updating profile environment:", profileError);
-          } else {
-            if (DEBUG_ENV) console.log("[ProfilePreferences] Successfully updated profile environment in database");
-            // Track the last saved environment
-            setLastSavedEnvironment(value);
-            
-            // Force refresh to update the debug view
-            await refreshUser();
-          }
+        const saveSuccess = await saveEnvironmentToDatabase(value);
+        
+        // Only apply visual changes if DB save was successful
+        if (saveSuccess) {
+          if (DEBUG_ENV) console.log(`[ProfilePreferences] Applying visual environment: ${value}`);
+          applyEnvironmentVisually(value);
+          setEnvironmentUpdateQueue(null);
+        } else {
+          // If save failed, show error and don't update visual state
+          toast.error("Failed to save environment preference");
           
-          // Then sync with onboarding_preferences for consistency
-          const { error: prefError } = await supabase
-            .from('onboarding_preferences')
-            .update({ 
-              learning_environment: value 
-            })
-            .eq('user_id', user.id);
-            
-          if (prefError) {
-            console.error("[ProfilePreferences] Error updating onboarding preferences environment:", prefError);
-          } else if (DEBUG_ENV) {
-            console.log("[ProfilePreferences] Successfully updated onboarding preferences environment in database");
-          }
+          // Reset the edited state to the last known good value
+          setEditedState(prev => ({
+            ...prev,
+            environment: lastSavedEnvironment || prev.environment
+          }));
           
-        } catch (error) {
-          console.error("[ProfilePreferences] Failed to update environment preference:", error);
+          setEnvironmentUpdateQueue(null);
+          return;
         }
+      } else {
+        // If no user, only update visual state for preview
+        applyEnvironmentVisually(value);
       }
     }
   };
   
+  // Save pending environment changes when leaving the component
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // If there's a pending environment change, try to save it
+      if (environmentUpdateQueue && user?.id) {
+        saveEnvironmentToDatabase(environmentUpdateQueue);
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      
+      // Also try to save on unmount
+      if (environmentUpdateQueue && user?.id) {
+        saveEnvironmentToDatabase(environmentUpdateQueue);
+      }
+    };
+  }, [environmentUpdateQueue, user?.id]);
+  
   const handleSave = async () => {
     try {
       setIsLoading(true);
+      
+      // First, save any pending environment changes
+      if (environmentUpdateQueue) {
+        await saveEnvironmentToDatabase(environmentUpdateQueue);
+        setEnvironmentUpdateQueue(null);
+      }
       
       // Update context state
       Object.entries(editedState).forEach(([key, value]) => {
@@ -226,12 +306,12 @@ const ProfilePreferences = () => {
         <div className="flex justify-between items-center">
           <CardTitle>Preferences</CardTitle>
           {!isEditing ? (
-            <Button onClick={handleEditStart} variant="outline" size="sm" disabled={isLoading || contextLoading}>
+            <Button onClick={handleEditStart} variant="outline" size="sm" disabled={isLoading || contextLoading || isSavingEnvironment}>
               <PencilIcon className="h-4 w-4 mr-2" />
               Edit
             </Button>
           ) : (
-            <Button onClick={handleCancel} variant="outline" size="sm" disabled={isLoading || contextLoading}>
+            <Button onClick={handleCancel} variant="outline" size="sm" disabled={isLoading || contextLoading || isSavingEnvironment}>
               Cancel
             </Button>
           )}
@@ -239,7 +319,7 @@ const ProfilePreferences = () => {
       </CardHeader>
 
       <CardContent className="space-y-6 my-0 pb-8">
-        {contextLoading && <div className="w-full flex justify-center py-4">
+        {(contextLoading || isSavingEnvironment) && <div className="w-full flex justify-center py-4">
             <Loader2Icon className="h-6 w-6 animate-spin text-primary" />
           </div>}
         
@@ -249,7 +329,7 @@ const ProfilePreferences = () => {
               <div className="flex items-center space-x-2">
                 <Slider 
                   id="weekly-focus-goal" 
-                  disabled={!isEditing || isLoading} 
+                  disabled={!isEditing || isLoading || isSavingEnvironment} 
                   value={[editedState.weeklyFocusGoal || state.weeklyFocusGoal || 10]} 
                   min={1} 
                   max={40} 
@@ -266,7 +346,7 @@ const ProfilePreferences = () => {
             <div className="space-y-2">
               <Label htmlFor="user-goal">Main Goal</Label>
               <Select 
-                disabled={!isEditing || isLoading} 
+                disabled={!isEditing || isLoading || isSavingEnvironment} 
                 value={editedState.userGoal || state.userGoal || ""} 
                 onValueChange={value => handleChange('userGoal', value as UserGoal)}
               >
@@ -284,7 +364,7 @@ const ProfilePreferences = () => {
             <div className="space-y-2">
               <Label htmlFor="work-style">Work Style</Label>
               <Select 
-                disabled={!isEditing || isLoading} 
+                disabled={!isEditing || isLoading || isSavingEnvironment} 
                 value={editedState.workStyle || state.workStyle || ""} 
                 onValueChange={value => handleChange('workStyle', value as WorkStyle)}
               >
@@ -302,7 +382,7 @@ const ProfilePreferences = () => {
             <div className="space-y-2">
               <Label htmlFor="environment">Environment</Label>
               <Select 
-                disabled={!isEditing || isLoading} 
+                disabled={!isEditing || isLoading || isSavingEnvironment} 
                 value={editedState.environment || state.environment || ""} 
                 onValueChange={value => handleChange('environment', value as StudyEnvironment)}
               >
@@ -317,9 +397,10 @@ const ProfilePreferences = () => {
                   <SelectItem value="park">Park/Outdoors</SelectItem>
                 </SelectContent>
               </Select>
-              {DEBUG_ENV && lastSavedEnvironment && (
+              {(DEBUG_ENV || isSavingEnvironment) && (
                 <p className="text-xs text-muted-foreground">
-                  DB environment: {lastSavedEnvironment}
+                  {isSavingEnvironment ? 'Saving environment...' : `DB environment: ${lastSavedEnvironment}`}
+                  {environmentUpdateQueue && ' (Update pending)'}
                 </p>
               )}
             </div>
@@ -327,7 +408,7 @@ const ProfilePreferences = () => {
             <div className="space-y-2">
               <Label htmlFor="sound-preference">Sound Preference</Label>
               <Select 
-                disabled={!isEditing || isLoading} 
+                disabled={!isEditing || isLoading || isSavingEnvironment} 
                 value={editedState.soundPreference || state.soundPreference || ""} 
                 onValueChange={value => handleChange('soundPreference', value as SoundPreference)}
               >
@@ -355,8 +436,8 @@ const ProfilePreferences = () => {
             transition={{ duration: 0.2 }}
           >
             <CardFooter className="pt-2 pb-4 px-6 flex justify-end">
-              <Button onClick={handleSave} disabled={isLoading || contextLoading}>
-                {isLoading || contextLoading ? (
+              <Button onClick={handleSave} disabled={isLoading || contextLoading || isSavingEnvironment}>
+                {isLoading || contextLoading || isSavingEnvironment ? (
                   <>
                     <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
                     Saving...
