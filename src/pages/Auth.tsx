@@ -24,66 +24,119 @@ const Auth = () => {
     // Check if user is already authenticated
     const checkAuth = async () => {
       setIsCheckingAuth(true);
-      const { data, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error("Error checking auth session:", error);
-        setIsCheckingAuth(false);
-        return;
-      }
-      
-      const isLoggedIn = !!data.session;
-      if (DEBUG_AUTH) console.log('[Auth] User authenticated:', isLoggedIn);
-      setIsAuthenticated(isLoggedIn);
-      
-      // Check for email confirmation from URL hash
-      const hash = location.hash;
-      const isEmailConfirmation = hash && hash.includes("type=signup");
-      
-      // Check for saved session data in localStorage
       try {
-        const keys = Object.keys(localStorage);
-        const sessionKeys = keys.filter(key => key.startsWith('sessionData_'));
+        const { data, error } = await supabase.auth.getSession();
         
-        if (sessionKeys.length > 0) {
-          setSavedSessionFound(true);
+        if (error) {
+          console.error("Error checking auth session:", error);
+          setIsCheckingAuth(false);
+          return;
         }
-      } catch (error) {
-        console.error("Error checking for saved sessions:", error);
-      }
-      
-      // If already authenticated, redirect to appropriate page
-      if (isLoggedIn) {
-        if (isEmailConfirmation) {
-          navigate("/onboarding");
-        } else if (isFromStartFocusing) {
-          navigate("/onboarding");
-        } else {
-          navigate("/dashboard");
+        
+        const isLoggedIn = !!data.session;
+        if (DEBUG_AUTH) console.log('[Auth] User authenticated:', isLoggedIn);
+        setIsAuthenticated(isLoggedIn);
+        
+        // Check for email confirmation from URL hash
+        const hash = location.hash;
+        const isEmailConfirmation = hash && hash.includes("type=signup");
+        
+        // Check for saved session data in localStorage
+        try {
+          const keys = Object.keys(localStorage);
+          const sessionKeys = keys.filter(key => key.startsWith('sessionData_'));
+          
+          if (sessionKeys.length > 0) {
+            setSavedSessionFound(true);
+          }
+        } catch (error) {
+          console.error("Error checking for saved sessions:", error);
         }
+        
+        // If already authenticated, redirect to appropriate page
+        if (isLoggedIn) {
+          if (isEmailConfirmation) {
+            navigate("/onboarding");
+          } else if (isFromStartFocusing) {
+            navigate("/onboarding");
+          } else {
+            navigate("/dashboard");
+          }
+        }
+      } catch (err) {
+        console.error("Error in checkAuth:", err);
+      } finally {
+        setIsCheckingAuth(false);
       }
-      setIsCheckingAuth(false);
     };
     
     checkAuth();
     
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (DEBUG_AUTH) console.log('[Auth] Auth state change:', event);
+      if (DEBUG_AUTH) console.log('[Auth] Auth state change:', event, session?.user?.id);
       const isLoggedIn = !!session;
       setIsAuthenticated(isLoggedIn);
       
       if (event === 'SIGNED_IN') {
         toast.success("Signed in successfully!");
         
-        // Add a small delay before redirecting to ensure profile is loaded
-        setTimeout(() => {
-          if (isFromStartFocusing) {
-            navigate("/onboarding");
-          } else {
-            navigate("/dashboard");
+        // Create profile if it doesn't exist
+        const ensureProfile = async () => {
+          try {
+            // Check if profile exists
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('id', session.user.id)
+              .maybeSingle();
+              
+            if (profileError || !profile) {
+              console.log('[Auth] Creating profile for new user:', session.user.id);
+              
+              // Create profile
+              const { error: createError } = await supabase
+                .from('profiles')
+                .insert({
+                  id: session.user.id,
+                  email: session.user.email,
+                  username: session.user.email?.split('@')[0] || 'user',
+                  last_selected_environment: 'office'
+                });
+                
+              if (createError) {
+                console.error('[Auth] Failed to create profile:', createError);
+              } else {
+                console.log('[Auth] Profile created successfully');
+              }
+              
+              // Create onboarding preferences
+              const { error: prefError } = await supabase
+                .from('onboarding_preferences')
+                .insert({
+                  user_id: session.user.id,
+                  learning_environment: 'office'
+                });
+                
+              if (prefError && prefError.code !== '23505') {
+                console.error('[Auth] Failed to create onboarding preferences:', prefError);
+              }
+            }
+          } catch (err) {
+            console.error('[Auth] Error ensuring profile exists:', err);
           }
-        }, 500);
+        };
+        
+        ensureProfile().then(() => {
+          // Add a small delay before redirecting to ensure profile is loaded
+          setTimeout(() => {
+            if (isFromStartFocusing) {
+              navigate("/onboarding");
+            } else {
+              navigate("/dashboard");
+            }
+          }, 1000);
+        });
       }
     });
     

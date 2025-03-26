@@ -11,15 +11,18 @@ export function useAuthState() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [authInitialized, setAuthInitialized] = useState(false);
 
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
       try {
         setLoading(true);
+        setError(null);
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
+          console.error('[useAuthState] Session error:', error);
           throw error;
         }
         
@@ -31,16 +34,17 @@ export function useAuthState() {
           try {
             const savedSession = await loadUserSession(data.session.user.id);
             applySessionPreferences(savedSession);
-            console.log("Applied user preferences from previous session");
+            console.log("[useAuthState] Applied user preferences from previous session");
           } catch (err) {
-            console.error("Failed to load previous session data:", err);
+            console.error("[useAuthState] Failed to load previous session data:", err);
           }
         }
       } catch (err) {
-        console.error('Error getting auth session:', err);
+        console.error('[useAuthState] Error getting auth session:', err);
         setError(err);
       } finally {
         setLoading(false);
+        setAuthInitialized(true);
       }
     };
 
@@ -49,8 +53,16 @@ export function useAuthState() {
     // Set up listener for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        if (DEBUG_AUTH) console.log('[useAuthState] Auth state change event:', event);
+        if (DEBUG_AUTH) console.log('[useAuthState] Auth state change event:', event, currentSession?.user?.id);
+        
+        // Update session state
         setSession(currentSession);
+        
+        // Reset error state on successful sign-in
+        if (event === 'SIGNED_IN' && currentSession) {
+          setError(null);
+        }
+        
         setLoading(false);
       }
     );
@@ -96,5 +108,6 @@ export function useAuthState() {
     error,
     signOut,
     isAuthenticated: !!session,
+    authInitialized,
   };
 }

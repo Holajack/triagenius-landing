@@ -7,26 +7,33 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 const ProtectedRoute = () => {
-  const { loading: authLoading, isAuthenticated } = useAuthState();
+  const { loading: authLoading, isAuthenticated, authInitialized } = useAuthState();
   const navigate = useNavigate();
-  const { user, isLoading: userLoading, error: userError } = useUser();
+  const { user, isLoading: userLoading, error: userError, refreshUser } = useUser();
   const [retrying, setRetrying] = useState(false);
+  const [attemptCount, setAttemptCount] = useState(0);
   
   useEffect(() => {
     // Handle edge case when authenticated but user data fails to load
-    if (isAuthenticated && !userLoading && !user && !retrying) {
+    if (authInitialized && isAuthenticated && !userLoading && !user && !retrying && attemptCount < 3) {
       console.error("User authenticated but profile not loaded:", userError);
       
       // Try to check if profile actually exists
       const checkAndFixProfile = async () => {
         try {
           setRetrying(true);
-          const { data: authData } = await supabase.auth.getUser();
-          if (!authData.user) {
+          
+          // Get current auth user
+          const { data: authData, error: authError } = await supabase.auth.getUser();
+          
+          if (authError || !authData.user) {
+            console.error("Session expired or auth error:", authError);
             toast.error("Session expired. Please log in again.");
             navigate("/auth", { replace: true });
             return;
           }
+          
+          console.log("Auth user found, checking for profile:", authData.user.id);
           
           // Check if profile exists
           const { data: profileData, error: profileError } = await supabase
@@ -58,14 +65,45 @@ const ProtectedRoute = () => {
               return;
             }
             
-            toast.success("Profile created. Redirecting...");
-            // Force a reload to ensure user data gets loaded properly
-            window.location.reload();
+            // Also create onboarding preferences
+            const { error: onboardingError } = await supabase
+              .from('onboarding_preferences')
+              .insert({
+                user_id: authData.user.id,
+                learning_environment: 'office'
+              });
+              
+            if (onboardingError && onboardingError.code !== '23505') { // Ignore duplicate key errors
+              console.error("Error creating onboarding preferences:", onboardingError);
+            }
+            
+            toast.success("Profile created. Refreshing...");
+            
+            // Try to refresh user data
+            await refreshUser();
+            
+            // Increment attempt count
+            setAttemptCount(prev => prev + 1);
+            
+            // If still no user after refresh, reload the page
+            if (!user) {
+              window.location.reload();
+            }
+            
             return;
           } else {
-            // Profile exists but couldn't be loaded, try again or navigate to auth
-            toast.error("Failed to load user data. Please try logging in again.");
-            navigate("/auth", { replace: true });
+            console.log("Profile exists but couldn't be loaded, trying to refresh...");
+            // Profile exists but couldn't be loaded, try again
+            await refreshUser();
+            
+            // Increment attempt count
+            setAttemptCount(prev => prev + 1);
+            
+            // If still no user after multiple attempts, redirect to auth
+            if (!user && attemptCount >= 2) {
+              toast.error("Failed to load user data. Please try logging in again.");
+              navigate("/auth", { replace: true });
+            }
           }
         } catch (e) {
           console.error("Error in profile recovery:", e);
@@ -78,16 +116,20 @@ const ProtectedRoute = () => {
       
       checkAndFixProfile();
     }
-  }, [isAuthenticated, user, userLoading, userError, navigate, retrying]);
+  }, [isAuthenticated, user, userLoading, userError, navigate, retrying, authInitialized, attemptCount, refreshUser]);
   
+  // Show a loading indicator while authentication is being checked
   if (authLoading || userLoading || retrying) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-triage-purple">Loading...</div>
+        <div className="animate-pulse text-triage-purple">
+          {retrying ? "Trying to recover your profile..." : "Loading..."}
+        </div>
       </div>
     );
   }
   
+  // If not authenticated, redirect to login
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
   }
@@ -96,7 +138,17 @@ const ProtectedRoute = () => {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-triage-purple">Loading user data...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="text-triage-purple">Loading user data...</div>
+          {attemptCount > 0 && (
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 text-sm bg-triage-purple text-white rounded-md"
+            >
+              Refresh
+            </button>
+          )}
+        </div>
       </div>
     );
   }
