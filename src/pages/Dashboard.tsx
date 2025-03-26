@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -22,7 +23,7 @@ import EnvironmentDebug from "@/components/EnvironmentDebug";
 const DEBUG_ENV = true;
 
 const Dashboard = () => {
-  const { state } = useOnboarding();
+  const { state, forceEnvironmentSync } = useOnboarding();
   const navigate = useNavigate();
   const { theme, applyEnvironmentTheme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
@@ -30,35 +31,58 @@ const Dashboard = () => {
     return localStorage.getItem('preferredChartType') || 'bar';
   });
   const isMobile = useIsMobile();
-  const { user } = useUser();
+  const { user, refreshUser } = useUser();
+  const [syncAttempts, setSyncAttempts] = useState(0);
 
   // Apply environment theme when component mounts to ensure consistency
   useEffect(() => {
-    if (state.environment) {
-      if (DEBUG_ENV) console.log('[Dashboard] Initial environment from onboarding state:', state.environment);
-      applyEnvironmentTheme(state.environment);
-    } else if (user?.profile?.last_selected_environment) {
-      if (DEBUG_ENV) console.log('[Dashboard] No environment in state, using profile environment:', user.profile.last_selected_environment);
-      applyEnvironmentTheme(user.profile.last_selected_environment);
-    } else {
-      const localEnv = localStorage.getItem('environment');
-      if (DEBUG_ENV) console.log('[Dashboard] Fallback to localStorage environment:', localEnv);
-      if (localEnv) {
-        applyEnvironmentTheme(localEnv);
+    const syncEnvironment = async () => {
+      // First, make sure database is in sync with context
+      await forceEnvironmentSync();
+      
+      // Then apply the environment from the most reliable source in order of precedence
+      if (user?.profile?.last_selected_environment) {
+        if (DEBUG_ENV) console.log('[Dashboard] Using profile environment (DB truth):', user.profile.last_selected_environment);
+        applyEnvironmentTheme(user.profile.last_selected_environment);
+        
+        // If state.environment doesn't match profile, we have a problem to fix
+        if (state.environment && state.environment !== user.profile.last_selected_environment) {
+          if (DEBUG_ENV) console.log(`[Dashboard] Environment mismatch detected: state ${state.environment} vs DB ${user.profile.last_selected_environment}`);
+          
+          // Trigger a user refresh as a fix attempt
+          if (syncAttempts < 2) {
+            if (DEBUG_ENV) console.log(`[Dashboard] Attempting fix, refreshing user data (attempt ${syncAttempts + 1})`);
+            setTimeout(() => {
+              refreshUser();
+              setSyncAttempts(prev => prev + 1);
+            }, 1000);
+          }
+        }
+      } else if (state.environment) {
+        if (DEBUG_ENV) console.log('[Dashboard] No profile environment, using onboarding state:', state.environment);
+        applyEnvironmentTheme(state.environment);
+      } else {
+        const localEnv = localStorage.getItem('environment');
+        if (DEBUG_ENV) console.log('[Dashboard] Fallback to localStorage environment:', localEnv);
+        if (localEnv) {
+          applyEnvironmentTheme(localEnv);
+        }
       }
-    }
+      
+      // On dashboard mount, check DOM for current environment
+      if (DEBUG_ENV) {
+        const domEnv = document.documentElement.getAttribute('data-environment');
+        const domClasses = document.documentElement.className;
+        console.log('[Dashboard] Current DOM environment:', {
+          attribute: domEnv,
+          classes: domClasses,
+          localStorage: localStorage.getItem('environment')
+        });
+      }
+    };
     
-    // On dashboard mount, check DOM for current environment
-    if (DEBUG_ENV) {
-      const domEnv = document.documentElement.getAttribute('data-environment');
-      const domClasses = document.documentElement.className;
-      console.log('[Dashboard] Current DOM environment:', {
-        attribute: domEnv,
-        classes: domClasses,
-        localStorage: localStorage.getItem('environment')
-      });
-    }
-  }, [state.environment, applyEnvironmentTheme, user]);
+    syncEnvironment();
+  }, [state.environment, applyEnvironmentTheme, user, forceEnvironmentSync, refreshUser, syncAttempts]);
 
   // Modified redirection logic to only redirect if explicitly coming from the index page
   useEffect(() => {
@@ -92,7 +116,7 @@ const Dashboard = () => {
 
   // Get environment-specific class for card styling with more distinctive colors
   const getEnvCardClass = () => {
-    switch (state.environment) {
+    switch (getEnvTheme()) {
       case 'office': return "border-blue-300 bg-gradient-to-br from-blue-50/50 to-white shadow-blue-100/30 shadow-md";
       case 'park': return "border-green-300 bg-gradient-to-br from-green-50/50 to-white shadow-green-100/30 shadow-md";
       case 'home': return "border-orange-300 bg-gradient-to-br from-orange-50/50 to-white shadow-orange-100/30 shadow-md";

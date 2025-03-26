@@ -1,5 +1,6 @@
 
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 // Enable this for debugging environment issues
 const DEBUG_ENV = true;
@@ -11,6 +12,7 @@ type ThemeContextType = {
   setEnvironmentTheme: (environment: string | null) => void;
   toggleTheme: () => void;
   applyEnvironmentTheme: (environment: string | null) => void;
+  verifyEnvironmentWithDatabase: (userId: string) => Promise<boolean>;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -82,6 +84,80 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       document.documentElement.classList.remove('dark');
     }
   };
+  
+  // New function to verify environment consistency with database
+  const verifyEnvironmentWithDatabase = async (userId: string): Promise<boolean> => {
+    try {
+      if (!userId) {
+        console.log("[ThemeContext] Cannot verify without user ID");
+        return false;
+      }
+      
+      // Get environment from profile
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('last_selected_environment')
+        .eq('id', userId)
+        .single();
+        
+      if (error) {
+        console.error("[ThemeContext] Error verifying environment:", error);
+        return false;
+      }
+      
+      if (!data || !data.last_selected_environment) {
+        console.log("[ThemeContext] No environment found in database");
+        return false;
+      }
+      
+      // Compare with current environment
+      const dbEnvironment = data.last_selected_environment;
+      const currentEnvironment = environmentTheme;
+      
+      if (DEBUG_ENV) {
+        console.log("[ThemeContext] Environment verification:", {
+          database: dbEnvironment,
+          context: currentEnvironment,
+          localStorage: localStorage.getItem('environment'),
+          domAttribute: document.documentElement.getAttribute('data-environment')
+        });
+      }
+      
+      const isConsistent = dbEnvironment === currentEnvironment;
+      
+      // If inconsistent, update database to match current visual state
+      if (!isConsistent && currentEnvironment) {
+        console.log(`[ThemeContext] Environment mismatch: DB=${dbEnvironment}, Current=${currentEnvironment}`);
+        
+        // Update profile
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ 
+            last_selected_environment: currentEnvironment 
+          })
+          .eq('id', userId);
+          
+        if (updateError) {
+          console.error("[ThemeContext] Error updating profile environment:", updateError);
+        } else {
+          console.log(`[ThemeContext] Database environment updated to match current: ${currentEnvironment}`);
+        }
+        
+        // Also update onboarding preferences
+        await supabase
+          .from('onboarding_preferences')
+          .update({ 
+            learning_environment: currentEnvironment 
+          })
+          .eq('user_id', userId);
+      }
+      
+      return isConsistent;
+    } catch (error) {
+      console.error("[ThemeContext] Error in verifyEnvironmentWithDatabase:", error);
+      return false;
+    }
+  };
 
   // Apply theme on initial render and when changed
   useEffect(() => {
@@ -124,7 +200,8 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
         environmentTheme, 
         setEnvironmentTheme,
         toggleTheme,
-        applyEnvironmentTheme 
+        applyEnvironmentTheme,
+        verifyEnvironmentWithDatabase
       }}
     >
       {children}

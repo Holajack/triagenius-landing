@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { OnboardingState, UserGoal, WorkStyle, StudyEnvironment, SoundPreference } from '@/types/onboarding';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,6 +56,7 @@ type OnboardingContextType = {
   isLoading: boolean;
   hasUnsavedChanges: boolean;
   setHasUnsavedChanges: (value: boolean) => void;
+  forceEnvironmentSync: () => Promise<void>;
 };
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
@@ -63,6 +65,67 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
   const [state, dispatch] = useReducer(onboardingReducer, initialState);
   const [isLoading, setIsLoading] = React.useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
+  const [lastDbEnvironment, setLastDbEnvironment] = React.useState<string | null>(null);
+  
+  // New function to directly verify and sync environment with database
+  const forceEnvironmentSync = async (): Promise<void> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      // Get current environment from profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('last_selected_environment')
+        .eq('id', user.id)
+        .single();
+        
+      if (profileError) {
+        console.error("[OnboardingContext] Error getting profile environment:", profileError);
+        return;
+      }
+      
+      if (profileData) {
+        const dbEnvironment = profileData.last_selected_environment as StudyEnvironment;
+        setLastDbEnvironment(dbEnvironment);
+        
+        // If state environment doesn't match DB, update state
+        if (state.environment !== dbEnvironment) {
+          if (DEBUG_ENV) console.log(`[OnboardingContext] Syncing state environment (${state.environment}) to match DB (${dbEnvironment})`);
+          
+          dispatch({ 
+            type: 'SET_ENVIRONMENT', 
+            payload: dbEnvironment
+          });
+          
+          // Also update localStorage
+          localStorage.setItem('environment', dbEnvironment);
+        }
+        
+        // Make sure onboarding_preferences is in sync
+        const { data: prefData, error: prefError } = await supabase
+          .from('onboarding_preferences')
+          .select('learning_environment')
+          .eq('user_id', user.id)
+          .single();
+          
+        if (!prefError && prefData && prefData.learning_environment !== dbEnvironment) {
+          if (DEBUG_ENV) console.log(`[OnboardingContext] Syncing onboarding_preferences environment (${prefData.learning_environment}) to match profile (${dbEnvironment})`);
+          
+          await supabase
+            .from('onboarding_preferences')
+            .update({ 
+              learning_environment: dbEnvironment 
+            })
+            .eq('user_id', user.id);
+        }
+        
+        return;
+      }
+    } catch (error) {
+      console.error("[OnboardingContext] Error in forceEnvironmentSync:", error);
+    }
+  };
   
   // Save onboarding state to Supabase
   const saveOnboardingState = async () => {
@@ -142,8 +205,9 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
         if (profileUpdateError) {
           console.error('[OnboardingContext] Error updating profile environment:', profileUpdateError);
           // Don't throw here, as we've already updated the main preferences
-        } else if (DEBUG_ENV) {
-          console.log('[OnboardingContext] Successfully updated profile environment');
+        } else {
+          if (DEBUG_ENV) console.log('[OnboardingContext] Successfully updated profile environment');
+          setLastDbEnvironment(state.environment);
         }
       }
       
@@ -164,6 +228,40 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
       
       setHasUnsavedChanges(false);
       toast.success("Preferences saved successfully");
+      
+      // Verify the update was successful by reading back the environment
+      if (state.environment) {
+        const { data: verifyData, error: verifyError } = await supabase
+          .from('profiles')
+          .select('last_selected_environment')
+          .eq('id', user.id)
+          .single();
+          
+        if (!verifyError && verifyData) {
+          if (verifyData.last_selected_environment !== state.environment) {
+            if (DEBUG_ENV) console.log(`[OnboardingContext] Database update verification failed. DB has ${verifyData.last_selected_environment} but should be ${state.environment}`);
+            
+            // Try once more to update
+            await supabase
+              .from('profiles')
+              .update({
+                last_selected_environment: state.environment
+              })
+              .eq('id', user.id);
+              
+            // Also ensure onboarding_preferences is updated
+            await supabase
+              .from('onboarding_preferences')
+              .update({
+                learning_environment: state.environment
+              })
+              .eq('user_id', user.id);
+          } else {
+            if (DEBUG_ENV) console.log('[OnboardingContext] Database update verification successful');
+          }
+        }
+      }
+      
     } catch (error: any) {
       console.error('[OnboardingContext] Error in saveOnboardingState:', error);
       toast.error(`Failed to save preferences: ${error.message || "An unknown error occurred"}`);
@@ -202,6 +300,7 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
           
           if (!profileError && profileData && profileData.last_selected_environment) {
             selectedEnvironment = profileData.last_selected_environment as StudyEnvironment;
+            setLastDbEnvironment(selectedEnvironment);
             
             // Update localStorage with the latest environment from profiles
             localStorage.setItem('environment', selectedEnvironment);
@@ -272,40 +371,42 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
       }
     };
     
-    // Load onboarding state on initial render
     loadOnboardingState();
     
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      loadOnboardingState();
+    // Setup listener for changes
+    const authListener = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') {
+        loadOnboardingState();
+      }
     });
     
-    // Cleanup subscription on unmount
     return () => {
-      subscription.unsubscribe();
+      authListener.data.subscription.unsubscribe();
     };
   }, []);
 
-  const contextValue = {
-    state,
-    dispatch,
-    saveOnboardingState,
-    isLoading,
-    hasUnsavedChanges,
-    setHasUnsavedChanges
-  };
-
   return (
-    <OnboardingContext.Provider value={contextValue}>
+    <OnboardingContext.Provider 
+      value={{ 
+        state, 
+        dispatch, 
+        saveOnboardingState, 
+        isLoading,
+        hasUnsavedChanges,
+        setHasUnsavedChanges,
+        forceEnvironmentSync
+      }}
+    >
       {children}
     </OnboardingContext.Provider>
   );
 };
 
-export function useOnboarding() {
+// Hook to use the onboarding context
+export const useOnboarding = () => {
   const context = useContext(OnboardingContext);
   if (context === undefined) {
-    throw new Error('useOnboarding must be used within an OnboardingProvider');
+    throw new Error("useOnboarding must be used within an OnboardingProvider");
   }
   return context;
-}
+};

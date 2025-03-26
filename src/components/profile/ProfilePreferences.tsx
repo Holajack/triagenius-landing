@@ -34,6 +34,15 @@ const ProfilePreferences = () => {
     ...state
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [lastSavedEnvironment, setLastSavedEnvironment] = useState<string | null>(null);
+  
+  // Add effect to track when environment changes in profile or onboarding
+  useEffect(() => {
+    if (user?.profile?.last_selected_environment) {
+      setLastSavedEnvironment(user.profile.last_selected_environment);
+      if (DEBUG_ENV) console.log(`[ProfilePreferences] Initial database environment: ${user.profile.last_selected_environment}`);
+    }
+  }, [user?.profile?.last_selected_environment]);
   
   const handleEditStart = () => {
     setIsEditing(true);
@@ -92,8 +101,13 @@ const ProfilePreferences = () => {
             
           if (profileError) {
             console.error("[ProfilePreferences] Error updating profile environment:", profileError);
-          } else if (DEBUG_ENV) {
-            console.log("[ProfilePreferences] Successfully updated profile environment in database");
+          } else {
+            if (DEBUG_ENV) console.log("[ProfilePreferences] Successfully updated profile environment in database");
+            // Track the last saved environment
+            setLastSavedEnvironment(value);
+            
+            // Force refresh to update the debug view
+            await refreshUser();
           }
           
           // Then sync with onboarding_preferences for consistency
@@ -162,6 +176,41 @@ const ProfilePreferences = () => {
       
       // Refresh user data to ensure we have the latest preferences
       await refreshUser();
+      
+      // Verify environment was saved properly
+      if (user?.id && editedState.environment) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('last_selected_environment')
+          .eq('id', user.id)
+          .single();
+          
+        if (!error && data) {
+          if (data.last_selected_environment !== editedState.environment) {
+            if (DEBUG_ENV) console.log(`[ProfilePreferences] Environment verification failed. DB has ${data.last_selected_environment} but should be ${editedState.environment}`);
+            
+            // Fix the mismatch with a direct update
+            await supabase
+              .from('profiles')
+              .update({ 
+                last_selected_environment: editedState.environment 
+              })
+              .eq('id', user.id);
+              
+            // Also update onboarding_preferences
+            await supabase
+              .from('onboarding_preferences')
+              .update({ 
+                learning_environment: editedState.environment 
+              })
+              .eq('user_id', user.id);
+              
+            if (DEBUG_ENV) console.log("[ProfilePreferences] Fixed environment mismatch in database");
+          } else {
+            if (DEBUG_ENV) console.log("[ProfilePreferences] Environment verification successful");
+          }
+        }
+      }
       
       setIsEditing(false);
     } catch (error) {
@@ -268,6 +317,11 @@ const ProfilePreferences = () => {
                   <SelectItem value="park">Park/Outdoors</SelectItem>
                 </SelectContent>
               </Select>
+              {DEBUG_ENV && lastSavedEnvironment && (
+                <p className="text-xs text-muted-foreground">
+                  DB environment: {lastSavedEnvironment}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">

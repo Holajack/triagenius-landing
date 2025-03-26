@@ -1,3 +1,4 @@
+
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -35,7 +36,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<Error | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const navigate = useNavigate();
-  const { setTheme, setEnvironmentTheme } = useTheme();
+  const { setTheme, setEnvironmentTheme, verifyEnvironmentWithDatabase } = useTheme();
   
   const clearError = () => setError(null);
   
@@ -205,6 +206,52 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           .eq('user_id', authUser.id);
       }
       
+      // Check environment consistency across different media
+      const currentLocalStorageEnv = localStorage.getItem('environment');
+      const currentDomEnv = document.documentElement.getAttribute('data-environment');
+      
+      if (DEBUG_ENV) {
+        console.log('[useUser] Environment consistency check:', {
+          database: environmentToApply,
+          localStorage: currentLocalStorageEnv,
+          domAttribute: currentDomEnv
+        });
+      }
+      
+      // If the local environment is different from the database and more user-friendly,
+      // AND it's not the first login (where we should respect the DB),
+      // update the database to match the local environment
+      if (currentLocalStorageEnv && 
+          currentLocalStorageEnv !== environmentToApply && 
+          retryCount > 0) {
+        
+        if (DEBUG_ENV) console.log(`[useUser] Visual environment (${currentLocalStorageEnv}) differs from DB (${environmentToApply}), updating DB`);
+        
+        // Update profile - source of truth
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            last_selected_environment: currentLocalStorageEnv
+          })
+          .eq('id', authUser.id);
+          
+        if (updateError) {
+          console.error("[useUser] Error updating profile environment:", updateError);
+        } else {
+          environmentToApply = currentLocalStorageEnv;
+          
+          // Also update onboarding preferences for consistency
+          await supabase
+            .from('onboarding_preferences')
+            .update({
+              learning_environment: currentLocalStorageEnv
+            })
+            .eq('user_id', authUser.id);
+            
+          if (DEBUG_ENV) console.log('[useUser] Database environment updated to match visual state:', currentLocalStorageEnv);
+        }
+      }
+      
       // Apply environment theme
       if (environmentToApply) {
         if (DEBUG_ENV) console.log(`[useUser] Applying environment theme on login: ${environmentToApply}`);
@@ -280,6 +327,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       
       // Reset retry count on success
       setRetryCount(0);
+      
+      // After everything is loaded, verify environment consistency once more
+      if (authUser.id) {
+        setTimeout(() => {
+          verifyEnvironmentWithDatabase(authUser.id);
+        }, 1000);
+      }
       
     } catch (error: any) {
       console.error("[useUser] Failed to fetch user data:", error);
