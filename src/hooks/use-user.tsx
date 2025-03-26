@@ -6,7 +6,7 @@ import { saveUserSession, loadUserSession, applySessionPreferences } from "@/ser
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/contexts/ThemeContext";
 
-const DEBUG_ENV = false;
+const DEBUG_ENV = true;
 
 interface UserData {
   id: string;
@@ -49,7 +49,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         throw authError;
       }
       
-      if (!authUser) {
+      if (!user) {
         setUser(null);
         setIsLoading(false);
         return;
@@ -128,10 +128,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       
       let environmentToApply = profileData.last_selected_environment;
       
-      if (DEBUG_ENV) console.log('Profile environment from DB:', environmentToApply);
+      if (DEBUG_ENV) console.log('[useUser] Profile environment from DB:', environmentToApply);
+      if (DEBUG_ENV && prefsData) console.log('[useUser] Onboarding preferences environment:', prefsData.learning_environment);
       
       if (prefsData && prefsData.learning_environment !== environmentToApply) {
-        if (DEBUG_ENV) console.log('Syncing onboarding_preferences to match profile environment:', environmentToApply);
+        if (DEBUG_ENV) console.log('[useUser] Syncing onboarding_preferences to match profile environment:', environmentToApply);
         
         await supabase
           .from('onboarding_preferences')
@@ -142,7 +143,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       }
       
       if (environmentToApply) {
-        if (DEBUG_ENV) console.log(`Applying environment theme on login: ${environmentToApply}`);
+        if (DEBUG_ENV) console.log(`[useUser] Applying environment theme on login: ${environmentToApply}`);
         localStorage.setItem('environment', environmentToApply);
         
         document.documentElement.classList.remove(

@@ -1,8 +1,7 @@
-
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 
 // Enable this for debugging environment issues
-const DEBUG_ENV = false;
+const DEBUG_ENV = true;
 
 type ThemeContextType = {
   theme: string;
@@ -23,12 +22,14 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   
   // Initialize environment from localStorage if available
   const [environmentTheme, setEnvironmentThemeState] = useState<string | null>(() => {
-    return localStorage.getItem('environment') || 'office';
+    const envFromStorage = localStorage.getItem('environment');
+    if (DEBUG_ENV) console.log('[ThemeContext] Initial env from localStorage:', envFromStorage);
+    return envFromStorage || 'office';
   });
 
   // Update localStorage and apply theme when theme changes
   const setTheme = (newTheme: string) => {
-    if (DEBUG_ENV) console.log('Setting theme:', newTheme);
+    if (DEBUG_ENV) console.log('[ThemeContext] Setting theme:', newTheme);
     setThemeState(newTheme);
     localStorage.setItem('theme', newTheme);
     applyTheme(newTheme);
@@ -42,7 +43,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
   // Set environment theme and update CSS classes
   const setEnvironmentTheme = (environment: string | null) => {
-    if (DEBUG_ENV) console.log('Setting environment theme:', environment);
+    if (DEBUG_ENV) console.log('[ThemeContext] Setting environment theme:', environment);
     
     if (environment) {
       setEnvironmentThemeState(environment);
@@ -63,7 +64,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
   // Apply environment theme
   const applyEnvironmentTheme = (environment: string | null) => {
-    if (DEBUG_ENV) console.log('Applying environment theme:', environment);
+    if (DEBUG_ENV) console.log('[ThemeContext] Applying environment theme:', environment);
     setEnvironmentTheme(environment);
   };
 
@@ -82,6 +83,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     
     // Also make sure environment is applied on initial load
     if (environmentTheme) {
+      if (DEBUG_ENV) console.log('[ThemeContext] useEffect applying environment:', environmentTheme);
       document.documentElement.classList.remove(
         'theme-office', 
         'theme-park', 

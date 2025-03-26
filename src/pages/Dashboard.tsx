@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -20,7 +19,7 @@ import { useUser } from "@/hooks/use-user";
 import EnvironmentDebug from "@/components/EnvironmentDebug";
 
 // Enable this for debugging environment issues
-const DEBUG_ENV = false;
+const DEBUG_ENV = true;
 
 const Dashboard = () => {
   const { state } = useOnboarding();
@@ -36,10 +35,30 @@ const Dashboard = () => {
   // Apply environment theme when component mounts to ensure consistency
   useEffect(() => {
     if (state.environment) {
-      if (DEBUG_ENV) console.log('Dashboard applying environment:', state.environment);
+      if (DEBUG_ENV) console.log('[Dashboard] Initial environment from onboarding state:', state.environment);
       applyEnvironmentTheme(state.environment);
+    } else if (user?.profile?.last_selected_environment) {
+      if (DEBUG_ENV) console.log('[Dashboard] No environment in state, using profile environment:', user.profile.last_selected_environment);
+      applyEnvironmentTheme(user.profile.last_selected_environment);
+    } else {
+      const localEnv = localStorage.getItem('environment');
+      if (DEBUG_ENV) console.log('[Dashboard] Fallback to localStorage environment:', localEnv);
+      if (localEnv) {
+        applyEnvironmentTheme(localEnv);
+      }
     }
-  }, [state.environment, applyEnvironmentTheme]);
+    
+    // On dashboard mount, check DOM for current environment
+    if (DEBUG_ENV) {
+      const domEnv = document.documentElement.getAttribute('data-environment');
+      const domClasses = document.documentElement.className;
+      console.log('[Dashboard] Current DOM environment:', {
+        attribute: domEnv,
+        classes: domClasses,
+        localStorage: localStorage.getItem('environment')
+      });
+    }
+  }, [state.environment, applyEnvironmentTheme, user]);
 
   // Modified redirection logic to only redirect if explicitly coming from the index page
   useEffect(() => {
@@ -64,6 +83,9 @@ const Dashboard = () => {
 
   // Get theme variables based on environment
   const getEnvTheme = () => {
+    if (!state.environment && user?.profile?.last_selected_environment) {
+      return user.profile.last_selected_environment;
+    }
     if (!state.environment) return "office";
     return state.environment;
   };

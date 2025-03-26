@@ -15,7 +15,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useUser } from "@/hooks/use-user";
 
 // Enable this for debugging environment issues
-const DEBUG_ENV = false;
+const DEBUG_ENV = true;
 
 const ProfilePreferences = () => {
   const {
@@ -60,7 +60,7 @@ const ProfilePreferences = () => {
     // For environment changes, apply them immediately for better user experience
     // but also update the database directly to ensure consistency
     if (key === 'environment' && value) {
-      if (DEBUG_ENV) console.log(`Immediate environment update: ${value}`);
+      if (DEBUG_ENV) console.log(`[ProfilePreferences] Immediate environment update: ${value}`);
       
       // Update theme context
       setEnvironmentTheme(value);
@@ -91,7 +91,9 @@ const ProfilePreferences = () => {
             .eq('id', user.id);
             
           if (profileError) {
-            console.error("Error updating profile environment:", profileError);
+            console.error("[ProfilePreferences] Error updating profile environment:", profileError);
+          } else if (DEBUG_ENV) {
+            console.log("[ProfilePreferences] Successfully updated profile environment in database");
           }
           
           // Then sync with onboarding_preferences for consistency
@@ -103,11 +105,13 @@ const ProfilePreferences = () => {
             .eq('user_id', user.id);
             
           if (prefError) {
-            console.error("Error updating onboarding preferences environment:", prefError);
+            console.error("[ProfilePreferences] Error updating onboarding preferences environment:", prefError);
+          } else if (DEBUG_ENV) {
+            console.log("[ProfilePreferences] Successfully updated onboarding preferences environment in database");
           }
           
         } catch (error) {
-          console.error("Failed to update environment preference:", error);
+          console.error("[ProfilePreferences] Failed to update environment preference:", error);
         }
       }
     }

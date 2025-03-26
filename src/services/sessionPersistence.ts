@@ -1,10 +1,9 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Json } from "@/integrations/supabase/types";
 
 // Enable this for debugging environment issues
-const DEBUG_ENV = false;
+const DEBUG_ENV = true;
 
 // Defines the structure of saved focus session data
 export interface SavedFocusSession {
@@ -55,7 +54,7 @@ export const saveUserSession = async (userId: string | undefined): Promise<void>
     // Get theme and environment preferences
     const theme = localStorage.getItem('theme') || 'light';
     const environment = localStorage.getItem('environment') || 'office';
-    const soundPreference = localStorage.getItem('soundPreference') || 'none';
+    if (DEBUG_ENV) console.log('[sessionPersistence] Saving session with environment:', environment);
     
     // Get focus session data if exists
     const focusSessionStr = localStorage.getItem('currentFocusSession');
@@ -100,7 +99,9 @@ export const saveUserSession = async (userId: string | undefined): Promise<void>
       .eq('id', userId);
       
     if (envError) {
-      console.error("Error saving environment preference:", envError);
+      console.error("[sessionPersistence] Error saving environment preference:", envError);
+    } else if (DEBUG_ENV) {
+      console.log("[sessionPersistence] Successfully updated profile environment to:", environment);
     }
     
     // Save to Supabase for persistence across devices
@@ -112,13 +113,13 @@ export const saveUserSession = async (userId: string | undefined): Promise<void>
       .eq('id', userId);
       
     if (error) {
-      console.error("Error saving session:", error);
+      console.error("[sessionPersistence] Error saving session:", error);
     } else {
       console.log("Session saved successfully");
     }
     
   } catch (error) {
-    console.error("Failed to save session data:", error);
+    console.error("[sessionPersistence] Failed to save session data:", error);
   }
 };
 
@@ -140,12 +141,13 @@ export const loadUserSession = async (userId: string | undefined): Promise<Persi
       .single();
       
     if (error) {
-      console.error("Error loading session from database:", error);
+      console.error("[sessionPersistence] Error loading session from database:", error);
       throw error;
     }
     
     // Check for the dedicated environment field first
     if (data && data.last_selected_environment) {
+      if (DEBUG_ENV) console.log("[sessionPersistence] Using last_selected_environment from profile:", data.last_selected_environment);
       localStorage.setItem('environment', data.last_selected_environment);
     }
     
@@ -190,7 +192,7 @@ export const loadUserSession = async (userId: string | undefined): Promise<Persi
     return defaultSessionData;
     
   } catch (error) {
-    console.error("Failed to load session data:", error);
+    console.error("[sessionPersistence] Failed to load session data:", error);
     
     // Try local storage as a fallback
     try {
@@ -222,7 +224,7 @@ export const applySessionPreferences = (
     // Use the environmentOverride if provided, otherwise fall back to session data
     const environment = environmentOverride || sessionData.preferences.environment;
     
-    if (DEBUG_ENV) console.log('Applying session preferences:', {
+    if (DEBUG_ENV) console.log('[sessionPersistence] Applying session preferences:', {
       theme,
       environment,
       environmentOverride,
@@ -264,7 +266,7 @@ export const applySessionPreferences = (
     }
     
   } catch (error) {
-    console.error("Error applying session preferences:", error);
+    console.error("[sessionPersistence] Error applying session preferences:", error);
   }
 };
 

@@ -1,11 +1,10 @@
-
 import React, { createContext, useContext, useReducer, ReactNode, useEffect } from 'react';
 import { OnboardingState, UserGoal, WorkStyle, StudyEnvironment, SoundPreference } from '@/types/onboarding';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 // Enable this for debugging environment issues
-const DEBUG_ENV = false;
+const DEBUG_ENV = true;
 
 type OnboardingAction = 
   | { type: 'SET_STEP'; payload: number }
@@ -76,7 +75,7 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
         return;
       }
       
-      if (DEBUG_ENV) console.log('Saving onboarding state:', state);
+      if (DEBUG_ENV) console.log('[OnboardingContext] Saving onboarding state:', state);
       
       // Check if a record exists for this user
       const { data: existingData, error: fetchError } = await supabase
@@ -125,21 +124,27 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
       }
         
       if (saveError) {
-        console.error('Error saving onboarding state:', saveError);
+        console.error('[OnboardingContext] Error saving onboarding state:', saveError);
         throw new Error(saveError.message);
       }
       
       // Always update the last_selected_environment in profiles table as the source of truth
-      const { error: profileUpdateError } = await supabase
-        .from('profiles')
-        .update({
-          last_selected_environment: state.environment
-        })
-        .eq('id', user.id);
-      
-      if (profileUpdateError) {
-        console.error('Error updating profile environment:', profileUpdateError);
-        // Don't throw here, as we've already updated the main preferences
+      if (state.environment) {
+        if (DEBUG_ENV) console.log('[OnboardingContext] Updating profile last_selected_environment:', state.environment);
+        
+        const { error: profileUpdateError } = await supabase
+          .from('profiles')
+          .update({
+            last_selected_environment: state.environment
+          })
+          .eq('id', user.id);
+        
+        if (profileUpdateError) {
+          console.error('[OnboardingContext] Error updating profile environment:', profileUpdateError);
+          // Don't throw here, as we've already updated the main preferences
+        } else if (DEBUG_ENV) {
+          console.log('[OnboardingContext] Successfully updated profile environment');
+        }
       }
       
       // Save to localStorage for faster loading
@@ -154,12 +159,13 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
       // Also update the environment in localStorage directly for immediate application
       if (state.environment) {
         localStorage.setItem('environment', state.environment);
+        if (DEBUG_ENV) console.log('[OnboardingContext] Updated localStorage environment:', state.environment);
       }
       
       setHasUnsavedChanges(false);
       toast.success("Preferences saved successfully");
     } catch (error: any) {
-      console.error('Error in saveOnboardingState:', error);
+      console.error('[OnboardingContext] Error in saveOnboardingState:', error);
       toast.error(`Failed to save preferences: ${error.message || "An unknown error occurred"}`);
       throw error;
     } finally {
@@ -178,6 +184,7 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
         if (savedPrefs) {
           const localPrefs = JSON.parse(savedPrefs);
           dispatch({ type: 'LOAD_ONBOARDING_STATE', payload: localPrefs });
+          if (DEBUG_ENV) console.log('[OnboardingContext] Loaded preferences from localStorage:', localPrefs);
         }
         
         // Then fetch from Supabase for accurate data
@@ -199,7 +206,7 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
             // Update localStorage with the latest environment from profiles
             localStorage.setItem('environment', selectedEnvironment);
             
-            if (DEBUG_ENV) console.log('Environment loaded from profiles:', selectedEnvironment);
+            if (DEBUG_ENV) console.log('[OnboardingContext] Environment loaded from profiles:', selectedEnvironment);
           }
           
           // Then get the rest of the onboarding preferences
@@ -238,7 +245,7 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
             
             // Update the onboarding_preferences table if there's a mismatch between profiles and onboarding_preferences
             if (selectedEnvironment && data.learning_environment !== selectedEnvironment) {
-              if (DEBUG_ENV) console.log('Syncing environment preferences, updating onboarding_preferences to match profiles');
+              if (DEBUG_ENV) console.log('[OnboardingContext] Syncing environment preferences, updating onboarding_preferences to match profiles');
               
               await supabase
                 .from('onboarding_preferences')
@@ -259,7 +266,7 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
           }
         }
       } catch (error) {
-        console.error('Error in loadOnboardingState:', error);
+        console.error('[OnboardingContext] Error in loadOnboardingState:', error);
       } finally {
         setIsLoading(false);
       }
