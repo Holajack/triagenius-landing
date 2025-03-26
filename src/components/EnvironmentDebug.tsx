@@ -126,7 +126,7 @@ const EnvironmentDebug = () => {
       await forceEnvironmentSync();
       
       // 6. Apply to theme context
-      setEnvironmentTheme(environmentToSync);
+      setEnvironmentTheme(environmentToSync as StudyEnvironment);
       
       // 7. Apply CSS directly for immediate visual feedback
       document.documentElement.classList.remove(

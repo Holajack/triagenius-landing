@@ -39,7 +39,7 @@ const ProfilePreferences = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSavingEnvironment, setIsSavingEnvironment] = useState(false);
   const [lastSavedEnvironment, setLastSavedEnvironment] = useState<string | null>(null);
-  const [environmentUpdateQueue, setEnvironmentUpdateQueue] = useState<string | null>(null);
+  const [pendingEnvironment, setPendingEnvironment] = useState<string | null>(null);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   
   // Add effect to track when environment changes in profile or onboarding
@@ -120,16 +120,28 @@ const ProfilePreferences = () => {
       ...state
     });
     
-    // If we have a queued environment change that hasn't been applied, revert to last saved
-    if (environmentUpdateQueue && lastSavedEnvironment) {
-      // Reapply the last saved environment
-      applyEnvironmentVisually(lastSavedEnvironment);
-      setEnvironmentUpdateQueue(null);
+    // If we have a pending environment change, revert the visual preview
+    if (pendingEnvironment) {
+      setPendingEnvironment(null);
     }
   };
   
-  // Apply the environment visually but don't save to DB
-  const applyEnvironmentVisually = (value: string) => {
+  // Apply the environment visually but don't save to DB - this is just for preview
+  const previewEnvironmentVisually = (value: string) => {
+    // Only apply CSS classes for preview effect - no context changes
+    document.documentElement.classList.remove(
+      'theme-office', 
+      'theme-park', 
+      'theme-home', 
+      'theme-coffee-shop', 
+      'theme-library'
+    );
+    document.documentElement.classList.add(`theme-${value}`);
+    document.documentElement.setAttribute('data-environment', value);
+  };
+  
+  // Apply the environment both visually and to the theme context after saving
+  const applyEnvironmentFully = (value: string) => {
     // Update theme context
     setEnvironmentTheme(value);
     
@@ -152,39 +164,15 @@ const ProfilePreferences = () => {
     }));
     setHasUnsavedChanges(true);
     
-    // Special handling for environment changes
+    // Special handling for environment changes - only preview them
     if (key === 'environment' && value) {
       if (DEBUG_ENV) console.log(`[ProfilePreferences] Environment change requested: ${value}`);
       
-      // Queue the environment value to be saved
-      setEnvironmentUpdateQueue(value);
+      // Store the pending environment to apply on save
+      setPendingEnvironment(value as string);
       
-      // First save to DB before visual changes
-      if (user && user.id) {
-        const saveSuccess = await saveEnvironmentToDatabase(value);
-        
-        // Only apply visual changes if DB save was successful
-        if (saveSuccess) {
-          if (DEBUG_ENV) console.log(`[ProfilePreferences] Applying visual environment: ${value}`);
-          applyEnvironmentVisually(value);
-          setEnvironmentUpdateQueue(null);
-        } else {
-          // If save failed, show error and don't update visual state
-          toast.error("Failed to save environment preference");
-          
-          // Reset the edited state to the last known good value
-          setEditedState(prev => ({
-            ...prev,
-            environment: (lastSavedEnvironment as StudyEnvironment) || prev.environment
-          }));
-          
-          setEnvironmentUpdateQueue(null);
-          return;
-        }
-      } else {
-        // If no user, only update visual state for preview
-        applyEnvironmentVisually(value);
-      }
+      // Only preview the environment visually
+      previewEnvironmentVisually(value);
     }
   };
   
@@ -196,16 +184,8 @@ const ProfilePreferences = () => {
       return true;
     }
     
-    // If there's a pending environment change, try to save it
-    if (environmentUpdateQueue && user?.id) {
-      if (DEBUG_ENV) console.log("[ProfilePreferences] Saving pending environment before exit");
-      await saveEnvironmentToDatabase(environmentUpdateQueue);
-      setEnvironmentUpdateQueue(null);
-      return true;
-    }
-    
     return false;
-  }, [hasUnsavedChanges, isEditing, environmentUpdateQueue, user?.id, autoSaveEnabled]);
+  }, [hasUnsavedChanges, isEditing, autoSaveEnabled]);
   
   // Save pending environment changes when leaving the component
   useEffect(() => {
@@ -215,11 +195,6 @@ const ProfilePreferences = () => {
         e.preventDefault();
         e.returnValue = '';
         return '';
-      }
-      
-      // If there's a pending environment change, try to save it
-      if (environmentUpdateQueue && user?.id) {
-        saveEnvironmentToDatabase(environmentUpdateQueue);
       }
     };
     
@@ -237,7 +212,7 @@ const ProfilePreferences = () => {
       // Save on unmount
       savePreferencesOnExit();
     };
-  }, [environmentUpdateQueue, user?.id, hasUnsavedChanges, savePreferencesOnExit]);
+  }, [hasUnsavedChanges, savePreferencesOnExit]);
 
   // Watch for tab changes within profile page
   useEffect(() => {
@@ -261,9 +236,20 @@ const ProfilePreferences = () => {
       setIsLoading(true);
       
       // First, save any pending environment changes
-      if (environmentUpdateQueue) {
-        await saveEnvironmentToDatabase(environmentUpdateQueue);
-        setEnvironmentUpdateQueue(null);
+      if (pendingEnvironment) {
+        const saveSuccess = await saveEnvironmentToDatabase(pendingEnvironment);
+        
+        if (saveSuccess) {
+          // Only now apply the environment change to the theme context
+          applyEnvironmentFully(pendingEnvironment);
+          setPendingEnvironment(null);
+        } else {
+          // If save failed, show error
+          toast.error("Failed to save environment preference");
+          // Do not proceed with other changes
+          setIsLoading(false);
+          return;
+        }
       }
       
       // Update context state
@@ -368,9 +354,6 @@ const ProfilePreferences = () => {
               <Button onClick={handleCancel} variant="outline" size="sm" disabled={isLoading || contextLoading || isSavingEnvironment}>
                 Cancel
               </Button>
-              <Button onClick={handleSave} variant="outline" size="sm" disabled={isLoading || contextLoading || isSavingEnvironment || !hasUnsavedChanges}>
-                Save Changes
-              </Button>
             </div>
           )}
         </div>
@@ -455,10 +438,11 @@ const ProfilePreferences = () => {
                   <SelectItem value="park">Park/Outdoors</SelectItem>
                 </SelectContent>
               </Select>
-              {(DEBUG_ENV || isSavingEnvironment) && (
+              {(DEBUG_ENV || pendingEnvironment) && (
                 <p className="text-xs text-muted-foreground">
-                  {isSavingEnvironment ? 'Saving environment...' : `DB environment: ${lastSavedEnvironment}`}
-                  {environmentUpdateQueue && ' (Update pending)'}
+                  {isSavingEnvironment ? 'Saving environment...' : 
+                    pendingEnvironment ? `Preview: ${pendingEnvironment} (click Save to apply)` : 
+                    `Current: ${lastSavedEnvironment || state.environment}`}
                 </p>
               )}
             </div>
@@ -485,32 +469,27 @@ const ProfilePreferences = () => {
           </div>}
       </CardContent>
       
-      <AnimatePresence>
-        {isEditing && hasUnsavedChanges && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            transition={{ duration: 0.2 }}
+      {isEditing && (
+        <CardFooter className="pt-2 pb-4 px-6 flex justify-end">
+          <Button 
+            onClick={handleSave} 
+            disabled={isLoading || contextLoading || isSavingEnvironment || !hasUnsavedChanges}
+            className="w-full md:w-auto"
           >
-            <CardFooter className="pt-2 pb-4 px-6 flex justify-end">
-              <Button onClick={handleSave} disabled={isLoading || contextLoading || isSavingEnvironment}>
-                {isLoading || contextLoading || isSavingEnvironment ? (
-                  <>
-                    <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <SaveIcon className="h-4 w-4 mr-2" />
-                    Save Changes
-                  </>
-                )}
-              </Button>
-            </CardFooter>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            {isLoading || contextLoading || isSavingEnvironment ? (
+              <>
+                <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <SaveIcon className="h-4 w-4 mr-2" />
+                Save Changes
+              </>
+            )}
+          </Button>
+        </CardFooter>
+      )}
     </Card>;
 };
 
