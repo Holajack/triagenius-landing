@@ -1,6 +1,10 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Json } from "@/integrations/supabase/types";
+
+// Enable this for debugging environment issues
+const DEBUG_ENV = false;
 
 // Defines the structure of saved focus session data
 export interface SavedFocusSession {
@@ -208,11 +212,23 @@ export const loadUserSession = async (userId: string | undefined): Promise<Persi
 export const applySessionPreferences = (
   sessionData: PersistedSessionData,
   setTheme?: (theme: 'light' | 'dark') => void,
-  setEnvironmentTheme?: (env: string) => void
+  setEnvironmentTheme?: (env: string) => void,
+  environmentOverride?: string // New parameter to take precedence over session
 ): void => {
   try {
     // Apply theme
-    const { theme, environment, soundPreference, lowPowerMode } = sessionData.preferences;
+    const { theme, soundPreference, lowPowerMode } = sessionData.preferences;
+    
+    // Use the environmentOverride if provided, otherwise fall back to session data
+    const environment = environmentOverride || sessionData.preferences.environment;
+    
+    if (DEBUG_ENV) console.log('Applying session preferences:', {
+      theme,
+      environment,
+      environmentOverride,
+      soundPreference,
+      lowPowerMode
+    });
     
     localStorage.setItem('theme', theme);
     localStorage.setItem('environment', environment);

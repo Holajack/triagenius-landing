@@ -12,6 +12,10 @@ import { PencilIcon, SaveIcon, Loader2Icon } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useUser } from "@/hooks/use-user";
+
+// Enable this for debugging environment issues
+const DEBUG_ENV = false;
 
 const ProfilePreferences = () => {
   const {
@@ -23,6 +27,7 @@ const ProfilePreferences = () => {
     setHasUnsavedChanges
   } = useOnboarding();
   
+  const { user, refreshUser } = useUser();
   const { setEnvironmentTheme } = useTheme();
   const [isEditing, setIsEditing] = useState(false);
   const [editedState, setEditedState] = useState({
@@ -45,22 +50,73 @@ const ProfilePreferences = () => {
     });
   };
   
-  const handleChange = (key: string, value: any) => {
+  const handleChange = async (key: string, value: any) => {
     setEditedState(prev => ({
       ...prev,
       [key]: value
     }));
     setHasUnsavedChanges(true);
     
-    // Immediately apply environment theme changes for better UI feedback
+    // For environment changes, apply them immediately for better user experience
+    // but also update the database directly to ensure consistency
     if (key === 'environment' && value) {
+      if (DEBUG_ENV) console.log(`Immediate environment update: ${value}`);
+      
+      // Update theme context
       setEnvironmentTheme(value);
+      
+      // Update localStorage
+      localStorage.setItem('environment', value);
+      
+      // Apply CSS classes directly for immediate visual feedback 
+      document.documentElement.classList.remove(
+        'theme-office', 
+        'theme-park', 
+        'theme-home', 
+        'theme-coffee-shop', 
+        'theme-library'
+      );
+      document.documentElement.classList.add(`theme-${value}`);
+      document.documentElement.setAttribute('data-environment', value);
+      
+      // Update profile directly - this is our source of truth
+      if (user && user.id) {
+        try {
+          // First update profiles table - source of truth
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({ 
+              last_selected_environment: value 
+            })
+            .eq('id', user.id);
+            
+          if (profileError) {
+            console.error("Error updating profile environment:", profileError);
+          }
+          
+          // Then sync with onboarding_preferences for consistency
+          const { error: prefError } = await supabase
+            .from('onboarding_preferences')
+            .update({ 
+              learning_environment: value 
+            })
+            .eq('user_id', user.id);
+            
+          if (prefError) {
+            console.error("Error updating onboarding preferences environment:", prefError);
+          }
+          
+        } catch (error) {
+          console.error("Failed to update environment preference:", error);
+        }
+      }
     }
   };
   
   const handleSave = async () => {
     try {
       setIsLoading(true);
+      
       // Update context state
       Object.entries(editedState).forEach(([key, value]) => {
         switch (key) {
@@ -99,6 +155,10 @@ const ProfilePreferences = () => {
 
       // Save to database using the onboarding context
       await saveOnboardingState();
+      
+      // Refresh user data to ensure we have the latest preferences
+      await refreshUser();
+      
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating preferences:", error);

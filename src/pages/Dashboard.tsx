@@ -17,6 +17,10 @@ import DashboardWalkthrough from "@/components/walkthrough/DashboardWalkthrough"
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/hooks/use-user";
+import EnvironmentDebug from "@/components/EnvironmentDebug";
+
+// Enable this for debugging environment issues
+const DEBUG_ENV = false;
 
 const Dashboard = () => {
   const { state } = useOnboarding();
@@ -32,6 +36,7 @@ const Dashboard = () => {
   // Apply environment theme when component mounts to ensure consistency
   useEffect(() => {
     if (state.environment) {
+      if (DEBUG_ENV) console.log('Dashboard applying environment:', state.environment);
       applyEnvironmentTheme(state.environment);
     }
   }, [state.environment, applyEnvironmentTheme]);
@@ -165,6 +170,9 @@ const Dashboard = () => {
 
       {/* Walkthrough component */}
       <DashboardWalkthrough />
+      
+      {/* Environment debug component */}
+      <EnvironmentDebug />
     </div>
   );
 };

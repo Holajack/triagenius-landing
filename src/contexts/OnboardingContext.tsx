@@ -4,6 +4,9 @@ import { OnboardingState, UserGoal, WorkStyle, StudyEnvironment, SoundPreference
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+// Enable this for debugging environment issues
+const DEBUG_ENV = false;
+
 type OnboardingAction = 
   | { type: 'SET_STEP'; payload: number }
   | { type: 'SET_USER_GOAL'; payload: UserGoal }
@@ -73,6 +76,8 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
         return;
       }
       
+      if (DEBUG_ENV) console.log('Saving onboarding state:', state);
+      
       // Check if a record exists for this user
       const { data: existingData, error: fetchError } = await supabase
         .from('onboarding_preferences')
@@ -124,7 +129,7 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
         throw new Error(saveError.message);
       }
       
-      // Update the last_selected_environment in profiles table to ensure synchronization
+      // Always update the last_selected_environment in profiles table as the source of truth
       const { error: profileUpdateError } = await supabase
         .from('profiles')
         .update({
@@ -179,7 +184,7 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
-          // First check if there's a last_selected_environment in profiles
+          // First check if there's a last_selected_environment in profiles - source of truth
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('last_selected_environment')
@@ -193,6 +198,8 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
             
             // Update localStorage with the latest environment from profiles
             localStorage.setItem('environment', selectedEnvironment);
+            
+            if (DEBUG_ENV) console.log('Environment loaded from profiles:', selectedEnvironment);
           }
           
           // Then get the rest of the onboarding preferences
@@ -231,7 +238,7 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
             
             // Update the onboarding_preferences table if there's a mismatch between profiles and onboarding_preferences
             if (selectedEnvironment && data.learning_environment !== selectedEnvironment) {
-              console.log('Syncing environment preferences, updating onboarding_preferences to match profiles');
+              if (DEBUG_ENV) console.log('Syncing environment preferences, updating onboarding_preferences to match profiles');
               
               await supabase
                 .from('onboarding_preferences')

@@ -6,6 +6,8 @@ import { saveUserSession, loadUserSession, applySessionPreferences } from "@/ser
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/contexts/ThemeContext";
 
+const DEBUG_ENV = false;
+
 interface UserData {
   id: string;
   email: string | null;
@@ -62,25 +64,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         profile: null
       });
       
-      const [profileResponse, prefsResponse] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('*, last_selected_environment')
-          .eq('id', authUser.id)
-          .single(),
-        
-        supabase
-          .from('onboarding_preferences')
-          .select('*')
-          .eq('user_id', authUser.id)
-          .maybeSingle()
-      ]);
-      
-      const { data: profileData, error: profileError } = profileResponse;
-      const { data: prefsData, error: prefsError } = prefsResponse;
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*, last_selected_environment')
+        .eq('id', authUser.id)
+        .single();
       
       if (profileError) {
         if (profileError.code === 'PGRST116') {
+          if (DEBUG_ENV) console.log('Profile not found, creating new profile');
           const { error: insertError } = await supabase
             .from('profiles')
             .insert({
@@ -115,6 +107,16 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       
+      const { data: prefsData, error: prefsError } = await supabase
+        .from('onboarding_preferences')
+        .select('*')
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+        
+      if (prefsError && prefsError.code !== 'PGRST116') {
+        console.error("Error fetching preferences:", prefsError);
+      }
+      
       setUser({
         id: authUser.id,
         email: profileData.email || authUser.email,
@@ -126,17 +128,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       
       let environmentToApply = profileData.last_selected_environment;
       
-      if (!environmentToApply && prefsData && prefsData.learning_environment) {
-        environmentToApply = prefsData.learning_environment;
+      if (DEBUG_ENV) console.log('Profile environment from DB:', environmentToApply);
+      
+      if (prefsData && prefsData.learning_environment !== environmentToApply) {
+        if (DEBUG_ENV) console.log('Syncing onboarding_preferences to match profile environment:', environmentToApply);
         
         await supabase
-          .from('profiles')
-          .update({ last_selected_environment: environmentToApply })
-          .eq('id', authUser.id);
+          .from('onboarding_preferences')
+          .update({
+            learning_environment: environmentToApply
+          })
+          .eq('user_id', authUser.id);
       }
       
       if (environmentToApply) {
-        console.log(`Applying environment theme: ${environmentToApply}`);
+        if (DEBUG_ENV) console.log(`Applying environment theme on login: ${environmentToApply}`);
         localStorage.setItem('environment', environmentToApply);
         
         document.documentElement.classList.remove(
@@ -153,20 +159,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         setEnvironmentTheme(environmentToApply);
       }
       
-      if (prefsData && profileData.last_selected_environment && 
-          prefsData.learning_environment !== profileData.last_selected_environment) {
-        console.log('Syncing environment: updating onboarding_preferences to match profile');
-        await supabase
-          .from('onboarding_preferences')
-          .update({
-            learning_environment: profileData.last_selected_environment
-          })
-          .eq('user_id', authUser.id);
-      }
-      
       const savedSession = await loadUserSession(authUser.id);
       if (savedSession) {
-        applySessionPreferences(savedSession, setTheme, setEnvironmentTheme);
+        applySessionPreferences(savedSession, setTheme, setEnvironmentTheme, environmentToApply);
         
         if (savedSession.lastRoute && savedSession.lastRoute !== window.location.pathname) {
           const safeRoutes = ['/dashboard', '/focus-session', '/bonuses', '/reports', '/profile', '/settings'];
@@ -195,7 +190,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           localStorage.setItem('userPreferences', JSON.stringify({
             userGoal: prefsData.user_goal,
             workStyle: prefsData.work_style,
-            environment: environmentToApply || prefsData.learning_environment,
+            environment: environmentToApply,
             soundPreference: prefsData.sound_preference,
             weeklyFocusGoal: prefsData.weekly_focus_goal || 10,
           }));
@@ -259,6 +254,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     fetchUserData();
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (DEBUG_ENV) console.log('Auth state change event:', event);
+      
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         fetchUserData();
       } else if (event === 'SIGNED_OUT') {
