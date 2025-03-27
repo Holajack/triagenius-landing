@@ -4,7 +4,7 @@ import { useOnboarding } from "@/contexts/OnboardingContext";
 import { useEffect, useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react"; // Import from lucide-react instead of @radix-ui/react-icons
+import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { StudyEnvironment } from "@/types/onboarding";
@@ -109,7 +109,7 @@ const EnvironmentDebug = () => {
       
       console.log(`[ENV DEBUG] Force syncing environment to: ${environmentToSync}`);
       
-      // Update all relevant places - starting with DB
+      // Begin transaction - update all sources at once
       
       // 1. Update profile table (source of truth)
       const { error: profileError } = await supabase
@@ -135,6 +135,9 @@ const EnvironmentDebug = () => {
         
       if (prefError) {
         console.error("[ENV DEBUG] Error updating onboarding preferences:", prefError);
+        toast.warning("Updated profile but failed to update onboarding preferences");
+      } else {
+        console.log("[ENV DEBUG] Successfully updated onboarding preferences");
       }
       
       // 3. Update localStorage

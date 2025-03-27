@@ -48,6 +48,7 @@ const Dashboard = () => {
       
       if (user?.id) {
         try {
+          // First get the latest profile environment - this is our source of truth
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .select('last_selected_environment')
@@ -69,6 +70,7 @@ const Dashboard = () => {
               });
             }
             
+            // If any of the environments are out of sync, update all of them
             if (
               dbEnvironment !== state.environment || 
               dbEnvironment !== environmentTheme ||
@@ -77,8 +79,10 @@ const Dashboard = () => {
             ) {
               if (DEBUG_ENV) console.log(`[Dashboard] Applying DB environment: ${dbEnvironment}`);
               
+              // Update localStorage
               localStorage.setItem('environment', dbEnvironment);
               
+              // Update DOM
               document.documentElement.classList.remove(
                 'theme-office', 
                 'theme-park', 
@@ -89,10 +93,25 @@ const Dashboard = () => {
               document.documentElement.classList.add(`theme-${dbEnvironment}`);
               document.documentElement.setAttribute('data-environment', dbEnvironment);
               
+              // Update theme context
               applyEnvironmentTheme(dbEnvironment);
               
+              // Update onboarding context
               await forceEnvironmentSync();
               
+              // Also update onboarding_preferences for consistency
+              const { error: prefError } = await supabase
+                .from('onboarding_preferences')
+                .update({ learning_environment: dbEnvironment })
+                .eq('user_id', user.id);
+                
+              if (prefError) {
+                console.error('[Dashboard] Error updating onboarding preferences:', prefError);
+              } else if (DEBUG_ENV) {
+                console.log('[Dashboard] Successfully updated onboarding_preferences to:', dbEnvironment);
+              }
+              
+              // Refresh user to get latest profile data
               setTimeout(() => refreshUser(), 500);
             } else {
               if (DEBUG_ENV) console.log('[Dashboard] Environment already in sync with DB');
