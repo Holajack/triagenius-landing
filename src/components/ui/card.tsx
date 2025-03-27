@@ -9,29 +9,29 @@ const Card = React.forwardRef<
 >(({ className, ...props }, ref) => {
   const { state } = useOnboarding();
   
-  // Get environment-specific border color with enhanced colors
+  // Enhanced environment-specific border color with more distinctive colors
   const getEnvBorderColor = () => {
     if (!state || !state.environment) return "";
     
     switch (state.environment) {
       case 'office': return "hover:border-blue-400 transition-colors duration-300";
-      case 'park': return "hover:border-green-700 transition-colors duration-300"; // Updated for #2E6F40
-      case 'home': return "hover:border-orange-400 transition-colors duration-300"; // Updated for #FFA263
-      case 'coffee-shop': return "hover:border-amber-700 transition-colors duration-300"; // Updated for #854836
+      case 'park': return "hover:border-green-800 transition-colors duration-300"; // Enhanced darker forest green
+      case 'home': return "hover:border-orange-300 transition-colors duration-300"; // Lighter sunrise orange
+      case 'coffee-shop': return "hover:border-amber-900 transition-colors duration-300"; // Darker coffee bean
       case 'library': return "hover:border-gray-400 transition-colors duration-300";
       default: return "hover:border-purple-400 transition-colors duration-300";
     }
   };
 
-  // Get environment-specific background gradient with enhanced colors
+  // Enhanced environment-specific background gradient with more distinctive colors
   const getEnvBackground = () => {
     if (!state || !state.environment) return "";
     
     switch (state.environment) {
       case 'office': return "bg-gradient-to-br from-blue-100/80 to-white";
-      case 'park': return "bg-gradient-to-br from-green-100/80 to-white"; // Updated for #2E6F40
-      case 'home': return "bg-gradient-to-br from-orange-100/80 to-white"; // Updated for #FFA263
-      case 'coffee-shop': return "bg-gradient-to-br from-amber-100/80 to-white"; // Updated for #854836
+      case 'park': return "bg-gradient-to-br from-green-200/70 to-green-50"; // Richer forest green gradient
+      case 'home': return "bg-gradient-to-br from-orange-50/80 to-white"; // Lighter sunrise orange gradient
+      case 'coffee-shop': return "bg-gradient-to-br from-amber-200/60 to-amber-50/90"; // Darker coffee bean gradient
       case 'library': return "bg-gradient-to-br from-gray-100/80 to-white";
       default: return "bg-gradient-to-br from-purple-100/80 to-white";
     }

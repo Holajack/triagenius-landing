@@ -66,7 +66,7 @@
     --ring: 216 12.2% 83.9%;
   }
 
-  /* Environment-specific theme variables - Updated with new color codes */
+  /* Environment-specific theme variables - Enhanced with more distinctive colors */
   .theme-office {
     --env-primary: 226 85% 55%;
     --env-secondary: 223 85% 50%;
@@ -80,20 +80,20 @@
   }
 
   .theme-park {
-    /* Updated for #2E6F40 - Richer green for park/outdoors */
-    --env-primary: 144 40% 31%;
-    --env-secondary: 144 41% 28%;
-    --env-accent: 144 42% 25%;
-    --env-muted: 144 35% 40%;
-    --env-border: 144 40% 75%;
-    --env-background: 144 40% 96%;
-    --env-card: 144 35% 98%;
-    --env-hover: 144 40% 85%;
-    --env-focus: 144 40% 31%;
+    /* Darker forest green for park/outdoors */
+    --env-primary: 144 40% 28%;
+    --env-secondary: 144 41% 25%;
+    --env-accent: 144 42% 22%;
+    --env-muted: 144 35% 35%;
+    --env-border: 144 40% 65%;
+    --env-background: 144 40% 94%;
+    --env-card: 144 35% 96%;
+    --env-hover: 144 40% 80%;
+    --env-focus: 144 40% 28%;
   }
 
   .theme-home {
-    /* Updated for #FFA263 - Warmer orange for home */
+    /* Lighter sunrise orange for home */
     --env-primary: 26 100% 69%;
     --env-secondary: 26 95% 65%;
     --env-accent: 26 90% 60%;
@@ -106,16 +106,16 @@
   }
 
   .theme-coffee-shop {
-    /* Updated for #854836 - Rich brown for coffee shop */
-    --env-primary: 14 43% 37%;
-    --env-secondary: 14 44% 34%;
-    --env-accent: 14 45% 31%;
-    --env-muted: 14 40% 40%;
-    --env-border: 14 40% 75%;
-    --env-background: 14 30% 96%;
-    --env-card: 14 25% 98%;
-    --env-hover: 14 40% 85%;
-    --env-focus: 14 43% 37%;
+    /* Darker coffee bean brown for coffee shop */
+    --env-primary: 14 43% 30%;
+    --env-secondary: 14 44% 27%;
+    --env-accent: 14 45% 24%;
+    --env-muted: 14 40% 35%;
+    --env-border: 14 40% 65%;
+    --env-background: 14 30% 94%;
+    --env-card: 14 25% 96%;
+    --env-hover: 14 40% 80%;
+    --env-focus: 14 43% 30%;
   }
 
   .theme-library {
@@ -183,105 +183,105 @@
     border-radius: 50%;
   }
   
-  /* Environment-themed buttons and elements */
+  /* Enhanced environment-themed buttons with more distinctive colors */
   .theme-office .env-button {
     @apply bg-blue-700 hover:bg-blue-800 text-white;
   }
   
   .theme-park .env-button {
-    @apply bg-green-800 hover:bg-green-900 text-white;
+    @apply bg-green-900 hover:bg-green-950 text-white; /* Darker forest green */
   }
   
   .theme-home .env-button {
-    @apply bg-orange-500 hover:bg-orange-600 text-white;
+    @apply bg-orange-500 hover:bg-orange-600 text-white; /* Lighter sunrise orange */
   }
   
   .theme-coffee-shop .env-button {
-    @apply bg-amber-800 hover:bg-amber-900 text-white;
+    @apply bg-amber-900 hover:bg-amber-950 text-white; /* Darker coffee bean */
   }
   
   .theme-library .env-button {
     @apply bg-gray-700 hover:bg-gray-800 text-white;
   }
   
-  /* Environment-themed backgrounds */
+  /* Enhanced environment-themed backgrounds with more distinctive colors */
   .theme-office .env-bg-subtle {
     @apply bg-blue-100;
   }
   
   .theme-park .env-bg-subtle {
-    @apply bg-green-100;
+    @apply bg-green-200; /* Darker forest green */
   }
   
   .theme-home .env-bg-subtle {
-    @apply bg-orange-100;
+    @apply bg-orange-100; /* Lighter sunrise orange */
   }
   
   .theme-coffee-shop .env-bg-subtle {
-    @apply bg-amber-100;
+    @apply bg-amber-200; /* Darker coffee bean */
   }
   
   .theme-library .env-bg-subtle {
     @apply bg-gray-100;
   }
   
-  /* Environment-themed text */
+  /* Enhanced environment-themed text with more distinctive colors */
   .theme-office .env-text {
     @apply text-blue-700;
   }
   
   .theme-park .env-text {
-    @apply text-green-800;
+    @apply text-green-900; /* Darker forest green */
   }
   
   .theme-home .env-text {
-    @apply text-orange-500;
+    @apply text-orange-500; /* Lighter sunrise orange */
   }
   
   .theme-coffee-shop .env-text {
-    @apply text-amber-800;
+    @apply text-amber-900; /* Darker coffee bean */
   }
   
   .theme-library .env-text {
     @apply text-gray-700;
   }
   
-  /* Environment-themed cards */
+  /* Enhanced environment-themed cards with more distinctive colors */
   .theme-office .env-card {
     @apply border-blue-200 bg-gradient-to-br from-blue-100 to-white;
   }
   
   .theme-park .env-card {
-    @apply border-green-600 bg-gradient-to-br from-green-100 to-white;
+    @apply border-green-800 bg-gradient-to-br from-green-200 to-green-50; /* Darker forest green */
   }
   
   .theme-home .env-card {
-    @apply border-orange-200 bg-gradient-to-br from-orange-100 to-white;
+    @apply border-orange-200 bg-gradient-to-br from-orange-100 to-white; /* Lighter sunrise orange */
   }
   
   .theme-coffee-shop .env-card {
-    @apply border-amber-700 bg-gradient-to-br from-amber-100 to-white;
+    @apply border-amber-800 bg-gradient-to-br from-amber-200 to-amber-50; /* Darker coffee bean */
   }
   
   .theme-library .env-card {
     @apply border-gray-200 bg-gradient-to-br from-gray-100 to-white;
   }
   
-  /* Typography enhancements for environments */
+  /* Enhanced typography for environments with more distinctive colors */
   .theme-office h1, .theme-office h2, .theme-office h3 {
     @apply text-blue-900;
   }
   
   .theme-park h1, .theme-park h2, .theme-park h3 {
-    @apply text-green-900;
+    @apply text-green-950; /* Darker forest green */
   }
   
   .theme-home h1, .theme-home h2, .theme-home h3 {
-    @apply text-orange-900;
+    @apply text-orange-800; /* Lighter sunrise orange */
   }
   
   .theme-coffee-shop h1, .theme-coffee-shop h2, .theme-coffee-shop h3 {
-    @apply text-amber-900;
+    @apply text-amber-950; /* Darker coffee bean */
   }
   
   .theme-library h1, .theme-library h2, .theme-library h3 {

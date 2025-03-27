@@ -29,37 +29,37 @@ const MotivationalTip = () => {
   const { state } = useOnboarding();
   const [tip, setTip] = useState(() => getRandomTip());
   
-  // Get environment-specific gradient class with more vibrant colors
+  // Get environment-specific gradient class with enhanced colors
   const getGradientClass = () => {
     switch (state.environment) {
       case 'office': return "from-blue-200 to-blue-50";
-      case 'park': return "from-green-200 to-emerald-50"; // Enhanced for Park/#2E6F40
-      case 'home': return "from-orange-200 to-amber-50"; // Enhanced for Home/#FFA263
-      case 'coffee-shop': return "from-amber-200 to-yellow-50"; // Enhanced for Coffee Shop/#854836
+      case 'park': return "from-green-300 to-green-100"; // Darker forest green gradient
+      case 'home': return "from-orange-100 to-orange-50"; // Lighter sunrise orange gradient
+      case 'coffee-shop': return "from-amber-300 to-amber-100"; // Darker coffee bean gradient
       case 'library': return "from-slate-200 to-gray-50";
       default: return "from-purple-200 to-indigo-50";
     }
   };
   
-  // Get accent color based on environment
+  // Get accent color based on environment - enhanced colors
   const getAccentColor = () => {
     switch (state.environment) {
       case 'office': return "text-blue-700";
-      case 'park': return "text-green-700"; // Enhanced for Park/#2E6F40
-      case 'home': return "text-orange-600"; // Enhanced for Home/#FFA263
-      case 'coffee-shop': return "text-amber-800"; // Enhanced for Coffee Shop/#854836
+      case 'park': return "text-green-800"; // Darker forest green
+      case 'home': return "text-orange-500"; // Lighter sunrise orange
+      case 'coffee-shop': return "text-amber-900"; // Darker coffee bean brown
       case 'library': return "text-gray-700";
       default: return "text-triage-purple";
     }
   };
   
-  // Get button style based on environment
+  // Get button style based on environment - enhanced colors
   const getButtonStyle = () => {
     switch (state.environment) {
       case 'office': return "hover:bg-blue-100 active:bg-blue-200";
-      case 'park': return "hover:bg-green-100 active:bg-green-200"; // Enhanced for Park/#2E6F40
-      case 'home': return "hover:bg-orange-100 active:bg-orange-200"; // Enhanced for Home/#FFA263
-      case 'coffee-shop': return "hover:bg-amber-100 active:bg-amber-200"; // Enhanced for Coffee Shop/#854836
+      case 'park': return "hover:bg-green-200 active:bg-green-300"; // Darker forest green hover
+      case 'home': return "hover:bg-orange-100 active:bg-orange-200"; // Lighter sunrise orange hover
+      case 'coffee-shop': return "hover:bg-amber-200 active:bg-amber-300"; // Darker coffee bean hover
       case 'library': return "hover:bg-gray-100 active:bg-gray-200";
       default: return "hover:bg-purple-100 active:bg-purple-200";
     }
@@ -75,9 +75,9 @@ const MotivationalTip = () => {
         "bg-gradient-to-r p-5", 
         getGradientClass(),
         state.environment === 'office' ? "border-l-4 border-l-blue-400" :
-        state.environment === 'park' ? "border-l-4 border-l-green-600" : // Enhanced for Park/#2E6F40
-        state.environment === 'home' ? "border-l-4 border-l-orange-400" : // Enhanced for Home/#FFA263
-        state.environment === 'coffee-shop' ? "border-l-4 border-l-amber-700" : // Enhanced for Coffee Shop/#854836
+        state.environment === 'park' ? "border-l-4 border-l-green-800" : // Darker forest green
+        state.environment === 'home' ? "border-l-4 border-l-orange-300" : // Lighter sunrise orange
+        state.environment === 'coffee-shop' ? "border-l-4 border-l-amber-900" : // Darker coffee bean
         state.environment === 'library' ? "border-l-4 border-l-gray-400" :
         "border-l-4 border-l-purple-400"
       )}>

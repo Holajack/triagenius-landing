@@ -39,37 +39,37 @@ const NavigationBar = () => {
     }
   };
   
-  // Get accent color based on environment - enhanced for more noticeable theming
+  // Get accent color based on environment - enhanced for more distinct theming
   const getAccentColor = () => {
     switch (state.environment) {
       case 'office': return "text-blue-700 bg-blue-100/90";
-      case 'park': return "text-green-800 bg-green-100/90"; // Enhanced for Park/#2E6F40
-      case 'home': return "text-orange-500 bg-orange-100/90"; // Enhanced for Home/#FFA263
-      case 'coffee-shop': return "text-amber-800 bg-amber-100/90"; // Enhanced for Coffee Shop/#854836
+      case 'park': return "text-green-900 bg-green-100/90"; // Darker forest green
+      case 'home': return "text-orange-500 bg-orange-100/90"; // Lighter sunrise orange
+      case 'coffee-shop': return "text-amber-900 bg-amber-100/90"; // Darker coffee bean
       case 'library': return "text-gray-700 bg-gray-100/90";
       default: return "text-triage-purple bg-purple-100/90";
     }
   };
   
-  // Get background color for active item - more vibrant
+  // Get background color for active item - more vibrant and enhanced
   const getActiveBgColor = () => {
     switch (state.environment) {
       case 'office': return "bg-blue-100";
-      case 'park': return "bg-green-100"; // Enhanced for Park/#2E6F40
-      case 'home': return "bg-orange-100"; // Enhanced for Home/#FFA263
-      case 'coffee-shop': return "bg-amber-100"; // Enhanced for Coffee Shop/#854836
+      case 'park': return "bg-green-200"; // Darker forest green
+      case 'home': return "bg-orange-100"; // Lighter sunrise orange
+      case 'coffee-shop': return "bg-amber-200"; // Darker coffee bean
       case 'library': return "bg-gray-100";
       default: return "bg-purple-100";
     }
   };
 
-  // Get border color for active indicator
+  // Get border color for active indicator - enhanced colors
   const getActiveBorderColor = () => {
     switch (state.environment) {
       case 'office': return "bg-blue-500";
-      case 'park': return "bg-green-800"; // Enhanced for Park/#2E6F40
-      case 'home': return "bg-orange-500"; // Enhanced for Home/#FFA263
-      case 'coffee-shop': return "bg-amber-800"; // Enhanced for Coffee Shop/#854836
+      case 'park': return "bg-green-900"; // Darker forest green
+      case 'home': return "bg-orange-500"; // Lighter sunrise orange
+      case 'coffee-shop': return "bg-amber-900"; // Darker coffee bean
       case 'library': return "bg-gray-500";
       default: return "bg-purple-500";
     }
