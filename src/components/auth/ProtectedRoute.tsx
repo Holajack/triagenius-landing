@@ -1,13 +1,13 @@
 
 import { ReactNode, useEffect, useState } from "react";
 import { Navigate, Outlet, useNavigate } from "react-router-dom";
-import { useAuthState } from "@/hooks/use-auth-state";
+import { useAuth } from "@/context/AuthContext";
 import { useUser } from "@/hooks/use-user";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 const ProtectedRoute = () => {
-  const { loading: authLoading, isAuthenticated, authInitialized } = useAuthState();
+  const { loading: authLoading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { user, isLoading: userLoading, error: userError, refreshUser } = useUser();
   const [retrying, setRetrying] = useState(false);
@@ -15,7 +15,7 @@ const ProtectedRoute = () => {
   
   useEffect(() => {
     // Handle edge case when authenticated but user data fails to load
-    if (authInitialized && isAuthenticated && !userLoading && !user && !retrying && attemptCount < 3) {
+    if (isAuthenticated && !userLoading && !user && !retrying && attemptCount < 3) {
       console.error("User authenticated but profile not loaded:", userError);
       
       // Try to check if profile actually exists
@@ -116,7 +116,7 @@ const ProtectedRoute = () => {
       
       checkAndFixProfile();
     }
-  }, [isAuthenticated, user, userLoading, userError, navigate, retrying, authInitialized, attemptCount, refreshUser]);
+  }, [isAuthenticated, user, userLoading, userError, navigate, retrying, attemptCount, refreshUser]);
   
   // Show a loading indicator while authentication is being checked
   if (authLoading || userLoading || retrying) {
