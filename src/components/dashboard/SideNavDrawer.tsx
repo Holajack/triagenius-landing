@@ -30,9 +30,9 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
   const getAccentColor = () => {
     switch (state.environment) {
       case 'office': return "text-blue-600 hover:bg-blue-50";
-      case 'park': return "text-green-600 hover:bg-green-50";
-      case 'home': return "text-orange-600 hover:bg-orange-50";
-      case 'coffee-shop': return "text-amber-600 hover:bg-amber-50";
+      case 'park': return "text-green-700 hover:bg-green-50";
+      case 'home': return "text-orange-500 hover:bg-orange-50";
+      case 'coffee-shop': return "text-amber-700 hover:bg-amber-50";
       case 'library': return "text-gray-600 hover:bg-gray-50";
       default: return "text-triage-purple hover:bg-purple-50";
     }
@@ -111,8 +111,8 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
     switch (state.environment) {
       case 'office': return "text-blue-700";
       case 'park': return "text-green-700";
-      case 'home': return "text-orange-700";
-      case 'coffee-shop': return "text-amber-700";
+      case 'home': return "text-orange-600";
+      case 'coffee-shop': return "text-amber-800";
       case 'library': return "text-gray-700";
       default: return "text-triage-purple";
     }
@@ -147,7 +147,6 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
           ))}
         </div>
         
-        {/* Logout button at the bottom */}
         <div className="px-4 pb-6 mt-auto">
           <Button 
             variant="destructive" 

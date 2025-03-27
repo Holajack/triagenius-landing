@@ -267,6 +267,28 @@
     @apply border-gray-200 bg-gradient-to-br from-gray-100 to-white;
   }
   
+  /* Typography enhancements for environments */
+  .theme-office h1, .theme-office h2, .theme-office h3 {
+    @apply text-blue-900;
+  }
+  
+  .theme-park h1, .theme-park h2, .theme-park h3 {
+    @apply text-green-900;
+  }
+  
+  .theme-home h1, .theme-home h2, .theme-home h3 {
+    @apply text-orange-900;
+  }
+  
+  .theme-coffee-shop h1, .theme-coffee-shop h2, .theme-coffee-shop h3 {
+    @apply text-amber-900;
+  }
+  
+  .theme-library h1, .theme-library h2, .theme-library h3 {
+    @apply text-gray-900;
+  }
+  
+  /* Animation keyframes and utilities */
   @keyframes staggered-fade-in {
     0% {
       opacity: 0;

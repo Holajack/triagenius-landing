@@ -33,9 +33,9 @@ const MotivationalTip = () => {
   const getGradientClass = () => {
     switch (state.environment) {
       case 'office': return "from-blue-200 to-blue-50";
-      case 'park': return "from-green-200 to-emerald-50";
-      case 'home': return "from-orange-200 to-amber-50";
-      case 'coffee-shop': return "from-amber-200 to-yellow-50";
+      case 'park': return "from-green-200 to-emerald-50"; // Enhanced for Park/#2E6F40
+      case 'home': return "from-orange-200 to-amber-50"; // Enhanced for Home/#FFA263
+      case 'coffee-shop': return "from-amber-200 to-yellow-50"; // Enhanced for Coffee Shop/#854836
       case 'library': return "from-slate-200 to-gray-50";
       default: return "from-purple-200 to-indigo-50";
     }
@@ -45,9 +45,9 @@ const MotivationalTip = () => {
   const getAccentColor = () => {
     switch (state.environment) {
       case 'office': return "text-blue-700";
-      case 'park': return "text-green-700";
-      case 'home': return "text-orange-700";
-      case 'coffee-shop': return "text-amber-700";
+      case 'park': return "text-green-700"; // Enhanced for Park/#2E6F40
+      case 'home': return "text-orange-600"; // Enhanced for Home/#FFA263
+      case 'coffee-shop': return "text-amber-800"; // Enhanced for Coffee Shop/#854836
       case 'library': return "text-gray-700";
       default: return "text-triage-purple";
     }
@@ -57,9 +57,9 @@ const MotivationalTip = () => {
   const getButtonStyle = () => {
     switch (state.environment) {
       case 'office': return "hover:bg-blue-100 active:bg-blue-200";
-      case 'park': return "hover:bg-green-100 active:bg-green-200";
-      case 'home': return "hover:bg-orange-100 active:bg-orange-200";
-      case 'coffee-shop': return "hover:bg-amber-100 active:bg-amber-200";
+      case 'park': return "hover:bg-green-100 active:bg-green-200"; // Enhanced for Park/#2E6F40
+      case 'home': return "hover:bg-orange-100 active:bg-orange-200"; // Enhanced for Home/#FFA263
+      case 'coffee-shop': return "hover:bg-amber-100 active:bg-amber-200"; // Enhanced for Coffee Shop/#854836
       case 'library': return "hover:bg-gray-100 active:bg-gray-200";
       default: return "hover:bg-purple-100 active:bg-purple-200";
     }
@@ -75,15 +75,15 @@ const MotivationalTip = () => {
         "bg-gradient-to-r p-5", 
         getGradientClass(),
         state.environment === 'office' ? "border-l-4 border-l-blue-400" :
-        state.environment === 'park' ? "border-l-4 border-l-green-400" :
-        state.environment === 'home' ? "border-l-4 border-l-orange-400" :
-        state.environment === 'coffee-shop' ? "border-l-4 border-l-amber-400" :
+        state.environment === 'park' ? "border-l-4 border-l-green-600" : // Enhanced for Park/#2E6F40
+        state.environment === 'home' ? "border-l-4 border-l-orange-400" : // Enhanced for Home/#FFA263
+        state.environment === 'coffee-shop' ? "border-l-4 border-l-amber-700" : // Enhanced for Coffee Shop/#854836
         state.environment === 'library' ? "border-l-4 border-l-gray-400" :
         "border-l-4 border-l-purple-400"
       )}>
         <div className="flex justify-between items-start">
           <div className="flex items-center">
-            <div className={`p-2 rounded-full bg-white/80 mr-3 shadow-sm`}>
+            <div className={`p-2 rounded-full bg-white/90 mr-3 shadow-sm`}>
               <LightbulbIcon className={cn("w-5 h-5", getAccentColor())} />
             </div>
             <h3 className="font-medium">Daily Inspiration</h3>
@@ -98,7 +98,7 @@ const MotivationalTip = () => {
           </Button>
         </div>
         
-        <blockquote className="mt-3 italic text-gray-700">
+        <blockquote className="mt-3 italic text-gray-700 font-serif">
           "{tip}"
         </blockquote>
         
