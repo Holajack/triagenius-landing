@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -19,7 +18,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/hooks/use-user";
 import EnvironmentDebug from "@/components/EnvironmentDebug";
 
-// Enable this for debugging environment issues
 const DEBUG_ENV = true;
 
 const Dashboard = () => {
@@ -40,7 +38,6 @@ const Dashboard = () => {
   const [syncAttempts, setSyncAttempts] = useState(0);
   const [environmentSynced, setEnvironmentSynced] = useState(false);
 
-  // Enhanced environment synchronization when Dashboard mounts
   useEffect(() => {
     const syncEnvironment = async () => {
       if (onboardingLoading) {
@@ -49,7 +46,6 @@ const Dashboard = () => {
 
       if (DEBUG_ENV) console.log('[Dashboard] Starting environment sync on mount');
       
-      // Get profile directly from the database first - this is our source of truth
       if (user?.id) {
         try {
           const { data: profileData, error: profileError } = await supabase
@@ -73,7 +69,6 @@ const Dashboard = () => {
               });
             }
             
-            // Check if we need to update anything
             if (
               dbEnvironment !== state.environment || 
               dbEnvironment !== environmentTheme ||
@@ -82,10 +77,8 @@ const Dashboard = () => {
             ) {
               if (DEBUG_ENV) console.log(`[Dashboard] Applying DB environment: ${dbEnvironment}`);
               
-              // Apply environment directly from database value
               localStorage.setItem('environment', dbEnvironment);
               
-              // Update DOM immediately
               document.documentElement.classList.remove(
                 'theme-office', 
                 'theme-park', 
@@ -96,13 +89,10 @@ const Dashboard = () => {
               document.documentElement.classList.add(`theme-${dbEnvironment}`);
               document.documentElement.setAttribute('data-environment', dbEnvironment);
               
-              // Update theme context
               applyEnvironmentTheme(dbEnvironment);
               
-              // Also update onboarding state context
               await forceEnvironmentSync();
               
-              // Trigger a refresh
               setTimeout(() => refreshUser(), 500);
             } else {
               if (DEBUG_ENV) console.log('[Dashboard] Environment already in sync with DB');
@@ -118,7 +108,6 @@ const Dashboard = () => {
     
     syncEnvironment();
     
-    // Re-run verification after initial sync to ensure consistency
     const verifyTimer = setTimeout(async () => {
       if (user?.id && !environmentSynced) {
         if (DEBUG_ENV) console.log('[Dashboard] Running secondary environment verification');
@@ -129,7 +118,6 @@ const Dashboard = () => {
     return () => clearTimeout(verifyTimer);
   }, [user?.id, applyEnvironmentTheme, forceEnvironmentSync, refreshUser, state.environment, environmentTheme, onboardingLoading, verifyEnvironmentWithDatabase, environmentSynced]);
 
-  // Listen for storage events that could change environment
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'environment' && e.newValue !== environmentTheme) {
@@ -146,28 +134,23 @@ const Dashboard = () => {
     };
   }, [environmentTheme, refreshUser, forceEnvironmentSync]);
 
-  // Modified redirection logic to only redirect if explicitly coming from the index page
   useEffect(() => {
     if (!state.isComplete && !state.environment && window.location.pathname === "/") {
       navigate("/onboarding");
     } else {
-      // Simulate data loading
       const timer = setTimeout(() => setIsLoading(false), 800);
       return () => clearTimeout(timer);
     }
   }, [state, navigate]);
 
-  // Save preferred chart type when it changes
   useEffect(() => {
     localStorage.setItem('preferredChartType', preferredChartType);
   }, [preferredChartType]);
 
-  // Handle tab change
   const handleTabChange = (value: string) => {
     setPreferredChartType(value);
   };
 
-  // Get theme variables based on environment
   const getEnvTheme = () => {
     if (!state.environment && user?.profile?.last_selected_environment) {
       return user.profile.last_selected_environment;
@@ -176,15 +159,14 @@ const Dashboard = () => {
     return state.environment;
   };
 
-  // Get environment-specific class for card styling with more distinctive colors
   const getEnvCardClass = () => {
     switch (getEnvTheme()) {
-      case 'office': return "border-blue-300 bg-gradient-to-br from-blue-50/50 to-white shadow-blue-100/30 shadow-md";
-      case 'park': return "border-green-600 bg-gradient-to-br from-green-50/50 to-white shadow-green-100/30 shadow-md";
-      case 'home': return "border-orange-300 bg-gradient-to-br from-orange-50/50 to-white shadow-orange-100/30 shadow-md";
-      case 'coffee-shop': return "border-amber-700 bg-gradient-to-br from-amber-50/50 to-white shadow-amber-100/30 shadow-md";
-      case 'library': return "border-gray-300 bg-gradient-to-br from-gray-50/50 to-white shadow-gray-100/30 shadow-md";
-      default: return "border-purple-300 bg-gradient-to-br from-purple-50/50 to-white shadow-purple-100/30 shadow-md";
+      case 'office': return "border-blue-300 bg-gradient-to-br from-blue-50/80 to-white shadow-blue-100/40 shadow-md";
+      case 'park': return "border-green-500 bg-gradient-to-br from-green-50/80 to-white shadow-green-100/40 shadow-md";
+      case 'home': return "border-orange-300 bg-gradient-to-br from-orange-50/80 to-white shadow-orange-100/40 shadow-md";
+      case 'coffee-shop': return "border-amber-500 bg-gradient-to-br from-amber-50/80 to-white shadow-amber-100/40 shadow-md";
+      case 'library': return "border-gray-300 bg-gradient-to-br from-gray-50/80 to-white shadow-gray-100/40 shadow-md";
+      default: return "border-purple-300 bg-gradient-to-br from-purple-50/80 to-white shadow-purple-100/40 shadow-md";
     }
   };
 
@@ -210,7 +192,6 @@ const Dashboard = () => {
         </div>
 
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Left column - Weekly tracker */}
           <div className="md:col-span-2 space-y-4">
             <div data-walkthrough="weekly-tracker" className={`p-4 rounded-lg ${getEnvCardClass()}`}>
               <Tabs defaultValue={preferredChartType} className="w-full" onValueChange={handleTabChange}>
@@ -247,7 +228,6 @@ const Dashboard = () => {
               </Tabs>
             </div>
 
-            {/* Display Task List on desktop view */}
             {!isMobile && renderTaskList()}
 
             <div data-walkthrough="ai-insights" className={`rounded-lg ${getEnvCardClass()}`}>
@@ -258,11 +238,9 @@ const Dashboard = () => {
               <Leaderboard />
             </div>
 
-            {/* Display Task List on mobile below Leaderboard */}
             {isMobile && renderTaskList()}
           </div>
 
-          {/* Right column - Quick actions & tips */}
           <div className="space-y-4">
             <div data-walkthrough="quick-start">
               <QuickStartButton />
@@ -276,10 +254,8 @@ const Dashboard = () => {
         <NavigationBar />
       </div>
 
-      {/* Walkthrough component */}
       <DashboardWalkthrough />
       
-      {/* Environment debug component */}
       <EnvironmentDebug />
     </div>
   );
