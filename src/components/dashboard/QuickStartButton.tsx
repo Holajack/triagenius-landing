@@ -21,37 +21,34 @@ const QuickStartButton = () => {
   
   const navigate = useNavigate();
   
-  // Get gradient class with enhanced colors for each environment
   const getGradientClass = () => {
     switch (state.environment) {
       case 'office': return "from-blue-100 to-blue-50";
-      case 'park': return "from-green-200 to-green-100"; // Darker forest green gradient
-      case 'home': return "from-orange-100 to-orange-50"; // Lighter sunrise orange gradient
-      case 'coffee-shop': return "from-amber-200 to-amber-100"; // Darker coffee bean gradient
+      case 'park': return "from-green-100 to-emerald-50"; // Enhanced for Park/#2E6F40
+      case 'home': return "from-orange-100 to-amber-50"; // Enhanced for Home/#FFA263
+      case 'coffee-shop': return "from-amber-100 to-yellow-50"; // Enhanced for Coffee Shop/#854836
       case 'library': return "from-slate-100 to-gray-50";
       default: return "from-purple-100 to-indigo-50";
     }
   };
   
-  // Get accent color with enhanced colors for each environment
   const getAccentColor = () => {
     switch (state.environment) {
       case 'office': return "text-blue-600 bg-blue-100";
-      case 'park': return "text-green-800 bg-green-100"; // Darker forest green
-      case 'home': return "text-orange-500 bg-orange-100"; // Lighter sunrise orange
-      case 'coffee-shop': return "text-amber-900 bg-amber-100"; // Darker coffee bean
+      case 'park': return "text-green-700 bg-green-100"; // Enhanced for Park/#2E6F40
+      case 'home': return "text-orange-600 bg-orange-100"; // Enhanced for Home/#FFA263
+      case 'coffee-shop': return "text-amber-800 bg-amber-100"; // Enhanced for Coffee Shop/#854836
       case 'library': return "text-gray-600 bg-gray-100";
       default: return "text-purple-600 bg-purple-100";
     }
   };
   
-  // Get primary button color with enhanced colors for each environment
   const getPrimaryButtonColor = () => {
     switch (state.environment) {
       case 'office': return "bg-blue-600 hover:bg-blue-700";
-      case 'park': return "bg-green-800 hover:bg-green-900"; // Darker forest green
-      case 'home': return "bg-orange-500 hover:bg-orange-600"; // Lighter sunrise orange
-      case 'coffee-shop': return "bg-amber-900 hover:bg-amber-950"; // Darker coffee bean
+      case 'park': return "bg-green-700 hover:bg-green-800"; // Enhanced for Park/#2E6F40
+      case 'home': return "bg-orange-500 hover:bg-orange-600"; // Enhanced for Home/#FFA263
+      case 'coffee-shop': return "bg-amber-700 hover:bg-amber-800"; // Enhanced for Coffee Shop/#854836
       case 'library': return "bg-gray-600 hover:bg-gray-700";
       default: return "bg-triage-purple hover:bg-triage-purple/90";
     }
@@ -123,9 +120,9 @@ const QuickStartButton = () => {
       "overflow-hidden border-2", 
       isActive ? "shadow-md" : "",
       state.environment === 'office' ? "border-blue-200" :
-      state.environment === 'park' ? "border-green-700" : // Darker forest green
-      state.environment === 'home' ? "border-orange-300" : // Lighter sunrise orange
-      state.environment === 'coffee-shop' ? "border-amber-800" : // Darker coffee bean
+      state.environment === 'park' ? "border-green-600" : // Enhanced for Park/#2E6F40
+      state.environment === 'home' ? "border-orange-300" : // Enhanced for Home/#FFA263
+      state.environment === 'coffee-shop' ? "border-amber-700" : // Enhanced for Coffee Shop/#854836
       state.environment === 'library' ? "border-gray-200" :
       "border-purple-200"
     )}>
