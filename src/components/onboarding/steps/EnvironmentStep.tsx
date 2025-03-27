@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -5,6 +6,7 @@ import { StudyEnvironment } from "@/types/onboarding";
 import { Building, Coffee, TreeDeciduous, BookOpen, Home } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/hooks/use-user";
+import { toast } from "sonner";
 
 const environments: Array<{
   id: StudyEnvironment;
@@ -38,10 +40,10 @@ const environments: Array<{
     description: 'Nature-inspired outdoor setting',
     icon: <TreeDeciduous className="w-6 h-6" />,
     colors: {
-      primary: 'bg-green-700',
-      bg: 'from-green-200 to-emerald-50',
-      accent: 'text-emerald-800',
-      border: 'border-green-400',
+      primary: 'bg-green-800', // Representing #2E6F40
+      bg: 'from-green-200 to-green-50',
+      accent: 'text-green-800',
+      border: 'border-green-600',
       card: 'shadow-green-200/60',
     }
   },
@@ -51,9 +53,9 @@ const environments: Array<{
     description: 'Comfortable home atmosphere',
     icon: <Home className="w-6 h-6" />,
     colors: {
-      primary: 'bg-orange-600',
-      bg: 'from-orange-200 to-amber-50',
-      accent: 'text-amber-800',
+      primary: 'bg-orange-500', // Representing #FFA263
+      bg: 'from-orange-200 to-orange-50',
+      accent: 'text-orange-600',
       border: 'border-orange-400',
       card: 'shadow-orange-200/60',
     }
@@ -64,10 +66,10 @@ const environments: Array<{
     description: 'Relaxed cafe atmosphere',
     icon: <Coffee className="w-6 h-6" />,
     colors: {
-      primary: 'bg-amber-600',
-      bg: 'from-amber-200 to-yellow-50',
-      accent: 'text-amber-900',
-      border: 'border-amber-400',
+      primary: 'bg-amber-800', // Representing #854836
+      bg: 'from-amber-200 to-amber-50',
+      accent: 'text-amber-800',
+      border: 'border-amber-700',
       card: 'shadow-amber-200/60',
     }
   },
@@ -90,6 +92,7 @@ export const EnvironmentStep = () => {
   const { state, dispatch } = useOnboarding();
   const [theme] = useState(() => localStorage.getItem('theme') || 'light');
   const { user } = useUser();
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (state.environment) {
@@ -105,48 +108,63 @@ export const EnvironmentStep = () => {
         );
         
         document.documentElement.classList.add(`theme-${state.environment}`);
-        
         document.documentElement.setAttribute('data-environment', state.environment);
       }
 
-      if (user?.id) {
-        supabase
-          .from('profiles')
-          .update({ last_selected_environment: state.environment })
-          .eq('id', user.id)
-          .then(({ error }) => {
-            if (error) {
-              console.error("Error saving environment preference:", error);
-            }
-          });
-      }
+      // We're not saving to DB here anymore, we'll do it in handleEnvironmentSelection
     }
-  }, [state.environment, user?.id]);
+  }, [state.environment]);
 
-  const handleEnvironmentSelection = (envId: StudyEnvironment) => {
-    dispatch({ type: 'SET_ENVIRONMENT', payload: envId });
-    localStorage.setItem('environment', envId);
+  const handleEnvironmentSelection = async (envId: StudyEnvironment) => {
+    setIsSaving(true);
     
-    document.documentElement.classList.remove(
-      'theme-office', 
-      'theme-park', 
-      'theme-home', 
-      'theme-coffee-shop', 
-      'theme-library'
-    );
-    document.documentElement.classList.add(`theme-${envId}`);
-    document.documentElement.setAttribute('data-environment', envId);
+    try {
+      // Update local state first for immediate UI feedback
+      dispatch({ type: 'SET_ENVIRONMENT', payload: envId });
+      localStorage.setItem('environment', envId);
+      
+      document.documentElement.classList.remove(
+        'theme-office', 
+        'theme-park', 
+        'theme-home', 
+        'theme-coffee-shop', 
+        'theme-library'
+      );
+      document.documentElement.classList.add(`theme-${envId}`);
+      document.documentElement.setAttribute('data-environment', envId);
 
-    if (user?.id) {
-      supabase
-        .from('profiles')
-        .update({ last_selected_environment: envId })
-        .eq('id', user.id)
-        .then(({ error }) => {
-          if (error) {
-            console.error("Error saving environment preference:", error);
-          }
-        });
+      // Only save to DB if user is logged in
+      if (user?.id) {
+        // 1. Update the profile table (source of truth)
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ last_selected_environment: envId })
+          .eq('id', user.id);
+          
+        if (profileError) {
+          console.error("Error saving environment to profile:", profileError);
+          toast.error("Failed to save environment preference");
+          return;
+        }
+        
+        // 2. Update the onboarding_preferences table
+        const { error: prefError } = await supabase
+          .from('onboarding_preferences')
+          .update({ learning_environment: envId })
+          .eq('user_id', user.id);
+          
+        if (prefError) {
+          console.error("Error saving environment to onboarding preferences:", prefError);
+          // Don't show a toast for this as it's secondary storage
+        }
+        
+        console.log(`Environment selection saved to both DB tables: ${envId}`);
+      }
+    } catch (error) {
+      console.error("Error in environment selection:", error);
+      toast.error("Something went wrong while saving your preference");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -157,7 +175,7 @@ export const EnvironmentStep = () => {
           key={env.id}
           className={`p-4 cursor-pointer transition-all hover:shadow-md ${
             state.environment === env.id ? `shadow-md ${env.colors.card}` : ''
-          }`}
+          } ${isSaving ? 'opacity-70 pointer-events-none' : ''}`}
           onClick={() => handleEnvironmentSelection(env.id)}
           style={{
             borderColor: state.environment === env.id ? `var(--env-primary)` : undefined,

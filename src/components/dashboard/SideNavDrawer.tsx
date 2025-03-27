@@ -31,22 +31,22 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
     switch (state.environment) {
       case 'office': return "text-blue-600 hover:bg-blue-50";
       case 'park': return "text-green-600 hover:bg-green-50";
-      case 'home': return "text-orange-600 hover:bg-orange-50";
+      case 'home': return "text-orange-500 hover:bg-orange-50";
       case 'coffee-shop': return "text-amber-600 hover:bg-amber-50";
       case 'library': return "text-gray-600 hover:bg-gray-50";
       default: return "text-triage-purple hover:bg-purple-50";
     }
   };
 
-  // Get background style for the drawer based on environment
+  // Get background style for the drawer based on environment - more vibrant
   const getDrawerStyle = () => {
     switch (state.environment) {
-      case 'office': return "bg-gradient-to-br from-blue-50/30 to-transparent border-l-2 border-blue-100";
-      case 'park': return "bg-gradient-to-br from-green-50/30 to-transparent border-l-2 border-green-100";
-      case 'home': return "bg-gradient-to-br from-orange-50/30 to-transparent border-l-2 border-orange-100";
-      case 'coffee-shop': return "bg-gradient-to-br from-amber-50/30 to-transparent border-l-2 border-amber-100";
-      case 'library': return "bg-gradient-to-br from-gray-50/30 to-transparent border-l-2 border-gray-100";
-      default: return "bg-gradient-to-br from-purple-50/30 to-transparent border-l-2 border-purple-100";
+      case 'office': return "bg-gradient-to-br from-blue-50/50 to-transparent border-l-2 border-blue-200";
+      case 'park': return "bg-gradient-to-br from-green-50/50 to-transparent border-l-2 border-green-200";
+      case 'home': return "bg-gradient-to-br from-orange-50/50 to-transparent border-l-2 border-orange-200";
+      case 'coffee-shop': return "bg-gradient-to-br from-amber-50/50 to-transparent border-l-2 border-amber-200";
+      case 'library': return "bg-gradient-to-br from-gray-50/50 to-transparent border-l-2 border-gray-200";
+      default: return "bg-gradient-to-br from-purple-50/50 to-transparent border-l-2 border-purple-200";
     }
   };
 
@@ -106,14 +106,14 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
     },
   ];
 
-  // Get environment-specific class for the header title
+  // Get environment-specific class for the header title - more vibrant
   const getHeaderTitleClass = () => {
     switch (state.environment) {
-      case 'office': return "text-blue-700";
-      case 'park': return "text-green-700";
-      case 'home': return "text-orange-700";
-      case 'coffee-shop': return "text-amber-700";
-      case 'library': return "text-gray-700";
+      case 'office': return "text-blue-600";
+      case 'park': return "text-green-600";
+      case 'home': return "text-orange-500";
+      case 'coffee-shop': return "text-amber-600";
+      case 'library': return "text-gray-600";
       default: return "text-triage-purple";
     }
   };
@@ -147,7 +147,6 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
           ))}
         </div>
         
-        {/* Logout button at the bottom */}
         <div className="px-4 pb-6 mt-auto">
           <Button 
             variant="destructive" 
