@@ -7,7 +7,7 @@ import { CheckCircle, Award, Cpu, Bookmark } from "lucide-react";
 export const SummaryStep = () => {
   const { state } = useOnboarding();
 
-  // Environment color themes - updated with new color codes
+  // Environment color themes - enhanced for better visibility
   const environmentThemes: Record<string, { bg: string; text: string; cardBg: string; accent: string; border: string }> = {
     'office': {
       bg: 'from-blue-100 to-blue-50',
@@ -17,24 +17,24 @@ export const SummaryStep = () => {
       border: 'border-blue-200'
     },
     'park': {
-      bg: 'from-green-100 to-green-50', // Updated for #2E6F40
-      text: 'text-green-800',
-      cardBg: 'from-green-100/40 to-green-50/40',
-      accent: 'text-green-700',
+      bg: 'from-green-100 to-emerald-50',
+      text: 'text-emerald-800',
+      cardBg: 'from-green-100/40 to-emerald-50/40',
+      accent: 'text-emerald-600',
       border: 'border-green-200'
     },
     'home': {
-      bg: 'from-orange-100 to-orange-50', // Updated for #FFA263
-      text: 'text-orange-600',
-      cardBg: 'from-orange-100/40 to-orange-50/40',
-      accent: 'text-orange-500',
+      bg: 'from-orange-100 to-amber-50',
+      text: 'text-amber-800',
+      cardBg: 'from-orange-100/40 to-amber-50/40',
+      accent: 'text-amber-600',
       border: 'border-orange-200'
     },
     'coffee-shop': {
-      bg: 'from-amber-100 to-amber-50', // Updated for #854836
+      bg: 'from-amber-100 to-yellow-50',
       text: 'text-amber-800',
-      cardBg: 'from-amber-100/40 to-amber-50/40',
-      accent: 'text-amber-700',
+      cardBg: 'from-amber-100/40 to-yellow-50/40',
+      accent: 'text-amber-600',
       border: 'border-amber-200'
     },
     'library': {
@@ -46,27 +46,8 @@ export const SummaryStep = () => {
     }
   };
 
-  // Get environment badge color - updated with new color values
-  const getEnvironmentBadgeClass = () => {
-    switch (state.environment) {
-      case 'office': return "bg-blue-600 hover:bg-blue-700";
-      case 'park': return "bg-green-800 hover:bg-green-900"; // Updated for #2E6F40
-      case 'home': return "bg-orange-500 hover:bg-orange-600"; // Updated for #FFA263 
-      case 'coffee-shop': return "bg-amber-800 hover:bg-amber-900"; // Updated for #854836
-      case 'library': return "bg-gray-600 hover:bg-gray-700";
-      default: return "bg-triage-purple";
-    }
-  };
-
-  // Get the current theme based on the selected environment
-  const getCurrentTheme = () => {
-    if (!state.environment || !environmentThemes[state.environment]) {
-      return environmentThemes['office']; // Default to office if no environment is selected
-    }
-    return environmentThemes[state.environment];
-  };
-
-  const currentTheme = getCurrentTheme();
+  // Get current theme or default to office
+  const currentTheme = state.environment ? environmentThemes[state.environment] : environmentThemes['office'];
 
   // Helper function to get readable display names for values
   const getDisplayName = (type: string, value?: string) => {
@@ -102,6 +83,18 @@ export const SummaryStep = () => {
     return displayNames[type][value] || value;
   };
   
+  // Get environment badge color
+  const getEnvironmentBadgeClass = () => {
+    switch (state.environment) {
+      case 'office': return "bg-blue-600 hover:bg-blue-700";
+      case 'park': return "bg-green-600 hover:bg-green-700";
+      case 'home': return "bg-orange-500 hover:bg-orange-600";
+      case 'coffee-shop': return "bg-amber-500 hover:bg-amber-600";
+      case 'library': return "bg-gray-600 hover:bg-gray-700";
+      default: return "bg-triage-purple";
+    }
+  };
+
   return (
     <div className="grid gap-6">
       <div className="text-center space-y-2">

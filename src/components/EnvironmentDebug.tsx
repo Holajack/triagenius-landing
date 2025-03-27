@@ -4,7 +4,7 @@ import { useOnboarding } from "@/contexts/OnboardingContext";
 import { useEffect, useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react"; // Import from lucide-react instead of @radix-ui/react-icons
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { StudyEnvironment } from "@/types/onboarding";
@@ -22,7 +22,7 @@ const EnvironmentDebug = () => {
   const [onboardingPrefsEnv, setOnboardingPrefsEnv] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   
-  const updateValues = async () => {
+  const updateValues = () => {
     // Get environment values from various sources
     setLocalEnv(localStorage.getItem('environment'));
     setDomEnv(document.documentElement.getAttribute('data-environment'));
@@ -32,29 +32,12 @@ const EnvironmentDebug = () => {
       setProfileEnv(user.profile.last_selected_environment || null);
     }
     
-    // Get environment from onboarding preferences
-    if (user?.id) {
-      try {
-        const { data, error } = await supabase
-          .from('onboarding_preferences')
-          .select('learning_environment')
-          .eq('user_id', user.id)
-          .single();
-          
-        if (!error && data) {
-          setOnboardingPrefsEnv(data.learning_environment || null);
-        }
-      } catch (e) {
-        console.error("Error fetching onboarding preferences:", e);
-      }
-    }
-    
-    // Also check localStorage
+    // Get environment from onboarding preferences in localStorage
     const userPrefs = localStorage.getItem('userPreferences');
     if (userPrefs) {
       try {
         const parsedPrefs = JSON.parse(userPrefs);
-        // Don't set onboardingPrefsEnv here to avoid overriding DB value
+        setOnboardingPrefsEnv(parsedPrefs.environment || null);
       } catch (e) {
         console.error("Error parsing userPreferences:", e);
       }
@@ -66,7 +49,6 @@ const EnvironmentDebug = () => {
       localStorage: localStorage.getItem('environment'),
       domAttribute: document.documentElement.getAttribute('data-environment'),
       profileEnv: user?.profile?.last_selected_environment,
-      onboardingPrefsEnv: onboardingPrefsEnv,
     });
   };
   
@@ -127,7 +109,7 @@ const EnvironmentDebug = () => {
       
       console.log(`[ENV DEBUG] Force syncing environment to: ${environmentToSync}`);
       
-      // Begin transaction - update all sources at once
+      // Update all relevant places - starting with DB
       
       // 1. Update profile table (source of truth)
       const { error: profileError } = await supabase
@@ -153,9 +135,6 @@ const EnvironmentDebug = () => {
         
       if (prefError) {
         console.error("[ENV DEBUG] Error updating onboarding preferences:", prefError);
-        toast.warning("Updated profile but failed to update onboarding preferences");
-      } else {
-        console.log("[ENV DEBUG] Successfully updated onboarding preferences");
       }
       
       // 3. Update localStorage
@@ -194,37 +173,9 @@ const EnvironmentDebug = () => {
       await refreshUser();
       
       // 9. Update values in debug panel
-      await updateValues();
+      updateValues();
       
-      // 10. Verify the values were updated correctly
-      setTimeout(async () => {
-        // Double check that everything was updated
-        const { data: profileCheck } = await supabase
-          .from('profiles')
-          .select('last_selected_environment')
-          .eq('id', user.id)
-          .single();
-          
-        const { data: prefCheck } = await supabase
-          .from('onboarding_preferences')
-          .select('learning_environment')
-          .eq('user_id', user.id)
-          .single();
-          
-        console.log("[ENV DEBUG] Verification check:", {
-          profileValue: profileCheck?.last_selected_environment,
-          prefValue: prefCheck?.learning_environment,
-          expected: environmentToSync
-        });
-        
-        if (profileCheck?.last_selected_environment !== environmentToSync || 
-            prefCheck?.learning_environment !== environmentToSync) {
-          console.error("[ENV DEBUG] Verification failed - values don't match");
-          toast.error("Sync verification failed. Try again.");
-        } else {
-          toast.success("Environment synchronized successfully");
-        }
-      }, 1000);
+      toast.success("Environment synchronized successfully");
     } catch (error) {
       console.error("[ENV DEBUG] Error in sync:", error);
       toast.error("Failed to synchronize environment");

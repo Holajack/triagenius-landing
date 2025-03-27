@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -66,7 +65,7 @@
     --ring: 216 12.2% 83.9%;
   }
 
-  /* Environment-specific theme variables - Updated with more vibrant colors */
+  /* Environment-specific theme variables - Enhanced with deeper, richer colors */
   .theme-office {
     --env-primary: 226 85% 55%;
     --env-secondary: 223 85% 50%;
@@ -80,54 +79,51 @@
   }
 
   .theme-park {
-    /* More vibrant green for park/outdoors */
-    --env-primary: 144 60% 35%;
-    --env-secondary: 144 61% 32%;
-    --env-accent: 144 62% 29%;
-    --env-muted: 144 35% 40%;
-    --env-border: 144 60% 75%;
-    --env-background: 144 40% 96%;
-    --env-card: 144 35% 98%;
-    --env-hover: 144 60% 85%;
-    --env-focus: 144 60% 35%;
+    --env-primary: 152 85% 38%;
+    --env-secondary: 142 90% 35%;
+    --env-accent: 158 74% 32%;
+    --env-muted: 150 35% 40%;
+    --env-border: 150 60% 75%;
+    --env-background: 145 40% 96%;
+    --env-card: 145 35% 98%;
+    --env-hover: 152 70% 85%;
+    --env-focus: 152 80% 35%;
   }
 
   .theme-home {
-    /* More vibrant orange for home */
-    --env-primary: 26 100% 60%;
-    --env-secondary: 26 95% 55%;
-    --env-accent: 26 90% 50%;
-    --env-muted: 26 50% 45%;
-    --env-border: 26 70% 75%;
-    --env-background: 26 30% 96%;
-    --env-card: 26 25% 98%;
-    --env-hover: 26 95% 85%;
-    --env-focus: 26 100% 60%;
+    --env-primary: 30 95% 50%;
+    --env-secondary: 32 95% 45%;
+    --env-accent: 28 95% 40%;
+    --env-muted: 30 40% 40%;
+    --env-border: 30 60% 75%;
+    --env-background: 35 30% 96%;
+    --env-card: 35 25% 98%;
+    --env-hover: 30 95% 85%;
+    --env-focus: 30 95% 45%;
   }
 
   .theme-coffee-shop {
-    /* More vibrant brown for coffee shop */
-    --env-primary: 14 55% 40%;
-    --env-secondary: 14 56% 37%;
-    --env-accent: 14 57% 34%;
-    --env-muted: 14 45% 45%;
-    --env-border: 14 50% 75%;
-    --env-background: 14 30% 96%;
-    --env-card: 14 25% 98%;
-    --env-hover: 14 50% 85%;
-    --env-focus: 14 55% 40%;
+    --env-primary: 35 95% 45%;
+    --env-secondary: 40 95% 40%;
+    --env-accent: 30 95% 35%;
+    --env-muted: 35 40% 40%;
+    --env-border: 35 60% 75%;
+    --env-background: 38 30% 96%;
+    --env-card: 38 25% 98%;
+    --env-hover: 35 90% 85%;
+    --env-focus: 35 90% 40%;
   }
 
   .theme-library {
-    --env-primary: 215 45% 45%;
-    --env-secondary: 210 45% 40%;
-    --env-accent: 205 45% 35%;
-    --env-muted: 220 30% 45%;
-    --env-border: 220 40% 75%;
+    --env-primary: 215 40% 40%;
+    --env-secondary: 210 40% 35%;
+    --env-accent: 205 40% 30%;
+    --env-muted: 220 25% 40%;
+    --env-border: 220 35% 75%;
     --env-background: 215 15% 96%;
     --env-card: 215 10% 98%;
-    --env-hover: 215 45% 85%;
-    --env-focus: 215 45% 40%;
+    --env-hover: 215 40% 85%;
+    --env-focus: 215 40% 35%;
   }
 }
 
@@ -183,17 +179,17 @@
     border-radius: 50%;
   }
   
-  /* Environment-themed buttons and elements - Updated with more vibrant colors */
+  /* Environment-themed buttons and elements */
   .theme-office .env-button {
-    @apply bg-blue-600 hover:bg-blue-700 text-white;
+    @apply bg-blue-700 hover:bg-blue-800 text-white;
   }
   
   .theme-park .env-button {
-    @apply bg-green-600 hover:bg-green-700 text-white;
+    @apply bg-green-700 hover:bg-green-800 text-white;
   }
   
   .theme-home .env-button {
-    @apply bg-orange-500 hover:bg-orange-600 text-white;
+    @apply bg-orange-600 hover:bg-orange-700 text-white;
   }
   
   .theme-coffee-shop .env-button {
@@ -201,41 +197,41 @@
   }
   
   .theme-library .env-button {
-    @apply bg-gray-600 hover:bg-gray-700 text-white;
+    @apply bg-gray-700 hover:bg-gray-800 text-white;
   }
   
-  /* Environment-themed backgrounds - Updated with more vibrant colors */
+  /* Environment-themed backgrounds */
   .theme-office .env-bg-subtle {
-    @apply bg-blue-100/90;
+    @apply bg-blue-100;
   }
   
   .theme-park .env-bg-subtle {
-    @apply bg-green-100/90;
+    @apply bg-green-100;
   }
   
   .theme-home .env-bg-subtle {
-    @apply bg-orange-100/90;
+    @apply bg-orange-100;
   }
   
   .theme-coffee-shop .env-bg-subtle {
-    @apply bg-amber-100/90;
+    @apply bg-amber-100;
   }
   
   .theme-library .env-bg-subtle {
-    @apply bg-gray-100/90;
+    @apply bg-gray-100;
   }
   
-  /* Environment-themed text - Updated with more vibrant colors */
+  /* Environment-themed text */
   .theme-office .env-text {
-    @apply text-blue-600;
+    @apply text-blue-700;
   }
   
   .theme-park .env-text {
-    @apply text-green-600;
+    @apply text-green-700;
   }
   
   .theme-home .env-text {
-    @apply text-orange-500;
+    @apply text-orange-600;
   }
   
   .theme-coffee-shop .env-text {
@@ -243,50 +239,50 @@
   }
   
   .theme-library .env-text {
-    @apply text-gray-600;
+    @apply text-gray-700;
   }
   
-  /* Environment-themed cards - Updated with more vibrant colors */
+  /* Environment-themed cards */
   .theme-office .env-card {
-    @apply border-blue-300 bg-gradient-to-br from-blue-100/90 to-white;
+    @apply border-blue-200 bg-gradient-to-br from-blue-100 to-white;
   }
   
   .theme-park .env-card {
-    @apply border-green-500 bg-gradient-to-br from-green-100/90 to-white;
+    @apply border-green-200 bg-gradient-to-br from-green-100 to-white;
   }
   
   .theme-home .env-card {
-    @apply border-orange-300 bg-gradient-to-br from-orange-100/90 to-white;
+    @apply border-orange-200 bg-gradient-to-br from-orange-100 to-white;
   }
   
   .theme-coffee-shop .env-card {
-    @apply border-amber-500 bg-gradient-to-br from-amber-100/90 to-white;
+    @apply border-amber-200 bg-gradient-to-br from-amber-100 to-white;
   }
   
   .theme-library .env-card {
-    @apply border-gray-300 bg-gradient-to-br from-gray-100/90 to-white;
+    @apply border-gray-200 bg-gradient-to-br from-gray-100 to-white;
   }
   
-  /* Typography enhancements for environments - Updated with more vibrant colors */
-  .theme-office h1, .theme-office h2, .theme-office h3 {
-    @apply text-blue-800;
+  @keyframes staggered-fade-in {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
   
-  .theme-park h1, .theme-park h2, .theme-park h3 {
-    @apply text-green-800;
+  .stagger-animation > * {
+    opacity: 0;
+    animation: staggered-fade-in 0.5s ease-out forwards;
   }
   
-  .theme-home h1, .theme-home h2, .theme-home h3 {
-    @apply text-orange-800;
-  }
-  
-  .theme-coffee-shop h1, .theme-coffee-shop h2, .theme-coffee-shop h3 {
-    @apply text-amber-800;
-  }
-  
-  .theme-library h1, .theme-library h2, .theme-library h3 {
-    @apply text-gray-800;
-  }
-  
-  /* ... keep existing code (animation keyframes and utilities) */
+  .stagger-animation > *:nth-child(1) { animation-delay: 0.1s; }
+  .stagger-animation > *:nth-child(2) { animation-delay: 0.2s; }
+  .stagger-animation > *:nth-child(3) { animation-delay: 0.3s; }
+  .stagger-animation > *:nth-child(4) { animation-delay: 0.4s; }
+  .stagger-animation > *:nth-child(5) { animation-delay: 0.5s; }
+  .stagger-animation > *:nth-child(6) { animation-delay: 0.6s; }
 }

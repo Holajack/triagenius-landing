@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { Target, Play, Timer } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useOnboarding } from "@/contexts/OnboardingContext";
 
 interface FocusButtonProps {
   label: string;
@@ -27,7 +26,6 @@ const FocusButton = ({
 }: FocusButtonProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const navigate = useNavigate();
-  const { state } = useOnboarding();
   
   // Check if running as a PWA
   const isPWA = localStorage.getItem('isPWA') === 'true' || 
@@ -46,20 +44,6 @@ const FocusButton = ({
         return <Target className="w-5 h-5 mr-2" />;
     }
   };
-  
-  // Enhanced environment-specific gradient with more vibrant colors
-  const getEnvButtonGradient = () => {
-    if (!isPrimary) return "";
-    
-    switch (state?.environment) {
-      case 'office': return "bg-gradient-to-r from-blue-600 to-blue-700";
-      case 'park': return "bg-gradient-to-r from-green-600 to-green-700"; // More vibrant green
-      case 'home': return "bg-gradient-to-r from-orange-500 to-orange-600"; // More vibrant orange
-      case 'coffee-shop': return "bg-gradient-to-r from-amber-600 to-amber-700"; // More vibrant amber
-      case 'library': return "bg-gradient-to-r from-gray-600 to-gray-700";
-      default: return "button-gradient"; // Default gradient
-    }
-  };
 
   const handleClick = () => {
     if (onClick) {
@@ -73,7 +57,7 @@ const FocusButton = ({
     <Button
       className={`relative group overflow-hidden transition-all duration-300 px-6 py-6 h-auto ${
         isPrimary 
-          ? getEnvButtonGradient() || "button-gradient text-white" 
+          ? "button-gradient text-white" 
           : theme === 'dark' 
             ? "bg-gray-800 border border-gray-700 text-gray-100 hover:bg-gray-700" 
             : "bg-white border border-gray-200 text-gray-800 hover:bg-gray-50"
