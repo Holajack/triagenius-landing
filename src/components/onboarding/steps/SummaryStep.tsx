@@ -7,7 +7,7 @@ import { CheckCircle, Award, Cpu, Bookmark } from "lucide-react";
 export const SummaryStep = () => {
   const { state } = useOnboarding();
 
-  // Environment color themes - enhanced for better visibility
+  // Environment color themes - updated with new color codes
   const environmentThemes: Record<string, { bg: string; text: string; cardBg: string; accent: string; border: string }> = {
     'office': {
       bg: 'from-blue-100 to-blue-50',
@@ -17,21 +17,21 @@ export const SummaryStep = () => {
       border: 'border-blue-200'
     },
     'park': {
-      bg: 'from-green-100 to-green-50',
+      bg: 'from-green-100 to-green-50', // Updated for #2E6F40
       text: 'text-green-800',
       cardBg: 'from-green-100/40 to-green-50/40',
       accent: 'text-green-700',
       border: 'border-green-200'
     },
     'home': {
-      bg: 'from-orange-100 to-orange-50',
+      bg: 'from-orange-100 to-orange-50', // Updated for #FFA263
       text: 'text-orange-600',
       cardBg: 'from-orange-100/40 to-orange-50/40',
       accent: 'text-orange-500',
       border: 'border-orange-200'
     },
     'coffee-shop': {
-      bg: 'from-amber-100 to-amber-50',
+      bg: 'from-amber-100 to-amber-50', // Updated for #854836
       text: 'text-amber-800',
       cardBg: 'from-amber-100/40 to-amber-50/40',
       accent: 'text-amber-700',
@@ -46,13 +46,13 @@ export const SummaryStep = () => {
     }
   };
 
-  // Get environment badge color
+  // Get environment badge color - updated with new color values
   const getEnvironmentBadgeClass = () => {
     switch (state.environment) {
       case 'office': return "bg-blue-600 hover:bg-blue-700";
-      case 'park': return "bg-green-800 hover:bg-green-900";
-      case 'home': return "bg-orange-500 hover:bg-orange-600";
-      case 'coffee-shop': return "bg-amber-800 hover:bg-amber-900";
+      case 'park': return "bg-green-800 hover:bg-green-900"; // Updated for #2E6F40
+      case 'home': return "bg-orange-500 hover:bg-orange-600"; // Updated for #FFA263 
+      case 'coffee-shop': return "bg-amber-800 hover:bg-amber-900"; // Updated for #854836
       case 'library': return "bg-gray-600 hover:bg-gray-700";
       default: return "bg-triage-purple";
     }

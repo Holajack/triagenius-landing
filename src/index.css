@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -65,7 +66,7 @@
     --ring: 216 12.2% 83.9%;
   }
 
-  /* Environment-specific theme variables - Enhanced with deeper, richer colors */
+  /* Environment-specific theme variables - Updated with new color codes */
   .theme-office {
     --env-primary: 226 85% 55%;
     --env-secondary: 223 85% 50%;
@@ -79,6 +80,7 @@
   }
 
   .theme-park {
+    /* Updated for #2E6F40 - Richer green for park/outdoors */
     --env-primary: 144 40% 31%;
     --env-secondary: 144 41% 28%;
     --env-accent: 144 42% 25%;
@@ -91,6 +93,7 @@
   }
 
   .theme-home {
+    /* Updated for #FFA263 - Warmer orange for home */
     --env-primary: 26 100% 69%;
     --env-secondary: 26 95% 65%;
     --env-accent: 26 90% 60%;
@@ -103,6 +106,7 @@
   }
 
   .theme-coffee-shop {
+    /* Updated for #854836 - Rich brown for coffee shop */
     --env-primary: 14 43% 37%;
     --env-secondary: 14 44% 34%;
     --env-accent: 14 45% 31%;

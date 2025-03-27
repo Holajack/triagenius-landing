@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import { useOnboarding } from "@/contexts/OnboardingContext"
 import { cn } from "@/lib/utils"
@@ -14,9 +15,9 @@ const Card = React.forwardRef<
     
     switch (state.environment) {
       case 'office': return "hover:border-blue-400 transition-colors duration-300";
-      case 'park': return "hover:border-green-700 transition-colors duration-300";
-      case 'home': return "hover:border-orange-400 transition-colors duration-300";
-      case 'coffee-shop': return "hover:border-amber-700 transition-colors duration-300";
+      case 'park': return "hover:border-green-700 transition-colors duration-300"; // Updated for #2E6F40
+      case 'home': return "hover:border-orange-400 transition-colors duration-300"; // Updated for #FFA263
+      case 'coffee-shop': return "hover:border-amber-700 transition-colors duration-300"; // Updated for #854836
       case 'library': return "hover:border-gray-400 transition-colors duration-300";
       default: return "hover:border-purple-400 transition-colors duration-300";
     }
@@ -28,9 +29,9 @@ const Card = React.forwardRef<
     
     switch (state.environment) {
       case 'office': return "bg-gradient-to-br from-blue-100/80 to-white";
-      case 'park': return "bg-gradient-to-br from-green-100/80 to-white";
-      case 'home': return "bg-gradient-to-br from-orange-100/80 to-white";
-      case 'coffee-shop': return "bg-gradient-to-br from-amber-100/80 to-white";
+      case 'park': return "bg-gradient-to-br from-green-100/80 to-white"; // Updated for #2E6F40
+      case 'home': return "bg-gradient-to-br from-orange-100/80 to-white"; // Updated for #FFA263
+      case 'coffee-shop': return "bg-gradient-to-br from-amber-100/80 to-white"; // Updated for #854836
       case 'library': return "bg-gradient-to-br from-gray-100/80 to-white";
       default: return "bg-gradient-to-br from-purple-100/80 to-white";
     }

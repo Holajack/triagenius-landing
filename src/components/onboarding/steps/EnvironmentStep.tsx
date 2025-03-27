@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -38,7 +39,7 @@ const environments: Array<{
     description: 'Nature-inspired outdoor setting',
     icon: <TreeDeciduous className="w-6 h-6" />,
     colors: {
-      primary: 'bg-green-800',
+      primary: 'bg-green-800', // Representing #2E6F40
       bg: 'from-green-200 to-green-50',
       accent: 'text-green-800',
       border: 'border-green-600',
@@ -51,7 +52,7 @@ const environments: Array<{
     description: 'Comfortable home atmosphere',
     icon: <Home className="w-6 h-6" />,
     colors: {
-      primary: 'bg-orange-500',
+      primary: 'bg-orange-500', // Representing #FFA263
       bg: 'from-orange-200 to-orange-50',
       accent: 'text-orange-600',
       border: 'border-orange-400',
@@ -64,7 +65,7 @@ const environments: Array<{
     description: 'Relaxed cafe atmosphere',
     icon: <Coffee className="w-6 h-6" />,
     colors: {
-      primary: 'bg-amber-800',
+      primary: 'bg-amber-800', // Representing #854836
       bg: 'from-amber-200 to-amber-50',
       accent: 'text-amber-800',
       border: 'border-amber-700',

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -42,7 +41,6 @@ const ProfilePreferences = () => {
   const [pendingEnvironment, setPendingEnvironment] = useState<string | null>(null);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   
-  // Add effect to track when environment changes in profile or onboarding
   useEffect(() => {
     if (user?.profile?.last_selected_environment) {
       setLastSavedEnvironment(user.profile.last_selected_environment);
@@ -50,7 +48,6 @@ const ProfilePreferences = () => {
     }
   }, [user?.profile?.last_selected_environment]);
   
-  // Save function for environment changes only
   const saveEnvironmentToDatabase = async (envValue: string): Promise<boolean> => {
     if (!user || !user.id) {
       console.error("[ProfilePreferences] Cannot save environment - no user");
@@ -62,7 +59,6 @@ const ProfilePreferences = () => {
       
       if (DEBUG_ENV) console.log(`[ProfilePreferences] Saving environment to DB: ${envValue}`);
       
-      // First update profiles table - source of truth
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ 
@@ -75,7 +71,6 @@ const ProfilePreferences = () => {
         return false;
       }
       
-      // Then sync with onboarding_preferences for consistency
       const { error: prefError } = await supabase
         .from('onboarding_preferences')
         .update({ 
@@ -87,13 +82,10 @@ const ProfilePreferences = () => {
         console.error("[ProfilePreferences] Error updating onboarding preferences environment:", prefError);
       }
       
-      // Update localStorage after DB update
       localStorage.setItem('environment', envValue);
       
-      // Update the last saved environment state
       setLastSavedEnvironment(envValue);
       
-      // Update user preferences in localStorage
       const userPrefs = localStorage.getItem('userPreferences');
       if (userPrefs) {
         try {
@@ -105,10 +97,8 @@ const ProfilePreferences = () => {
         }
       }
       
-      // Force refresh to update the debug view
       await refreshUser();
       
-      // Dispatch the environment change to update context
       dispatch({
         type: 'SET_ENVIRONMENT',
         payload: envValue as StudyEnvironment
@@ -138,19 +128,15 @@ const ProfilePreferences = () => {
       ...state
     });
     
-    // If we have a pending environment change, revert the visual preview
     if (pendingEnvironment) {
       setPendingEnvironment(null);
       
-      // Revert to the last saved environment visual state
       const envToRestore = state.environment || lastSavedEnvironment || 'office';
       previewEnvironmentVisually(envToRestore);
     }
   };
   
-  // Apply the environment visually but don't save to DB - this is just for preview
   const previewEnvironmentVisually = (value: string) => {
-    // Only apply CSS classes for preview effect - no context changes
     document.documentElement.classList.remove(
       'theme-office', 
       'theme-park', 
@@ -162,12 +148,9 @@ const ProfilePreferences = () => {
     document.documentElement.setAttribute('data-environment', value);
   };
   
-  // Apply the environment both visually and to the theme context after saving
   const applyEnvironmentFully = (value: string) => {
-    // Update theme context
     setEnvironmentTheme(value as StudyEnvironment);
     
-    // Apply CSS classes directly for immediate visual feedback 
     document.documentElement.classList.remove(
       'theme-office', 
       'theme-park', 
@@ -178,7 +161,6 @@ const ProfilePreferences = () => {
     document.documentElement.classList.add(`theme-${value}`);
     document.documentElement.setAttribute('data-environment', value);
     
-    // Trigger the environmental debug refresh
     const event = new Event('environmentChanged');
     document.dispatchEvent(event);
   };
@@ -190,19 +172,15 @@ const ProfilePreferences = () => {
     }));
     setHasUnsavedChanges(true);
     
-    // Special handling for environment changes - only preview them
     if (key === 'environment' && value) {
       if (DEBUG_ENV) console.log(`[ProfilePreferences] Environment change requested: ${value}`);
       
-      // Store the pending environment to apply on save
       setPendingEnvironment(value as string);
       
-      // Only preview the environment visually
       previewEnvironmentVisually(value);
     }
   };
   
-  // Auto-save handler
   const savePreferencesOnExit = useCallback(async () => {
     if (hasUnsavedChanges && isEditing && autoSaveEnabled) {
       if (DEBUG_ENV) console.log("[ProfilePreferences] Auto-saving preferences before exit");
@@ -213,10 +191,8 @@ const ProfilePreferences = () => {
     return false;
   }, [hasUnsavedChanges, isEditing, autoSaveEnabled]);
   
-  // Save pending environment changes when leaving the component
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // If there are unsaved changes, show confirmation dialog
       if (hasUnsavedChanges) {
         e.preventDefault();
         e.returnValue = '';
@@ -224,32 +200,26 @@ const ProfilePreferences = () => {
       }
     };
     
-    // Listen for navigation events
     const handleRouteChange = async () => {
       await savePreferencesOnExit();
     };
     
     window.addEventListener('beforeunload', handleBeforeUnload);
     
-    // Clean up listeners
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       
-      // Save on unmount
       savePreferencesOnExit();
     };
   }, [hasUnsavedChanges, savePreferencesOnExit]);
-
-  // Watch for tab changes within profile page
+  
   useEffect(() => {
-    // If location hash changes and we have unsaved changes, save them
     const handleHashChange = async () => {
       if (location.hash !== "#preferences" && hasUnsavedChanges && isEditing) {
         await savePreferencesOnExit();
       }
     };
 
-    // Add listener for URL hash changes
     window.addEventListener('hashchange', handleHashChange);
     
     return () => {
@@ -261,27 +231,21 @@ const ProfilePreferences = () => {
     try {
       setIsLoading(true);
       
-      // First, save any pending environment changes
       if (pendingEnvironment) {
         const saveSuccess = await saveEnvironmentToDatabase(pendingEnvironment);
         
         if (saveSuccess) {
-          // Only now apply the environment change to the theme context
           applyEnvironmentFully(pendingEnvironment);
           setPendingEnvironment(null);
           
-          // Force a synchronization of all environment states
           await forceEnvironmentSync();
         } else {
-          // If save failed, show error
           toast.error("Failed to save environment preference");
-          // Do not proceed with other changes
           setIsLoading(false);
           return;
         }
       }
       
-      // Update context state
       Object.entries(editedState).forEach(([key, value]) => {
         switch (key) {
           case 'userGoal':
@@ -317,13 +281,10 @@ const ProfilePreferences = () => {
         }
       });
 
-      // Save to database using the onboarding context
       await saveOnboardingState();
       
-      // Refresh user data to ensure we have the latest preferences
       await refreshUser();
       
-      // Verify environment was saved properly
       if (user?.id && editedState.environment) {
         const { data, error } = await supabase
           .from('profiles')
@@ -335,7 +296,6 @@ const ProfilePreferences = () => {
           if (data.last_selected_environment !== editedState.environment) {
             if (DEBUG_ENV) console.log(`[ProfilePreferences] Environment verification failed. DB has ${data.last_selected_environment} but should be ${editedState.environment}`);
             
-            // Fix the mismatch with a direct update
             await supabase
               .from('profiles')
               .update({ 
@@ -343,7 +303,6 @@ const ProfilePreferences = () => {
               })
               .eq('id', user.id);
               
-            // Also update onboarding_preferences
             await supabase
               .from('onboarding_preferences')
               .update({ 
@@ -358,7 +317,6 @@ const ProfilePreferences = () => {
         }
       }
       
-      // Trigger a global update event
       window.dispatchEvent(new StorageEvent('storage', {
         key: 'environment',
         newValue: editedState.environment
@@ -369,9 +327,43 @@ const ProfilePreferences = () => {
       toast.success("Preferences saved successfully");
     } catch (error) {
       console.error("Error updating preferences:", error);
-      // Toast error is already shown in the saveOnboardingState function
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  const getEnvironmentPreviewStyles = (envValue: string) => {
+    switch(envValue) {
+      case 'office': 
+        return {
+          badge: "bg-blue-600 text-white",
+          border: "border-blue-300"
+        };
+      case 'park': 
+        return {
+          badge: "bg-green-800 text-white",
+          border: "border-green-600"
+        };
+      case 'home': 
+        return {
+          badge: "bg-orange-500 text-white",
+          border: "border-orange-300"
+        };
+      case 'coffee-shop': 
+        return {
+          badge: "bg-amber-800 text-white",
+          border: "border-amber-700"
+        };
+      case 'library': 
+        return {
+          badge: "bg-gray-600 text-white",
+          border: "border-gray-300"
+        };
+      default:
+        return {
+          badge: "bg-purple-600 text-white",
+          border: "border-purple-300"
+        };
     }
   };
   
@@ -479,6 +471,13 @@ const ProfilePreferences = () => {
                     pendingEnvironment ? `Preview: ${pendingEnvironment} (click Save to apply)` : 
                     `Current: ${lastSavedEnvironment || state.environment}`}
                 </p>
+              )}
+              {isEditing && pendingEnvironment && (
+                <div className={`mt-2 p-2 rounded-lg border ${getEnvironmentPreviewStyles(pendingEnvironment).border}`}>
+                  <span className={`inline-block px-2 py-1 text-xs rounded-full ${getEnvironmentPreviewStyles(pendingEnvironment).badge}`}>
+                    Preview: {pendingEnvironment} theme
+                  </span>
+                </div>
               )}
             </div>
 
