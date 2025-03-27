@@ -5,14 +5,39 @@ import { Button } from "@/components/ui/button";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useUser } from "@/hooks/use-user";
+
+// Enable this for debugging
+const DEBUG_ENV = true;
 
 const NavigationBar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { state } = useOnboarding();
+  const { state, forceEnvironmentSync } = useOnboarding();
   const [theme] = useState(() => localStorage.getItem('theme') || 'light');
   const isMobile = useIsMobile();
+  const { environmentTheme, verifyEnvironmentWithDatabase } = useTheme();
+  const { user } = useUser();
+  
+  // Ensure environment is consistent before navigation
+  const ensureEnvironmentSync = async (destination: string) => {
+    // Skip sync for minor navigations or if already on the destination
+    if (location.pathname === destination) return;
+    
+    if (DEBUG_ENV) console.log(`[NavigationBar] Preparing to navigate to: ${destination}`);
+    
+    // Verify environment consistency with database before navigation
+    if (user?.id) {
+      const isConsistent = await verifyEnvironmentWithDatabase(user.id);
+      
+      if (!isConsistent) {
+        if (DEBUG_ENV) console.log('[NavigationBar] Environment inconsistency detected before navigation, forcing sync');
+        await forceEnvironmentSync();
+      }
+    }
+  };
   
   // Get accent color based on environment - enhanced for more noticeable theming
   const getAccentColor = () => {
@@ -50,29 +75,58 @@ const NavigationBar = () => {
     }
   };
   
+  // Enhanced navigation handler that ensures environment sync
+  const handleNavigation = async (path: string) => {
+    await ensureEnvironmentSync(path);
+    navigate(path);
+  };
+  
+  // Listen for environment changes to update UI elements
+  useEffect(() => {
+    const handleEnvironmentChange = () => {
+      if (DEBUG_ENV) console.log('[NavigationBar] Detected environment change, forcing re-render');
+      // This will force a re-render of the component
+      forceEnvironmentSync();
+    };
+    
+    // Listen for both storage events and custom environment-changed events
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'environment') handleEnvironmentChange();
+    });
+    
+    document.addEventListener('environment-changed', handleEnvironmentChange);
+    
+    return () => {
+      window.removeEventListener('storage', (e) => {
+        if (e.key === 'environment') handleEnvironmentChange();
+      });
+      document.removeEventListener('environment-changed', handleEnvironmentChange);
+    };
+  }, [forceEnvironmentSync]);
+  
   const navItems = [
     {
       label: "Home",
       icon: <LayoutDashboard className="h-5 w-5" />,
-      onClick: () => navigate("/dashboard"),
+      onClick: () => handleNavigation("/dashboard"),
       active: location.pathname === "/dashboard",
     },
     {
       label: "Community",
       icon: <Users className="h-5 w-5" />,
-      onClick: () => navigate("/community"),
+      onClick: () => handleNavigation("/community"),
       active: location.pathname === "/community" || location.pathname.startsWith("/community/"),
     },
     {
       label: "Bonuses",
       icon: <BadgePercent className="h-5 w-5" />,
-      onClick: () => navigate("/bonuses"),
+      onClick: () => handleNavigation("/bonuses"),
       active: location.pathname === "/bonuses",
     },
     {
       label: "Results",
       icon: <BarChart3 className="h-5 w-5" />,
-      onClick: () => navigate("/reports"),
+      onClick: () => handleNavigation("/reports"),
       active: location.pathname === "/reports",
     },
     // Only add the Profile button if not on mobile to avoid overcrowding
@@ -80,7 +134,7 @@ const NavigationBar = () => {
       {
         label: "Profile",
         icon: <UserCircle2 className="h-5 w-5" />,
-        onClick: () => navigate("/profile"),
+        onClick: () => handleNavigation("/profile"),
         active: location.pathname === "/profile",
       }
     ] : [])

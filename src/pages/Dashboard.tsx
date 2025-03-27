@@ -30,7 +30,7 @@ const Dashboard = () => {
   } = useOnboarding();
   
   const navigate = useNavigate();
-  const { theme, applyEnvironmentTheme, environmentTheme } = useTheme();
+  const { theme, applyEnvironmentTheme, environmentTheme, verifyEnvironmentWithDatabase } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [preferredChartType, setPreferredChartType] = useState(() => {
     return localStorage.getItem('preferredChartType') || 'bar';
@@ -38,60 +38,96 @@ const Dashboard = () => {
   const isMobile = useIsMobile();
   const { user, refreshUser } = useUser();
   const [syncAttempts, setSyncAttempts] = useState(0);
+  const [environmentSynced, setEnvironmentSynced] = useState(false);
 
-  // Apply environment theme when component mounts to ensure consistency
+  // Enhanced environment synchronization when Dashboard mounts
   useEffect(() => {
     const syncEnvironment = async () => {
       if (onboardingLoading) {
         return; // Wait until onboarding context is loaded
       }
+
+      if (DEBUG_ENV) console.log('[Dashboard] Starting environment sync on mount');
       
-      // First, make sure database is in sync with context
-      await forceEnvironmentSync();
-      
-      // Then apply the environment from the most reliable source in order of precedence
-      if (user?.profile?.last_selected_environment) {
-        if (DEBUG_ENV) console.log('[Dashboard] Using profile environment (DB truth):', user.profile.last_selected_environment);
-        applyEnvironmentTheme(user.profile.last_selected_environment);
-        
-        // If state.environment doesn't match profile, we have a problem to fix
-        if (state.environment && state.environment !== user.profile.last_selected_environment) {
-          if (DEBUG_ENV) console.log(`[Dashboard] Environment mismatch detected: state ${state.environment} vs DB ${user.profile.last_selected_environment}`);
-          
-          // Trigger a user refresh as a fix attempt
-          if (syncAttempts < 2) {
-            if (DEBUG_ENV) console.log(`[Dashboard] Attempting fix, refreshing user data (attempt ${syncAttempts + 1})`);
-            setTimeout(() => {
-              refreshUser();
-              setSyncAttempts(prev => prev + 1);
-            }, 1000);
+      // Get profile directly from the database first - this is our source of truth
+      if (user?.id) {
+        try {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('last_selected_environment')
+            .eq('id', user.id)
+            .single();
+            
+          if (profileError) {
+            console.error('[Dashboard] Error fetching profile environment:', profileError);
+          } else if (profileData?.last_selected_environment) {
+            const dbEnvironment = profileData.last_selected_environment;
+            
+            if (DEBUG_ENV) {
+              console.log('[Dashboard] DB environment from profiles table:', dbEnvironment);
+              console.log('[Dashboard] Current state:', {
+                contextEnv: state.environment,
+                themeEnv: environmentTheme,
+                localStorageEnv: localStorage.getItem('environment'),
+                domEnv: document.documentElement.getAttribute('data-environment')
+              });
+            }
+            
+            // Check if we need to update anything
+            if (
+              dbEnvironment !== state.environment || 
+              dbEnvironment !== environmentTheme ||
+              dbEnvironment !== localStorage.getItem('environment') ||
+              dbEnvironment !== document.documentElement.getAttribute('data-environment')
+            ) {
+              if (DEBUG_ENV) console.log(`[Dashboard] Applying DB environment: ${dbEnvironment}`);
+              
+              // Apply environment directly from database value
+              localStorage.setItem('environment', dbEnvironment);
+              
+              // Update DOM immediately
+              document.documentElement.classList.remove(
+                'theme-office', 
+                'theme-park', 
+                'theme-home', 
+                'theme-coffee-shop', 
+                'theme-library'
+              );
+              document.documentElement.classList.add(`theme-${dbEnvironment}`);
+              document.documentElement.setAttribute('data-environment', dbEnvironment);
+              
+              // Update theme context
+              applyEnvironmentTheme(dbEnvironment);
+              
+              // Also update onboarding state context
+              await forceEnvironmentSync();
+              
+              // Trigger a refresh
+              setTimeout(() => refreshUser(), 500);
+            } else {
+              if (DEBUG_ENV) console.log('[Dashboard] Environment already in sync with DB');
+            }
+            
+            setEnvironmentSynced(true);
           }
+        } catch (err) {
+          console.error('[Dashboard] Error in syncEnvironment:', err);
         }
-      } else if (state.environment) {
-        if (DEBUG_ENV) console.log('[Dashboard] No profile environment, using onboarding state:', state.environment);
-        applyEnvironmentTheme(state.environment);
-      } else {
-        const localEnv = localStorage.getItem('environment');
-        if (DEBUG_ENV) console.log('[Dashboard] Fallback to localStorage environment:', localEnv);
-        if (localEnv) {
-          applyEnvironmentTheme(localEnv);
-        }
-      }
-      
-      // On dashboard mount, check DOM for current environment
-      if (DEBUG_ENV) {
-        const domEnv = document.documentElement.getAttribute('data-environment');
-        const domClasses = document.documentElement.className;
-        console.log('[Dashboard] Current DOM environment:', {
-          attribute: domEnv,
-          classes: domClasses,
-          localStorage: localStorage.getItem('environment')
-        });
       }
     };
     
     syncEnvironment();
-  }, [state.environment, applyEnvironmentTheme, user, forceEnvironmentSync, refreshUser, syncAttempts, onboardingLoading]);
+    
+    // Re-run verification after initial sync to ensure consistency
+    const verifyTimer = setTimeout(async () => {
+      if (user?.id && !environmentSynced) {
+        if (DEBUG_ENV) console.log('[Dashboard] Running secondary environment verification');
+        await verifyEnvironmentWithDatabase(user.id);
+      }
+    }, 1500);
+    
+    return () => clearTimeout(verifyTimer);
+  }, [user?.id, applyEnvironmentTheme, forceEnvironmentSync, refreshUser, state.environment, environmentTheme, onboardingLoading, verifyEnvironmentWithDatabase, environmentSynced]);
 
   // Listen for storage events that could change environment
   useEffect(() => {

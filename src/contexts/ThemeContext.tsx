@@ -54,6 +54,10 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       
       // Apply CSS classes immediately - this function is called during login and profile load
       applyEnvironmentCSS(environment);
+      
+      // Dispatch an event to notify other components about the environment change
+      const event = new CustomEvent('environment-changed', { detail: { environment } });
+      document.dispatchEvent(event);
     }
   };
   
@@ -85,7 +89,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // New function to verify environment consistency with database
+  // Enhanced function to verify environment consistency with database
   const verifyEnvironmentWithDatabase = async (userId: string): Promise<boolean> => {
     try {
       if (!userId) {
@@ -93,7 +97,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
       
-      // Get environment from profile
+      // Get environment from profile - our source of truth
       const { data, error } = await supabase
         .from('profiles')
         .select('last_selected_environment')
@@ -113,46 +117,50 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       // Compare with current environment
       const dbEnvironment = data.last_selected_environment;
       const currentEnvironment = environmentTheme;
+      const localStorageEnv = localStorage.getItem('environment');
+      const domAttrEnv = document.documentElement.getAttribute('data-environment');
       
       if (DEBUG_ENV) {
         console.log("[ThemeContext] Environment verification:", {
           database: dbEnvironment,
           context: currentEnvironment,
-          localStorage: localStorage.getItem('environment'),
-          domAttribute: document.documentElement.getAttribute('data-environment')
+          localStorage: localStorageEnv,
+          domAttribute: domAttrEnv
         });
       }
       
-      const isConsistent = dbEnvironment === currentEnvironment;
+      // Check if all sources are consistent with database
+      const isContextConsistent = dbEnvironment === currentEnvironment;
+      const isLocalStorageConsistent = dbEnvironment === localStorageEnv;
+      const isDomConsistent = dbEnvironment === domAttrEnv;
       
-      // If inconsistent, update database to match current visual state
-      if (!isConsistent && currentEnvironment) {
-        console.log(`[ThemeContext] Environment mismatch: DB=${dbEnvironment}, Current=${currentEnvironment}`);
+      const isFullyConsistent = isContextConsistent && isLocalStorageConsistent && isDomConsistent;
+      
+      if (!isFullyConsistent) {
+        if (DEBUG_ENV) console.log("[ThemeContext] Environment inconsistencies detected");
         
-        // Update profile
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ 
-            last_selected_environment: currentEnvironment 
-          })
-          .eq('id', userId);
+        // If inconsistent with database, prioritize database value
+        if (dbEnvironment) {
+          if (DEBUG_ENV) console.log(`[ThemeContext] Syncing all environments to DB value: ${dbEnvironment}`);
           
-        if (updateError) {
-          console.error("[ThemeContext] Error updating profile environment:", updateError);
-        } else {
-          console.log(`[ThemeContext] Database environment updated to match current: ${currentEnvironment}`);
+          // Update context state
+          setEnvironmentThemeState(dbEnvironment);
+          
+          // Update localStorage
+          localStorage.setItem('environment', dbEnvironment);
+          
+          // Update DOM
+          applyEnvironmentCSS(dbEnvironment);
+          
+          // Dispatch an event for other components
+          const event = new CustomEvent('environment-changed', { detail: { environment: dbEnvironment } });
+          document.dispatchEvent(event);
+          
+          // No need to update database since we're syncing TO the DB value
         }
-        
-        // Also update onboarding preferences
-        await supabase
-          .from('onboarding_preferences')
-          .update({ 
-            learning_environment: currentEnvironment 
-          })
-          .eq('user_id', userId);
       }
       
-      return isConsistent;
+      return isFullyConsistent;
     } catch (error) {
       console.error("[ThemeContext] Error in verifyEnvironmentWithDatabase:", error);
       return false;
@@ -168,7 +176,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       if (DEBUG_ENV) console.log('[ThemeContext] useEffect applying environment:', environmentTheme);
       applyEnvironmentCSS(environmentTheme);
     }
-  }, [theme, environmentTheme]);
+  }, [theme]);
 
   // Listen for localStorage changes from other components
   useEffect(() => {
@@ -177,6 +185,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
         if (DEBUG_ENV) console.log('[ThemeContext] Storage event: environment changed to', e.newValue);
         if (e.newValue !== environmentTheme) {
           setEnvironmentThemeState(e.newValue);
+          applyEnvironmentCSS(e.newValue);
         }
       }
       
@@ -188,8 +197,24 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       }
     };
     
+    // Listen for custom environment change events
+    const handleEnvironmentChange = (e: CustomEvent) => {
+      const newEnvironment = e.detail?.environment;
+      if (DEBUG_ENV) console.log('[ThemeContext] Custom event: environment changed to', newEnvironment);
+      
+      if (newEnvironment && newEnvironment !== environmentTheme) {
+        setEnvironmentThemeState(newEnvironment);
+        applyEnvironmentCSS(newEnvironment);
+      }
+    };
+    
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    document.addEventListener('environment-changed', handleEnvironmentChange as EventListener);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      document.removeEventListener('environment-changed', handleEnvironmentChange as EventListener);
+    };
   }, [environmentTheme, theme]);
 
   return (
