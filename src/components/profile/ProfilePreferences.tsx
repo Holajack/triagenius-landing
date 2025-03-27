@@ -68,6 +68,7 @@ const ProfilePreferences = () => {
         
       if (profileError) {
         console.error("[ProfilePreferences] Error updating profile environment:", profileError);
+        toast.error("Failed to save environment to profile");
         return false;
       }
       
@@ -80,6 +81,9 @@ const ProfilePreferences = () => {
         
       if (prefError) {
         console.error("[ProfilePreferences] Error updating onboarding preferences environment:", prefError);
+        toast.warning("Environment saved to profile but failed to update onboarding preferences");
+      } else {
+        if (DEBUG_ENV) console.log("[ProfilePreferences] Successfully updated onboarding preferences");
       }
       
       localStorage.setItem('environment', envValue);
@@ -98,11 +102,6 @@ const ProfilePreferences = () => {
       }
       
       await refreshUser();
-      
-      dispatch({
-        type: 'SET_ENVIRONMENT',
-        payload: envValue as StudyEnvironment
-      });
       
       if (DEBUG_ENV) console.log("[ProfilePreferences] Successfully saved environment to database");
       return true;
@@ -148,7 +147,7 @@ const ProfilePreferences = () => {
     document.documentElement.setAttribute('data-environment', value);
   };
   
-  const applyEnvironmentFully = (value: string) => {
+  const applyEnvironmentFully = async (value: string) => {
     setEnvironmentTheme(value as StudyEnvironment);
     
     document.documentElement.classList.remove(
@@ -163,6 +162,8 @@ const ProfilePreferences = () => {
     
     const event = new Event('environmentChanged');
     document.dispatchEvent(event);
+    
+    await forceEnvironmentSync();
   };
   
   const handleChange = async (key: string, value: any) => {
@@ -232,13 +233,56 @@ const ProfilePreferences = () => {
       setIsLoading(true);
       
       if (pendingEnvironment) {
+        if (DEBUG_ENV) console.log(`[ProfilePreferences] Saving environment change: ${pendingEnvironment}`);
+        
         const saveSuccess = await saveEnvironmentToDatabase(pendingEnvironment);
         
         if (saveSuccess) {
-          applyEnvironmentFully(pendingEnvironment);
+          await applyEnvironmentFully(pendingEnvironment);
           setPendingEnvironment(null);
           
           await forceEnvironmentSync();
+          
+          document.documentElement.classList.remove(
+            'theme-office', 
+            'theme-park', 
+            'theme-home', 
+            'theme-coffee-shop', 
+            'theme-library'
+          );
+          document.documentElement.classList.add(`theme-${pendingEnvironment}`);
+          document.documentElement.setAttribute('data-environment', pendingEnvironment);
+          localStorage.setItem('environment', pendingEnvironment);
+          
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('last_selected_environment')
+            .eq('id', user?.id)
+            .single();
+            
+          if (!profileError && profileData && profileData.last_selected_environment !== pendingEnvironment) {
+            console.error(`[ProfilePreferences] Environment verification failed for profile table. Expected ${pendingEnvironment}, got ${profileData.last_selected_environment}`);
+            
+            await supabase
+              .from('profiles')
+              .update({ last_selected_environment: pendingEnvironment })
+              .eq('id', user?.id);
+          }
+          
+          const { data: onboardingData, error: onboardingError } = await supabase
+            .from('onboarding_preferences')
+            .select('learning_environment')
+            .eq('user_id', user?.id)
+            .single();
+            
+          if (!onboardingError && onboardingData && onboardingData.learning_environment !== pendingEnvironment) {
+            console.error(`[ProfilePreferences] Environment verification failed for onboarding_preferences table. Expected ${pendingEnvironment}, got ${onboardingData.learning_environment}`);
+            
+            await supabase
+              .from('onboarding_preferences')
+              .update({ learning_environment: pendingEnvironment })
+              .eq('user_id', user?.id);
+          }
         } else {
           toast.error("Failed to save environment preference");
           setIsLoading(false);
@@ -285,38 +329,6 @@ const ProfilePreferences = () => {
       
       await refreshUser();
       
-      if (user?.id && editedState.environment) {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('last_selected_environment')
-          .eq('id', user.id)
-          .single();
-          
-        if (!error && data) {
-          if (data.last_selected_environment !== editedState.environment) {
-            if (DEBUG_ENV) console.log(`[ProfilePreferences] Environment verification failed. DB has ${data.last_selected_environment} but should be ${editedState.environment}`);
-            
-            await supabase
-              .from('profiles')
-              .update({ 
-                last_selected_environment: editedState.environment 
-              })
-              .eq('id', user.id);
-              
-            await supabase
-              .from('onboarding_preferences')
-              .update({ 
-                learning_environment: editedState.environment 
-              })
-              .eq('user_id', user.id);
-              
-            if (DEBUG_ENV) console.log("[ProfilePreferences] Fixed environment mismatch in database");
-          } else {
-            if (DEBUG_ENV) console.log("[ProfilePreferences] Environment verification successful");
-          }
-        }
-      }
-      
       window.dispatchEvent(new StorageEvent('storage', {
         key: 'environment',
         newValue: editedState.environment
@@ -327,6 +339,7 @@ const ProfilePreferences = () => {
       toast.success("Preferences saved successfully");
     } catch (error) {
       console.error("Error updating preferences:", error);
+      toast.error("Failed to save preferences");
     } finally {
       setIsLoading(false);
     }
