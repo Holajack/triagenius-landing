@@ -1,4 +1,3 @@
-
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { Badge } from "@/components/ui/badge";
@@ -17,24 +16,24 @@ export const SummaryStep = () => {
       border: 'border-blue-200'
     },
     'park': {
-      bg: 'from-green-100 to-emerald-50',
-      text: 'text-emerald-800',
-      cardBg: 'from-green-100/40 to-emerald-50/40',
-      accent: 'text-emerald-600',
+      bg: 'from-green-100 to-green-50',
+      text: 'text-green-800',
+      cardBg: 'from-green-100/40 to-green-50/40',
+      accent: 'text-green-700',
       border: 'border-green-200'
     },
     'home': {
-      bg: 'from-orange-100 to-amber-50',
-      text: 'text-amber-800',
-      cardBg: 'from-orange-100/40 to-amber-50/40',
-      accent: 'text-amber-600',
+      bg: 'from-orange-100 to-orange-50',
+      text: 'text-orange-600',
+      cardBg: 'from-orange-100/40 to-orange-50/40',
+      accent: 'text-orange-500',
       border: 'border-orange-200'
     },
     'coffee-shop': {
-      bg: 'from-amber-100 to-yellow-50',
+      bg: 'from-amber-100 to-amber-50',
       text: 'text-amber-800',
-      cardBg: 'from-amber-100/40 to-yellow-50/40',
-      accent: 'text-amber-600',
+      cardBg: 'from-amber-100/40 to-amber-50/40',
+      accent: 'text-amber-700',
       border: 'border-amber-200'
     },
     'library': {
@@ -46,8 +45,17 @@ export const SummaryStep = () => {
     }
   };
 
-  // Get current theme or default to office
-  const currentTheme = state.environment ? environmentThemes[state.environment] : environmentThemes['office'];
+  // Get environment badge color
+  const getEnvironmentBadgeClass = () => {
+    switch (state.environment) {
+      case 'office': return "bg-blue-600 hover:bg-blue-700";
+      case 'park': return "bg-green-800 hover:bg-green-900";
+      case 'home': return "bg-orange-500 hover:bg-orange-600";
+      case 'coffee-shop': return "bg-amber-800 hover:bg-amber-900";
+      case 'library': return "bg-gray-600 hover:bg-gray-700";
+      default: return "bg-triage-purple";
+    }
+  };
 
   // Helper function to get readable display names for values
   const getDisplayName = (type: string, value?: string) => {
@@ -83,18 +91,6 @@ export const SummaryStep = () => {
     return displayNames[type][value] || value;
   };
   
-  // Get environment badge color
-  const getEnvironmentBadgeClass = () => {
-    switch (state.environment) {
-      case 'office': return "bg-blue-600 hover:bg-blue-700";
-      case 'park': return "bg-green-600 hover:bg-green-700";
-      case 'home': return "bg-orange-500 hover:bg-orange-600";
-      case 'coffee-shop': return "bg-amber-500 hover:bg-amber-600";
-      case 'library': return "bg-gray-600 hover:bg-gray-700";
-      default: return "bg-triage-purple";
-    }
-  };
-
   return (
     <div className="grid gap-6">
       <div className="text-center space-y-2">

@@ -43,9 +43,9 @@ const NavigationBar = () => {
   const getAccentColor = () => {
     switch (state.environment) {
       case 'office': return "text-blue-700 bg-blue-100/90";
-      case 'park': return "text-green-700 bg-green-100/90";
-      case 'home': return "text-orange-700 bg-orange-100/90";
-      case 'coffee-shop': return "text-amber-700 bg-amber-100/90";
+      case 'park': return "text-green-800 bg-green-100/90";
+      case 'home': return "text-orange-500 bg-orange-100/90";
+      case 'coffee-shop': return "text-amber-800 bg-amber-100/90";
       case 'library': return "text-gray-700 bg-gray-100/90";
       default: return "text-triage-purple bg-purple-100/90";
     }
@@ -67,9 +67,9 @@ const NavigationBar = () => {
   const getActiveBorderColor = () => {
     switch (state.environment) {
       case 'office': return "bg-blue-500";
-      case 'park': return "bg-green-500";
+      case 'park': return "bg-green-800";
       case 'home': return "bg-orange-500";
-      case 'coffee-shop': return "bg-amber-500";
+      case 'coffee-shop': return "bg-amber-800";
       case 'library': return "bg-gray-500";
       default: return "bg-purple-500";
     }

@@ -180,9 +180,9 @@ const Dashboard = () => {
   const getEnvCardClass = () => {
     switch (getEnvTheme()) {
       case 'office': return "border-blue-300 bg-gradient-to-br from-blue-50/50 to-white shadow-blue-100/30 shadow-md";
-      case 'park': return "border-green-300 bg-gradient-to-br from-green-50/50 to-white shadow-green-100/30 shadow-md";
+      case 'park': return "border-green-600 bg-gradient-to-br from-green-50/50 to-white shadow-green-100/30 shadow-md";
       case 'home': return "border-orange-300 bg-gradient-to-br from-orange-50/50 to-white shadow-orange-100/30 shadow-md";
-      case 'coffee-shop': return "border-amber-300 bg-gradient-to-br from-amber-50/50 to-white shadow-amber-100/30 shadow-md";
+      case 'coffee-shop': return "border-amber-700 bg-gradient-to-br from-amber-50/50 to-white shadow-amber-100/30 shadow-md";
       case 'library': return "border-gray-300 bg-gradient-to-br from-gray-50/50 to-white shadow-gray-100/30 shadow-md";
       default: return "border-purple-300 bg-gradient-to-br from-purple-50/50 to-white shadow-purple-100/30 shadow-md";
     }

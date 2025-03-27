@@ -79,39 +79,39 @@
   }
 
   .theme-park {
-    --env-primary: 152 85% 38%;
-    --env-secondary: 142 90% 35%;
-    --env-accent: 158 74% 32%;
-    --env-muted: 150 35% 40%;
-    --env-border: 150 60% 75%;
-    --env-background: 145 40% 96%;
-    --env-card: 145 35% 98%;
-    --env-hover: 152 70% 85%;
-    --env-focus: 152 80% 35%;
+    --env-primary: 144 40% 31%;
+    --env-secondary: 144 41% 28%;
+    --env-accent: 144 42% 25%;
+    --env-muted: 144 35% 40%;
+    --env-border: 144 40% 75%;
+    --env-background: 144 40% 96%;
+    --env-card: 144 35% 98%;
+    --env-hover: 144 40% 85%;
+    --env-focus: 144 40% 31%;
   }
 
   .theme-home {
-    --env-primary: 30 95% 50%;
-    --env-secondary: 32 95% 45%;
-    --env-accent: 28 95% 40%;
-    --env-muted: 30 40% 40%;
-    --env-border: 30 60% 75%;
-    --env-background: 35 30% 96%;
-    --env-card: 35 25% 98%;
-    --env-hover: 30 95% 85%;
-    --env-focus: 30 95% 45%;
+    --env-primary: 26 100% 69%;
+    --env-secondary: 26 95% 65%;
+    --env-accent: 26 90% 60%;
+    --env-muted: 26 40% 40%;
+    --env-border: 26 60% 75%;
+    --env-background: 26 30% 96%;
+    --env-card: 26 25% 98%;
+    --env-hover: 26 95% 85%;
+    --env-focus: 26 100% 69%;
   }
 
   .theme-coffee-shop {
-    --env-primary: 35 95% 45%;
-    --env-secondary: 40 95% 40%;
-    --env-accent: 30 95% 35%;
-    --env-muted: 35 40% 40%;
-    --env-border: 35 60% 75%;
-    --env-background: 38 30% 96%;
-    --env-card: 38 25% 98%;
-    --env-hover: 35 90% 85%;
-    --env-focus: 35 90% 40%;
+    --env-primary: 14 43% 37%;
+    --env-secondary: 14 44% 34%;
+    --env-accent: 14 45% 31%;
+    --env-muted: 14 40% 40%;
+    --env-border: 14 40% 75%;
+    --env-background: 14 30% 96%;
+    --env-card: 14 25% 98%;
+    --env-hover: 14 40% 85%;
+    --env-focus: 14 43% 37%;
   }
 
   .theme-library {
@@ -185,15 +185,15 @@
   }
   
   .theme-park .env-button {
-    @apply bg-green-700 hover:bg-green-800 text-white;
+    @apply bg-green-800 hover:bg-green-900 text-white;
   }
   
   .theme-home .env-button {
-    @apply bg-orange-600 hover:bg-orange-700 text-white;
+    @apply bg-orange-500 hover:bg-orange-600 text-white;
   }
   
   .theme-coffee-shop .env-button {
-    @apply bg-amber-600 hover:bg-amber-700 text-white;
+    @apply bg-amber-800 hover:bg-amber-900 text-white;
   }
   
   .theme-library .env-button {
@@ -227,15 +227,15 @@
   }
   
   .theme-park .env-text {
-    @apply text-green-700;
+    @apply text-green-800;
   }
   
   .theme-home .env-text {
-    @apply text-orange-600;
+    @apply text-orange-500;
   }
   
   .theme-coffee-shop .env-text {
-    @apply text-amber-600;
+    @apply text-amber-800;
   }
   
   .theme-library .env-text {
@@ -248,7 +248,7 @@
   }
   
   .theme-park .env-card {
-    @apply border-green-200 bg-gradient-to-br from-green-100 to-white;
+    @apply border-green-600 bg-gradient-to-br from-green-100 to-white;
   }
   
   .theme-home .env-card {
@@ -256,7 +256,7 @@
   }
   
   .theme-coffee-shop .env-card {
-    @apply border-amber-200 bg-gradient-to-br from-amber-100 to-white;
+    @apply border-amber-700 bg-gradient-to-br from-amber-100 to-white;
   }
   
   .theme-library .env-card {

@@ -1,4 +1,3 @@
-
 import * as React from "react"
 import { useOnboarding } from "@/contexts/OnboardingContext"
 import { cn } from "@/lib/utils"
@@ -15,9 +14,9 @@ const Card = React.forwardRef<
     
     switch (state.environment) {
       case 'office': return "hover:border-blue-400 transition-colors duration-300";
-      case 'park': return "hover:border-green-400 transition-colors duration-300";
+      case 'park': return "hover:border-green-700 transition-colors duration-300";
       case 'home': return "hover:border-orange-400 transition-colors duration-300";
-      case 'coffee-shop': return "hover:border-amber-400 transition-colors duration-300";
+      case 'coffee-shop': return "hover:border-amber-700 transition-colors duration-300";
       case 'library': return "hover:border-gray-400 transition-colors duration-300";
       default: return "hover:border-purple-400 transition-colors duration-300";
     }
