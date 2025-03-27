@@ -1,3 +1,4 @@
+
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +57,16 @@ export const SummaryStep = () => {
       default: return "bg-triage-purple";
     }
   };
+
+  // Get the current theme based on the selected environment
+  const getCurrentTheme = () => {
+    if (!state.environment || !environmentThemes[state.environment]) {
+      return environmentThemes['office']; // Default to office if no environment is selected
+    }
+    return environmentThemes[state.environment];
+  };
+
+  const currentTheme = getCurrentTheme();
 
   // Helper function to get readable display names for values
   const getDisplayName = (type: string, value?: string) => {
