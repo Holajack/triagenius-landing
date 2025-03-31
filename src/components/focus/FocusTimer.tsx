@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type FocusTimerProps = {
   initialTime: number;
@@ -33,6 +34,7 @@ const FocusTimer = forwardRef<
   const lastTickTimeRef = useRef<number>(Date.now());
   const lastMilestoneRef = useRef<number>(-1);
   const hasCompletedRef = useRef<boolean>(false);
+  const isMobile = useIsMobile();
   
   // Calculate milestones based on initialTime (typically 3 milestones)
   const milestoneTimePoints = [
@@ -135,12 +137,20 @@ const FocusTimer = forwardRef<
     }
   };
 
+  // Calculate font size based on device
+  const getTimerFontSize = () => {
+    if (isMobile) {
+      return 'text-4xl sm:text-5xl md:text-6xl';
+    }
+    return 'text-6xl';
+  };
+
   return (
     <div className={cn("relative w-full max-w-md mx-auto", className)}>
       {/* Fixed circle that changes color based on remaining time */}
       <div
         className={cn(
-          "absolute inset-0 rounded-full border-8 transition-colors duration-300",
+          "absolute inset-0 rounded-full border-6 sm:border-8 transition-colors duration-300",
           getTimerColor(),
           theme === 'dark' ? 'border-opacity-75' : 'border-opacity-90'
         )}
@@ -148,7 +158,8 @@ const FocusTimer = forwardRef<
       
       <div className="relative flex items-center justify-center w-full h-full aspect-square">
         <span className={cn(
-          "text-6xl font-bold timer-display transition-all",
+          getTimerFontSize(),
+          "font-bold timer-display transition-all",
           remainingTime < initialTime * 0.25 && !isPaused ? "text-red-600" : ""
         )}>
           {formatTime(remainingTime)}

@@ -139,23 +139,23 @@ const FocusSessionContent = ({
       getEnvironmentBg(),
       isCelebrating ? "scale-105" : ""
     )}>
-      <CardContent className="p-6" ref={contentRef}>
+      <CardContent className={cn("p-3 sm:p-4 md:p-6")} ref={contentRef}>
         <div className="flex flex-col items-center">
           {priorityMode && (
-            <div className="w-full mb-2">
+            <div className="w-full mb-1 sm:mb-2">
               <div className={cn(
-                "px-3 py-1 rounded-full text-xs font-medium inline-flex items-center",
+                "px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs font-medium inline-flex items-center",
                 priorityMode === 'auto' 
                   ? "bg-blue-100 text-blue-800" 
                   : "bg-purple-100 text-purple-800"
               )}>
                 <ListChecks className="w-3 h-3 mr-1" />
-                {priorityMode === 'auto' ? 'Auto Priority Mode' : 'Custom Priority Mode'}
+                {priorityMode === 'auto' ? 'Auto Priority' : 'Custom Order'}
               </div>
             </div>
           )}
           
-          <div className="w-full mb-6 flex justify-center">
+          <div className="w-full mb-3 sm:mb-4 flex justify-center">
             <FocusTimer
               ref={timerRef}
               initialTime={getTimerDuration()}
@@ -166,12 +166,12 @@ const FocusSessionContent = ({
               lowPowerMode={lowPowerMode}
               className={cn(
                 "transition-all duration-300",
-                isMobile ? "w-72 h-72" : "w-80 h-80"
+                isMobile ? "w-52 h-52 sm:w-64 sm:h-64" : "w-80 h-80"
               )}
             />
           </div>
           
-          <div className="mt-2 mb-6 flex flex-col sm:flex-row gap-3 w-full max-w-md">
+          <div className="mt-1 sm:mt-2 mb-3 sm:mb-4 flex flex-col sm:flex-row gap-2 w-full max-w-md">
             {currentTaskCompleted && currentTaskIndex < (totalTasks - 1) ? (
               <motion.div
                 key="next-task"
@@ -183,13 +183,13 @@ const FocusSessionContent = ({
               >
                 <Button
                   className={cn(
-                    "w-full py-5 h-auto text-white",
+                    "w-full py-2 sm:py-3 h-auto text-white",
                     getButtonGradient()
                   )}
                   onClick={onNextTask}
                 >
-                  <ArrowRight className="w-5 h-5 mr-2" />
-                  Proceed to Next Task
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+                  Next Task
                 </Button>
               </motion.div>
             ) : (
@@ -205,14 +205,14 @@ const FocusSessionContent = ({
                   >
                     <Button
                       className={cn(
-                        "w-full py-5 h-auto text-white",
+                        "w-full py-2 sm:py-3 h-auto text-white",
                         getButtonGradient()
                       )}
                       onClick={onResume}
                       disabled={currentTaskCompleted}
                     >
-                      <Play className="w-5 h-5 mr-2" />
-                      Resume Session
+                      <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+                      Resume
                     </Button>
                   </motion.div>
                 ) : (
@@ -226,11 +226,11 @@ const FocusSessionContent = ({
                   >
                     <Button
                       variant="outline"
-                      className="w-full py-5 h-auto"
+                      className="w-full py-2 sm:py-3 h-auto"
                       onClick={onPause}
                       disabled={currentTaskCompleted}
                     >
-                      <Pause className="w-5 h-5 mr-2" />
+                      <Pause className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
                       Pause
                     </Button>
                   </motion.div>
@@ -240,51 +240,51 @@ const FocusSessionContent = ({
             
             <Button
               variant={isPaused ? "outline" : "secondary"}
-              className="w-full py-5 h-auto"
+              className="w-full py-2 sm:py-3 h-auto"
               onClick={onEndSessionClick}
             >
-              <StopCircle className="w-5 h-5 mr-2" />
+              <StopCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
               End Session
             </Button>
           </div>
           
           {currentTask && (
-            <div className="w-full max-w-md mx-auto mb-4">
+            <div className="w-full max-w-md mx-auto mb-3">
               <div className={cn(
-                "bg-white/80 rounded-lg p-3 shadow-sm border-l-4",
+                "bg-white/80 rounded-lg p-2 sm:p-3 shadow-sm border-l-4",
                 currentTaskCompleted ? "border-green-500" : "border-blue-500"
               )}>
-                <h3 className="text-sm font-medium flex items-center mb-1">
-                  <BookOpen className="w-4 h-4 mr-1" />
+                <h3 className="text-xs sm:text-sm font-medium flex items-center mb-1">
+                  <BookOpen className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                   Current Focus Task
                   {currentTaskCompleted && (
-                    <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                      Completed
+                    <span className="ml-1 text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full">
+                      Done
                     </span>
                   )}
                 </h3>
-                <div className="text-base font-medium mb-1">{currentTask.title}</div>
+                <div className="text-sm sm:text-base font-medium mb-1 line-clamp-2">{currentTask.title}</div>
                 <div className="flex justify-between items-center">
-                  <div className="text-xs inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-800">
+                  <div className="text-xs inline-flex items-center px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-800">
                     Priority: <span className="font-medium ml-1 capitalize">{currentTask.priority}</span>
                   </div>
                   <div className="text-xs text-gray-500">
-                    Task {currentTaskIndex + 1} of {totalTasks}
+                    {currentTaskIndex + 1}/{totalTasks}
                   </div>
                 </div>
                 {currentTask.subtasks && currentTask.subtasks.length > 0 && (
-                  <div className="mt-2">
+                  <div className="mt-1 sm:mt-2">
                     <div className="text-xs font-medium text-gray-500">Subtasks:</div>
-                    <div className="space-y-1 mt-1 max-h-16 overflow-y-auto">
+                    <div className="space-y-0.5 mt-0.5 max-h-12 overflow-y-auto">
                       {currentTask.subtasks.slice(0, 2).map((subtask, idx) => (
                         <div key={subtask.id} className="flex items-center text-xs">
                           <span className="w-3 text-xs text-gray-500 mr-1">{idx + 1}.</span>
-                          {subtask.title}
+                          <span className="truncate">{subtask.title}</span>
                         </div>
                       ))}
                       {currentTask.subtasks.length > 2 && (
                         <div className="text-xs text-gray-500 italic">
-                          +{currentTask.subtasks.length - 2} more subtasks
+                          +{currentTask.subtasks.length - 2} more
                         </div>
                       )}
                     </div>
@@ -295,23 +295,23 @@ const FocusSessionContent = ({
           )}
           
           {currentMilestone >= 3 && !currentTaskCompleted && (
-            <div className="mb-4 text-center">
+            <div className="mb-3 text-center">
               <Button
                 variant="default"
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-green-600 hover:bg-green-700 text-sm py-1.5 h-auto px-3"
                 onClick={onComplete}
               >
-                <CheckCircle2 className="w-5 h-5 mr-2" />
-                Complete Current Task
+                <CheckCircle2 className="w-4 h-4 mr-1" />
+                Complete Task
               </Button>
             </div>
           )}
           
           {totalTasks > 0 && (
-            <div className="w-full bg-white/80 rounded-lg p-3 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium flex items-center">
-                  <ListChecks className="w-4 h-4 mr-1" />
+            <div className="w-full bg-white/80 rounded-lg p-2 sm:p-3 shadow-sm">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-xs sm:text-sm font-medium flex items-center">
+                  <ListChecks className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                   Task Progress
                 </h3>
                 <span className="text-xs text-gray-500">
@@ -319,9 +319,9 @@ const FocusSessionContent = ({
                 </span>
               </div>
               
-              <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
-                  className="bg-blue-600 h-2.5 rounded-full" 
+                  className="bg-blue-600 h-2 rounded-full" 
                   style={{ width: `${Math.round(((currentTaskIndex + (currentTaskCompleted ? 1 : 0.5)) / totalTasks) * 100)}%` }}
                 ></div>
               </div>
