@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -105,27 +104,32 @@ const QuickStartButton = () => {
     }
   };
   
-  // Sort tasks by priority (high > medium > low)
-  const sortTasksByPriority = (tasks: Task[]): Task[] => {
-    const priorityOrder = { high: 0, medium: 1, low: 2 };
-    return [...tasks].sort((a, b) => {
-      return (priorityOrder as any)[a.priority] - (priorityOrder as any)[b.priority];
-    });
+  // Group tasks by priority and order them with high priority first
+  const groupTasksByPriority = (tasks: Task[]): Task[] => {
+    // Create groups for each priority level
+    const highPriorityTasks = tasks.filter(task => task.priority === 'high');
+    const mediumPriorityTasks = tasks.filter(task => task.priority === 'medium');
+    const lowPriorityTasks = tasks.filter(task => task.priority === 'low');
+    
+    // Combine all groups with high priority first, then medium, then low
+    return [...highPriorityTasks, ...mediumPriorityTasks, ...lowPriorityTasks];
   };
   
   // Prepare tasks for focus session
   const prepareFocusTasks = () => {
-    // If auto priority is selected, sort tasks by priority
+    // If auto priority is selected, group tasks by priority
     if (useAutoPriority === true) {
-      const sortedTasks = sortTasksByPriority(taskState.tasks);
-      const taskPriorityData = sortedTasks.map(task => task.id);
+      const prioritizedTasks = groupTasksByPriority(taskState.tasks);
+      const taskPriorityData = prioritizedTasks.map(task => task.id);
+      
+      console.log("Tasks ordered by priority:", prioritizedTasks.map(t => `${t.title} (${t.priority})`));
       
       // Save the priority order to local storage
       localStorage.setItem('focusTaskPriority', JSON.stringify(taskPriorityData));
       
       // Also create the selectedTasksForFocus structure
       const selectedTasksData = {
-        tasks: sortedTasks.map(task => ({
+        tasks: prioritizedTasks.map(task => ({
           taskId: task.id,
           title: task.title,
           subtasks: task.subtasks.map(subtask => ({
