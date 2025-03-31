@@ -1,8 +1,8 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, AlertTriangle, CheckCircle } from "lucide-react";
+import { RefreshCw, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,13 +30,15 @@ const EnvironmentDebugPanel = ({ userId }: { userId: string }) => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const { environmentTheme, verifyEnvironmentWithDatabase } = useTheme();
+  const { environmentTheme, verifyEnvironmentWithDatabase, shouldApplyEnvironmentTheming } = useTheme();
   const { state, forceEnvironmentSync } = useOnboarding();
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
-  const checkSyncStatus = async () => {
+  const checkSyncStatus = useCallback(async () => {
     try {
       setIsLoading(true);
+      setErrorDetails(null);
       
       // Get values from localStorage and DOM
       const localStorageValue = localStorage.getItem('environment');
@@ -49,6 +51,10 @@ const EnvironmentDebugPanel = ({ userId }: { userId: string }) => {
         .eq('id', userId)
         .single();
         
+      if (profileError) {
+        console.error("[DebugPanel] Error fetching profile:", profileError);
+        setErrorDetails(`Profile fetch error: ${profileError.message}`);
+      }
       const profileDbValue = profileError ? null : profileData?.last_selected_environment;
       
       const { data: prefData, error: prefError } = await supabase
@@ -57,6 +63,12 @@ const EnvironmentDebugPanel = ({ userId }: { userId: string }) => {
         .eq('user_id', userId)
         .single();
         
+      if (prefError) {
+        console.error("[DebugPanel] Error fetching onboarding prefs:", prefError);
+        if (!errorDetails) {
+          setErrorDetails(`Onboarding prefs fetch error: ${prefError.message}`);
+        }
+      }
       const onboardingPrefsValue = prefError ? null : prefData?.learning_environment;
       
       // Determine if all are in sync by comparing all values
@@ -66,7 +78,7 @@ const EnvironmentDebugPanel = ({ userId }: { userId: string }) => {
         profileDbValue, 
         onboardingPrefsValue, 
         localStorageValue, 
-        domAttrValue
+        shouldApplyEnvironmentTheming() ? domAttrValue : localStorageValue // Only consider DOM if we're on a themed route
       ].filter(Boolean);
       
       // Check if all defined values are the same
@@ -79,99 +91,105 @@ const EnvironmentDebugPanel = ({ userId }: { userId: string }) => {
         profileDb: profileDbValue,
         onboardingPrefs: onboardingPrefsValue,
         localStorage: localStorageValue,
-        domAttr: domAttrValue,
+        domAttr: shouldApplyEnvironmentTheming() ? domAttrValue : "(not applicable on this page)",
         allInSync
       });
       
       setLastSyncedAt(new Date());
       
     } catch (error) {
-      console.error("Error checking environment sync:", error);
+      console.error("[DebugPanel] Error checking environment sync:", error);
+      setErrorDetails(`General error: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userId, environmentTheme, state.environment, shouldApplyEnvironmentTheming]);
   
   const handleForceSync = async () => {
     try {
       setIsSyncing(true);
+      setErrorDetails(null);
       
-      // Determine which value to use as source of truth
-      // Priority: 1. Profile DB, 2. Theme Context, 3. localStorage, 4. DOM attr
+      // Determine source of truth in this priority order
       const sourceOfTruth = status.profileDb || 
                           status.themeContext || 
                           status.localStorage || 
-                          status.domAttr || 
+                          (shouldApplyEnvironmentTheming() ? status.domAttr : null) || 
                           'office'; // Default fallback
       
-      console.log("[EnvironmentDebugPanel] Forcing sync with source of truth:", sourceOfTruth);
+      console.log("[DebugPanel] Forcing sync with source of truth:", sourceOfTruth);
       
-      // Update database first - critical source of truth
-      if (sourceOfTruth) {
-        // Update profile
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ last_selected_environment: sourceOfTruth })
-          .eq('id', userId);
-          
-        if (profileError) {
-          console.error("[EnvironmentDebugPanel] Error updating profile:", profileError);
-          toast.error("Failed to update profile database");
-          return;
-        }
-          
-        // Update onboarding preferences
+      // Update database in sequence with error checking
+      let dbSuccess = true;
+      
+      // Update profile table first
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ last_selected_environment: sourceOfTruth })
+        .eq('id', userId);
+        
+      if (profileError) {
+        console.error("[DebugPanel] Error updating profile:", profileError);
+        setErrorDetails(`Profile update error: ${profileError.message}`);
+        dbSuccess = false;
+      }
+        
+      // Then update onboarding preferences
+      if (dbSuccess) {
         const { error: prefError } = await supabase
           .from('onboarding_preferences')
           .update({ learning_environment: sourceOfTruth })
           .eq('user_id', userId);
           
         if (prefError) {
-          console.error("[EnvironmentDebugPanel] Error updating preferences:", prefError);
-          toast.error("Failed to update onboarding preferences");
-          return;
+          console.error("[DebugPanel] Error updating onboarding preferences:", prefError);
+          if (!errorDetails) {
+            setErrorDetails(`Onboarding prefs update error: ${prefError.message}`);
+          }
+          dbSuccess = false;
         }
       }
       
-      // Force sync in OnboardingContext and ThemeContext
+      if (!dbSuccess) {
+        toast.error("Failed to update one or more database tables");
+        setIsSyncing(false);
+        return;
+      }
+      
+      // Update OnboardingContext
       await forceEnvironmentSync();
+      
+      // Update ThemeContext and verify
       await verifyEnvironmentWithDatabase(userId);
       
-      // Update DOM and localStorage directly to be extra safe
-      if (sourceOfTruth) {
-        // Check if we're on the landing page
-        const isLandingPage = window.location.pathname === "/" || window.location.pathname === "/index";
-        
-        // Don't apply visual changes on landing page
-        if (!isLandingPage) {
-          document.documentElement.classList.remove(
-            'theme-office', 
-            'theme-park', 
-            'theme-home', 
-            'theme-coffee-shop', 
-            'theme-library'
-          );
-          document.documentElement.classList.add(`theme-${sourceOfTruth}`);
-          document.documentElement.setAttribute('data-environment', sourceOfTruth);
-        }
-        
-        // Always update localStorage
-        localStorage.setItem('environment', sourceOfTruth);
-        
-        // Update preferences in localStorage too
-        const userPrefs = localStorage.getItem('userPreferences');
-        if (userPrefs) {
-          try {
-            const parsedPrefs = JSON.parse(userPrefs);
-            parsedPrefs.environment = sourceOfTruth;
-            localStorage.setItem('userPreferences', JSON.stringify(parsedPrefs));
-          } catch (e) {
-            console.error("Error updating userPreferences:", e);
-          }
+      // Update localStorage and DOM directly for extra safety
+      localStorage.setItem('environment', sourceOfTruth);
+      
+      if (shouldApplyEnvironmentTheming()) {
+        document.documentElement.classList.remove(
+          'theme-office', 
+          'theme-park', 
+          'theme-home', 
+          'theme-coffee-shop', 
+          'theme-library'
+        );
+        document.documentElement.classList.add(`theme-${sourceOfTruth}`);
+        document.documentElement.setAttribute('data-environment', sourceOfTruth);
+      }
+      
+      // Update localStorage cache of preferences
+      const userPrefs = localStorage.getItem('userPreferences');
+      if (userPrefs) {
+        try {
+          const parsedPrefs = JSON.parse(userPrefs);
+          parsedPrefs.environment = sourceOfTruth;
+          localStorage.setItem('userPreferences', JSON.stringify(parsedPrefs));
+        } catch (e) {
+          console.error("[DebugPanel] Error updating userPreferences:", e);
         }
       }
       
-      // Dispatch an event for any other components listening
+      // Broadcast the event
       const event = new CustomEvent('environment-changed', { 
         detail: { environment: sourceOfTruth } 
       });
@@ -182,7 +200,8 @@ const EnvironmentDebugPanel = ({ userId }: { userId: string }) => {
       
       toast.success("Environment forced in sync");
     } catch (error) {
-      console.error("Error forcing environment sync:", error);
+      console.error("[DebugPanel] Error forcing environment sync:", error);
+      setErrorDetails(`Sync error: ${error instanceof Error ? error.message : String(error)}`);
       toast.error("Failed to force environment sync");
     } finally {
       setIsSyncing(false);
@@ -193,7 +212,7 @@ const EnvironmentDebugPanel = ({ userId }: { userId: string }) => {
     if (userId) {
       checkSyncStatus();
     }
-  }, [userId, environmentTheme, state.environment]);
+  }, [userId, environmentTheme, state.environment, checkSyncStatus]);
   
   return (
     <Card className="p-4 text-xs">
@@ -225,7 +244,12 @@ const EnvironmentDebugPanel = ({ userId }: { userId: string }) => {
               disabled={isLoading || isSyncing || status.allInSync}
               className="h-7 text-xs px-2"
             >
-              {isSyncing ? 'Syncing...' : 'Force Sync'}
+              {isSyncing ? (
+                <>
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  Syncing...
+                </>
+              ) : 'Force Sync'}
             </Button>
           </div>
         </div>
@@ -249,6 +273,13 @@ const EnvironmentDebugPanel = ({ userId }: { userId: string }) => {
               <div>LocalStorage:</div><div className="font-mono">{status.localStorage || "null"}</div>
               <div>DOM attr:</div><div className="font-mono">{status.domAttr || "null"}</div>
             </div>
+          </div>
+        )}
+        
+        {errorDetails && (
+          <div className="mt-2 p-2 bg-red-50 text-red-600 rounded text-xs">
+            <div className="font-semibold mb-1">Error details:</div>
+            <div className="font-mono text-xs break-all">{errorDetails}</div>
           </div>
         )}
       </div>
