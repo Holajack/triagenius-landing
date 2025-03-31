@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -69,7 +68,6 @@ const ProfilePreferences = () => {
     }
   }, [user?.profile?.last_selected_environment]);
   
-  // Enhanced function with verification and retry mechanism
   const saveEnvironmentToDatabase = async (envValue: string, maxRetries = 2): Promise<boolean> => {
     if (!user || !user.id) {
       console.error("[ProfilePreferences] Cannot save environment - no user");
@@ -227,7 +225,6 @@ const ProfilePreferences = () => {
     document.documentElement.setAttribute('data-environment', value);
   };
   
-  // Enhanced function that ensures environment is applied everywhere
   const applyEnvironmentFully = async (value: string): Promise<boolean> => {
     try {
       if (isLandingPage) {
@@ -284,7 +281,6 @@ const ProfilePreferences = () => {
     }
   };
   
-  // New function to verify environment synchronization
   const verifyEnvironmentSync = async (expectedValue: string): Promise<boolean> => {
     if (!user?.id) return false;
     
@@ -293,10 +289,12 @@ const ProfilePreferences = () => {
       const themeContextMatch = environmentTheme === expectedValue;
       setSyncStatus(prev => ({ ...prev, themeContext: themeContextMatch }));
       
+      // Check DOM attribute (only if not on landing page)
+      let domAttrMatch = true;
+      
       if (!isLandingPage) {
-        // Check DOM attribute (only if not on landing page)
         const domAttr = document.documentElement.getAttribute('data-environment');
-        const domAttrMatch = domAttr === expectedValue;
+        domAttrMatch = domAttr === expectedValue;
         setSyncStatus(prev => ({ ...prev, domAttr: domAttrMatch }));
       } else {
         // Skip DOM check on landing page
@@ -419,7 +417,6 @@ const ProfilePreferences = () => {
     };
   }, [location.hash, hasUnsavedChanges, isEditing, savePreferencesOnExit]);
   
-  // Enhanced save function with proper sequencing and synchronization
   const handleSave = async () => {
     try {
       // Reset toast flag at the beginning of each save attempt
