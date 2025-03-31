@@ -25,7 +25,6 @@ const QuickStartButton = () => {
   const navigate = useNavigate();
   const { state: taskState } = useTasks();
   
-  // Set timer based on work style preference
   useEffect(() => {
     if (state.workStyle) {
       switch (state.workStyle) {
@@ -47,7 +46,6 @@ const QuickStartButton = () => {
       }
     }
     
-    // Update timer whenever minutes or seconds change
     setTimer(minutes * 60 + seconds);
   }, [state.workStyle, minutes, seconds]);
   
@@ -90,7 +88,6 @@ const QuickStartButton = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Get break time based on work style
   const getBreakTime = () => {
     switch (state.workStyle) {
       case 'pomodoro': // Sprints
@@ -104,30 +101,23 @@ const QuickStartButton = () => {
     }
   };
   
-  // Group tasks by priority and order them with high priority first
   const groupTasksByPriority = (tasks: Task[]): Task[] => {
-    // Create groups for each priority level
     const highPriorityTasks = tasks.filter(task => task.priority === 'high');
     const mediumPriorityTasks = tasks.filter(task => task.priority === 'medium');
     const lowPriorityTasks = tasks.filter(task => task.priority === 'low');
     
-    // Combine all groups with high priority first, then medium, then low
     return [...highPriorityTasks, ...mediumPriorityTasks, ...lowPriorityTasks];
   };
   
-  // Prepare tasks for focus session
   const prepareFocusTasks = () => {
-    // If auto priority is selected, group tasks by priority
     if (useAutoPriority === true) {
       const prioritizedTasks = groupTasksByPriority(taskState.tasks);
       const taskPriorityData = prioritizedTasks.map(task => task.id);
       
       console.log("Tasks ordered by priority:", prioritizedTasks.map(t => `${t.title} (${t.priority})`));
       
-      // Save the priority order to local storage
       localStorage.setItem('focusTaskPriority', JSON.stringify(taskPriorityData));
       
-      // Also create the selectedTasksForFocus structure
       const selectedTasksData = {
         tasks: prioritizedTasks.map(task => ({
           taskId: task.id,
@@ -141,7 +131,6 @@ const QuickStartButton = () => {
       
       localStorage.setItem('selectedTasksForFocus', JSON.stringify(selectedTasksData));
       
-      // Save the priority mode selection
       localStorage.setItem('priorityMode', 'auto');
       
       return true;
@@ -151,7 +140,6 @@ const QuickStartButton = () => {
   };
   
   const startSession = () => {
-    // Save focus timer settings
     localStorage.setItem('focusTimerDuration', JSON.stringify({ 
       minutes, 
       seconds,
@@ -159,20 +147,16 @@ const QuickStartButton = () => {
       workStyle: state.workStyle
     }));
     
-    // Check if we need to show priority dialog
     if (taskState.tasks.length > 0 && useAutoPriority === null) {
       setShowPriorityDialog(true);
       return;
     }
     
-    // If auto priority was already chosen
     if (useAutoPriority === true) {
-      // Save task priority and start session
       prepareFocusTasks();
       setIsActive(true);
       navigate("/focus-session");
     } else {
-      // For custom ordering, show the task selection flow
       setShowTaskSelectionFlow(true);
     }
   };
@@ -188,14 +172,11 @@ const QuickStartButton = () => {
     setUseAutoPriority(true);
     setShowPriorityDialog(false);
     
-    // Prepare tasks with auto-priority
     prepareFocusTasks();
     
-    // Store flags for focus session
     localStorage.setItem('autoStartFocusTimer', 'true');
     localStorage.setItem('priorityMode', 'auto');
     
-    // Navigate to focus session page
     navigate("/focus-session");
   };
   
@@ -203,10 +184,8 @@ const QuickStartButton = () => {
     setUseAutoPriority(false);
     setShowPriorityDialog(false);
     
-    // Store the priority mode selection
     localStorage.setItem('priorityMode', 'custom');
     
-    // Show task selection flow
     setShowTaskSelectionFlow(true);
   };
   
@@ -285,7 +264,6 @@ const QuickStartButton = () => {
         </CardContent>
       </Card>
 
-      {/* Priority Selection Dialog */}
       <Dialog open={showPriorityDialog} onOpenChange={setShowPriorityDialog}>
         <DialogContent>
           <DialogTitle>Task Priority</DialogTitle>
@@ -310,7 +288,6 @@ const QuickStartButton = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Task Selection Flow */}
       <TaskSelectionFlow 
         open={showTaskSelectionFlow} 
         onOpenChange={setShowTaskSelectionFlow} 

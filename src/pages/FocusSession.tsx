@@ -24,11 +24,30 @@ const FocusSession = () => {
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
   const [taskPriorities, setTaskPriorities] = useState<string[]>([]);
   
+  // Load task priorities from localStorage on mount
   useEffect(() => {
     try {
       const savedPriorities = localStorage.getItem('focusTaskPriority');
       if (savedPriorities) {
-        setTaskPriorities(JSON.parse(savedPriorities));
+        const priorities = JSON.parse(savedPriorities);
+        setTaskPriorities(priorities);
+        
+        // Always start with the first task (index 0)
+        setCurrentTaskIndex(0);
+        
+        // Show toast with first task info if available
+        if (priorities.length > 0) {
+          const firstTaskId = priorities[0];
+          const firstTask = taskState.tasks.find(task => task.id === firstTaskId);
+          if (firstTask) {
+            const priorityMode = localStorage.getItem('priorityMode');
+            if (priorityMode === 'auto') {
+              toast.info(`Starting with highest priority task: ${firstTask.title}`);
+            } else {
+              toast.info(`Starting with your first selected task: ${firstTask.title}`);
+            }
+          }
+        }
       }
     } catch (error) {
       console.error("Error loading task priorities:", error);
@@ -105,6 +124,8 @@ const FocusSession = () => {
   const handleMilestoneCompletionWithTask = (milestone: number) => {
     handleMilestoneReached(milestone);
     
+    // Only advance to the next task every other milestone (milestone % 2 === 0)
+    // This ensures each task gets enough focus time
     if (milestone > 0 && milestone % 2 === 0) {
       goToNextTask();
     }
