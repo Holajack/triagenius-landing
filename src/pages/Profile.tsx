@@ -14,7 +14,6 @@ import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import ProfilePreferences from "@/components/profile/ProfilePreferences";
-import EnvironmentDebugPanel from "@/components/debug/EnvironmentDebugPanel";
 import { 
   PencilIcon, 
   BookOpenIcon, 
@@ -25,8 +24,6 @@ import {
   MailIcon
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-const DEBUG_ENV = true;
 
 const Profile = () => {
   const { user, isLoading } = useUser();
@@ -560,15 +557,6 @@ const Profile = () => {
       />
 
       <NavigationBar />
-      
-      {DEBUG_ENV && user?.id && (
-        <div className="mt-8 border-t pt-8">
-          <h3 className="text-lg font-semibold mb-4">Developer Tools</h3>
-          <div className="grid grid-cols-1 gap-4">
-            <EnvironmentDebugPanel userId={user.id} />
-          </div>
-        </div>
-      )}
     </div>
   );
 };

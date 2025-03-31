@@ -108,20 +108,6 @@ export const saveUserSession = async (userId: string | undefined): Promise<void>
       console.log("[sessionPersistence] Successfully updated profile environment to:", environment);
     }
     
-    // Also update environment in onboarding_preferences for consistency
-    const { error: prefError } = await supabase
-      .from('onboarding_preferences')
-      .update({ 
-        learning_environment: environment 
-      })
-      .eq('user_id', userId);
-      
-    if (prefError) {
-      console.error("[sessionPersistence] Error updating onboarding preferences:", prefError);
-    } else if (DEBUG_ENV) {
-      console.log("[sessionPersistence] Successfully updated onboarding_preferences to:", environment);
-    }
-    
     // Save to Supabase for persistence across devices
     const { error } = await supabase
       .from('profiles')

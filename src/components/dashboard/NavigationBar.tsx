@@ -18,7 +18,7 @@ const NavigationBar = () => {
   const { state, forceEnvironmentSync } = useOnboarding();
   const [theme] = useState(() => localStorage.getItem('theme') || 'light');
   const isMobile = useIsMobile();
-  const { environmentTheme, verifyEnvironmentWithDatabase, shouldApplyEnvironmentTheming } = useTheme();
+  const { environmentTheme, verifyEnvironmentWithDatabase } = useTheme();
   const { user } = useUser();
   
   // Ensure environment is consistent before navigation
@@ -41,16 +41,11 @@ const NavigationBar = () => {
   
   // Get accent color based on environment - enhanced for more noticeable theming
   const getAccentColor = () => {
-    // Only apply environment-specific colors if we should apply environment theming
-    if (!shouldApplyEnvironmentTheming()) {
-      return "text-primary bg-primary-foreground/10";
-    }
-    
     switch (state.environment) {
       case 'office': return "text-blue-700 bg-blue-100/90";
-      case 'park': return "text-green-800 bg-green-100/90";
-      case 'home': return "text-orange-500 bg-orange-100/90";
-      case 'coffee-shop': return "text-amber-800 bg-amber-100/90";
+      case 'park': return "text-green-800 bg-green-100/90"; // Enhanced for Park/#2E6F40
+      case 'home': return "text-orange-500 bg-orange-100/90"; // Enhanced for Home/#FFA263
+      case 'coffee-shop': return "text-amber-800 bg-amber-100/90"; // Enhanced for Coffee Shop/#854836
       case 'library': return "text-gray-700 bg-gray-100/90";
       default: return "text-triage-purple bg-purple-100/90";
     }
@@ -58,16 +53,11 @@ const NavigationBar = () => {
   
   // Get background color for active item - more vibrant
   const getActiveBgColor = () => {
-    // Only apply environment-specific colors if we should apply environment theming
-    if (!shouldApplyEnvironmentTheming()) {
-      return "bg-muted/70";
-    }
-    
     switch (state.environment) {
       case 'office': return "bg-blue-100";
-      case 'park': return "bg-green-100";
-      case 'home': return "bg-orange-100";
-      case 'coffee-shop': return "bg-amber-100";
+      case 'park': return "bg-green-100"; // Enhanced for Park/#2E6F40
+      case 'home': return "bg-orange-100"; // Enhanced for Home/#FFA263
+      case 'coffee-shop': return "bg-amber-100"; // Enhanced for Coffee Shop/#854836
       case 'library': return "bg-gray-100";
       default: return "bg-purple-100";
     }
@@ -75,16 +65,11 @@ const NavigationBar = () => {
 
   // Get border color for active indicator
   const getActiveBorderColor = () => {
-    // Only apply environment-specific colors if we should apply environment theming
-    if (!shouldApplyEnvironmentTheming()) {
-      return "bg-primary";
-    }
-    
     switch (state.environment) {
       case 'office': return "bg-blue-500";
-      case 'park': return "bg-green-800";
-      case 'home': return "bg-orange-500";
-      case 'coffee-shop': return "bg-amber-800";
+      case 'park': return "bg-green-800"; // Enhanced for Park/#2E6F40
+      case 'home': return "bg-orange-500"; // Enhanced for Home/#FFA263
+      case 'coffee-shop': return "bg-amber-800"; // Enhanced for Coffee Shop/#854836
       case 'library': return "bg-gray-500";
       default: return "bg-purple-500";
     }
@@ -170,12 +155,9 @@ const NavigationBar = () => {
               onClick={item.onClick}
             >
               {item.active && (
-                <div 
-                  className="absolute top-0 left-0 right-0 h-1 rounded-b" 
+                <div className="absolute top-0 left-0 right-0 h-1 rounded-b" 
                   style={{ 
-                    backgroundColor: shouldApplyEnvironmentTheming() 
-                      ? `hsl(var(--env-primary))` 
-                      : `hsl(var(--primary))` 
+                    backgroundColor: `hsl(var(--env-primary))` 
                   }}
                 />
               )}

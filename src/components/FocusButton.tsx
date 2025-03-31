@@ -47,15 +47,15 @@ const FocusButton = ({
     }
   };
   
-  // Enhanced environment-specific gradient with more vibrant colors
+  // Get environment-specific colors
   const getEnvButtonGradient = () => {
     if (!isPrimary) return "";
     
     switch (state?.environment) {
       case 'office': return "bg-gradient-to-r from-blue-600 to-blue-700";
-      case 'park': return "bg-gradient-to-r from-green-600 to-green-700"; // More vibrant green
-      case 'home': return "bg-gradient-to-r from-orange-500 to-orange-600"; // More vibrant orange
-      case 'coffee-shop': return "bg-gradient-to-r from-amber-600 to-amber-700"; // More vibrant amber
+      case 'park': return "bg-gradient-to-r from-green-700 to-green-800"; // Enhanced for Park/#2E6F40
+      case 'home': return "bg-gradient-to-r from-orange-500 to-orange-600"; // Enhanced for Home/#FFA263
+      case 'coffee-shop': return "bg-gradient-to-r from-amber-700 to-amber-800"; // Enhanced for Coffee Shop/#854836
       case 'library': return "bg-gradient-to-r from-gray-600 to-gray-700";
       default: return "button-gradient"; // Default gradient
     }
