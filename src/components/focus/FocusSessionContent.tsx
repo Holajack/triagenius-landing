@@ -12,7 +12,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Task } from "@/types/tasks";
 
 interface FocusSessionContentProps {
-  timerRef: React.MutableRefObject<{ stopTimer: () => void; setRemainingTime?: (time: number) => void; getRemainingTime?: () => number } | null>;
+  timerRef: React.MutableRefObject<{ 
+    stopTimer: () => void; 
+    setRemainingTime: (time: number) => void; 
+    getRemainingTime: () => number 
+  } | null>;
   onPause: () => void;
   onResume: () => void;
   onComplete: () => void;

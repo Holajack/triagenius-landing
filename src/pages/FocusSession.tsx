@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -24,7 +23,6 @@ const FocusSession = () => {
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
   const [taskPriorities, setTaskPriorities] = useState<string[]>([]);
   
-  // Load task priorities on component mount
   useEffect(() => {
     try {
       const savedPriorities = localStorage.getItem('focusTaskPriority');
@@ -36,7 +34,6 @@ const FocusSession = () => {
     }
   }, []);
   
-  // Get current task based on priority
   const getCurrentTask = () => {
     if (taskPriorities.length === 0 || currentTaskIndex >= taskPriorities.length) {
       return null;
@@ -46,7 +43,6 @@ const FocusSession = () => {
     return taskState.tasks.find(task => task.id === currentTaskId);
   };
   
-  // Move to next task in priority list
   const goToNextTask = () => {
     if (currentTaskIndex < taskPriorities.length - 1) {
       setCurrentTaskIndex(prevIndex => prevIndex + 1);
@@ -61,20 +57,18 @@ const FocusSession = () => {
     document.body.style.overflow = 'hidden';
     isMountedRef.current = true;
     
-    // Setup timer to run in background when app is minimized
     const setupBackgroundTimer = () => {
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
         navigator.serviceWorker.controller.postMessage({
           type: 'START_BACKGROUND_TIMER',
           data: {
-            duration: timerRef.current?.getRemainingTime() || 0,
+            duration: timerRef.current?.getRemainingTime ? timerRef.current.getRemainingTime() : 0,
             timestamp: Date.now()
           }
         });
       }
     };
     
-    // Listen for visibility changes
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         setupBackgroundTimer();
@@ -126,12 +120,9 @@ const FocusSession = () => {
     setShowEndConfirmation
   } = useFocusSession();
   
-  // Handle milestone completion - possibly switch to next task
   const handleMilestoneCompletionWithTask = (milestone: number) => {
-    // Call the original milestone handler
     handleMilestoneReached(milestone);
     
-    // If we're at a milestone, consider moving to the next task
     if (milestone > 0 && milestone % 2 === 0) {
       goToNextTask();
     }
@@ -180,7 +171,6 @@ const FocusSession = () => {
     }, 10);
   };
 
-  // Get the current task to display
   const currentTask = getCurrentTask();
 
   return (
