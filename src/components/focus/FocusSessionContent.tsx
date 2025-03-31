@@ -1,3 +1,4 @@
+
 import { useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -124,82 +125,22 @@ const FocusSessionContent = ({
     )}>
       <CardContent className="p-6" ref={contentRef}>
         <div className="flex flex-col items-center">
-          {totalTasks > 0 && (
-            <div className="w-full mb-4 bg-white/80 rounded-lg p-3 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium flex items-center">
-                  <ListChecks className="w-4 h-4 mr-1" />
-                  Task Progress
-                </h3>
-                <span className="text-xs text-gray-500">
-                  {currentTaskIndex + 1} of {totalTasks}
-                </span>
-              </div>
-              
-              <div className="w-full bg-gray-200 rounded-full h-2.5">
-                <div 
-                  className="bg-blue-600 h-2.5 rounded-full" 
-                  style={{ width: `${Math.round(((currentTaskIndex + 1) / totalTasks) * 100)}%` }}
-                ></div>
-              </div>
-              
-              {currentTask && (
-                <div className="mt-2 text-sm">
-                  <span className="font-medium">Current: </span>
-                  {currentTask.title}
-                  {currentTask.subtasks && currentTask.subtasks.length > 0 && (
-                    <span className="text-xs text-gray-500 ml-1">
-                      ({currentTask.subtasks.length} subtasks)
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-          
-          <FocusTimer
-            ref={timerRef}
-            initialTime={getTimerDuration()}
-            isPaused={isPaused}
-            onComplete={onComplete}
-            onMilestoneReached={onMilestoneReached}
-            onProgressUpdate={onProgressUpdate}
-            lowPowerMode={lowPowerMode}
-          />
-          
-          <div className="mt-6 w-full max-w-md mx-auto">
-            {currentTask ? (
-              <div className="bg-white/80 rounded-lg p-4 shadow-sm">
-                <h3 className="text-sm font-medium flex items-center mb-2">
-                  <BookOpen className="w-4 h-4 mr-1" />
-                  Current Focus Task
-                </h3>
-                <div className="text-base font-medium mb-1">{currentTask.title}</div>
-                {currentTask.subtasks && currentTask.subtasks.length > 0 && (
-                  <div className="mt-2">
-                    <div className="text-xs font-medium text-gray-500 mb-1">Subtasks:</div>
-                    <div className="space-y-1">
-                      {currentTask.subtasks.map((subtask, idx) => (
-                        <div key={subtask.id} className="flex items-center text-sm">
-                          <span className="w-4 text-xs text-gray-500 mr-1">{idx + 1}.</span>
-                          {subtask.title}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <div className="mt-3 text-xs text-right text-gray-500">
-                  Task {currentTaskIndex + 1} of {totalTasks}
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-4 text-sm text-gray-500">
-                No specific task selected for this session
-              </div>
-            )}
+          {/* Timer section - Now larger and at the top */}
+          <div className="w-full mb-8 flex justify-center">
+            <FocusTimer
+              ref={timerRef}
+              initialTime={getTimerDuration()}
+              isPaused={isPaused}
+              onComplete={onComplete}
+              onMilestoneReached={onMilestoneReached}
+              onProgressUpdate={onProgressUpdate}
+              lowPowerMode={lowPowerMode}
+              className="w-64 h-64 sm:w-80 sm:h-80"
+            />
           </div>
           
-          <div className="mt-8 flex flex-col sm:flex-row gap-4 w-full max-w-md">
+          {/* Control buttons - positioned below the timer */}
+          <div className="mt-4 mb-8 flex flex-col sm:flex-row gap-4 w-full max-w-md">
             <AnimatePresence mode="wait">
               {isPaused ? (
                 <motion.div
@@ -253,7 +194,7 @@ const FocusSessionContent = ({
           </div>
           
           {currentMilestone >= 3 && (
-            <div className="mt-6 text-center">
+            <div className="mb-6 text-center">
               <Button
                 variant="default"
                 className="bg-green-600 hover:bg-green-700"
@@ -264,6 +205,73 @@ const FocusSessionContent = ({
               </Button>
             </div>
           )}
+          
+          {/* Task progress section - moved below the timer */}
+          {totalTasks > 0 && (
+            <div className="w-full mb-4 bg-white/80 rounded-lg p-3 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium flex items-center">
+                  <ListChecks className="w-4 h-4 mr-1" />
+                  Task Progress
+                </h3>
+                <span className="text-xs text-gray-500">
+                  {currentTaskIndex + 1} of {totalTasks}
+                </span>
+              </div>
+              
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div 
+                  className="bg-blue-600 h-2.5 rounded-full" 
+                  style={{ width: `${Math.round(((currentTaskIndex + 1) / totalTasks) * 100)}%` }}
+                ></div>
+              </div>
+              
+              {currentTask && (
+                <div className="mt-2 text-sm">
+                  <span className="font-medium">Current: </span>
+                  {currentTask.title}
+                  {currentTask.subtasks && currentTask.subtasks.length > 0 && (
+                    <span className="text-xs text-gray-500 ml-1">
+                      ({currentTask.subtasks.length} subtasks)
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Current task details - moved to the bottom */}
+          <div className="w-full max-w-md mx-auto">
+            {currentTask ? (
+              <div className="bg-white/80 rounded-lg p-4 shadow-sm">
+                <h3 className="text-sm font-medium flex items-center mb-2">
+                  <BookOpen className="w-4 h-4 mr-1" />
+                  Current Focus Task
+                </h3>
+                <div className="text-base font-medium mb-1">{currentTask.title}</div>
+                {currentTask.subtasks && currentTask.subtasks.length > 0 && (
+                  <div className="mt-2">
+                    <div className="text-xs font-medium text-gray-500 mb-1">Subtasks:</div>
+                    <div className="space-y-1">
+                      {currentTask.subtasks.map((subtask, idx) => (
+                        <div key={subtask.id} className="flex items-center text-sm">
+                          <span className="w-4 text-xs text-gray-500 mr-1">{idx + 1}.</span>
+                          {subtask.title}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="mt-3 text-xs text-right text-gray-500">
+                  Task {currentTaskIndex + 1} of {totalTasks}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4 text-sm text-gray-500">
+                No specific task selected for this session
+              </div>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

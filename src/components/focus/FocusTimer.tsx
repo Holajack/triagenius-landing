@@ -111,12 +111,12 @@ const FocusTimer = forwardRef<
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Return the rendered component
+  // Return the rendered component with larger size for the timer
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn("relative w-full max-w-md mx-auto", className)}>
       <div
         className={cn(
-          "absolute inset-0 rounded-full border-2 border-primary animate-progress",
+          "absolute inset-0 rounded-full border-4 border-primary animate-progress",
           theme === 'dark' ? 'border-opacity-50' : 'border-opacity-75',
           lowPowerMode ? 'transition-none' : 'transition-transform duration-100 ease-linear',
         )}
@@ -130,8 +130,8 @@ const FocusTimer = forwardRef<
         }}
         key={animationKey}
       />
-      <div className="relative flex items-center justify-center w-full h-full">
-        <span className="text-4xl font-bold">{formatTime(remainingTime)}</span>
+      <div className="relative flex items-center justify-center w-full h-full aspect-square">
+        <span className="text-6xl font-bold timer-display">{formatTime(remainingTime)}</span>
       </div>
     </div>
   );

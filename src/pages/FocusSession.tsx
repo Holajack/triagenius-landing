@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, MutableRefObject } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -57,35 +58,11 @@ const FocusSession = () => {
     document.body.style.overflow = 'hidden';
     isMountedRef.current = true;
     
-    const setupBackgroundTimer = () => {
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        const timer = timerRef.current;
-        const remainingTime = timer && typeof timer.getRemainingTime === 'function'
-          ? timer.getRemainingTime()
-          : 0;
-        
-        navigator.serviceWorker.controller.postMessage({
-          type: 'START_BACKGROUND_TIMER',
-          data: {
-            duration: remainingTime,
-            timestamp: Date.now()
-          }
-        });
-      }
-    };
-    
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        setupBackgroundTimer();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    // No need for visibility change handlers here - moved to focus session hook
     
     return () => {
       isMountedRef.current = false;
       document.body.style.overflow = 'auto';
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
       
       if (operationTimeoutRef.current) {
         window.clearTimeout(operationTimeoutRef.current);

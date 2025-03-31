@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -33,6 +34,7 @@ export const useFocusSession = () => {
   const lowPowerToggleInProgressRef = useRef(false);
   const navigationAttemptedRef = useRef(false);
   const navigationTimeoutRef = useRef<number | null>(null);
+  const autoStartedRef = useRef(false);
   
   const isMountedRef = useRef(true);
 
@@ -44,6 +46,7 @@ export const useFocusSession = () => {
     isEndingRef.current = false;
     operationInProgressRef.current = false;
     navigationAttemptedRef.current = false;
+    autoStartedRef.current = false;
     
     if (navigationTimeoutRef.current) {
       window.clearTimeout(navigationTimeoutRef.current);
@@ -76,33 +79,39 @@ export const useFocusSession = () => {
         const maxSessionAge = 24 * 60 * 60 * 1000;
         
         if (timeDifference <= maxSessionAge) {
-          setResumingSession(true);
-          
-          setCurrentMilestone(savedSession.milestone || 0);
-          setSegmentProgress(savedSession.segmentProgress || 0);
-          setIsPaused(true);
-          
-          if (savedSession.environment) {
-            localStorage.setItem('environment', savedSession.environment);
-            document.documentElement.classList.remove(
-              'theme-office', 
-              'theme-park', 
-              'theme-home', 
-              'theme-coffee-shop', 
-              'theme-library'
-            );
-            document.documentElement.classList.add(`theme-${savedSession.environment}`);
-            document.documentElement.setAttribute('data-environment', savedSession.environment);
-          }
-          
-          setTimeout(() => {
-            if (isMountedRef.current) {
-              toast.info("Resuming your previous focus session", {
-                description: `You were ${savedSession.milestone > 0 ? `at milestone ${savedSession.milestone}` : 'just getting started'}`,
-                duration: 5000
-              });
+          // We're only resuming if the user previously left the page
+          if (savedSession.wasExited) {
+            setResumingSession(true);
+            setCurrentMilestone(savedSession.milestone || 0);
+            setSegmentProgress(savedSession.segmentProgress || 0);
+            setIsPaused(true);
+            
+            if (savedSession.environment) {
+              localStorage.setItem('environment', savedSession.environment);
+              document.documentElement.classList.remove(
+                'theme-office', 
+                'theme-park', 
+                'theme-home', 
+                'theme-coffee-shop', 
+                'theme-library'
+              );
+              document.documentElement.classList.add(`theme-${savedSession.environment}`);
+              document.documentElement.setAttribute('data-environment', savedSession.environment);
             }
-          }, 1000);
+            
+            setTimeout(() => {
+              if (isMountedRef.current) {
+                toast.info("Resuming your previous focus session", {
+                  description: `You were ${savedSession.milestone > 0 ? `at milestone ${savedSession.milestone}` : 'just getting started'}`,
+                  duration: 5000
+                });
+              }
+            }, 1000);
+          } else {
+            // Not resuming, just starting a new session
+            clearFocusSessionState();
+            // Will auto-start a new timer since isPaused is false by default
+          }
         } else {
           clearFocusSessionState();
           toast.info("Your previous session was too old and has been cleared");
@@ -164,9 +173,26 @@ export const useFocusSession = () => {
       }
     }
     
+    // When leaving the page, mark that the session was exited
+    const handleBeforeUnload = () => {
+      try {
+        const focusData = getSavedFocusSession();
+        if (focusData) {
+          focusData.wasExited = true;
+          saveFocusSessionState(focusData);
+        }
+      } catch (error) {
+        console.error("Error updating session exit state:", error);
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
     return () => {
       isMountedRef.current = false;
       document.body.style.overflow = 'auto';
+      
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       
       if (navigationTimeoutRef.current) {
         window.clearTimeout(navigationTimeoutRef.current);
@@ -183,6 +209,23 @@ export const useFocusSession = () => {
       navigationAttemptedRef.current = false;
     };
   }, []);
+  
+  // Auto-start the timer if not resuming
+  useEffect(() => {
+    if (!resumingSession && !autoStartedRef.current && !isPaused) {
+      // A short delay to ensure components are fully mounted
+      const startTimerId = setTimeout(() => {
+        if (isMountedRef.current) {
+          console.log("Auto-starting new focus session");
+          autoStartedRef.current = true;
+          // We don't need to do anything since isPaused is already false
+          // The timer will start automatically
+        }
+      }, 500);
+      
+      return () => clearTimeout(startTimerId);
+    }
+  }, [resumingSession, isPaused]);
   
   const saveSessionData = async (endingEarly = false) => {
     if (operationInProgressRef.current || !isMountedRef.current) {
@@ -262,7 +305,8 @@ export const useFocusSession = () => {
         isPaused,
         segmentProgress,
         remainingTime,
-        environment: localStorage.getItem('environment') || 'default'
+        environment: localStorage.getItem('environment') || 'default',
+        wasExited: false // Default to false, will be set to true on page unload
       };
       
       saveFocusSessionState(focusData);
