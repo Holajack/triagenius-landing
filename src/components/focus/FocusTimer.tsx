@@ -32,6 +32,7 @@ const FocusTimer = forwardRef<
   const startTimeRef = useRef<number>(Date.now());
   const lastTickTimeRef = useRef<number>(Date.now());
   const lastMilestoneRef = useRef<number>(-1);
+  const hasCompletedRef = useRef<boolean>(false);
   
   // Calculate milestones based on initialTime (typically 3 milestones)
   const milestoneTimePoints = [
@@ -72,14 +73,19 @@ const FocusTimer = forwardRef<
           newRemainingTime = 0;
           window.clearInterval(intervalRef.current);
           intervalRef.current = null;
-          if (onComplete) onComplete();
+          
+          // Only trigger onComplete once
+          if (!hasCompletedRef.current && onComplete) {
+            hasCompletedRef.current = true;
+            onComplete();
+          }
         }
         
         setRemainingTime(newRemainingTime);
         
         const timePassed = initialTime - newRemainingTime;
         milestoneTimePoints.forEach((milestoneTime, index) => {
-          if (timePassed >= milestoneTime && index > lastMilestoneRef.current) {
+          if (timePassed >= initialTime - milestoneTime && index > lastMilestoneRef.current) {
             if (onMilestoneReached) onMilestoneReached(index);
             lastMilestoneRef.current = index;
           }
@@ -104,6 +110,11 @@ const FocusTimer = forwardRef<
       }
     };
   }, [isPaused, initialTime, onComplete, onMilestoneReached, onProgressUpdate, lowPowerMode, remainingTime]);
+  
+  // Reset the completed state when the component is reused
+  useEffect(() => {
+    hasCompletedRef.current = false;
+  }, [initialTime]);
   
   const formatTime = (timeInSeconds: number): string => {
     const minutes = Math.floor(timeInSeconds / 60);

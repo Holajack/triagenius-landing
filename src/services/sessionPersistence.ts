@@ -8,6 +8,8 @@ export interface SavedFocusSession {
   remainingTime: number;
   environment?: string;
   wasExited?: boolean; // New property to track if user exited the session
+  currentTaskIndex?: number; // Track the current task
+  currentTaskCompleted?: boolean; // Track if the current task is completed
 }
 
 export interface SavedUserSession {

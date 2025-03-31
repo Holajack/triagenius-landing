@@ -1,9 +1,10 @@
+
 import { useRef, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { StudyEnvironment } from "@/types/onboarding";
-import { Pause, Play, StopCircle, CheckCircle2, ListChecks, BookOpen } from "lucide-react";
+import { Pause, Play, StopCircle, CheckCircle2, ListChecks, BookOpen, ArrowRight } from "lucide-react";
 import FocusTimer from "./FocusTimer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { motion, AnimatePresence } from "framer-motion";
@@ -30,6 +31,8 @@ interface FocusSessionContentProps {
   currentTask?: Task | null;
   totalTasks?: number;
   currentTaskIndex?: number;
+  currentTaskCompleted?: boolean;
+  onNextTask?: () => void;
 }
 
 const FocusSessionContent = ({
@@ -48,7 +51,9 @@ const FocusSessionContent = ({
   segmentProgress,
   currentTask,
   totalTasks = 0,
-  currentTaskIndex = 0
+  currentTaskIndex = 0,
+  currentTaskCompleted = false,
+  onNextTask
 }: FocusSessionContentProps) => {
   const isMobile = useIsMobile();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -167,47 +172,71 @@ const FocusSessionContent = ({
           </div>
           
           <div className="mt-2 mb-6 flex flex-col sm:flex-row gap-3 w-full max-w-md">
-            <AnimatePresence mode="wait">
-              {isPaused ? (
-                <motion.div
-                  key="resume"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className="w-full"
+            {currentTaskCompleted && currentTaskIndex < (totalTasks - 1) ? (
+              <motion.div
+                key="next-task"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="w-full"
+              >
+                <Button
+                  className={cn(
+                    "w-full py-5 h-auto text-white",
+                    getButtonGradient()
+                  )}
+                  onClick={onNextTask}
                 >
-                  <Button
-                    className={cn(
-                      "w-full py-5 h-auto text-white",
-                      getButtonGradient()
-                    )}
-                    onClick={onResume}
+                  <ArrowRight className="w-5 h-5 mr-2" />
+                  Proceed to Next Task
+                </Button>
+              </motion.div>
+            ) : (
+              <AnimatePresence mode="wait">
+                {isPaused ? (
+                  <motion.div
+                    key="resume"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="w-full"
                   >
-                    <Play className="w-5 h-5 mr-2" />
-                    Resume Session
-                  </Button>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="pause"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className="w-full"
-                >
-                  <Button
-                    variant="outline"
-                    className="w-full py-5 h-auto"
-                    onClick={onPause}
+                    <Button
+                      className={cn(
+                        "w-full py-5 h-auto text-white",
+                        getButtonGradient()
+                      )}
+                      onClick={onResume}
+                      disabled={currentTaskCompleted}
+                    >
+                      <Play className="w-5 h-5 mr-2" />
+                      Resume Session
+                    </Button>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="pause"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="w-full"
                   >
-                    <Pause className="w-5 h-5 mr-2" />
-                    Pause
-                  </Button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                    <Button
+                      variant="outline"
+                      className="w-full py-5 h-auto"
+                      onClick={onPause}
+                      disabled={currentTaskCompleted}
+                    >
+                      <Pause className="w-5 h-5 mr-2" />
+                      Pause
+                    </Button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            )}
             
             <Button
               variant={isPaused ? "outline" : "secondary"}
@@ -221,10 +250,18 @@ const FocusSessionContent = ({
           
           {currentTask && (
             <div className="w-full max-w-md mx-auto mb-4">
-              <div className="bg-white/80 rounded-lg p-3 shadow-sm border-l-4 border-blue-500">
+              <div className={cn(
+                "bg-white/80 rounded-lg p-3 shadow-sm border-l-4",
+                currentTaskCompleted ? "border-green-500" : "border-blue-500"
+              )}>
                 <h3 className="text-sm font-medium flex items-center mb-1">
                   <BookOpen className="w-4 h-4 mr-1" />
                   Current Focus Task
+                  {currentTaskCompleted && (
+                    <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                      Completed
+                    </span>
+                  )}
                 </h3>
                 <div className="text-base font-medium mb-1">{currentTask.title}</div>
                 <div className="flex justify-between items-center">
@@ -257,7 +294,7 @@ const FocusSessionContent = ({
             </div>
           )}
           
-          {currentMilestone >= 3 && (
+          {currentMilestone >= 3 && !currentTaskCompleted && (
             <div className="mb-4 text-center">
               <Button
                 variant="default"
@@ -265,7 +302,7 @@ const FocusSessionContent = ({
                 onClick={onComplete}
               >
                 <CheckCircle2 className="w-5 h-5 mr-2" />
-                Complete Session
+                Complete Current Task
               </Button>
             </div>
           )}
@@ -285,7 +322,7 @@ const FocusSessionContent = ({
               <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div 
                   className="bg-blue-600 h-2.5 rounded-full" 
-                  style={{ width: `${Math.round(((currentTaskIndex + 1) / totalTasks) * 100)}%` }}
+                  style={{ width: `${Math.round(((currentTaskIndex + (currentTaskCompleted ? 1 : 0.5)) / totalTasks) * 100)}%` }}
                 ></div>
               </div>
             </div>

@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -244,12 +245,18 @@ export const useFocusSession = () => {
     console.log("useFocusSession: saveSessionData - starting, endingEarly =", endingEarly);
     
     try {
+      // Get current task information
+      const currentTaskIndex = localStorage.getItem('currentTaskIndex') || '0';
+      const currentTaskCompleted = localStorage.getItem('currentTaskCompleted') === 'true';
+      
       const sessionData = {
         milestone: currentMilestone,
         duration: currentMilestone * 45,
         timestamp: new Date().toISOString(),
         environment: localStorage.getItem('environment') || 'default',
-        completed: !endingEarly && currentMilestone >= 3
+        completed: !endingEarly && currentMilestone >= 3,
+        currentTaskIndex: parseInt(currentTaskIndex, 10),
+        currentTaskCompleted
       };
       
       try {
@@ -274,7 +281,9 @@ export const useFocusSession = () => {
               milestone_count: sessionData.milestone,
               environment: sessionData.environment,
               end_time: new Date().toISOString(),
-              completed: !endingEarly && currentMilestone >= 3
+              completed: !endingEarly && currentMilestone >= 3,
+              task_index: sessionData.currentTaskIndex,
+              task_completed: sessionData.currentTaskCompleted
             });
             console.log("useFocusSession: Session data saved to Supabase");
           } catch (error) {
@@ -307,13 +316,19 @@ export const useFocusSession = () => {
         }
       }
       
+      // Get current task information
+      const currentTaskIndex = localStorage.getItem('currentTaskIndex') || '0';
+      const currentTaskCompleted = localStorage.getItem('currentTaskCompleted') === 'true';
+      
       const focusData: Partial<SavedFocusSession> = {
         milestone: currentMilestone,
         isPaused,
         segmentProgress,
         remainingTime,
         environment: localStorage.getItem('environment') || 'default',
-        wasExited: false
+        wasExited: false,
+        currentTaskIndex: parseInt(currentTaskIndex, 10),
+        currentTaskCompleted
       };
       
       saveFocusSessionState(focusData);
@@ -368,7 +383,10 @@ export const useFocusSession = () => {
     
     clearFocusSessionState();
     
+    // Clear task-related data
     localStorage.removeItem('priorityMode');
+    localStorage.removeItem('currentTaskIndex');
+    localStorage.removeItem('currentTaskCompleted');
     
     const reportId = `session_${Date.now()}`;
     console.log("useFocusSession: handleSessionEnd - Generated reportId =", reportId);
@@ -438,17 +456,24 @@ export const useFocusSession = () => {
     
     clearFocusSessionState();
     
-    localStorage.removeItem('priorityMode');
+    // Don't clear task data when ending early
+    // This allows the user to resume from the same task later
     
     const reportId = `session_${Date.now()}`;
     console.log("useFocusSession: handleEndSessionEarly - Generated reportId:", reportId);
+    
+    // Get current task information
+    const currentTaskIndex = localStorage.getItem('currentTaskIndex') || '0';
+    const currentTaskCompleted = localStorage.getItem('currentTaskCompleted') === 'true';
     
     const sessionData = {
       milestone: currentMilestone,
       duration: currentMilestone * 45,
       timestamp: new Date().toISOString(),
       environment: localStorage.getItem('environment') || 'default',
-      completed: false
+      completed: false,
+      currentTaskIndex: parseInt(currentTaskIndex, 10),
+      currentTaskCompleted
     };
     
     localStorage.setItem('sessionData', JSON.stringify(sessionData));
@@ -469,7 +494,9 @@ export const useFocusSession = () => {
           duration: sessionData.duration || 0,
           created_at: sessionData.timestamp,
           environment: sessionData.environment,
-          completed: false
+          completed: false,
+          task_index: sessionData.currentTaskIndex,
+          task_completed: sessionData.currentTaskCompleted
         });
         console.log("useFocusSession: handleEndSessionEarly - Successfully saved to Supabase");
       } catch (error) {
