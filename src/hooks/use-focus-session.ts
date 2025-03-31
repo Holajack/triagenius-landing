@@ -368,6 +368,8 @@ export const useFocusSession = () => {
     
     clearFocusSessionState();
     
+    localStorage.removeItem('priorityMode');
+    
     const reportId = `session_${Date.now()}`;
     console.log("useFocusSession: handleSessionEnd - Generated reportId =", reportId);
     
@@ -435,6 +437,8 @@ export const useFocusSession = () => {
     }
     
     clearFocusSessionState();
+    
+    localStorage.removeItem('priorityMode');
     
     const reportId = `session_${Date.now()}`;
     console.log("useFocusSession: handleEndSessionEarly - Generated reportId:", reportId);

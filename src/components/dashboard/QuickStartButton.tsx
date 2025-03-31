@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -142,6 +141,9 @@ const QuickStartButton = () => {
       
       localStorage.setItem('selectedTasksForFocus', JSON.stringify(selectedTasksData));
       
+      // Save the priority mode selection
+      localStorage.setItem('priorityMode', 'auto');
+      
       return true;
     }
     
@@ -189,8 +191,9 @@ const QuickStartButton = () => {
     // Prepare tasks with auto-priority
     prepareFocusTasks();
     
-    // Store a flag to auto-start the timer in focus session
+    // Store flags for focus session
     localStorage.setItem('autoStartFocusTimer', 'true');
+    localStorage.setItem('priorityMode', 'auto');
     
     // Navigate to focus session page
     navigate("/focus-session");
@@ -199,6 +202,9 @@ const QuickStartButton = () => {
   const handleCustomPrioritySelect = () => {
     setUseAutoPriority(false);
     setShowPriorityDialog(false);
+    
+    // Store the priority mode selection
+    localStorage.setItem('priorityMode', 'custom');
     
     // Show task selection flow
     setShowTaskSelectionFlow(true);
