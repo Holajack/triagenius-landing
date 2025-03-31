@@ -1,4 +1,3 @@
-
 import { useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,7 +53,6 @@ const FocusSessionContent = ({
   const isMobile = useIsMobile();
   const contentRef = useRef<HTMLDivElement>(null);
   
-  // Load timer duration from settings
   const getTimerDuration = () => {
     try {
       const savedSettings = localStorage.getItem('focusTimerDuration');
@@ -66,11 +64,9 @@ const FocusSessionContent = ({
       console.error("Error loading timer settings:", error);
     }
     
-    // Default to 25 minutes if nothing saved
     return 25 * 60;
   };
   
-  // Get environment-specific colors
   const getEnvironmentBg = () => {
     switch (environment) {
       case 'office': return "bg-blue-50";
@@ -82,7 +78,6 @@ const FocusSessionContent = ({
     }
   };
   
-  // Get button gradient
   const getButtonGradient = () => {
     switch (environment) {
       case 'office': return "bg-gradient-to-r from-blue-600 to-blue-700";
@@ -94,18 +89,15 @@ const FocusSessionContent = ({
     }
   };
 
-  // Set up background timer for when app is minimized
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        // When app becomes visible again, check for any background timer updates
         navigator.serviceWorker.controller?.postMessage({
           type: 'GET_BACKGROUND_TIMER',
         });
       }
     };
     
-    // Listen for messages from service worker
     const handleServiceWorkerMessage = (event: MessageEvent) => {
       if (event.data.type === 'BACKGROUND_TIMER_UPDATE') {
         const { remainingTime } = event.data;
@@ -132,7 +124,6 @@ const FocusSessionContent = ({
     )}>
       <CardContent className="p-6" ref={contentRef}>
         <div className="flex flex-col items-center">
-          {/* Task progress indicator */}
           {totalTasks > 0 && (
             <div className="w-full mb-4 bg-white/80 rounded-lg p-3 shadow-sm">
               <div className="flex items-center justify-between mb-2">
@@ -166,7 +157,6 @@ const FocusSessionContent = ({
             </div>
           )}
           
-          {/* Focus timer */}
           <FocusTimer
             ref={timerRef}
             initialTime={getTimerDuration()}
@@ -177,7 +167,6 @@ const FocusSessionContent = ({
             lowPowerMode={lowPowerMode}
           />
           
-          {/* Task information instead of milestones */}
           <div className="mt-6 w-full max-w-md mx-auto">
             {currentTask ? (
               <div className="bg-white/80 rounded-lg p-4 shadow-sm">

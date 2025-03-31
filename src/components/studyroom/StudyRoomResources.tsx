@@ -30,20 +30,31 @@ export const StudyRoomResources = ({ roomId }: StudyRoomResourcesProps) => {
       
       try {
         setLoading(true);
-        const { data, error } = await supabase
+        const response = await supabase
           .from('study_resources')
           .select('*')
           .eq('room_id', roomId)
           .order('created_at', { ascending: false });
 
-        if (error) {
-          console.error('Error fetching study resources:', error);
+        if (response.error) {
+          console.error('Error fetching study resources:', response.error);
           setResources([]);
           return;
         }
 
-        // Safe type cast since we know the structure matches
-        setResources(data as Resource[]);
+        // Explicitly convert the response data to match Resource interface
+        const typedResources = response.data.map(item => ({
+          id: item.id,
+          room_id: item.room_id,
+          user_id: item.user_id,
+          title: item.title,
+          url: item.url,
+          type: (item.type || 'link') as 'link' | 'file',
+          created_at: item.created_at,
+          updated_at: item.updated_at
+        }));
+
+        setResources(typedResources);
       } catch (error) {
         console.error('Error fetching room resources:', error);
         setResources([]);
