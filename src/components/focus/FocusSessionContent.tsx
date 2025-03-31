@@ -4,9 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { StudyEnvironment } from "@/types/onboarding";
-import { Pause, Play, StopCircle, CheckCircle2, ListChecks } from "lucide-react";
+import { Pause, Play, StopCircle, CheckCircle2, ListChecks, BookOpen } from "lucide-react";
 import FocusTimer from "./FocusTimer";
-import FocusMilestones from "./FocusMilestones";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { motion, AnimatePresence } from "framer-motion";
 import { Task } from "@/types/tasks";
@@ -157,7 +156,7 @@ const FocusSessionContent = ({
                 <div className="mt-2 text-sm">
                   <span className="font-medium">Current: </span>
                   {currentTask.title}
-                  {currentTask.subtasks.length > 0 && (
+                  {currentTask.subtasks && currentTask.subtasks.length > 0 && (
                     <span className="text-xs text-gray-500 ml-1">
                       ({currentTask.subtasks.length} subtasks)
                     </span>
@@ -167,7 +166,7 @@ const FocusSessionContent = ({
             </div>
           )}
           
-          {/* Timer and milestones */}
+          {/* Focus timer */}
           <FocusTimer
             ref={timerRef}
             duration={getTimerDuration()}
@@ -178,12 +177,37 @@ const FocusSessionContent = ({
             lowPowerMode={lowPowerMode}
           />
           
+          {/* Task information instead of milestones */}
           <div className="mt-6 w-full max-w-md mx-auto">
-            <FocusMilestones 
-              currentMilestone={currentMilestone} 
-              currentProgress={segmentProgress}
-              lowPowerMode={lowPowerMode}
-            />
+            {currentTask ? (
+              <div className="bg-white/80 rounded-lg p-4 shadow-sm">
+                <h3 className="text-sm font-medium flex items-center mb-2">
+                  <BookOpen className="w-4 h-4 mr-1" />
+                  Current Focus Task
+                </h3>
+                <div className="text-base font-medium mb-1">{currentTask.title}</div>
+                {currentTask.subtasks && currentTask.subtasks.length > 0 && (
+                  <div className="mt-2">
+                    <div className="text-xs font-medium text-gray-500 mb-1">Subtasks:</div>
+                    <div className="space-y-1">
+                      {currentTask.subtasks.map((subtask, idx) => (
+                        <div key={subtask.id} className="flex items-center text-sm">
+                          <span className="w-4 text-xs text-gray-500 mr-1">{idx + 1}.</span>
+                          {subtask.title}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="mt-3 text-xs text-right text-gray-500">
+                  Task {currentTaskIndex + 1} of {totalTasks}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4 text-sm text-gray-500">
+                No specific task selected for this session
+              </div>
+            )}
           </div>
           
           <div className="mt-8 flex flex-col sm:flex-row gap-4 w-full max-w-md">

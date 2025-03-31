@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { useTasks } from "@/contexts/TaskContext";
 import { Task } from "@/types/tasks";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import TaskSelectionFlow from "../focus/TaskSelectionFlow";
 
 const QuickStartButton = () => {
   const { state } = useOnboarding();
@@ -18,6 +19,7 @@ const QuickStartButton = () => {
   const [seconds, setSeconds] = useState(0);
   const [timer, setTimer] = useState(minutes * 60 + seconds);
   const [showPriorityDialog, setShowPriorityDialog] = useState(false);
+  const [showTaskSelectionFlow, setShowTaskSelectionFlow] = useState(false);
   const [useAutoPriority, setUseAutoPriority] = useState<boolean | null>(null);
   const [taskPriorities, setTaskPriorities] = useState<string[]>([]);
   
@@ -107,7 +109,7 @@ const QuickStartButton = () => {
   const sortTasksByPriority = (tasks: Task[]): Task[] => {
     const priorityOrder = { high: 0, medium: 1, low: 2 };
     return [...tasks].sort((a, b) => {
-      return priorityOrder[a.priority] - priorityOrder[b.priority];
+      return (priorityOrder as any)[a.priority] - (priorityOrder as any)[b.priority];
     });
   };
   
@@ -120,13 +122,25 @@ const QuickStartButton = () => {
       
       // Save the priority order to local storage
       localStorage.setItem('focusTaskPriority', JSON.stringify(taskPriorityData));
-      return;
+      
+      // Also create the selectedTasksForFocus structure
+      const selectedTasksData = {
+        tasks: sortedTasks.map(task => ({
+          taskId: task.id,
+          title: task.title,
+          subtasks: task.subtasks.map(subtask => ({
+            subtaskId: subtask.id,
+            title: subtask.title
+          }))
+        }))
+      };
+      
+      localStorage.setItem('selectedTasksForFocus', JSON.stringify(selectedTasksData));
+      
+      return true;
     }
     
-    // If custom priority is selected, use the taskPriorities array
-    if (useAutoPriority === false && taskPriorities.length > 0) {
-      localStorage.setItem('focusTaskPriority', JSON.stringify(taskPriorities));
-    }
+    return false;
   };
   
   const startSession = () => {
@@ -144,11 +158,16 @@ const QuickStartButton = () => {
       return;
     }
     
-    // Save task priority and start session
-    prepareFocusTasks();
-    
-    setIsActive(true);
-    navigate("/focus-session");
+    // If auto priority was already chosen
+    if (useAutoPriority === true) {
+      // Save task priority and start session
+      prepareFocusTasks();
+      setIsActive(true);
+      navigate("/focus-session");
+    } else {
+      // For custom ordering, show the task selection flow
+      setShowTaskSelectionFlow(true);
+    }
   };
   
   const pauseSession = () => {
@@ -169,90 +188,86 @@ const QuickStartButton = () => {
   
   const handleCustomPrioritySelect = () => {
     setUseAutoPriority(false);
-    
-    // Initialize task priorities with sorted tasks
-    const sortedTasks = sortTasksByPriority(taskState.tasks);
-    setTaskPriorities(sortedTasks.map(task => task.id));
-    
-    // We'll show another dialog for custom ordering in a real implementation
-    // For now, we'll just use the sorted order
-    prepareFocusTasks();
     setShowPriorityDialog(false);
-    navigate("/focus-session");
+    
+    // Show task selection flow
+    setShowTaskSelectionFlow(true);
   };
   
   return (
-    <Card className={cn(
-      "overflow-hidden border-2", 
-      isActive ? "shadow-md" : "",
-      state.environment === 'office' ? "border-blue-200" :
-      state.environment === 'park' ? "border-green-600" :
-      state.environment === 'home' ? "border-orange-300" :
-      state.environment === 'coffee-shop' ? "border-amber-700" :
-      state.environment === 'library' ? "border-gray-200" :
-      "border-purple-200"
-    )}>
-      <div className={cn("bg-gradient-to-r p-6", getGradientClass())}>
-        <h3 className="text-lg font-semibold mb-1">Ready to focus?</h3>
-        <p className="text-sm text-gray-600">
-          {state.workStyle === 'pomodoro' 
-            ? 'Quick sprint sessions with short breaks (25min/5min)'
-            : state.workStyle === 'deep-work'
-            ? 'Extended focus periods with moderate breaks (45min/10min)'
-            : 'Balanced work and rest cycles (45min/15min)'}
-        </p>
-        
-        <div className="mt-4 flex justify-between items-center">
-          <div className="flex flex-col items-center">
-            <div className={cn("p-2 rounded-full", getAccentColor())}>
-              <BookOpen className="w-5 h-5" />
-            </div>
-            <span className="text-xs mt-1">
-              {taskState.tasks.length > 0 
-                ? `${taskState.tasks.length} Task${taskState.tasks.length > 1 ? 's' : ''}` 
-                : "No Tasks"}
-            </span>
-          </div>
+    <>
+      <Card className={cn(
+        "overflow-hidden border-2", 
+        isActive ? "shadow-md" : "",
+        state.environment === 'office' ? "border-blue-200" :
+        state.environment === 'park' ? "border-green-600" :
+        state.environment === 'home' ? "border-orange-300" :
+        state.environment === 'coffee-shop' ? "border-amber-700" :
+        state.environment === 'library' ? "border-gray-200" :
+        "border-purple-200"
+      )}>
+        <div className={cn("bg-gradient-to-r p-6", getGradientClass())}>
+          <h3 className="text-lg font-semibold mb-1">Ready to focus?</h3>
+          <p className="text-sm text-gray-600">
+            {state.workStyle === 'pomodoro' 
+              ? 'Quick sprint sessions with short breaks (25min/5min)'
+              : state.workStyle === 'deep-work'
+              ? 'Extended focus periods with moderate breaks (45min/10min)'
+              : 'Balanced work and rest cycles (45min/15min)'}
+          </p>
           
-          <div className="flex flex-col items-center">
-            <div className="text-3xl font-bold tabular-nums">
-              {formatTime(timer)}
-            </div>
-            <span className="text-xs mt-1">
-              {state.workStyle === 'pomodoro' ? 'Sprints' : state.workStyle === 'deep-work' ? 'Deep Work' : 'Balanced'} Timer
-            </span>
-          </div>
-          
-          <div className="flex flex-col items-center">
-            <div className={cn("p-2 rounded-full", getAccentColor())}>
-              <span className="font-medium text-sm">
-                {getBreakTime()}m
+          <div className="mt-4 flex justify-between items-center">
+            <div className="flex flex-col items-center">
+              <div className={cn("p-2 rounded-full", getAccentColor())}>
+                <BookOpen className="w-5 h-5" />
+              </div>
+              <span className="text-xs mt-1">
+                {taskState.tasks.length > 0 
+                  ? `${taskState.tasks.length} Task${taskState.tasks.length > 1 ? 's' : ''}` 
+                  : "No Tasks"}
               </span>
             </div>
-            <span className="text-xs mt-1">Break</span>
+            
+            <div className="flex flex-col items-center">
+              <div className="text-3xl font-bold tabular-nums">
+                {formatTime(timer)}
+              </div>
+              <span className="text-xs mt-1">
+                {state.workStyle === 'pomodoro' ? 'Sprints' : state.workStyle === 'deep-work' ? 'Deep Work' : 'Balanced'} Timer
+              </span>
+            </div>
+            
+            <div className="flex flex-col items-center">
+              <div className={cn("p-2 rounded-full", getAccentColor())}>
+                <span className="font-medium text-sm">
+                  {getBreakTime()}m
+                </span>
+              </div>
+              <span className="text-xs mt-1">Break</span>
+            </div>
           </div>
         </div>
-      </div>
-      
-      <CardContent className="p-4">
-        {isActive ? (
-          <Button 
-            onClick={pauseSession}
-            className={`w-full ${getPrimaryButtonColor()} text-white`}
-            size="lg"
-          >
-            <PauseCircle className="w-5 h-5 mr-2" /> Pause Session
-          </Button>
-        ) : (
-          <Button 
-            onClick={startSession}
-            className={`w-full ${getPrimaryButtonColor()} text-white`}
-            size="lg"
-          >
-            <PlayCircle className="w-5 h-5 mr-2" /> Start Focus Session
-          </Button>
-        )}
-      </CardContent>
+        
+        <CardContent className="p-4">
+          {isActive ? (
+            <Button 
+              onClick={pauseSession}
+              className={`w-full ${getPrimaryButtonColor()} text-white`}
+              size="lg"
+            >
+              <PauseCircle className="w-5 h-5 mr-2" /> Pause Session
+            </Button>
+          ) : (
+            <Button 
+              onClick={startSession}
+              className={`w-full ${getPrimaryButtonColor()} text-white`}
+              size="lg"
+            >
+              <PlayCircle className="w-5 h-5 mr-2" /> Start Focus Session
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Priority Selection Dialog */}
       <Dialog open={showPriorityDialog} onOpenChange={setShowPriorityDialog}>
@@ -278,7 +293,13 @@ const QuickStartButton = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+
+      {/* Task Selection Flow */}
+      <TaskSelectionFlow 
+        open={showTaskSelectionFlow} 
+        onOpenChange={setShowTaskSelectionFlow} 
+      />
+    </>
   );
 };
 

@@ -1,58 +1,127 @@
 
-import { Card } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Crown } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { supabase } from '@/integrations/supabase/client';
+import { useUser } from '@/hooks/use-user';
 
-interface Participant {
-  id: number;
-  name: string;
-  avatar: string;
-  online: boolean;
-  role: string;
+export interface RoomMember {
+  id: string;
+  user_id: string;
+  room_id: string;
+  joined_at: string;
+  user?: {
+    id: string;
+    display_name?: string;
+    avatar_url?: string;
+  };
 }
 
-interface StudyRoomMemberProps {
-  participants: Participant[];
+export interface StudyRoomMemberProps {
+  roomId: string;
 }
 
-export const StudyRoomMember = ({ participants }: StudyRoomMemberProps) => {
-  return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium">Room Participants ({participants.length})</h3>
+export const StudyRoomMember = ({ roomId }: StudyRoomMemberProps) => {
+  const { user } = useUser();
+  const [members, setMembers] = useState<RoomMember[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      if (!roomId) return;
       
-      <div className="space-y-3 overflow-y-auto max-h-[60vh]">
-        {participants.map((participant) => (
-          <Card key={participant.id} className="p-3">
-            <div className="flex items-center gap-3">
-              <div className="relative shrink-0">
-                <Avatar>
-                  <AvatarImage src={participant.avatar} />
-                  <AvatarFallback>{participant.name[0]}</AvatarFallback>
-                </Avatar>
-                {participant.online && (
-                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
-                )}
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('room_members')
+          .select('*, user:profiles(id, display_name, avatar_url)')
+          .eq('room_id', roomId);
+
+        if (error) {
+          throw error;
+        }
+
+        setMembers(data || []);
+      } catch (error) {
+        console.error('Error fetching room members:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMembers();
+
+    // Subscribe to changes
+    const channel = supabase
+      .channel(`room_members_${roomId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'room_members',
+          filter: `room_id=eq.${roomId}`,
+        },
+        fetchMembers
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomId]);
+
+  return (
+    <Card className="mb-4">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Members</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="flex justify-center py-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-500"></div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {members.length === 0 ? (
+              <div className="text-center py-2 text-sm text-muted-foreground">
+                No members in this room yet
               </div>
-              
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="font-medium truncate">{participant.name}</h4>
-                  {participant.role === "organizer" && (
-                    <Badge variant="outline" className="flex items-center gap-1 text-xs">
-                      <Crown className="h-3 w-3" />
-                      Organizer
-                    </Badge>
+            ) : (
+              members.map((member) => (
+                <div
+                  key={member.id}
+                  className="flex items-center gap-2 p-2 rounded-md hover:bg-muted"
+                >
+                  <Avatar className="h-8 w-8">
+                    {member.user?.avatar_url ? (
+                      <AvatarImage src={member.user.avatar_url} />
+                    ) : (
+                      <AvatarFallback>
+                        {member.user?.display_name?.[0] || 'U'}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">
+                      {member.user_id === user?.id
+                        ? 'You'
+                        : member.user?.display_name || 'Anonymous'}
+                    </p>
+                  </div>
+                  {member.user_id === user?.id && (
+                    <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                      You
+                    </span>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {participant.online ? "Online" : "Offline"}
-                </p>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-    </div>
+              ))
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
+
+export default StudyRoomMember;

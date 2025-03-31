@@ -1,100 +1,69 @@
 
-import { useState } from "react";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Timer, Clock, Plus, Minus } from "lucide-react";
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import { Clock } from 'lucide-react';
 
-interface StartFocusDialogProps {
+export interface StartFocusDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onStartSession: (duration: number) => void;
+  onConfirm: (duration: number) => void;
 }
 
-export const StartFocusDialog = ({ 
-  open, 
-  onOpenChange, 
-  onStartSession 
+export const StartFocusDialog = ({
+  open,
+  onOpenChange,
+  onConfirm
 }: StartFocusDialogProps) => {
   const [duration, setDuration] = useState(25);
-  
-  const handleDecreaseDuration = () => {
-    if (duration > 5) {
-      setDuration(duration - 5);
-    }
+
+  const handleConfirm = () => {
+    onConfirm(duration);
   };
-  
-  const handleIncreaseDuration = () => {
-    if (duration < 60) {
-      setDuration(duration + 5);
-    }
-  };
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Start Group Focus Session</DialogTitle>
-          <DialogDescription>
-            This will initiate a synchronized focus timer for all participants in the room.
-          </DialogDescription>
+          <DialogTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Start Focus Session
+          </DialogTitle>
         </DialogHeader>
-        
-        <div className="py-4">
-          <h4 className="text-sm font-medium mb-3">Session Duration</h4>
-          <div className="flex items-center justify-center gap-4">
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={handleDecreaseDuration}
-              disabled={duration <= 5}
-            >
-              <Minus className="h-4 w-4" />
-            </Button>
-            
-            <div className="flex items-center gap-2 w-20 justify-center">
-              <Clock className="h-5 w-5 text-muted-foreground" />
-              <span className="text-2xl font-medium">{duration}</span>
+        <div className="py-6">
+          <div className="mb-6">
+            <p className="text-sm text-muted-foreground mb-4">
+              Set the duration of your focus session in minutes.
+            </p>
+            <div className="flex justify-between mb-2">
+              <span className="text-sm">Duration</span>
+              <span className="font-medium">{duration} minutes</span>
             </div>
-            
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={handleIncreaseDuration}
-              disabled={duration >= 60}
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
+            <Slider
+              value={[duration]}
+              min={5}
+              max={120}
+              step={5}
+              onValueChange={(values) => setDuration(values[0])}
+              className="mb-4"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>5 min</span>
+              <span>1 hour</span>
+              <span>2 hours</span>
+            </div>
           </div>
-          <p className="text-center text-sm text-muted-foreground mt-2">minutes</p>
         </div>
-        
-        <div className="bg-muted p-3 rounded-lg text-sm space-y-2">
-          <p className="font-medium">This will:</p>
-          <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-            <li>Start a synchronized timer for all group members</li>
-            <li>Show a shared progress tracker</li>
-            <li>Temporarily silence notifications</li>
-            <li>Encourage everyone to stay focused</li>
-          </ul>
-        </div>
-        
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={() => onStartSession(duration)}>
-            <Timer className="h-4 w-4 mr-2" />
-            Start Session
-          </Button>
+          <Button onClick={handleConfirm}>Start</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 };
+
+export default StartFocusDialog;

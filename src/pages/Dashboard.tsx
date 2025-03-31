@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -222,6 +221,14 @@ const Dashboard = () => {
           
           {/* Left column - Weekly tracker (on desktop or after QuickStartButton on mobile) */}
           <div className="md:col-span-2 space-y-4">
+            <div data-walkthrough="ai-insights" className={`rounded-lg ${getEnvCardClass()}`}>
+              <AIInsights />
+            </div>
+            
+            <div className={`rounded-lg ${getEnvCardClass()}`}>
+              <Leaderboard />
+            </div>
+
             <div data-walkthrough="weekly-tracker" className={`p-4 rounded-lg ${getEnvCardClass()}`}>
               <Tabs defaultValue={preferredChartType} className="w-full" onValueChange={handleTabChange}>
                 <div className="flex justify-between items-center mb-2">
@@ -259,14 +266,6 @@ const Dashboard = () => {
 
             {/* Display Task List on desktop view */}
             {!isMobile && renderTaskList()}
-
-            <div data-walkthrough="ai-insights" className={`rounded-lg ${getEnvCardClass()}`}>
-              <AIInsights />
-            </div>
-            
-            <div className={`rounded-lg ${getEnvCardClass()}`}>
-              <Leaderboard />
-            </div>
           </div>
 
           {/* Right column - Quick actions & tips (on desktop only) */}

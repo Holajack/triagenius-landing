@@ -1,3 +1,4 @@
+
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { useStudyRooms } from '@/hooks/use-study-rooms';
@@ -17,11 +18,20 @@ import FocusTimer from "@/components/focus/FocusTimer";
 import { Check, Clock, X } from 'lucide-react';
 import { useFocusSession } from "@/hooks/use-focus-session";
 
+interface StudyRoom {
+  id: string;
+  name: string;
+  description?: string;
+  created_at: string;
+  owner_id: string;
+  timer_duration?: number;
+}
+
 const StudyRoom = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { rooms, loading: isRoomsLoading, error: roomError } = useStudyRooms();
-  const currentRoom = rooms.find(room => room.id === id);
+  const currentRoom = rooms.find(room => room.id === id) as StudyRoom | undefined;
   
   const { messages, sendMessage, loading: isMessagesLoading } = useRoomMessages(id || '');
   const { user } = useUser();
@@ -31,7 +41,7 @@ const StudyRoom = () => {
   const { theme } = useTheme();
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [timerDuration, setTimerDuration] = useState(25 * 60);
-  const timerRef = useRef<{ stopTimer: () => void; setRemainingTime?: (time: number) => void } | null>(null);
+  const timerRef = useRef<{ stopTimer: () => void; setRemainingTime: (time: number) => void } | null>(null);
   const [remainingTime, setRemainingTime] = useState(timerDuration);
 
   useEffect(() => {
@@ -57,10 +67,6 @@ const StudyRoom = () => {
 
   const handleStartFocus = () => {
     setIsFocusDialogOpen(true);
-  };
-
-  const handleCloseFocusDialog = () => {
-    setIsFocusDialogOpen(false);
   };
 
   const handleConfirmFocus = (duration: number) => {
@@ -136,7 +142,7 @@ const StudyRoom = () => {
 
       <StartFocusDialog
         open={isFocusDialogOpen}
-        onClose={handleCloseFocusDialog}
+        onOpenChange={setIsFocusDialogOpen}
         onConfirm={handleConfirmFocus}
       />
     </div>
