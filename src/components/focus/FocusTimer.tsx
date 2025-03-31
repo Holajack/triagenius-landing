@@ -111,27 +111,37 @@ const FocusTimer = forwardRef<
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Return the rendered component with larger size for the timer
+  // Calculate color based on remaining time
+  const getTimerColor = () => {
+    const progress = 1 - (remainingTime / initialTime);
+    
+    if (progress < 0.33) {
+      return theme === 'dark' ? 'border-green-500' : 'border-green-600'; // Starting color - green
+    } else if (progress < 0.66) {
+      return theme === 'dark' ? 'border-yellow-500' : 'border-yellow-600'; // Mid way - yellow
+    } else {
+      return theme === 'dark' ? 'border-red-500' : 'border-red-600'; // Almost complete - red
+    }
+  };
+
   return (
     <div className={cn("relative w-full max-w-md mx-auto", className)}>
+      {/* Fixed circle that changes color based on remaining time */}
       <div
         className={cn(
-          "absolute inset-0 rounded-full border-4 border-primary animate-progress",
-          theme === 'dark' ? 'border-opacity-50' : 'border-opacity-75',
-          lowPowerMode ? 'transition-none' : 'transition-transform duration-100 ease-linear',
+          "absolute inset-0 rounded-full border-8 transition-colors duration-300",
+          getTimerColor(),
+          theme === 'dark' ? 'border-opacity-75' : 'border-opacity-90'
         )}
-        style={{
-          animationDuration: `${initialTime}s`,
-          animationTimingFunction: 'linear',
-          animationFillMode: 'forwards',
-          animationPlayState: isPaused ? 'paused' : 'running',
-          transformOrigin: 'top',
-          transform: `rotate(${(1 - (remainingTime / initialTime)) * 360}deg)`,
-        }}
-        key={animationKey}
       />
+      
       <div className="relative flex items-center justify-center w-full h-full aspect-square">
-        <span className="text-6xl font-bold timer-display">{formatTime(remainingTime)}</span>
+        <span className={cn(
+          "text-6xl font-bold timer-display transition-all",
+          remainingTime < initialTime * 0.25 && !isPaused ? "text-red-600" : ""
+        )}>
+          {formatTime(remainingTime)}
+        </span>
       </div>
     </div>
   );

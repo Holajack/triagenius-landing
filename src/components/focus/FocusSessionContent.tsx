@@ -1,3 +1,4 @@
+
 import { useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -138,6 +139,7 @@ const FocusSessionContent = ({
     )}>
       <CardContent className="p-6" ref={contentRef}>
         <div className="flex flex-col items-center">
+          {/* Auto Priority Label - Only displayed when auto priority is enabled */}
           {isAutoPriority() && (
             <div className="w-full mb-2">
               <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium inline-flex items-center">
@@ -147,7 +149,8 @@ const FocusSessionContent = ({
             </div>
           )}
           
-          <div className="w-full mb-8 flex justify-center">
+          {/* Timer Container - Making it bigger and centered */}
+          <div className="w-full mb-6 flex justify-center">
             <FocusTimer
               ref={timerRef}
               initialTime={getTimerDuration()}
@@ -156,10 +159,14 @@ const FocusSessionContent = ({
               onMilestoneReached={onMilestoneReached}
               onProgressUpdate={onProgressUpdate}
               lowPowerMode={lowPowerMode}
-              className="w-64 h-64 sm:w-80 sm:h-80"
+              className={cn(
+                "transition-all duration-300",
+                isMobile ? "w-72 h-72" : "w-80 h-80"
+              )}
             />
           </div>
           
+          {/* Current Task Card - Displayed prominently below timer */}
           {currentTask && (
             <div className="w-full max-w-md mx-auto mb-6">
               <div className="bg-white/80 rounded-lg p-4 shadow-sm border-l-4 border-blue-500">
@@ -191,7 +198,8 @@ const FocusSessionContent = ({
             </div>
           )}
           
-          <div className="mt-4 mb-8 flex flex-col sm:flex-row gap-4 w-full max-w-md">
+          {/* Control Buttons - Optimized for mobile */}
+          <div className="mt-2 mb-6 flex flex-col sm:flex-row gap-3 w-full max-w-md">
             <AnimatePresence mode="wait">
               {isPaused ? (
                 <motion.div
@@ -204,7 +212,7 @@ const FocusSessionContent = ({
                 >
                   <Button
                     className={cn(
-                      "w-full py-6 h-auto text-white",
+                      "w-full py-5 h-auto text-white",
                       getButtonGradient()
                     )}
                     onClick={onResume}
@@ -224,7 +232,7 @@ const FocusSessionContent = ({
                 >
                   <Button
                     variant="outline"
-                    className="w-full py-6 h-auto"
+                    className="w-full py-5 h-auto"
                     onClick={onPause}
                   >
                     <Pause className="w-5 h-5 mr-2" />
@@ -236,7 +244,7 @@ const FocusSessionContent = ({
             
             <Button
               variant={isPaused ? "outline" : "secondary"}
-              className="w-full py-6 h-auto"
+              className="w-full py-5 h-auto"
               onClick={onEndSessionClick}
             >
               <StopCircle className="w-5 h-5 mr-2" />
@@ -244,6 +252,7 @@ const FocusSessionContent = ({
             </Button>
           </div>
           
+          {/* Complete Session Button - Only shown when milestone 3 is reached */}
           {currentMilestone >= 3 && (
             <div className="mb-6 text-center">
               <Button
@@ -257,6 +266,7 @@ const FocusSessionContent = ({
             </div>
           )}
           
+          {/* Task Progress - Shown at the bottom */}
           {totalTasks > 0 && (
             <div className="w-full mb-4 bg-white/80 rounded-lg p-3 shadow-sm">
               <div className="flex items-center justify-between mb-2">
