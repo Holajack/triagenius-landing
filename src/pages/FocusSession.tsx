@@ -182,7 +182,7 @@ const FocusSession = () => {
     stopTimer: () => void;
     setRemainingTime: (time: number) => void;
     getRemainingTime: () => number;
-  }>;
+  } | null>;
 
   return (
     <div className={cn(
