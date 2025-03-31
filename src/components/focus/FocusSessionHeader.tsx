@@ -1,102 +1,79 @@
 
-import React, { useState, useEffect, useRef } from "react";
+import { ArrowLeft, Battery, BatteryCharging, Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Battery, BatteryLow } from "lucide-react";
-import PageHeader from "@/components/common/PageHeader";
+import { useNavigate } from "react-router-dom";
+import { Task } from "@/types/tasks";
 
 interface FocusSessionHeaderProps {
   lowPowerMode: boolean;
   toggleLowPowerMode: () => void;
   operationInProgress: boolean;
+  currentTask?: Task | null;
 }
 
-const FocusSessionHeader: React.FC<FocusSessionHeaderProps> = ({
-  lowPowerMode,
-  toggleLowPowerMode,
-  operationInProgress
-}) => {
-  const [isToggling, setIsToggling] = useState(false);
-  const isMountedRef = useRef(true);
-  const timeoutIdRef = useRef<number | null>(null);
+const FocusSessionHeader = ({ 
+  lowPowerMode, 
+  toggleLowPowerMode, 
+  operationInProgress,
+  currentTask
+}: FocusSessionHeaderProps) => {
+  const navigate = useNavigate();
   
-  // Set mounted flag and handle cleanup
-  useEffect(() => {
-    isMountedRef.current = true;
-    
-    return () => {
-      isMountedRef.current = false;
-      if (timeoutIdRef.current) {
-        window.clearTimeout(timeoutIdRef.current);
-        timeoutIdRef.current = null;
-      }
-    };
-  }, []);
+  // Get priority color for badge
+  const getPriorityColor = (priority?: string) => {
+    switch (priority) {
+      case "high": return "bg-red-100 text-red-700 border-red-200";
+      case "medium": return "bg-yellow-100 text-yellow-700 border-yellow-200";
+      case "low": return "bg-green-100 text-green-700 border-green-200";
+      default: return "bg-gray-100 text-gray-700 border-gray-200";
+    }
+  };
   
-  // Reset toggling state after a timeout
-  useEffect(() => {
-    if (isToggling && isMountedRef.current) {
-      // Clear any existing timeout
-      if (timeoutIdRef.current) {
-        window.clearTimeout(timeoutIdRef.current);
-      }
-      
-      timeoutIdRef.current = window.setTimeout(() => {
-        if (isMountedRef.current) {
-          setIsToggling(false);
-        }
-        timeoutIdRef.current = null;
-      }, 1000);
+  // Get priority icon
+  const getPriorityIcon = (priority?: string) => {
+    const className = "h-3 w-3 mr-1";
+    switch (priority) {
+      case "high": return <Flag className={`${className} text-red-600`} />;
+      case "medium": return <Flag className={`${className} text-yellow-600`} />;
+      case "low": return <Flag className={`${className} text-green-600`} />;
+      default: return <Flag className={`${className} text-gray-600`} />;
     }
-    
-    return () => {
-      if (timeoutIdRef.current) {
-        window.clearTimeout(timeoutIdRef.current);
-        timeoutIdRef.current = null;
-      }
-    };
-  }, [isToggling]);
-  
-  const handleLowPowerToggle = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation(); // Prevent event bubbling
-    
-    // Prevent multiple rapid clicks
-    if (isToggling || operationInProgress || !isMountedRef.current) {
-      return;
-    }
-    
-    setIsToggling(true);
-    
-    // Cancel any pending animations for smoother transitions
-    if (window.cancelAnimationFrame) {
-      const maxId = 100; // Safety limit
-      const currentId = window.requestAnimationFrame(() => {});
-      for (let i = currentId; i > currentId - maxId; i--) {
-        window.cancelAnimationFrame(i);
-      }
-    }
-    
-    // Use requestAnimationFrame for better performance
-    requestAnimationFrame(() => {
-      if (isMountedRef.current) {
-        // Call the toggle function
-        toggleLowPowerMode();
-      }
-    });
   };
 
   return (
-    <div className="flex justify-between items-center">
-      <PageHeader title="Focus Session" subtitle="Stay focused and achieve your goals" />
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        onClick={handleLowPowerToggle}
-        title={lowPowerMode ? "Switch to enhanced mode" : "Switch to low power mode"}
-        disabled={isToggling || operationInProgress}
-        className="relative" // Add relative positioning for better click handling
+    <div className="flex items-center justify-between mb-6">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="w-9 h-9 rounded-full"
+        onClick={() => navigate('/dashboard')}
       >
-        {lowPowerMode ? <Battery className="h-5 w-5" /> : <BatteryLow className="h-5 w-5" />}
+        <ArrowLeft className="h-5 w-5" />
+      </Button>
+      
+      {currentTask && (
+        <div className="flex items-center bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm">
+          <span className="text-sm font-medium mr-2">Current Focus:</span>
+          <span className="text-sm">{currentTask.title}</span>
+          <span className={`ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${getPriorityColor(currentTask.priority)}`}>
+            {getPriorityIcon(currentTask.priority)}
+            {currentTask.priority}
+          </span>
+        </div>
+      )}
+      
+      <Button
+        variant="ghost"
+        size="icon"
+        className="w-9 h-9 rounded-full"
+        onClick={toggleLowPowerMode}
+        disabled={operationInProgress}
+      >
+        {lowPowerMode ? (
+          <Battery className="h-5 w-5" />
+        ) : (
+          <BatteryCharging className="h-5 w-5" />
+        )}
       </Button>
     </div>
   );

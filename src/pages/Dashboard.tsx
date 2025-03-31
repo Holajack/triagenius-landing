@@ -210,7 +210,17 @@ const Dashboard = () => {
         </div>
 
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Left column - Weekly tracker */}
+          {/* For mobile: QuickStartButton first, then TaskList, then WeeklyTracker */}
+          {isMobile && (
+            <>
+              <div data-walkthrough="quick-start" className="md:col-span-3">
+                <QuickStartButton />
+              </div>
+              {renderTaskList()}
+            </>
+          )}
+          
+          {/* Left column - Weekly tracker (on desktop or after QuickStartButton on mobile) */}
           <div className="md:col-span-2 space-y-4">
             <div data-walkthrough="weekly-tracker" className={`p-4 rounded-lg ${getEnvCardClass()}`}>
               <Tabs defaultValue={preferredChartType} className="w-full" onValueChange={handleTabChange}>
@@ -257,18 +267,20 @@ const Dashboard = () => {
             <div className={`rounded-lg ${getEnvCardClass()}`}>
               <Leaderboard />
             </div>
-
-            {/* Display Task List on mobile below Leaderboard */}
-            {isMobile && renderTaskList()}
           </div>
 
-          {/* Right column - Quick actions & tips */}
-          <div className="space-y-4">
-            <div data-walkthrough="quick-start">
-              <QuickStartButton />
+          {/* Right column - Quick actions & tips (on desktop only) */}
+          {!isMobile && (
+            <div className="space-y-4">
+              <div data-walkthrough="quick-start">
+                <QuickStartButton />
+              </div>
+              <MotivationalTip />
             </div>
-            <MotivationalTip />
-          </div>
+          )}
+          
+          {/* Additional Motivational Tip for mobile below all content */}
+          {isMobile && <MotivationalTip />}
         </div>
       </div>
 

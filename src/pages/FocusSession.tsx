@@ -1,9 +1,11 @@
+
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useFocusSession } from "@/hooks/use-focus-session";
+import { useTasks } from "@/contexts/TaskContext";
 import { MotivationalDialog } from "@/components/focus/MotivationalDialog";
 import { ConfirmEndDialog } from "@/components/focus/ConfirmEndDialog";
 import FocusSessionHeader from "@/components/focus/FocusSessionHeader";
@@ -14,18 +16,77 @@ import { toast } from "sonner";
 const FocusSession = () => {
   const { state } = useOnboarding();
   const { theme } = useTheme();
+  const { state: taskState } = useTasks();
   const isMobile = useIsMobile();
   const operationInProgressRef = useRef(false);
   const operationTimeoutRef = useRef<number | null>(null);
   const isMountedRef = useRef(true);
+  const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
+  const [taskPriorities, setTaskPriorities] = useState<string[]>([]);
+  
+  // Load task priorities on component mount
+  useEffect(() => {
+    try {
+      const savedPriorities = localStorage.getItem('focusTaskPriority');
+      if (savedPriorities) {
+        setTaskPriorities(JSON.parse(savedPriorities));
+      }
+    } catch (error) {
+      console.error("Error loading task priorities:", error);
+    }
+  }, []);
+  
+  // Get current task based on priority
+  const getCurrentTask = () => {
+    if (taskPriorities.length === 0 || currentTaskIndex >= taskPriorities.length) {
+      return null;
+    }
+    
+    const currentTaskId = taskPriorities[currentTaskIndex];
+    return taskState.tasks.find(task => task.id === currentTaskId);
+  };
+  
+  // Move to next task in priority list
+  const goToNextTask = () => {
+    if (currentTaskIndex < taskPriorities.length - 1) {
+      setCurrentTaskIndex(prevIndex => prevIndex + 1);
+      const nextTask = taskState.tasks.find(task => task.id === taskPriorities[currentTaskIndex + 1]);
+      if (nextTask) {
+        toast.info(`Moving to next task: ${nextTask.title}`);
+      }
+    }
+  };
   
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     isMountedRef.current = true;
     
+    // Setup timer to run in background when app is minimized
+    const setupBackgroundTimer = () => {
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'START_BACKGROUND_TIMER',
+          data: {
+            duration: timerRef.current?.getRemainingTime() || 0,
+            timestamp: Date.now()
+          }
+        });
+      }
+    };
+    
+    // Listen for visibility changes
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        setupBackgroundTimer();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
     return () => {
       isMountedRef.current = false;
       document.body.style.overflow = 'auto';
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       
       if (operationTimeoutRef.current) {
         window.clearTimeout(operationTimeoutRef.current);
@@ -64,6 +125,17 @@ const FocusSession = () => {
     setShowMotivation,
     setShowEndConfirmation
   } = useFocusSession();
+  
+  // Handle milestone completion - possibly switch to next task
+  const handleMilestoneCompletionWithTask = (milestone: number) => {
+    // Call the original milestone handler
+    handleMilestoneReached(milestone);
+    
+    // If we're at a milestone, consider moving to the next task
+    if (milestone > 0 && milestone % 2 === 0) {
+      goToNextTask();
+    }
+  };
   
   const handleLowPowerModeToggle = () => {
     if (operationInProgressRef.current || !isMountedRef.current) return;
@@ -108,6 +180,9 @@ const FocusSession = () => {
     }, 10);
   };
 
+  // Get the current task to display
+  const currentTask = getCurrentTask();
+
   return (
     <div className={cn(
       "min-h-screen bg-background text-foreground flex flex-col items-center p-4 overflow-hidden",
@@ -118,6 +193,7 @@ const FocusSession = () => {
           lowPowerMode={lowPowerMode}
           toggleLowPowerMode={handleLowPowerModeToggle}
           operationInProgress={operationInProgressRef.current}
+          currentTask={currentTask}
         />
         
         <FocusSessionContent 
@@ -125,7 +201,7 @@ const FocusSession = () => {
           onPause={handlePause}
           onResume={handleResume}
           onComplete={handleSessionEnd}
-          onMilestoneReached={handleMilestoneReached}
+          onMilestoneReached={handleMilestoneCompletionWithTask}
           onProgressUpdate={handleProgressUpdate}
           isPaused={isPaused}
           onEndSessionClick={handleEndSessionClick}
@@ -134,6 +210,9 @@ const FocusSession = () => {
           currentMilestone={currentMilestone}
           isCelebrating={isCelebrating}
           segmentProgress={segmentProgress}
+          currentTask={currentTask}
+          totalTasks={taskPriorities.length}
+          currentTaskIndex={currentTaskIndex}
         />
       </div>
 

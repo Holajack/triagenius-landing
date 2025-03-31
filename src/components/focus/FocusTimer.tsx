@@ -1,370 +1,208 @@
-
-import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Play, Pause, StopCircle, ChevronUp, ChevronDown } from "lucide-react";
-import { useOnboarding } from "@/contexts/OnboardingContext";
-import { toast } from "sonner";
+import { useState, useEffect, useImperativeHandle, forwardRef, useRef } from "react";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 interface FocusTimerProps {
-  onPause: () => void;
-  onResume: () => void;
-  onComplete: () => void;
-  onMilestoneReached?: (milestone: number) => void;
-  onProgressUpdate?: (progress: number) => void;
+  duration: number;
   isPaused: boolean;
-  autoStart?: boolean;
-  showControls?: boolean;
-  onEndSessionClick?: () => void;
+  onComplete: () => void;
+  onMilestoneReached: (milestone: number) => void;
+  onProgressUpdate: (progress: number) => void;
+  lowPowerMode: boolean;
 }
 
-// Full session is 3 hours = 180 minutes
-const TOTAL_SESSION_TIME = 180 * 60; // 3 hours in seconds
-const MILESTONE_TIME = 45 * 60; // 45 minutes in seconds
-
-export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>(({ 
-  onPause, 
-  onResume, 
-  onComplete,
-  onMilestoneReached,
-  onProgressUpdate,
-  isPaused,
-  autoStart = false,
-  showControls = true,
-  onEndSessionClick
-}: FocusTimerProps, ref) => {
-  const { state } = useOnboarding();
-  const [minutes, setMinutes] = useState(25);
-  const [seconds, setSeconds] = useState(0);
-  const [time, setTime] = useState(minutes * 60 + seconds);
-  const [progress, setProgress] = useState(100);
-  const [isActive, setIsActive] = useState(false);
-  const [milestoneReached, setMilestoneReached] = useState(0);
-  const timerRef = useRef<number>();
-  const notificationShownRef = useRef(false);
-  const lastMilestoneTimeRef = useRef(0);
-  const rafId = useRef<number | null>(null);
-  const isUpdatingUIRef = useRef(false);
+const FocusTimer = forwardRef<
+  { stopTimer: () => void; setRemainingTime: (time: number) => void; getRemainingTime: () => number },
+  FocusTimerProps
+>(({ duration, isPaused, onComplete, onMilestoneReached, onProgressUpdate, lowPowerMode }, ref) => {
+  const [timeLeft, setTimeLeft] = useState(duration);
+  const [segmentDuration] = useState(45 * 60); // 45 minute segments
+  const [milestone, setMilestone] = useState(0);
+  const timerIdRef = useRef<number | null>(null);
+  const lastTickRef = useRef<number | null>(null);
+  const visibilityRef = useRef('visible');
+  const bgModeTimerRef = useRef<number | null>(null);
   
-  // Calculate elapsed time based on the original time and current time
-  // This is used for milestone tracking
-  const initialTimeRef = useRef(0);
-  const elapsedTimeRef = useRef(0);
-  const isPwaRef = useRef(localStorage.getItem('isPWA') === 'true');
-
-  // Throttle UI updates
-  const throttleUIUpdates = (callback: () => void) => {
-    if (isUpdatingUIRef.current) return;
-    
-    isUpdatingUIRef.current = true;
-    rafId.current = requestAnimationFrame(() => {
-      callback();
-      
-      // Reset the flag after a short delay
-      setTimeout(() => {
-        isUpdatingUIRef.current = false;
-      }, 50); // Adjust the throttle delay as needed
-    });
-  };
-
-  // Expose stopTimer method to parent component
   useImperativeHandle(ref, () => ({
     stopTimer: () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = undefined;
+      if (timerIdRef.current) {
+        window.clearInterval(timerIdRef.current);
+        timerIdRef.current = null;
       }
-      if (rafId.current) {
-        cancelAnimationFrame(rafId.current);
-        rafId.current = null;
-      }
-      setIsActive(false);
+    },
+    setRemainingTime: (time: number) => {
+      setTimeLeft(time);
+    },
+    getRemainingTime: () => {
+      return timeLeft;
     }
   }));
   
   useEffect(() => {
-    // Initialize with 45 minutes if auto-starting (default session segment)
-    if (autoStart) {
-      const initialMinutes = 45;
-      setMinutes(initialMinutes);
-      setSeconds(0);
-      setTime(initialMinutes * 60);
-      initialTimeRef.current = initialMinutes * 60;
-    }
-    
-    const savedDuration = localStorage.getItem('focusTimerDuration');
-    if (savedDuration) {
-      try {
-        const { minutes: savedMinutes, seconds: savedSeconds } = JSON.parse(savedDuration);
-        setMinutes(savedMinutes);
-        setSeconds(savedSeconds);
-        setTime(savedMinutes * 60 + savedSeconds);
-        initialTimeRef.current = savedMinutes * 60 + savedSeconds;
-        localStorage.removeItem('focusTimerDuration');
-      } catch (e) {
-        console.error('Error parsing saved duration', e);
-      }
-    }
-    
-    if (autoStart) {
-      // Use RAF for smoother animation and to prevent jank
-      rafId.current = requestAnimationFrame(() => {
-        setTimeout(() => {
-          setIsActive(true);
-          if (!notificationShownRef.current) {
-            // Delay toast to prevent UI jank
-            setTimeout(() => {
-              toast.success("Focus session started!");
-            }, 100);
-            notificationShownRef.current = true;
+    const handleVisibilityChange = () => {
+      visibilityRef.current = document.visibilityState;
+      
+      if (document.visibilityState === 'hidden' && !isPaused) {
+        lastTickRef.current = Date.now();
+        
+        if (timerIdRef.current) {
+          window.clearInterval(timerIdRef.current);
+          timerIdRef.current = null;
+        }
+        
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'START_BACKGROUND_TIMER',
+            data: {
+              duration: timeLeft,
+              timestamp: Date.now()
+            }
+          });
+        } else {
+          bgModeTimerRef.current = window.setTimeout(() => {
+            checkBackgroundTimer();
+          }, 1000);
+        }
+      } else if (document.visibilityState === 'visible' && !isPaused) {
+        if (bgModeTimerRef.current) {
+          window.clearTimeout(bgModeTimerRef.current);
+          bgModeTimerRef.current = null;
+        }
+        
+        if (lastTickRef.current !== null) {
+          const now = Date.now();
+          const elapsedSeconds = Math.floor((now - lastTickRef.current) / 1000);
+          
+          if (elapsedSeconds > 0) {
+            setTimeLeft(prev => Math.max(0, prev - elapsedSeconds));
           }
-        }, 500);
-      });
-    }
-    
-    return () => {
-      if (rafId.current) {
-        cancelAnimationFrame(rafId.current);
-        rafId.current = null;
+          
+          lastTickRef.current = null;
+        }
+        
+        startTimer();
       }
     };
-  }, [autoStart]);
-  
-  const adjustTime = (type: 'minutes' | 'seconds', increment: boolean) => {
-    if (isActive) return;
     
-    if (type === 'minutes') {
-      const newMinutes = increment ? minutes + 1 : minutes - 1;
-      if (newMinutes >= 0 && newMinutes <= 45) {
-        setMinutes(newMinutes);
-        setTime(newMinutes * 60 + seconds);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      
+      if (timerIdRef.current) {
+        window.clearInterval(timerIdRef.current);
+        timerIdRef.current = null;
       }
-    } else {
-      const newSeconds = increment ? seconds + 15 : seconds - 15;
-      if (newSeconds >= 0 && newSeconds < 60) {
-        setSeconds(newSeconds);
-        setTime(minutes * 60 + newSeconds);
+      
+      if (bgModeTimerRef.current) {
+        window.clearTimeout(bgModeTimerRef.current);
+        bgModeTimerRef.current = null;
       }
+    };
+  }, [isPaused]);
+  
+  const startTimer = () => {
+    if (timerIdRef.current) {
+      window.clearInterval(timerIdRef.current);
     }
+    
+    timerIdRef.current = window.setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          if (timerIdRef.current) {
+            window.clearInterval(timerIdRef.current);
+            timerIdRef.current = null;
+          }
+          onComplete();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
-
-  useEffect(() => {
-    if (isActive && !isPaused) {
-      timerRef.current = window.setInterval(() => {
-        setTime((prevTime) => {
-          if (prevTime <= 1) {
-            clearInterval(timerRef.current);
-            elapsedTimeRef.current += initialTimeRef.current - 1;
-            
-            // Check if we've completed a milestone but not the full session
-            const totalElapsedSeconds = elapsedTimeRef.current;
-            const milestonesCompleted = Math.floor(totalElapsedSeconds / MILESTONE_TIME);
-            
-            if (milestonesCompleted < 4) { // Less than full session (3 hours = 4 milestones)
-              // Start next milestone segment
-              const newMilestone = milestonesCompleted;
-              setMilestoneReached(newMilestone);
-              
-              if (newMilestone > 0 && onMilestoneReached) {
-                // Use RAF for smoother UI updates with debounce for PWA
-                if (isPwaRef.current) {
-                  throttleUIUpdates(() => {
-                    onMilestoneReached(newMilestone);
-                    
-                    // Show milestone celebration with delay
-                    const milestoneMessages = [
-                      "Great job! You've made it to the first checkpoint—keep going!",
-                      "You're halfway up the mountain—stay focused!",
-                      "Final push! Reach the peak and complete today's session!"
-                    ];
-                    
-                    if (newMilestone <= milestoneMessages.length) {
-                      setTimeout(() => {
-                        toast.success(milestoneMessages[newMilestone - 1], {
-                          duration: 5000,
-                        });
-                      }, 50);
-                    }
-                  });
-                } else {
-                  // Non-PWA can use standard RAF
-                  requestAnimationFrame(() => {
-                    onMilestoneReached(newMilestone);
-                    
-                    const milestoneMessages = [
-                      "Great job! You've made it to the first checkpoint—keep going!",
-                      "You're halfway up the mountain—stay focused!",
-                      "Final push! Reach the peak and complete today's session!"
-                    ];
-                    
-                    if (newMilestone <= milestoneMessages.length) {
-                      toast.success(milestoneMessages[newMilestone - 1], {
-                        duration: 5000,
-                      });
-                    }
-                  });
-                }
-              }
-              
-              // If we've completed all milestones (3 hours)
-              if (milestonesCompleted >= 3) {
-                if (isPwaRef.current) {
-                  // Use throttled updates for PWA
-                  throttleUIUpdates(() => {
-                    toast.success("Congratulations! You've completed your 3-hour focus session!", {
-                      duration: 5000,
-                    });
-                    
-                    // Use setTimeout with longer delay to prevent UI blocking
-                    setTimeout(() => {
-                      onComplete();
-                    }, 100);
-                  });
-                } else {
-                  setTimeout(() => {
-                    toast.success("Congratulations! You've completed your 3-hour focus session!", {
-                      duration: 5000,
-                    });
-                    
-                    setTimeout(() => {
-                      onComplete();
-                    }, 0);
-                  }, 0);
-                }
-                return 0;
-              }
-              
-              // Start a new 45-minute segment
-              const nextSegmentTime = 45 * 60;
-              initialTimeRef.current = nextSegmentTime;
-              return nextSegmentTime;
-            } else {
-              // Full session completed
-              clearInterval(timerRef.current);
-              setIsActive(false);
-              
-              // Use throttled updates for PWA
-              if (isPwaRef.current) {
-                throttleUIUpdates(() => {
-                  setTimeout(() => {
-                    onComplete();
-                  }, 100);
-                });
-              } else {
-                // Standard approach for non-PWA
-                requestAnimationFrame(() => {
-                  setTimeout(() => {
-                    onComplete();
-                  }, 0);
-                });
-              }
-              return 0;
-            }
-          }
-          
-          // Check for milestones during the timer countdown
-          const currentElapsedTime = elapsedTimeRef.current + (initialTimeRef.current - prevTime);
-          const currentMilestone = Math.floor(currentElapsedTime / MILESTONE_TIME);
-          
-          // Handle progress updates with throttling for PWA
-          if (onProgressUpdate) {
-            const segmentElapsedTime = currentElapsedTime % MILESTONE_TIME;
-            const segmentProgress = (segmentElapsedTime / MILESTONE_TIME) * 100;
-            
-            // Skip some updates in PWA mode to reduce UI pressure
-            if (isPwaRef.current) {
-              // Only update every ~500ms in PWA mode to reduce jank
-              if (!isUpdatingUIRef.current) {
-                throttleUIUpdates(() => {
-                  onProgressUpdate(segmentProgress);
-                });
-              }
-            } else {
-              // Regular updates for non-PWA
-              if (rafId.current) {
-                cancelAnimationFrame(rafId.current);
-              }
-              rafId.current = requestAnimationFrame(() => {
-                onProgressUpdate(segmentProgress);
-                rafId.current = null;
-              });
-            }
-          }
-          
-          // Handle milestone reached
-          if (currentMilestone > milestoneReached && currentMilestone <= 3) {
-            setMilestoneReached(currentMilestone);
-            
-            if (onMilestoneReached) {
-              // Use throttled updates for milestone celebration in PWA
-              if (isPwaRef.current) {
-                throttleUIUpdates(() => {
-                  onMilestoneReached(currentMilestone);
-                  
-                  // Show milestone celebration
-                  const milestoneMessages = [
-                    "Great job! You've made it to the first checkpoint—keep going!",
-                    "You're halfway up the mountain—stay focused!",
-                    "Final push! Reach the peak and complete today's session!"
-                  ];
-                  
-                  if (currentMilestone <= milestoneMessages.length) {
-                    setTimeout(() => {
-                      toast.success(milestoneMessages[currentMilestone - 1], {
-                        duration: 5000,
-                      });
-                    }, 50);
-                  }
-                });
-              } else {
-                // Regular approach for non-PWA
-                requestAnimationFrame(() => {
-                  onMilestoneReached(currentMilestone);
-                  
-                  // Show milestone celebration
-                  const milestoneMessages = [
-                    "Great job! You've made it to the first checkpoint—keep going!",
-                    "You're halfway up the mountain—stay focused!",
-                    "Final push! Reach the peak and complete today's session!"
-                  ];
-                  
-                  if (currentMilestone <= milestoneMessages.length) {
-                    toast.success(milestoneMessages[currentMilestone - 1], {
-                      duration: 5000,
-                    });
-                  }
-                });
-              }
-            }
-          }
-          
-          return prevTime - 1;
-        });
+  
+  const checkBackgroundTimer = () => {
+    if (visibilityRef.current === 'hidden' && !isPaused) {
+      const now = Date.now();
+      
+      if (lastTickRef.current !== null) {
+        const elapsedSeconds = Math.floor((now - lastTickRef.current) / 1000);
+        
+        if (elapsedSeconds > 0) {
+          setTimeLeft(prev => Math.max(0, prev - elapsedSeconds));
+          lastTickRef.current = now;
+        }
+      }
+      
+      bgModeTimerRef.current = window.setTimeout(() => {
+        checkBackgroundTimer();
       }, 1000);
     }
-    
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-      if (rafId.current) {
-        cancelAnimationFrame(rafId.current);
-        rafId.current = null;
-      }
-    };
-  }, [isActive, isPaused, onComplete, onMilestoneReached, milestoneReached, onProgressUpdate]);
+  };
   
   useEffect(() => {
-    // Use throttled progress updates
-    if (isPwaRef.current) {
-      throttleUIUpdates(() => {
-        const totalTime = minutes * 60 + seconds;
-        setProgress((time / totalTime) * 100);
-      });
+    if (isPaused) {
+      if (timerIdRef.current) {
+        window.clearInterval(timerIdRef.current);
+        timerIdRef.current = null;
+      }
+      
+      if (bgModeTimerRef.current) {
+        window.clearTimeout(bgModeTimerRef.current);
+        bgModeTimerRef.current = null;
+      }
+      
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'STOP_BACKGROUND_TIMER'
+        });
+      }
     } else {
-      const totalTime = minutes * 60 + seconds;
-      setProgress((time / totalTime) * 100);
+      if (document.visibilityState === 'visible') {
+        startTimer();
+      } else if (lastTickRef.current === null) {
+        lastTickRef.current = Date.now();
+        
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'START_BACKGROUND_TIMER',
+            data: {
+              duration: timeLeft,
+              timestamp: Date.now()
+            }
+          });
+        } else {
+          bgModeTimerRef.current = window.setTimeout(() => {
+            checkBackgroundTimer();
+          }, 1000);
+        }
+      }
     }
-  }, [time, minutes, seconds]);
+    
+    return () => {
+      if (timerIdRef.current) {
+        window.clearInterval(timerIdRef.current);
+        timerIdRef.current = null;
+      }
+    };
+  }, [isPaused, duration]);
+  
+  useEffect(() => {
+    setTimeLeft(duration);
+  }, [duration]);
+  
+  useEffect(() => {
+    const currentSegment = Math.floor((duration - timeLeft) / segmentDuration) + 1;
+    const segmentTimeLeft = timeLeft % segmentDuration;
+    const segmentProgress = 100 - (segmentTimeLeft / segmentDuration * 100);
+    
+    onProgressUpdate(segmentProgress);
+    
+    if (currentSegment > milestone) {
+      setMilestone(currentSegment);
+      onMilestoneReached(currentSegment);
+    }
+  }, [timeLeft, duration, segmentDuration, milestone, onMilestoneReached, onProgressUpdate]);
   
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -372,183 +210,55 @@ export const FocusTimer = forwardRef<{ stopTimer: () => void }, FocusTimerProps>
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
   
-  const handleStart = () => {
-    if (time === 0) return;
-    setIsActive(true);
-    initialTimeRef.current = time;
-    if (!notificationShownRef.current) {
-      if (isPwaRef.current) {
-        // Delay toast in PWA mode
-        setTimeout(() => {
-          toast.success("Focus session started!");
-        }, 100);
-      } else {
-        toast.success("Focus session started!");
+  useEffect(() => {
+    return () => {
+      if (timerIdRef.current) {
+        window.clearInterval(timerIdRef.current);
+        timerIdRef.current = null;
       }
-      notificationShownRef.current = true;
-    }
-  };
-  
-  const handlePause = () => {
-    setIsActive(false);
-    onPause();
-  };
-  
-  const handleResume = () => {
-    setIsActive(true);
-    onResume();
-  };
+      
+      if (bgModeTimerRef.current) {
+        window.clearTimeout(bgModeTimerRef.current);
+        bgModeTimerRef.current = null;
+      }
+    };
+  }, []);
 
-  const handleEndSessionClick = () => {
-    if (time > 0 && isActive) {
-      if (onEndSessionClick) {
-        // Prevent UI freezing with requestAnimationFrame and throttling for PWA
-        if (isPwaRef.current) {
-          throttleUIUpdates(() => {
-            setTimeout(() => {
-              onEndSessionClick();
-            }, 50);
-          });
-        } else {
-          requestAnimationFrame(() => {
-            setTimeout(() => {
-              onEndSessionClick();
-            }, 0);
-          });
-        }
-      } else {
-        // Direct completion with timer cleanup
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = undefined;
-        }
-        setIsActive(false);
-        
-        // Use throttling for PWA
-        if (isPwaRef.current) {
-          throttleUIUpdates(() => {
-            setTimeout(() => {
-              onComplete();
-            }, 50);
-          });
-        } else {
-          setTimeout(() => {
-            onComplete();
-          }, 0);
-        }
-      }
-    } else {
-      // Use throttling for PWA
-      if (isPwaRef.current) {
-        throttleUIUpdates(() => {
-          setTimeout(() => {
-            onComplete();
-          }, 50);
-        });
-      } else {
-        setTimeout(() => {
-          onComplete();
-        }, 0);
-      }
-    }
-  };
-
-  // Calculate the overall session progress (out of 3 hours)
-  const calculateOverallProgress = () => {
-    const completedTime = elapsedTimeRef.current + (initialTimeRef.current - time);
-    return Math.min((completedTime / TOTAL_SESSION_TIME) * 100, 100);
-  };
-  
   return (
-    <Card className="p-6 w-full max-w-md">
-      <div className="flex flex-col items-center space-y-4">
-        {showControls ? (
-          <div className="flex items-center gap-4">
-            <div className="flex flex-col items-center">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => adjustTime('minutes', true)}
-                disabled={isActive || minutes >= 45}
-              >
-                <ChevronUp className="h-4 w-4" />
-              </Button>
-              <div className="text-4xl font-mono tabular-nums w-20 text-center">
-                {minutes.toString().padStart(2, '0')}
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => adjustTime('minutes', false)}
-                disabled={isActive || minutes <= 0}
-              >
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </div>
-            <span className="text-4xl">:</span>
-            <div className="flex flex-col items-center">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => adjustTime('seconds', true)}
-                disabled={isActive || seconds >= 45}
-              >
-                <ChevronUp className="h-4 w-4" />
-              </Button>
-              <div className="text-4xl font-mono tabular-nums w-20 text-center">
-                {seconds.toString().padStart(2, '0')}
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => adjustTime('seconds', false)}
-                disabled={isActive || seconds <= 0}
-              >
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="text-4xl font-mono tabular-nums">
-            {formatTime(time)}
-          </div>
+    <div className="relative w-full max-w-md">
+      <div className={cn(
+        "w-64 h-64 mx-auto relative flex items-center justify-center",
+        "rounded-full",
+        lowPowerMode ? "bg-white/30" : "bg-white backdrop-blur-sm shadow-lg"
+      )}>
+        {!lowPowerMode && (
+          <motion.div
+            className="absolute inset-0 rounded-full bg-blue-100"
+            initial={{ scale: 0.8, opacity: 0.5 }}
+            animate={{ 
+              scale: [0.8, 1.02, 0.95, 1],
+              opacity: [0.5, 0.3, 0.4, 0.3]
+            }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              repeatType: "reverse"
+            }}
+          />
         )}
         
-        {/* Current segment progress */}
-        <Progress value={progress} className="w-full" />
-        
-        <div className="flex gap-4">
-          {!isActive ? (
-            <Button onClick={handleStart} size="lg" disabled={time === 0}>
-              <Play className="mr-2 h-5 w-5" />
-              Start Session
-            </Button>
-          ) : isPaused ? (
-            <Button onClick={handleResume} size="lg" variant="outline">
-              <Play className="mr-2 h-5 w-5" />
-              Resume
-            </Button>
-          ) : (
-            <Button onClick={handlePause} size="lg" variant="outline">
-              <Pause className="mr-2 h-5 w-5" />
-              Pause
-            </Button>
-          )}
-          
-          {isActive && (
-            <Button 
-              onClick={handleEndSessionClick} 
-              size="lg"
-              variant="ghost"
-            >
-              <StopCircle className="mr-2 h-5 w-5" />
-              End Session
-            </Button>
-          )}
+        <div className={cn(
+          "z-10 text-5xl font-bold tabular-nums",
+          "timer-display",
+          isPaused ? "text-gray-400" : "text-gray-800"
+        )}>
+          {formatTime(timeLeft)}
         </div>
       </div>
-    </Card>
+    </div>
   );
 });
 
 FocusTimer.displayName = "FocusTimer";
+
+export default FocusTimer;

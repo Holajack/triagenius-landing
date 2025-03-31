@@ -24,9 +24,10 @@ import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Flag, ListChecks, ListPlus, PlusCircle, Trash2, X } from "lucide-react";
+import { Flag, ListChecks, ListPlus, PlusCircle, Trash2, X, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/hooks/use-user";
+import { useOnboarding } from "@/contexts/OnboardingContext";
 
 // Form schema for adding tasks
 const taskFormSchema = z.object({
@@ -50,6 +51,7 @@ interface TaskListProps {
 
 const TaskList = ({ persistToSupabase = false }: TaskListProps) => {
   const { state, dispatch } = useTasks();
+  const { state: onboardingState } = useOnboarding();
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [newSubtask, setNewSubtask] = useState("");
   const { user } = useUser();
@@ -61,6 +63,19 @@ const TaskList = ({ persistToSupabase = false }: TaskListProps) => {
       priority: "medium",
     },
   });
+  
+  // Function to check if user can add more tasks based on work style
+  const canAddMoreTasks = (): boolean => {
+    if (!onboardingState.workStyle) return true;
+    
+    // For deep-work style, limit to 2 tasks
+    if (onboardingState.workStyle === 'deep-work' && state.tasks.length >= 2) {
+      return false;
+    }
+    
+    // For other work styles, allow multiple tasks
+    return true;
+  };
   
   // Save tasks to local storage whenever they change
   useEffect(() => {
@@ -180,6 +195,15 @@ const TaskList = ({ persistToSupabase = false }: TaskListProps) => {
   }, [dispatch, user]);
 
   const onSubmit = (data: TaskFormValues) => {
+    // Check if user can add more tasks based on work style
+    if (!canAddMoreTasks()) {
+      toast.error(
+        "Task limit reached", 
+        { description: "Deep work mode limits you to 2 main tasks for better focus." }
+      );
+      return;
+    }
+    
     dispatch({
       type: "ADD_TASK",
       payload: {
@@ -243,9 +267,17 @@ const TaskList = ({ persistToSupabase = false }: TaskListProps) => {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="flex items-center">
-          <ListChecks className="h-5 w-5 mr-2" />
-          Create Your Subject/Task List
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center">
+            <ListChecks className="h-5 w-5 mr-2" />
+            Create Your Subject/Task List
+          </div>
+          {onboardingState.workStyle === 'deep-work' && (
+            <div className="text-xs text-amber-600 flex items-center">
+              <AlertCircle className="h-3 w-3 mr-1" />
+              Max 2 tasks (Deep Work Mode)
+            </div>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -293,7 +325,11 @@ const TaskList = ({ persistToSupabase = false }: TaskListProps) => {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full md:w-auto">
+            <Button 
+              type="submit" 
+              className="w-full md:w-auto"
+              disabled={!canAddMoreTasks()}
+            >
               <PlusCircle className="h-4 w-4 mr-1" /> Add
             </Button>
           </form>
