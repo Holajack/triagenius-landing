@@ -28,7 +28,7 @@ const ProfilePreferences = () => {
   } = useOnboarding();
   
   const { user, refreshUser } = useUser();
-  const { setEnvironmentTheme, environmentTheme, verifyEnvironmentWithDatabase } = useTheme();
+  const { setEnvironmentTheme, environmentTheme, verifyEnvironmentWithDatabase, shouldApplyEnvironmentTheming } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
