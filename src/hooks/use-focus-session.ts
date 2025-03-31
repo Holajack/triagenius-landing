@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -68,6 +67,8 @@ export const useFocusSession = () => {
       console.error('useFocusSession: Error detecting PWA state:', error);
     }
     
+    const shouldAutoStart = localStorage.getItem('autoStartFocusTimer') === 'true';
+    
     try {
       const savedSession = getSavedFocusSession();
       if (savedSession) {
@@ -119,6 +120,15 @@ export const useFocusSession = () => {
       }
     } catch (error) {
       console.error("Error loading saved focus session:", error);
+    }
+    
+    if (shouldAutoStart) {
+      setIsPaused(false);
+      localStorage.removeItem('autoStartFocusTimer'); // Clear the flag
+      toast.success("Focus session started automatically", { 
+        description: "Working on your highest priority tasks first",
+        duration: 3000
+      });
     }
     
     if (isPwaRef.current && window.Worker) {
@@ -173,7 +183,6 @@ export const useFocusSession = () => {
       }
     }
     
-    // When leaving the page, mark that the session was exited
     const handleBeforeUnload = () => {
       try {
         const focusData = getSavedFocusSession();
@@ -210,10 +219,8 @@ export const useFocusSession = () => {
     };
   }, []);
   
-  // Auto-start the timer if not resuming
   useEffect(() => {
     if (!resumingSession && !autoStartedRef.current && !isPaused) {
-      // A short delay to ensure components are fully mounted
       const startTimerId = setTimeout(() => {
         if (isMountedRef.current) {
           console.log("Auto-starting new focus session");
@@ -306,7 +313,7 @@ export const useFocusSession = () => {
         segmentProgress,
         remainingTime,
         environment: localStorage.getItem('environment') || 'default',
-        wasExited: false // Default to false, will be set to true on page unload
+        wasExited: false
       };
       
       saveFocusSessionState(focusData);

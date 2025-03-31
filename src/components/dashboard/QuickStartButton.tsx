@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -185,8 +186,13 @@ const QuickStartButton = () => {
     setUseAutoPriority(true);
     setShowPriorityDialog(false);
     
-    // Prepare tasks with auto-priority and start session
+    // Prepare tasks with auto-priority
     prepareFocusTasks();
+    
+    // Store a flag to auto-start the timer in focus session
+    localStorage.setItem('autoStartFocusTimer', 'true');
+    
+    // Navigate to focus session page
     navigate("/focus-session");
   };
   

@@ -1,4 +1,3 @@
-
 import { useRef, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,7 +89,21 @@ const FocusSessionContent = ({
     }
   };
 
+  const isAutoPriority = () => {
+    try {
+      return localStorage.getItem('autoStartFocusTimer') === 'true' ||
+             localStorage.getItem('isAutoPriority') === 'true';
+    } catch (e) {
+      return false;
+    }
+  };
+
   useEffect(() => {
+    if (isAutoPriority()) {
+      localStorage.setItem('isAutoPriority', 'true');
+      localStorage.removeItem('autoStartFocusTimer');
+    }
+    
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         navigator.serviceWorker.controller?.postMessage({
@@ -125,7 +138,15 @@ const FocusSessionContent = ({
     )}>
       <CardContent className="p-6" ref={contentRef}>
         <div className="flex flex-col items-center">
-          {/* Timer section - Now larger and at the top */}
+          {isAutoPriority() && (
+            <div className="w-full mb-2">
+              <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium inline-flex items-center">
+                <ListChecks className="w-3 h-3 mr-1" />
+                Auto Priority Mode
+              </div>
+            </div>
+          )}
+          
           <div className="w-full mb-8 flex justify-center">
             <FocusTimer
               ref={timerRef}
@@ -139,7 +160,37 @@ const FocusSessionContent = ({
             />
           </div>
           
-          {/* Control buttons - positioned below the timer */}
+          {currentTask && (
+            <div className="w-full max-w-md mx-auto mb-6">
+              <div className="bg-white/80 rounded-lg p-4 shadow-sm border-l-4 border-blue-500">
+                <h3 className="text-sm font-medium flex items-center mb-2">
+                  <BookOpen className="w-4 h-4 mr-1" />
+                  Current Focus Task
+                </h3>
+                <div className="text-lg font-medium mb-1">{currentTask.title}</div>
+                <div className="mt-1 text-xs inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-800">
+                  Priority: <span className="font-medium ml-1 capitalize">{currentTask.priority}</span>
+                </div>
+                {currentTask.subtasks && currentTask.subtasks.length > 0 && (
+                  <div className="mt-3">
+                    <div className="text-xs font-medium text-gray-500 mb-1">Subtasks:</div>
+                    <div className="space-y-1">
+                      {currentTask.subtasks.map((subtask, idx) => (
+                        <div key={subtask.id} className="flex items-center text-sm">
+                          <span className="w-4 text-xs text-gray-500 mr-1">{idx + 1}.</span>
+                          {subtask.title}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="mt-3 text-xs text-right text-gray-500">
+                  Task {currentTaskIndex + 1} of {totalTasks}
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="mt-4 mb-8 flex flex-col sm:flex-row gap-4 w-full max-w-md">
             <AnimatePresence mode="wait">
               {isPaused ? (
@@ -206,7 +257,6 @@ const FocusSessionContent = ({
             </div>
           )}
           
-          {/* Task progress section - moved below the timer */}
           {totalTasks > 0 && (
             <div className="w-full mb-4 bg-white/80 rounded-lg p-3 shadow-sm">
               <div className="flex items-center justify-between mb-2">
@@ -225,53 +275,8 @@ const FocusSessionContent = ({
                   style={{ width: `${Math.round(((currentTaskIndex + 1) / totalTasks) * 100)}%` }}
                 ></div>
               </div>
-              
-              {currentTask && (
-                <div className="mt-2 text-sm">
-                  <span className="font-medium">Current: </span>
-                  {currentTask.title}
-                  {currentTask.subtasks && currentTask.subtasks.length > 0 && (
-                    <span className="text-xs text-gray-500 ml-1">
-                      ({currentTask.subtasks.length} subtasks)
-                    </span>
-                  )}
-                </div>
-              )}
             </div>
           )}
-          
-          {/* Current task details - moved to the bottom */}
-          <div className="w-full max-w-md mx-auto">
-            {currentTask ? (
-              <div className="bg-white/80 rounded-lg p-4 shadow-sm">
-                <h3 className="text-sm font-medium flex items-center mb-2">
-                  <BookOpen className="w-4 h-4 mr-1" />
-                  Current Focus Task
-                </h3>
-                <div className="text-base font-medium mb-1">{currentTask.title}</div>
-                {currentTask.subtasks && currentTask.subtasks.length > 0 && (
-                  <div className="mt-2">
-                    <div className="text-xs font-medium text-gray-500 mb-1">Subtasks:</div>
-                    <div className="space-y-1">
-                      {currentTask.subtasks.map((subtask, idx) => (
-                        <div key={subtask.id} className="flex items-center text-sm">
-                          <span className="w-4 text-xs text-gray-500 mr-1">{idx + 1}.</span>
-                          {subtask.title}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <div className="mt-3 text-xs text-right text-gray-500">
-                  Task {currentTaskIndex + 1} of {totalTasks}
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-4 text-sm text-gray-500">
-                No specific task selected for this session
-              </div>
-            )}
-          </div>
         </div>
       </CardContent>
     </Card>
