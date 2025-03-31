@@ -29,17 +29,35 @@ export const StudyRoomResources = ({ roomId }: StudyRoomResourcesProps) => {
       
       try {
         setLoading(true);
+        // Using study_resources table since room_resources doesn't exist in schema
         const { data, error } = await supabase
-          .from('room_resources')
+          .from('study_resources')
           .select('*')
           .eq('room_id', roomId)
           .order('created_at', { ascending: false });
 
         if (error) {
+          // If the table doesn't exist yet, just return an empty array
+          if (error.code === '42P01') { // undefined_table
+            console.log('Study resources table does not exist yet');
+            setResources([]);
+            return;
+          }
           throw error;
         }
 
-        setResources(data || []);
+        // Transform data to match Resource interface if needed
+        const formattedResources = (data || []).map(resource => ({
+          id: resource.id,
+          room_id: resource.room_id,
+          user_id: resource.user_id,
+          title: resource.title,
+          url: resource.url || '',
+          type: resource.type || 'link',
+          created_at: resource.created_at
+        }));
+
+        setResources(formattedResources);
       } catch (error) {
         console.error('Error fetching room resources:', error);
       } finally {
@@ -49,24 +67,28 @@ export const StudyRoomResources = ({ roomId }: StudyRoomResourcesProps) => {
 
     fetchResources();
 
-    // Subscribe to changes
-    const channel = supabase
-      .channel(`room_resources_${roomId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'room_resources',
-          filter: `room_id=eq.${roomId}`,
-        },
-        fetchResources
-      )
-      .subscribe();
+    // Subscribe to changes if table exists
+    try {
+      const channel = supabase
+        .channel(`room_resources_${roomId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'study_resources',
+            filter: `room_id=eq.${roomId}`,
+          },
+          fetchResources
+        )
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch (error) {
+      console.error('Error setting up realtime subscription:', error);
+    }
   }, [roomId]);
 
   return (

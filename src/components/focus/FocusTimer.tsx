@@ -1,264 +1,141 @@
-import { useState, useEffect, useImperativeHandle, forwardRef, useRef } from "react";
-import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { cn } from '@/lib/utils';
 
-interface FocusTimerProps {
-  duration: number;
-  isPaused: boolean;
-  onComplete: () => void;
-  onMilestoneReached: (milestone: number) => void;
-  onProgressUpdate: (progress: number) => void;
-  lowPowerMode: boolean;
-}
+type FocusTimerProps = {
+  initialTime: number;
+  onComplete?: () => void;
+  onMilestoneReached?: (milestone: number) => void;
+  onProgressUpdate?: (progress: number) => void;
+  isPaused?: boolean;
+  lowPowerMode?: boolean;
+  className?: string;
+};
 
 const FocusTimer = forwardRef<
   { stopTimer: () => void; setRemainingTime: (time: number) => void; getRemainingTime: () => number },
   FocusTimerProps
->(({ duration, isPaused, onComplete, onMilestoneReached, onProgressUpdate, lowPowerMode }, ref) => {
-  const [timeLeft, setTimeLeft] = useState(duration);
-  const [segmentDuration] = useState(45 * 60); // 45 minute segments
-  const [milestone, setMilestone] = useState(0);
-  const timerIdRef = useRef<number | null>(null);
-  const lastTickRef = useRef<number | null>(null);
-  const visibilityRef = useRef('visible');
-  const bgModeTimerRef = useRef<number | null>(null);
+>(({ 
+  initialTime,
+  onComplete,
+  onMilestoneReached,
+  onProgressUpdate,
+  isPaused = false,
+  lowPowerMode = false,
+  className
+}, ref) => {
+  const [remainingTime, setRemainingTime] = useState(initialTime);
+  const [animationKey, setAnimationKey] = useState(0);
+  const intervalRef = useRef<number | null>(null);
+  const { theme } = useTheme();
+  const startTimeRef = useRef<number>(Date.now());
+  const lastTickTimeRef = useRef<number>(Date.now());
+  const lastMilestoneRef = useRef<number>(-1);
   
+  // Calculate milestones based on initialTime (typically 3 milestones)
+  const milestoneTimePoints = [
+    Math.floor(initialTime * 0.33),
+    Math.floor(initialTime * 0.66),
+    0 // Final milestone at completion
+  ];
+  
+  // Expose methods to parent components
   useImperativeHandle(ref, () => ({
     stopTimer: () => {
-      if (timerIdRef.current) {
-        window.clearInterval(timerIdRef.current);
-        timerIdRef.current = null;
+      if (intervalRef.current !== null) {
+        window.clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     },
     setRemainingTime: (time: number) => {
-      setTimeLeft(time);
+      setRemainingTime(time);
+      startTimeRef.current = Date.now() - (initialTime - time) * 1000;
+      setAnimationKey(prev => prev + 1);
     },
     getRemainingTime: () => {
-      return timeLeft;
+      return remainingTime;
     }
   }));
   
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      visibilityRef.current = document.visibilityState;
+    if (!isPaused && remainingTime > 0) {
+      startTimeRef.current = Date.now() - (initialTime - remainingTime) * 1000;
+      lastTickTimeRef.current = Date.now();
       
-      if (document.visibilityState === 'hidden' && !isPaused) {
-        lastTickRef.current = Date.now();
+      intervalRef.current = window.setInterval(() => {
+        const now = Date.now();
+        let elapsed = (now - startTimeRef.current) / 1000;
+        let newRemainingTime = initialTime - elapsed;
         
-        if (timerIdRef.current) {
-          window.clearInterval(timerIdRef.current);
-          timerIdRef.current = null;
+        if (newRemainingTime <= 0) {
+          newRemainingTime = 0;
+          window.clearInterval(intervalRef.current);
+          intervalRef.current = null;
+          if (onComplete) onComplete();
         }
         
-        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-          navigator.serviceWorker.controller.postMessage({
-            type: 'START_BACKGROUND_TIMER',
-            data: {
-              duration: timeLeft,
-              timestamp: Date.now()
-            }
-          });
-        } else {
-          bgModeTimerRef.current = window.setTimeout(() => {
-            checkBackgroundTimer();
-          }, 1000);
-        }
-      } else if (document.visibilityState === 'visible' && !isPaused) {
-        if (bgModeTimerRef.current) {
-          window.clearTimeout(bgModeTimerRef.current);
-          bgModeTimerRef.current = null;
-        }
+        setRemainingTime(newRemainingTime);
         
-        if (lastTickRef.current !== null) {
-          const now = Date.now();
-          const elapsedSeconds = Math.floor((now - lastTickRef.current) / 1000);
-          
-          if (elapsedSeconds > 0) {
-            setTimeLeft(prev => Math.max(0, prev - elapsedSeconds));
+        const timePassed = initialTime - newRemainingTime;
+        milestoneTimePoints.forEach((milestoneTime, index) => {
+          if (timePassed >= milestoneTime && index > lastMilestoneRef.current) {
+            if (onMilestoneReached) onMilestoneReached(index);
+            lastMilestoneRef.current = index;
           }
-          
-          lastTickRef.current = null;
-        }
-        
-        startTimer();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      
-      if (timerIdRef.current) {
-        window.clearInterval(timerIdRef.current);
-        timerIdRef.current = null;
-      }
-      
-      if (bgModeTimerRef.current) {
-        window.clearTimeout(bgModeTimerRef.current);
-        bgModeTimerRef.current = null;
-      }
-    };
-  }, [isPaused]);
-  
-  const startTimer = () => {
-    if (timerIdRef.current) {
-      window.clearInterval(timerIdRef.current);
-    }
-    
-    timerIdRef.current = window.setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          if (timerIdRef.current) {
-            window.clearInterval(timerIdRef.current);
-            timerIdRef.current = null;
-          }
-          onComplete();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-  
-  const checkBackgroundTimer = () => {
-    if (visibilityRef.current === 'hidden' && !isPaused) {
-      const now = Date.now();
-      
-      if (lastTickRef.current !== null) {
-        const elapsedSeconds = Math.floor((now - lastTickRef.current) / 1000);
-        
-        if (elapsedSeconds > 0) {
-          setTimeLeft(prev => Math.max(0, prev - elapsedSeconds));
-          lastTickRef.current = now;
-        }
-      }
-      
-      bgModeTimerRef.current = window.setTimeout(() => {
-        checkBackgroundTimer();
-      }, 1000);
-    }
-  };
-  
-  useEffect(() => {
-    if (isPaused) {
-      if (timerIdRef.current) {
-        window.clearInterval(timerIdRef.current);
-        timerIdRef.current = null;
-      }
-      
-      if (bgModeTimerRef.current) {
-        window.clearTimeout(bgModeTimerRef.current);
-        bgModeTimerRef.current = null;
-      }
-      
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({
-          type: 'STOP_BACKGROUND_TIMER'
         });
-      }
-    } else {
-      if (document.visibilityState === 'visible') {
-        startTimer();
-      } else if (lastTickRef.current === null) {
-        lastTickRef.current = Date.now();
         
-        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-          navigator.serviceWorker.controller.postMessage({
-            type: 'START_BACKGROUND_TIMER',
-            data: {
-              duration: timeLeft,
-              timestamp: Date.now()
-            }
-          });
-        } else {
-          bgModeTimerRef.current = window.setTimeout(() => {
-            checkBackgroundTimer();
-          }, 1000);
+        if (onProgressUpdate) {
+          const progress = 1 - (newRemainingTime / initialTime);
+          onProgressUpdate(progress);
         }
-      }
-    }
-    
-    return () => {
-      if (timerIdRef.current) {
-        window.clearInterval(timerIdRef.current);
-        timerIdRef.current = null;
-      }
-    };
-  }, [isPaused, duration]);
-  
-  useEffect(() => {
-    setTimeLeft(duration);
-  }, [duration]);
-  
-  useEffect(() => {
-    const currentSegment = Math.floor((duration - timeLeft) / segmentDuration) + 1;
-    const segmentTimeLeft = timeLeft % segmentDuration;
-    const segmentProgress = 100 - (segmentTimeLeft / segmentDuration * 100);
-    
-    onProgressUpdate(segmentProgress);
-    
-    if (currentSegment > milestone) {
-      setMilestone(currentSegment);
-      onMilestoneReached(currentSegment);
-    }
-  }, [timeLeft, duration, segmentDuration, milestone, onMilestoneReached, onProgressUpdate]);
-  
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-  
-  useEffect(() => {
-    return () => {
-      if (timerIdRef.current) {
-        window.clearInterval(timerIdRef.current);
-        timerIdRef.current = null;
-      }
-      
-      if (bgModeTimerRef.current) {
-        window.clearTimeout(bgModeTimerRef.current);
-        bgModeTimerRef.current = null;
-      }
-    };
-  }, []);
-
-  return (
-    <div className="relative w-full max-w-md">
-      <div className={cn(
-        "w-64 h-64 mx-auto relative flex items-center justify-center",
-        "rounded-full",
-        lowPowerMode ? "bg-white/30" : "bg-white backdrop-blur-sm shadow-lg"
-      )}>
-        {!lowPowerMode && (
-          <motion.div
-            className="absolute inset-0 rounded-full bg-blue-100"
-            initial={{ scale: 0.8, opacity: 0.5 }}
-            animate={{ 
-              scale: [0.8, 1.02, 0.95, 1],
-              opacity: [0.5, 0.3, 0.4, 0.3]
-            }}
-            transition={{
-              duration: 4,
-              repeat: Infinity,
-              repeatType: "reverse"
-            }}
-          />
-        )}
         
-        <div className={cn(
-          "z-10 text-5xl font-bold tabular-nums",
-          "timer-display",
-          isPaused ? "text-gray-400" : "text-gray-800"
-        )}>
-          {formatTime(timeLeft)}
-        </div>
+        lastTickTimeRef.current = now;
+      }, lowPowerMode ? 1000 : 100);
+    } else if (isPaused && intervalRef.current !== null) {
+      window.clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
+    return () => {
+      if (intervalRef.current !== null) {
+        window.clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [isPaused, initialTime, onComplete, onMilestoneReached, onProgressUpdate, lowPowerMode, remainingTime]);
+  
+  const formatTime = (timeInSeconds: number): string => {
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = Math.floor(timeInSeconds % 60);
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // Return the rendered component
+  return (
+    <div className={cn("relative", className)}>
+      <div
+        className={cn(
+          "absolute inset-0 rounded-full border-2 border-primary animate-progress",
+          theme === 'dark' ? 'border-opacity-50' : 'border-opacity-75',
+          lowPowerMode ? 'transition-none' : 'transition-transform duration-100 ease-linear',
+        )}
+        style={{
+          animationDuration: `${initialTime}s`,
+          animationTimingFunction: 'linear',
+          animationFillMode: 'forwards',
+          animationPlayState: isPaused ? 'paused' : 'running',
+          transformOrigin: 'top',
+          transform: `rotate(${(1 - (remainingTime / initialTime)) * 360}deg)`,
+        }}
+        key={animationKey}
+      />
+      <div className="relative flex items-center justify-center w-full h-full">
+        <span className="text-4xl font-bold">{formatTime(remainingTime)}</span>
       </div>
     </div>
   );
 });
 
-FocusTimer.displayName = "FocusTimer";
+FocusTimer.displayName = 'FocusTimer';
 
 export default FocusTimer;

@@ -33,15 +33,23 @@ export const StudyRoomMember = ({ roomId }: StudyRoomMemberProps) => {
       try {
         setLoading(true);
         const { data, error } = await supabase
-          .from('room_members')
-          .select('*, user:profiles(id, display_name, avatar_url)')
+          .from('study_room_participants')
+          .select('*, user:profiles(id, display_name:username, avatar_url)')
           .eq('room_id', roomId);
 
         if (error) {
           throw error;
         }
 
-        setMembers(data || []);
+        const formattedMembers = (data || []).map(member => ({
+          id: member.id,
+          user_id: member.user_id,
+          room_id: member.room_id,
+          joined_at: member.joined_at,
+          user: member.user
+        }));
+
+        setMembers(formattedMembers);
       } catch (error) {
         console.error('Error fetching room members:', error);
       } finally {
@@ -59,7 +67,7 @@ export const StudyRoomMember = ({ roomId }: StudyRoomMemberProps) => {
         {
           event: '*',
           schema: 'public',
-          table: 'room_members',
+          table: 'study_room_participants',
           filter: `room_id=eq.${roomId}`,
         },
         fetchMembers

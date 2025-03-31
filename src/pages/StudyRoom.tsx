@@ -18,12 +18,14 @@ import FocusTimer from "@/components/focus/FocusTimer";
 import { Check, Clock, X } from 'lucide-react';
 import { useFocusSession } from "@/hooks/use-focus-session";
 
+// Define a proper interface for the StudyRoom
 interface StudyRoom {
   id: string;
   name: string;
   description?: string;
+  creator_id: string;
   created_at: string;
-  owner_id: string;
+  current_participants?: number;
   timer_duration?: number;
 }
 
@@ -31,7 +33,18 @@ const StudyRoom = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { rooms, loading: isRoomsLoading, error: roomError } = useStudyRooms();
-  const currentRoom = rooms.find(room => room.id === id) as StudyRoom | undefined;
+  
+  // Safely cast found room to our defined StudyRoom interface
+  const foundRoom = rooms.find(room => room.id === id);
+  const currentRoom = foundRoom ? {
+    id: foundRoom.id,
+    name: foundRoom.name,
+    description: foundRoom.description,
+    creator_id: foundRoom.creator_id,
+    created_at: foundRoom.created_at,
+    current_participants: foundRoom.current_participants,
+    timer_duration: foundRoom.duration ? parseInt(foundRoom.duration) : 25 // Default to 25 if not set
+  } as StudyRoom : undefined;
   
   const { messages, sendMessage, loading: isMessagesLoading } = useRoomMessages(id || '');
   const { user } = useUser();
@@ -53,7 +66,7 @@ const StudyRoom = () => {
 
   const handleSendMessage = async () => {
     if (message.trim() && id) {
-      await sendMessage(id, message.trim());
+      await sendMessage(message.trim());
       setMessage('');
     }
   };
@@ -105,6 +118,16 @@ const StudyRoom = () => {
     return <div>Study room not found.</div>;
   }
 
+  // Convert RoomMessage[] to the format expected by StudyRoomChat
+  const formattedMessages = messages.map(msg => ({
+    id: msg.id,
+    room_id: msg.room_id || '',
+    user_id: msg.sender_id,
+    content: msg.content,
+    created_at: msg.created_at,
+    sender: msg.sender
+  }));
+
   return (
     <div className={cn(
       "min-h-screen bg-background text-foreground flex flex-col p-4",
@@ -125,7 +148,7 @@ const StudyRoom = () => {
       <div className="flex flex-col md:flex-row h-full">
         <div className="w-full md:w-3/4 flex flex-col">
           <StudyRoomChat
-            messages={messages}
+            messages={formattedMessages}
             isLoading={isMessagesLoading}
             message={message}
             setMessage={setMessage}

@@ -59,10 +59,14 @@ const FocusSession = () => {
     
     const setupBackgroundTimer = () => {
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        const remainingTime = timerRef.current && typeof timerRef.current.getRemainingTime === 'function'
+          ? timerRef.current.getRemainingTime()
+          : 0;
+        
         navigator.serviceWorker.controller.postMessage({
           type: 'START_BACKGROUND_TIMER',
           data: {
-            duration: timerRef.current?.getRemainingTime ? timerRef.current.getRemainingTime() : 0,
+            duration: remainingTime,
             timestamp: Date.now()
           }
         });
@@ -173,7 +177,6 @@ const FocusSession = () => {
 
   const currentTask = getCurrentTask();
 
-  // Modify timerRef to match required type
   const typedTimerRef = timerRef as MutableRefObject<{
     stopTimer: () => void;
     setRemainingTime: (time: number) => void;
