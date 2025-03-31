@@ -1,9 +1,23 @@
 
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useLocation } from "react-router-dom";
 
 // Enable this for debugging environment issues
 const DEBUG_ENV = true;
+
+// Define which routes should have environment theming applied
+const THEMED_ROUTES = [
+  '/dashboard',
+  '/community',
+  '/bonuses',
+  '/results',
+  '/profile',
+  '/leaderboard',
+  '/settings',
+  '/nora',
+  '/reports' // Adding reports since it's in the NavigationBar
+];
 
 type ThemeContextType = {
   theme: string;
@@ -13,11 +27,14 @@ type ThemeContextType = {
   toggleTheme: () => void;
   applyEnvironmentTheme: (environment: string | null) => void;
   verifyEnvironmentWithDatabase: (userId: string) => Promise<boolean>;
+  shouldApplyEnvironmentTheming: () => boolean;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
+  const location = useLocation();
+  
   // Initialize theme from localStorage if available, otherwise default to 'light'
   const [theme, setThemeState] = useState<string>(() => {
     return localStorage.getItem('theme') || 'light';
@@ -30,9 +47,10 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     return envFromStorage || 'office';
   });
 
-  // Check if we're on the landing page
-  const isLandingPage = () => {
-    return window.location.pathname === "/" || window.location.pathname === "/index";
+  // Check if the current route should have environment theming
+  const shouldApplyEnvironmentTheming = () => {
+    const currentPath = location.pathname;
+    return THEMED_ROUTES.some(route => currentPath.startsWith(route));
   };
 
   // Update localStorage and apply theme when theme changes
@@ -57,8 +75,8 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       setEnvironmentThemeState(environment);
       localStorage.setItem('environment', environment);
       
-      // Apply CSS classes immediately - but only if not on landing page
-      if (!isLandingPage()) {
+      // Apply CSS classes only if on a themed route
+      if (shouldApplyEnvironmentTheming()) {
         applyEnvironmentCSS(environment);
       }
       
@@ -70,9 +88,9 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   
   // Helper function to apply environment CSS
   const applyEnvironmentCSS = (environment: string) => {
-    // Skip visual changes on landing page
-    if (isLandingPage()) {
-      if (DEBUG_ENV) console.log('[ThemeContext] Skipping visual CSS changes on landing page');
+    // Skip visual changes on non-themed routes
+    if (!shouldApplyEnvironmentTheming()) {
+      if (DEBUG_ENV) console.log('[ThemeContext] Skipping visual CSS changes on non-themed route');
       return;
     }
     
@@ -131,7 +149,11 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       const dbEnvironment = data.last_selected_environment;
       const currentEnvironment = environmentTheme;
       const localStorageEnv = localStorage.getItem('environment');
-      const domAttrEnv = document.documentElement.getAttribute('data-environment');
+      
+      // Only check DOM attribute if on themed route
+      const domAttrEnv = shouldApplyEnvironmentTheming() 
+        ? document.documentElement.getAttribute('data-environment') 
+        : null;
       
       if (DEBUG_ENV) {
         console.log("[ThemeContext] Environment verification:", {
@@ -139,7 +161,8 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
           context: currentEnvironment,
           localStorage: localStorageEnv,
           domAttribute: domAttrEnv,
-          isLandingPage: isLandingPage()
+          shouldApplyTheming: shouldApplyEnvironmentTheming(),
+          route: location.pathname
         });
       }
       
@@ -147,8 +170,8 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       const isContextConsistent = dbEnvironment === currentEnvironment;
       const isLocalStorageConsistent = dbEnvironment === localStorageEnv;
       
-      // Only check DOM if not on landing page
-      const isDomConsistent = isLandingPage() ? true : dbEnvironment === domAttrEnv;
+      // Only check DOM if on themed route
+      const isDomConsistent = !shouldApplyEnvironmentTheming() ? true : dbEnvironment === domAttrEnv;
       
       const isFullyConsistent = isContextConsistent && isLocalStorageConsistent && isDomConsistent;
       
@@ -165,8 +188,8 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
           // Update localStorage
           localStorage.setItem('environment', dbEnvironment);
           
-          // Update DOM only if not on landing page
-          if (!isLandingPage()) {
+          // Update DOM only if on themed route
+          if (shouldApplyEnvironmentTheming()) {
             applyEnvironmentCSS(dbEnvironment);
           }
           
@@ -190,12 +213,31 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     // Also make sure environment is applied on initial load
     if (environmentTheme) {
       if (DEBUG_ENV) console.log('[ThemeContext] useEffect applying environment:', environmentTheme);
-      // Only apply CSS changes if not on landing page
-      if (!isLandingPage()) {
+      // Only apply CSS changes if on themed route
+      if (shouldApplyEnvironmentTheming()) {
         applyEnvironmentCSS(environmentTheme);
       }
     }
   }, [theme]);
+
+  // Apply environment changes when route changes
+  useEffect(() => {
+    if (environmentTheme && shouldApplyEnvironmentTheming()) {
+      if (DEBUG_ENV) console.log('[ThemeContext] Route changed, applying environment:', environmentTheme);
+      applyEnvironmentCSS(environmentTheme);
+    } else if (!shouldApplyEnvironmentTheming()) {
+      // Remove environment classes when navigating away from themed routes
+      if (DEBUG_ENV) console.log('[ThemeContext] Route changed to non-themed route, removing environment classes');
+      document.documentElement.classList.remove(
+        'theme-office', 
+        'theme-park', 
+        'theme-home', 
+        'theme-coffee-shop', 
+        'theme-library'
+      );
+      document.documentElement.removeAttribute('data-environment');
+    }
+  }, [location.pathname, environmentTheme]);
 
   // Listen for localStorage changes from other components
   useEffect(() => {
@@ -204,8 +246,8 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
         if (DEBUG_ENV) console.log('[ThemeContext] Storage event: environment changed to', e.newValue);
         if (e.newValue !== environmentTheme) {
           setEnvironmentThemeState(e.newValue);
-          // Only apply visual changes if not on landing page
-          if (!isLandingPage()) {
+          // Only apply visual changes if on themed route
+          if (shouldApplyEnvironmentTheming()) {
             applyEnvironmentCSS(e.newValue);
           }
         }
@@ -226,8 +268,8 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       
       if (newEnvironment && newEnvironment !== environmentTheme) {
         setEnvironmentThemeState(newEnvironment);
-        // Only apply visual changes if not on landing page
-        if (!isLandingPage()) {
+        // Only apply visual changes if on themed route
+        if (shouldApplyEnvironmentTheming()) {
           applyEnvironmentCSS(newEnvironment);
         }
       }
@@ -251,7 +293,8 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
         setEnvironmentTheme,
         toggleTheme,
         applyEnvironmentTheme,
-        verifyEnvironmentWithDatabase
+        verifyEnvironmentWithDatabase,
+        shouldApplyEnvironmentTheming
       }}
     >
       {children}

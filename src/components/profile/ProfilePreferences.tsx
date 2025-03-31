@@ -144,19 +144,17 @@ const ProfilePreferences = () => {
       setLastSavedEnvironment(envValue);
       
       // Update localStorage
-      if (!isLandingPage) {
-        localStorage.setItem('environment', envValue);
-        
-        // Update userPreferences in localStorage
-        const userPrefs = localStorage.getItem('userPreferences');
-        if (userPrefs) {
-          try {
-            const parsedPrefs = JSON.parse(userPrefs);
-            parsedPrefs.environment = envValue;
-            localStorage.setItem('userPreferences', JSON.stringify(parsedPrefs));
-          } catch (e) {
-            console.error("Error updating userPreferences:", e);
-          }
+      localStorage.setItem('environment', envValue);
+      
+      // Update userPreferences in localStorage
+      const userPrefs = localStorage.getItem('userPreferences');
+      if (userPrefs) {
+        try {
+          const parsedPrefs = JSON.parse(userPrefs);
+          parsedPrefs.environment = envValue;
+          localStorage.setItem('userPreferences', JSON.stringify(parsedPrefs));
+        } catch (e) {
+          console.error("Error updating userPreferences:", e);
         }
       }
       
@@ -212,7 +210,7 @@ const ProfilePreferences = () => {
   };
   
   const previewEnvironmentVisually = (value: string) => {
-    if (isLandingPage) return; // Don't apply visual changes on landing page
+    if (!shouldApplyEnvironmentTheming()) return;
     
     document.documentElement.classList.remove(
       'theme-office', 
@@ -227,36 +225,30 @@ const ProfilePreferences = () => {
   
   const applyEnvironmentFully = async (value: string): Promise<boolean> => {
     try {
-      if (isLandingPage) {
-        // Skip visual changes on landing page but still update contexts
-        setEnvironmentTheme(value as StudyEnvironment);
-        setSyncStatus(prev => ({ ...prev, themeContext: true }));
-        
-        // Update localStorage for persistence
-        localStorage.setItem('environment', value);
-        setSyncStatus(prev => ({ ...prev, localStorage: true }));
-        
-        // Force sync with OnboardingContext
-        await forceEnvironmentSync();
-        
-        return true;
-      }
+      const shouldApplyVisuals = shouldApplyEnvironmentTheming();
+      
+      if (DEBUG_ENV) console.log(`[ProfilePreferences] Applying environment fully: ${value} (visual changes: ${shouldApplyVisuals})`);
       
       // 1. Update ThemeContext state
       setEnvironmentTheme(value as StudyEnvironment);
       setSyncStatus(prev => ({ ...prev, themeContext: true }));
       
-      // 2. Update DOM classes and attributes
-      document.documentElement.classList.remove(
-        'theme-office', 
-        'theme-park', 
-        'theme-home', 
-        'theme-coffee-shop', 
-        'theme-library'
-      );
-      document.documentElement.classList.add(`theme-${value}`);
-      document.documentElement.setAttribute('data-environment', value);
-      setSyncStatus(prev => ({ ...prev, domAttr: true }));
+      // 2. Update DOM classes and attributes only if on a themed route
+      if (shouldApplyVisuals) {
+        document.documentElement.classList.remove(
+          'theme-office', 
+          'theme-park', 
+          'theme-home', 
+          'theme-coffee-shop', 
+          'theme-library'
+        );
+        document.documentElement.classList.add(`theme-${value}`);
+        document.documentElement.setAttribute('data-environment', value);
+        setSyncStatus(prev => ({ ...prev, domAttr: true }));
+      } else {
+        // Skip DOM checks if not on themed route
+        setSyncStatus(prev => ({ ...prev, domAttr: true }));
+      }
       
       // 3. Update localStorage
       localStorage.setItem('environment', value);
@@ -289,15 +281,15 @@ const ProfilePreferences = () => {
       const themeContextMatch = environmentTheme === expectedValue;
       setSyncStatus(prev => ({ ...prev, themeContext: themeContextMatch }));
       
-      // Check DOM attribute (only if not on landing page)
+      // Check DOM attribute (only if on themed route)
       let domAttrMatch = true;
       
-      if (!isLandingPage) {
+      if (shouldApplyEnvironmentTheming()) {
         const domAttr = document.documentElement.getAttribute('data-environment');
         domAttrMatch = domAttr === expectedValue;
         setSyncStatus(prev => ({ ...prev, domAttr: domAttrMatch }));
       } else {
-        // Skip DOM check on landing page
+        // Skip DOM check on non-themed routes
         setSyncStatus(prev => ({ ...prev, domAttr: true }));
       }
       
@@ -327,7 +319,7 @@ const ProfilePreferences = () => {
       setSyncStatus(prev => ({ ...prev, onboardingPrefs: onboardingPrefsMatch }));
       
       const allInSync = themeContextMatch && 
-                      (isLandingPage || domAttrMatch) && // Skip DOM check on landing page
+                      (shouldApplyEnvironmentTheming() ? domAttrMatch : true) && // Skip DOM check on non-themed routes
                       localStorageMatch && 
                       profileDbMatch && 
                       onboardingPrefsMatch;
@@ -336,12 +328,12 @@ const ProfilePreferences = () => {
         console.log("[ProfilePreferences] Environment Sync Verification:", {
           expectedValue,
           themeContext: { value: environmentTheme, match: themeContextMatch },
-          dom: { value: document.documentElement.getAttribute('data-environment'), match: isLandingPage || domAttrMatch },
+          dom: { value: document.documentElement.getAttribute('data-environment'), match: domAttrMatch },
           localStorage: { value: localStorageValue, match: localStorageMatch },
           profileDb: { value: profileData?.last_selected_environment, match: profileDbMatch },
           onboardingPrefs: { value: prefData?.learning_environment, match: onboardingPrefsMatch },
           allInSync,
-          isLandingPage
+          shouldTheme: shouldApplyEnvironmentTheming()
         });
       }
       
@@ -439,7 +431,7 @@ const ProfilePreferences = () => {
           return;
         }
         
-        // Then apply environment to all other locations EXCEPT landing page visuals
+        // Then apply environment to all other locations
         const appliedSuccessfully = await applyEnvironmentFully(pendingEnvironment);
         
         if (!appliedSuccessfully) {

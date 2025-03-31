@@ -1,3 +1,4 @@
+
 import { LogOut, Menu, Book, Brain, BadgePercent, LayoutDashboard, Users, Bot, BarChart3, UserCircle2, Trophy, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useAuthState } from "@/hooks/use-auth-state";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface SideNavDrawerProps {
   children: React.ReactNode;
@@ -22,12 +24,18 @@ interface SideNavDrawerProps {
 const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
   const navigate = useNavigate();
   const { state } = useOnboarding();
+  const { shouldApplyEnvironmentTheming } = useTheme();
   const [theme] = useState(() => localStorage.getItem('theme') || 'light');
   const { signOut } = useAuthState();
   const [logoutLoading, setLogoutLoading] = useState(false);
 
   // Get accent color based on environment - more vibrant
   const getAccentColor = () => {
+    // Only apply themed colors if on appropriate routes
+    if (!shouldApplyEnvironmentTheming()) {
+      return "text-primary hover:bg-primary/10";
+    }
+    
     switch (state.environment) {
       case 'office': return "text-blue-600 hover:bg-blue-50";
       case 'park': return "text-green-600 hover:bg-green-50";
@@ -40,6 +48,11 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
 
   // Get background style for the drawer based on environment - more vibrant
   const getDrawerStyle = () => {
+    // Only apply themed styles if on appropriate routes
+    if (!shouldApplyEnvironmentTheming()) {
+      return "bg-gradient-to-br from-muted/50 to-transparent border-l-2 border-muted";
+    }
+    
     switch (state.environment) {
       case 'office': return "bg-gradient-to-br from-blue-50/50 to-transparent border-l-2 border-blue-200";
       case 'park': return "bg-gradient-to-br from-green-50/50 to-transparent border-l-2 border-green-200";
@@ -108,6 +121,11 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
 
   // Get environment-specific class for the header title - more vibrant
   const getHeaderTitleClass = () => {
+    // Only apply themed colors if on appropriate routes
+    if (!shouldApplyEnvironmentTheming()) {
+      return "text-primary";
+    }
+    
     switch (state.environment) {
       case 'office': return "text-blue-600";
       case 'park': return "text-green-600";
