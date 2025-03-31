@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, MutableRefObject } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -59,8 +60,9 @@ const FocusSession = () => {
     
     const setupBackgroundTimer = () => {
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        const remainingTime = timerRef.current && typeof timerRef.current.getRemainingTime === 'function'
-          ? timerRef.current.getRemainingTime()
+        const timer = timerRef.current;
+        const remainingTime = timer && typeof timer.getRemainingTime === 'function'
+          ? timer.getRemainingTime()
           : 0;
         
         navigator.serviceWorker.controller.postMessage({

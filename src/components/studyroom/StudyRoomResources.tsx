@@ -29,7 +29,7 @@ export const StudyRoomResources = ({ roomId }: StudyRoomResourcesProps) => {
       
       try {
         setLoading(true);
-        // Using study_resources table since room_resources doesn't exist in schema
+        // Since study_resources might not exist yet, we'll handle the error appropriately
         const { data, error } = await supabase
           .from('study_resources')
           .select('*')
@@ -60,6 +60,8 @@ export const StudyRoomResources = ({ roomId }: StudyRoomResourcesProps) => {
         setResources(formattedResources);
       } catch (error) {
         console.error('Error fetching room resources:', error);
+        // In case of any error, set empty resources to avoid breaking the UI
+        setResources([]);
       } finally {
         setLoading(false);
       }

@@ -169,7 +169,7 @@ const FocusSessionContent = ({
           {/* Focus timer */}
           <FocusTimer
             ref={timerRef}
-            duration={getTimerDuration()}
+            initialTime={getTimerDuration()}
             isPaused={isPaused}
             onComplete={onComplete}
             onMilestoneReached={onMilestoneReached}
