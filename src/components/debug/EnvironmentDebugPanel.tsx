@@ -29,8 +29,10 @@ const EnvironmentDebugPanel = ({ userId }: { userId: string }) => {
     allInSync: false
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const { environmentTheme, verifyEnvironmentWithDatabase } = useTheme();
   const { state, forceEnvironmentSync } = useOnboarding();
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
 
   const checkSyncStatus = async () => {
     try {
@@ -58,16 +60,18 @@ const EnvironmentDebugPanel = ({ userId }: { userId: string }) => {
       const onboardingPrefsValue = prefError ? null : prefData?.learning_environment;
       
       // Determine if all are in sync by comparing all values
-      const uniqueValues = new Set([
+      const allValues = [
         environmentTheme, 
         state.environment, 
         profileDbValue, 
         onboardingPrefsValue, 
         localStorageValue, 
         domAttrValue
-      ].filter(Boolean));
+      ].filter(Boolean);
       
-      const allInSync = uniqueValues.size <= 1; // All values are the same or undefined
+      // Check if all defined values are the same
+      const uniqueValues = new Set(allValues);
+      const allInSync = allValues.length > 0 && uniqueValues.size <= 1;
       
       setStatus({
         themeContext: environmentTheme,
@@ -79,6 +83,8 @@ const EnvironmentDebugPanel = ({ userId }: { userId: string }) => {
         allInSync
       });
       
+      setLastSyncedAt(new Date());
+      
     } catch (error) {
       console.error("Error checking environment sync:", error);
     } finally {
@@ -88,7 +94,7 @@ const EnvironmentDebugPanel = ({ userId }: { userId: string }) => {
   
   const handleForceSync = async () => {
     try {
-      setIsLoading(true);
+      setIsSyncing(true);
       
       // Determine which value to use as source of truth
       // Priority: 1. Profile DB, 2. Theme Context, 3. localStorage, 4. DOM attr
@@ -98,26 +104,61 @@ const EnvironmentDebugPanel = ({ userId }: { userId: string }) => {
                           status.domAttr || 
                           'office'; // Default fallback
       
-      // Force sync in OnboardingContext first
-      await forceEnvironmentSync();
+      console.log("[EnvironmentDebugPanel] Forcing sync with source of truth:", sourceOfTruth);
       
-      // Then verify with ThemeContext
+      // Update database first - critical source of truth
+      if (sourceOfTruth) {
+        // Update profile
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ last_selected_environment: sourceOfTruth })
+          .eq('id', userId);
+          
+        if (profileError) {
+          console.error("[EnvironmentDebugPanel] Error updating profile:", profileError);
+          toast.error("Failed to update profile database");
+          return;
+        }
+          
+        // Update onboarding preferences
+        const { error: prefError } = await supabase
+          .from('onboarding_preferences')
+          .update({ learning_environment: sourceOfTruth })
+          .eq('user_id', userId);
+          
+        if (prefError) {
+          console.error("[EnvironmentDebugPanel] Error updating preferences:", prefError);
+          toast.error("Failed to update onboarding preferences");
+          return;
+        }
+      }
+      
+      // Force sync in OnboardingContext and ThemeContext
+      await forceEnvironmentSync();
       await verifyEnvironmentWithDatabase(userId);
       
-      // Finally, update DOM and localStorage directly to be extra safe
+      // Update DOM and localStorage directly to be extra safe
       if (sourceOfTruth) {
-        document.documentElement.classList.remove(
-          'theme-office', 
-          'theme-park', 
-          'theme-home', 
-          'theme-coffee-shop', 
-          'theme-library'
-        );
-        document.documentElement.classList.add(`theme-${sourceOfTruth}`);
-        document.documentElement.setAttribute('data-environment', sourceOfTruth);
+        // Check if we're on the landing page
+        const isLandingPage = window.location.pathname === "/" || window.location.pathname === "/index";
+        
+        // Don't apply visual changes on landing page
+        if (!isLandingPage) {
+          document.documentElement.classList.remove(
+            'theme-office', 
+            'theme-park', 
+            'theme-home', 
+            'theme-coffee-shop', 
+            'theme-library'
+          );
+          document.documentElement.classList.add(`theme-${sourceOfTruth}`);
+          document.documentElement.setAttribute('data-environment', sourceOfTruth);
+        }
+        
+        // Always update localStorage
         localStorage.setItem('environment', sourceOfTruth);
         
-        // Update preferencees in localStorage too
+        // Update preferences in localStorage too
         const userPrefs = localStorage.getItem('userPreferences');
         if (userPrefs) {
           try {
@@ -130,20 +171,11 @@ const EnvironmentDebugPanel = ({ userId }: { userId: string }) => {
         }
       }
       
-      // Final DB update to ensure even that is in sync
-      if (sourceOfTruth) {
-        // Update profile
-        await supabase
-          .from('profiles')
-          .update({ last_selected_environment: sourceOfTruth })
-          .eq('id', userId);
-          
-        // Update onboarding preferences
-        await supabase
-          .from('onboarding_preferences')
-          .update({ learning_environment: sourceOfTruth })
-          .eq('user_id', userId);
-      }
+      // Dispatch an event for any other components listening
+      const event = new CustomEvent('environment-changed', { 
+        detail: { environment: sourceOfTruth } 
+      });
+      document.dispatchEvent(event);
       
       // Check status again
       await checkSyncStatus();
@@ -153,7 +185,7 @@ const EnvironmentDebugPanel = ({ userId }: { userId: string }) => {
       console.error("Error forcing environment sync:", error);
       toast.error("Failed to force environment sync");
     } finally {
-      setIsLoading(false);
+      setIsSyncing(false);
     }
   };
   
@@ -167,7 +199,14 @@ const EnvironmentDebugPanel = ({ userId }: { userId: string }) => {
     <Card className="p-4 text-xs">
       <div className="space-y-2">
         <div className="flex justify-between items-center mb-3">
-          <h3 className="font-semibold">Environment Debug</h3>
+          <div>
+            <h3 className="font-semibold">Environment Debug</h3>
+            {lastSyncedAt && (
+              <p className="text-xs text-muted-foreground">
+                Last checked: {lastSyncedAt.toLocaleTimeString()}
+              </p>
+            )}
+          </div>
           <div className="flex space-x-2">
             <Button 
               variant="outline" 
@@ -183,10 +222,10 @@ const EnvironmentDebugPanel = ({ userId }: { userId: string }) => {
               variant="outline" 
               size="sm" 
               onClick={handleForceSync} 
-              disabled={isLoading || status.allInSync}
+              disabled={isLoading || isSyncing || status.allInSync}
               className="h-7 text-xs px-2"
             >
-              Force Sync
+              {isSyncing ? 'Syncing...' : 'Force Sync'}
             </Button>
           </div>
         </div>

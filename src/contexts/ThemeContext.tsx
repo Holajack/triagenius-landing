@@ -30,6 +30,11 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     return envFromStorage || 'office';
   });
 
+  // Check if we're on the landing page
+  const isLandingPage = () => {
+    return window.location.pathname === "/" || window.location.pathname === "/index";
+  };
+
   // Update localStorage and apply theme when theme changes
   const setTheme = (newTheme: string) => {
     if (DEBUG_ENV) console.log('[ThemeContext] Setting theme:', newTheme);
@@ -52,8 +57,10 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       setEnvironmentThemeState(environment);
       localStorage.setItem('environment', environment);
       
-      // Apply CSS classes immediately - this function is called during login and profile load
-      applyEnvironmentCSS(environment);
+      // Apply CSS classes immediately - but only if not on landing page
+      if (!isLandingPage()) {
+        applyEnvironmentCSS(environment);
+      }
       
       // Dispatch an event to notify other components about the environment change
       const event = new CustomEvent('environment-changed', { detail: { environment } });
@@ -63,6 +70,12 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   
   // Helper function to apply environment CSS
   const applyEnvironmentCSS = (environment: string) => {
+    // Skip visual changes on landing page
+    if (isLandingPage()) {
+      if (DEBUG_ENV) console.log('[ThemeContext] Skipping visual CSS changes on landing page');
+      return;
+    }
+    
     document.documentElement.classList.remove(
       'theme-office', 
       'theme-park', 
@@ -125,14 +138,17 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
           database: dbEnvironment,
           context: currentEnvironment,
           localStorage: localStorageEnv,
-          domAttribute: domAttrEnv
+          domAttribute: domAttrEnv,
+          isLandingPage: isLandingPage()
         });
       }
       
       // Check if all sources are consistent with database
       const isContextConsistent = dbEnvironment === currentEnvironment;
       const isLocalStorageConsistent = dbEnvironment === localStorageEnv;
-      const isDomConsistent = dbEnvironment === domAttrEnv;
+      
+      // Only check DOM if not on landing page
+      const isDomConsistent = isLandingPage() ? true : dbEnvironment === domAttrEnv;
       
       const isFullyConsistent = isContextConsistent && isLocalStorageConsistent && isDomConsistent;
       
@@ -149,14 +165,14 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
           // Update localStorage
           localStorage.setItem('environment', dbEnvironment);
           
-          // Update DOM
-          applyEnvironmentCSS(dbEnvironment);
+          // Update DOM only if not on landing page
+          if (!isLandingPage()) {
+            applyEnvironmentCSS(dbEnvironment);
+          }
           
           // Dispatch an event for other components
           const event = new CustomEvent('environment-changed', { detail: { environment: dbEnvironment } });
           document.dispatchEvent(event);
-          
-          // No need to update database since we're syncing TO the DB value
         }
       }
       
@@ -174,7 +190,10 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     // Also make sure environment is applied on initial load
     if (environmentTheme) {
       if (DEBUG_ENV) console.log('[ThemeContext] useEffect applying environment:', environmentTheme);
-      applyEnvironmentCSS(environmentTheme);
+      // Only apply CSS changes if not on landing page
+      if (!isLandingPage()) {
+        applyEnvironmentCSS(environmentTheme);
+      }
     }
   }, [theme]);
 
@@ -185,7 +204,10 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
         if (DEBUG_ENV) console.log('[ThemeContext] Storage event: environment changed to', e.newValue);
         if (e.newValue !== environmentTheme) {
           setEnvironmentThemeState(e.newValue);
-          applyEnvironmentCSS(e.newValue);
+          // Only apply visual changes if not on landing page
+          if (!isLandingPage()) {
+            applyEnvironmentCSS(e.newValue);
+          }
         }
       }
       
@@ -204,7 +226,10 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       
       if (newEnvironment && newEnvironment !== environmentTheme) {
         setEnvironmentThemeState(newEnvironment);
-        applyEnvironmentCSS(newEnvironment);
+        // Only apply visual changes if not on landing page
+        if (!isLandingPage()) {
+          applyEnvironmentCSS(newEnvironment);
+        }
       }
     };
     

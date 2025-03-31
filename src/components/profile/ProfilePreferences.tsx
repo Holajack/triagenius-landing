@@ -29,7 +29,7 @@ const ProfilePreferences = () => {
   } = useOnboarding();
   
   const { user, refreshUser } = useUser();
-  const { setEnvironmentTheme, environmentTheme } = useTheme();
+  const { setEnvironmentTheme, environmentTheme, verifyEnvironmentWithDatabase } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
@@ -56,6 +56,12 @@ const ProfilePreferences = () => {
     domAttr: true
   });
   
+  // Track whether we've shown a toast already for this save attempt
+  const [hasShownToast, setHasShownToast] = useState(false);
+  
+  // Track if we're on the landing page to avoid applying environment there
+  const isLandingPage = location.pathname === "/" || location.pathname === "/index";
+  
   useEffect(() => {
     if (user?.profile?.last_selected_environment) {
       setLastSavedEnvironment(user.profile.last_selected_environment);
@@ -75,6 +81,18 @@ const ProfilePreferences = () => {
       
       if (DEBUG_ENV) console.log(`[ProfilePreferences] Saving environment to DB: ${envValue} (attempt ${saveAttempts + 1})`);
       
+      // Start with a clean state for each save attempt
+      setSyncStatus({
+        profileDb: true,
+        onboardingPrefs: true,
+        themeContext: true,
+        localStorage: true,
+        domAttr: true
+      });
+      
+      // 1. Save to DATABASE FIRST (both tables in a transaction if possible)
+      let updateSuccess = true;
+      
       // Update environment in profile table
       const { error: profileError } = await supabase
         .from('profiles')
@@ -85,12 +103,11 @@ const ProfilePreferences = () => {
         
       if (profileError) {
         console.error("[ProfilePreferences] Error updating profile environment:", profileError);
-        toast.error("Failed to save environment to profile");
         setSyncStatus(prev => ({ ...prev, profileDb: false }));
-        return false;
+        updateSuccess = false;
+      } else {
+        setSyncStatus(prev => ({ ...prev, profileDb: true }));
       }
-      
-      setSyncStatus(prev => ({ ...prev, profileDb: true }));
       
       // Update environment in onboarding_preferences table
       const { error: prefError } = await supabase
@@ -102,94 +119,54 @@ const ProfilePreferences = () => {
         
       if (prefError) {
         console.error("[ProfilePreferences] Error updating onboarding preferences environment:", prefError);
-        toast.warning("Environment saved to profile but failed to update onboarding preferences");
         setSyncStatus(prev => ({ ...prev, onboardingPrefs: false }));
+        updateSuccess = false;
       } else {
         setSyncStatus(prev => ({ ...prev, onboardingPrefs: true }));
-        if (DEBUG_ENV) console.log("[ProfilePreferences] Successfully updated onboarding preferences");
       }
       
-      // Update localStorage
-      localStorage.setItem('environment', envValue);
-      setSyncStatus(prev => ({ ...prev, localStorage: true }));
+      // Verify successful database update BEFORE proceeding
+      if (!updateSuccess) {
+        // If we haven't exceeded max retries, try again
+        if (saveAttempts < maxRetries) {
+          setSaveAttempts(prev => prev + 1);
+          await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between retries
+          return await saveEnvironmentToDatabase(envValue, maxRetries);
+        }
+        
+        // If we've exceeded retries, report failure
+        if (!hasShownToast) {
+          toast.error("Failed to save environment to database");
+          setHasShownToast(true);
+        }
+        return false;
+      }
       
+      // If database update was successful, only then update local state and DOM
       setLastSavedEnvironment(envValue);
       
-      // Update userPreferences in localStorage
-      const userPrefs = localStorage.getItem('userPreferences');
-      if (userPrefs) {
-        try {
-          const parsedPrefs = JSON.parse(userPrefs);
-          parsedPrefs.environment = envValue;
-          localStorage.setItem('userPreferences', JSON.stringify(parsedPrefs));
-        } catch (e) {
-          console.error("Error updating userPreferences:", e);
-        }
-      }
-      
-      // Verify successful database update by reading back the values
-      const { data: verifyProfileData, error: verifyProfileError } = await supabase
-        .from('profiles')
-        .select('last_selected_environment')
-        .eq('id', user.id)
-        .single();
+      // Update localStorage
+      if (!isLandingPage) {
+        localStorage.setItem('environment', envValue);
         
-      if (verifyProfileError || verifyProfileData?.last_selected_environment !== envValue) {
-        console.error("[ProfilePreferences] Verification failed for profile environment update");
-        setSyncStatus(prev => ({ ...prev, profileDb: false }));
-        
-        // Retry on verification failure if under max retries
-        if (saveAttempts < maxRetries) {
-          setSaveAttempts(prev => prev + 1);
-          if (DEBUG_ENV) console.log(`[ProfilePreferences] Retrying profile update (attempt ${saveAttempts + 1} of ${maxRetries})`);
-          
-          // Retry the profile update
-          const { error: retryError } = await supabase
-            .from('profiles')
-            .update({ last_selected_environment: envValue })
-            .eq('id', user.id);
-            
-          if (!retryError) {
-            setSyncStatus(prev => ({ ...prev, profileDb: true }));
-          }
-        }
-      }
-      
-      const { data: verifyPrefData, error: verifyPrefError } = await supabase
-        .from('onboarding_preferences')
-        .select('learning_environment')
-        .eq('user_id', user.id)
-        .single();
-        
-      if (verifyPrefError || verifyPrefData?.learning_environment !== envValue) {
-        console.error("[ProfilePreferences] Verification failed for onboarding preferences environment update");
-        setSyncStatus(prev => ({ ...prev, onboardingPrefs: false }));
-        
-        // Retry onboarding preferences update if under max retries
-        if (saveAttempts < maxRetries) {
-          setSaveAttempts(prev => prev + 1);
-          
-          // Retry the onboarding_preferences update
-          const { error: retryError } = await supabase
-            .from('onboarding_preferences')
-            .update({ learning_environment: envValue })
-            .eq('user_id', user.id);
-            
-          if (!retryError) {
-            setSyncStatus(prev => ({ ...prev, onboardingPrefs: true }));
+        // Update userPreferences in localStorage
+        const userPrefs = localStorage.getItem('userPreferences');
+        if (userPrefs) {
+          try {
+            const parsedPrefs = JSON.parse(userPrefs);
+            parsedPrefs.environment = envValue;
+            localStorage.setItem('userPreferences', JSON.stringify(parsedPrefs));
+          } catch (e) {
+            console.error("Error updating userPreferences:", e);
           }
         }
       }
       
       // Reset save attempts counter on success
-      if (syncStatus.profileDb && syncStatus.onboardingPrefs) {
-        setSaveAttempts(0);
-      }
-      
-      await refreshUser();
+      setSaveAttempts(0);
       
       if (DEBUG_ENV) console.log("[ProfilePreferences] Successfully saved environment to database");
-      return syncStatus.profileDb && syncStatus.onboardingPrefs;
+      return true;
     } catch (error) {
       console.error("[ProfilePreferences] Failed to save environment:", error);
       return false;
@@ -203,6 +180,8 @@ const ProfilePreferences = () => {
     setEditedState({
       ...state
     });
+    // Reset toast flag when starting to edit
+    setHasShownToast(false);
   };
   
   const handleCancel = () => {
@@ -216,7 +195,9 @@ const ProfilePreferences = () => {
       setPendingEnvironment(null);
       
       const envToRestore = state.environment || lastSavedEnvironment || 'office';
-      previewEnvironmentVisually(envToRestore);
+      if (!isLandingPage) {
+        previewEnvironmentVisually(envToRestore);
+      }
     }
     
     // Reset sync status
@@ -227,9 +208,14 @@ const ProfilePreferences = () => {
       localStorage: true,
       domAttr: true
     });
+    
+    // Reset toast flag
+    setHasShownToast(false);
   };
   
   const previewEnvironmentVisually = (value: string) => {
+    if (isLandingPage) return; // Don't apply visual changes on landing page
+    
     document.documentElement.classList.remove(
       'theme-office', 
       'theme-park', 
@@ -244,6 +230,21 @@ const ProfilePreferences = () => {
   // Enhanced function that ensures environment is applied everywhere
   const applyEnvironmentFully = async (value: string): Promise<boolean> => {
     try {
+      if (isLandingPage) {
+        // Skip visual changes on landing page but still update contexts
+        setEnvironmentTheme(value as StudyEnvironment);
+        setSyncStatus(prev => ({ ...prev, themeContext: true }));
+        
+        // Update localStorage for persistence
+        localStorage.setItem('environment', value);
+        setSyncStatus(prev => ({ ...prev, localStorage: true }));
+        
+        // Force sync with OnboardingContext
+        await forceEnvironmentSync();
+        
+        return true;
+      }
+      
       // 1. Update ThemeContext state
       setEnvironmentTheme(value as StudyEnvironment);
       setSyncStatus(prev => ({ ...prev, themeContext: true }));
@@ -292,10 +293,15 @@ const ProfilePreferences = () => {
       const themeContextMatch = environmentTheme === expectedValue;
       setSyncStatus(prev => ({ ...prev, themeContext: themeContextMatch }));
       
-      // Check DOM attribute
-      const domAttr = document.documentElement.getAttribute('data-environment');
-      const domAttrMatch = domAttr === expectedValue;
-      setSyncStatus(prev => ({ ...prev, domAttr: domAttrMatch }));
+      if (!isLandingPage) {
+        // Check DOM attribute (only if not on landing page)
+        const domAttr = document.documentElement.getAttribute('data-environment');
+        const domAttrMatch = domAttr === expectedValue;
+        setSyncStatus(prev => ({ ...prev, domAttr: domAttrMatch }));
+      } else {
+        // Skip DOM check on landing page
+        setSyncStatus(prev => ({ ...prev, domAttr: true }));
+      }
       
       // Check localStorage
       const localStorageValue = localStorage.getItem('environment');
@@ -322,18 +328,22 @@ const ProfilePreferences = () => {
       const onboardingPrefsMatch = !prefError && prefData?.learning_environment === expectedValue;
       setSyncStatus(prev => ({ ...prev, onboardingPrefs: onboardingPrefsMatch }));
       
-      const allInSync = themeContextMatch && domAttrMatch && localStorageMatch && 
-                      profileDbMatch && onboardingPrefsMatch;
+      const allInSync = themeContextMatch && 
+                      (isLandingPage || domAttrMatch) && // Skip DOM check on landing page
+                      localStorageMatch && 
+                      profileDbMatch && 
+                      onboardingPrefsMatch;
                       
       if (DEBUG_ENV) {
         console.log("[ProfilePreferences] Environment Sync Verification:", {
           expectedValue,
           themeContext: { value: environmentTheme, match: themeContextMatch },
-          dom: { value: domAttr, match: domAttrMatch },
+          dom: { value: document.documentElement.getAttribute('data-environment'), match: isLandingPage || domAttrMatch },
           localStorage: { value: localStorageValue, match: localStorageMatch },
           profileDb: { value: profileData?.last_selected_environment, match: profileDbMatch },
           onboardingPrefs: { value: prefData?.learning_environment, match: onboardingPrefsMatch },
-          allInSync
+          allInSync,
+          isLandingPage
         });
       }
       
@@ -357,7 +367,9 @@ const ProfilePreferences = () => {
       setPendingEnvironment(value as string);
       
       // Just preview visually but don't apply fully yet
-      previewEnvironmentVisually(value);
+      if (!isLandingPage) {
+        previewEnvironmentVisually(value);
+      }
     }
   };
   
@@ -410,6 +422,8 @@ const ProfilePreferences = () => {
   // Enhanced save function with proper sequencing and synchronization
   const handleSave = async () => {
     try {
+      // Reset toast flag at the beginning of each save attempt
+      setHasShownToast(false);
       setIsLoading(true);
       
       // Step 1: First handle environment change if needed
@@ -420,34 +434,25 @@ const ProfilePreferences = () => {
         const dbSaveSuccess = await saveEnvironmentToDatabase(pendingEnvironment);
         
         if (!dbSaveSuccess) {
-          toast.error("Failed to save environment to database. Please try again.");
+          if (!hasShownToast) {
+            toast.error("Failed to save environment to database. Please try again.");
+            setHasShownToast(true);
+          }
           setIsLoading(false);
           return;
         }
         
-        // Then apply everywhere else
+        // Then apply environment to all other locations EXCEPT landing page visuals
         const appliedSuccessfully = await applyEnvironmentFully(pendingEnvironment);
         
         if (!appliedSuccessfully) {
-          toast.warning("Environment partially saved. Some visual elements might be inconsistent.");
-          // Continue with saving other preferences
-        } else {
-          // Success case
-          setPendingEnvironment(null);
-        }
-        
-        // Final verification
-        const verifyResult = await verifyEnvironmentSync(pendingEnvironment);
-        
-        if (!verifyResult && saveAttempts < 2) {
-          // Try force sync again if verification failed
-          await forceEnvironmentSync();
-          
-          // Re-verify after force sync
-          const secondVerifyResult = await verifyEnvironmentSync(pendingEnvironment);
-          if (!secondVerifyResult) {
-            console.warn("[ProfilePreferences] Environment sync verification failed after second attempt");
+          if (!hasShownToast) {
+            toast.warning("Environment settings saved to database but some visual elements might need a page refresh.");
+            setHasShownToast(true);
           }
+        } else {
+          // Success case - environment saved and applied
+          setPendingEnvironment(null);
         }
       }
       
@@ -494,16 +499,21 @@ const ProfilePreferences = () => {
       await refreshUser();
       
       // Step 5: Dispatch storage event for any components listening to localStorage
-      window.dispatchEvent(new StorageEvent('storage', {
-        key: 'environment',
-        newValue: editedState.environment
-      }));
+      // Skip for landing page
+      if (!isLandingPage && editedState.environment) {
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'environment',
+          newValue: editedState.environment
+        }));
+      }
       
       // Final verification for environment
-      if (editedState.environment) {
+      if (editedState.environment && pendingEnvironment) {
         const finalVerify = await verifyEnvironmentSync(editedState.environment);
-        if (!finalVerify) {
+        
+        if (!finalVerify && !hasShownToast) {
           console.warn("[ProfilePreferences] Final environment sync verification failed");
+          // Don't show additional warning if we've already shown a success toast
         }
       }
       
@@ -512,10 +522,17 @@ const ProfilePreferences = () => {
       setHasUnsavedChanges(false);
       setSaveAttempts(0);
       
-      toast.success("Preferences saved successfully");
+      // Show success message - but only if we haven't shown another toast already
+      if (!hasShownToast) {
+        toast.success("Preferences saved successfully");
+        setHasShownToast(true);
+      }
     } catch (error) {
       console.error("Error updating preferences:", error);
-      toast.error("Failed to save preferences");
+      if (!hasShownToast) {
+        toast.error("Failed to save preferences");
+        setHasShownToast(true);
+      }
     } finally {
       setIsLoading(false);
     }
