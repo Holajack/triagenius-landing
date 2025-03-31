@@ -14,7 +14,7 @@ const FocusMilestones = ({
   currentProgress, 
   lowPowerMode 
 }: FocusMilestonesProps) => {
-  const [milestones, setMilestones] = useState(Array(3).fill(false));
+  const [milestones, setMilestones] = useState<boolean[]>(Array(3).fill(false));
   
   useEffect(() => {
     const newMilestones = milestones.map((_, index) => index < currentMilestone);
@@ -29,10 +29,8 @@ const FocusMilestones = ({
       </div>
       
       <div className="relative">
-        {/* Background progress bar */}
         <div className="h-2 bg-gray-200 rounded-full mb-4" />
         
-        {/* Dynamic progress indicator */}
         <div 
           className="absolute top-0 h-2 bg-blue-500 rounded-full transition-all duration-300 ease-out"
           style={{ 
@@ -41,7 +39,6 @@ const FocusMilestones = ({
           }}
         />
         
-        {/* Milestone markers */}
         <div className="absolute top-0 left-0 right-0 flex justify-between transform -translate-y-1/2">
           {[1, 2, 3].map((milestone, index) => {
             const isCompleted = index < currentMilestone;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, MutableRefObject } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useOnboarding } from "@/contexts/OnboardingContext";
@@ -173,6 +173,13 @@ const FocusSession = () => {
 
   const currentTask = getCurrentTask();
 
+  // Modify timerRef to match required type
+  const typedTimerRef = timerRef as MutableRefObject<{
+    stopTimer: () => void;
+    setRemainingTime: (time: number) => void;
+    getRemainingTime: () => number;
+  }>;
+
   return (
     <div className={cn(
       "min-h-screen bg-background text-foreground flex flex-col items-center p-4 overflow-hidden",
@@ -187,7 +194,7 @@ const FocusSession = () => {
         />
         
         <FocusSessionContent 
-          timerRef={timerRef}
+          timerRef={typedTimerRef}
           onPause={handlePause}
           onResume={handleResume}
           onComplete={handleSessionEnd}

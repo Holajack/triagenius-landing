@@ -15,28 +15,31 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import FocusTimer from "@/components/focus/FocusTimer";
 import { Check, Clock, X } from 'lucide-react';
+import { useFocusSession } from "@/hooks/use-focus-session";
 
 const StudyRoom = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { room, isLoading, error } = useStudyRooms(id || '');
-  const { messages, sendMessage, isLoading: isMessagesLoading } = useRoomMessages(id || '');
+  const { rooms, loading: isRoomsLoading, error: roomError } = useStudyRooms();
+  const currentRoom = rooms.find(room => room.id === id);
+  
+  const { messages, sendMessage, loading: isMessagesLoading } = useRoomMessages(id || '');
   const { user } = useUser();
   const [message, setMessage] = useState('');
   const [isFocusDialogOpen, setIsFocusDialogOpen] = useState(false);
   const { state } = useOnboarding();
   const { theme } = useTheme();
   const [isTimerActive, setIsTimerActive] = useState(false);
-  const [timerDuration, setTimerDuration] = useState(25 * 60); // Default to 25 minutes
-  const timerRef = useRef<{ stopTimer: () => void; setRemainingTime?: (time: number) => void; getRemainingTime?: () => number } | null>(null);
+  const [timerDuration, setTimerDuration] = useState(25 * 60);
+  const timerRef = useRef<{ stopTimer: () => void; setRemainingTime?: (time: number) => void } | null>(null);
   const [remainingTime, setRemainingTime] = useState(timerDuration);
 
   useEffect(() => {
-    if (room && room.timer_duration) {
-      setTimerDuration(room.timer_duration * 60);
-      setRemainingTime(room.timer_duration * 60);
+    if (currentRoom && currentRoom.timer_duration) {
+      setTimerDuration(currentRoom.timer_duration * 60);
+      setRemainingTime(currentRoom.timer_duration * 60);
     }
-  }, [room]);
+  }, [currentRoom]);
 
   const handleSendMessage = async () => {
     if (message.trim() && id) {
@@ -84,15 +87,15 @@ const StudyRoom = () => {
     navigate('/dashboard');
   };
 
-  if (isLoading) {
+  if (isRoomsLoading) {
     return <div>Loading study room...</div>;
   }
 
-  if (error) {
-    return <div>Error: {error}</div>;
+  if (roomError) {
+    return <div>Error: {roomError.message}</div>;
   }
 
-  if (!room) {
+  if (!currentRoom) {
     return <div>Study room not found.</div>;
   }
 
@@ -101,7 +104,7 @@ const StudyRoom = () => {
       "min-h-screen bg-background text-foreground flex flex-col p-4",
       `theme-${state.environment || 'default'} ${theme}`
     )}>
-      <PageHeader title={room.name} />
+      <PageHeader title={currentRoom.name} />
       <div className="flex justify-between items-center mb-4">
         <Button onClick={handleLeaveRoom} variant="ghost">
           <X className="w-4 h-4 mr-2" />
