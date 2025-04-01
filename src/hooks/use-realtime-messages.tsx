@@ -30,12 +30,22 @@ export function useRealtimeMessages() {
   const typingStatesRef = useRef<TypingState>({});
   const [typingUsers, setTypingUsers] = useState<{[userId: string]: boolean}>({});
   
+  // Debug log for hook initialization
+  console.log("useRealtimeMessages hook initialized", { 
+    userPresent: !!user?.id, 
+    messagesCount: messages.length 
+  });
+  
   // Load initial messages
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.log("No user ID available, skipping message load");
+      return;
+    }
 
     const fetchMessages = async () => {
       try {
+        console.log("Fetching initial messages");
         setLoading(true);
         
         // Fetch messages
@@ -45,8 +55,12 @@ export function useRealtimeMessages() {
           .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
           .order('created_at', { ascending: false });
 
-        if (messagesError) throw messagesError;
+        if (messagesError) {
+          console.error('Error fetching messages:', messagesError);
+          throw messagesError;
+        }
         
+        console.log(`Loaded ${messagesData?.length || 0} messages`);
         setMessages(messagesData || []);
       } catch (err) {
         console.error('Error fetching messages:', err);
@@ -62,8 +76,13 @@ export function useRealtimeMessages() {
 
   // Set up realtime subscriptions
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.log("No user ID available, skipping realtime subscription");
+      return;
+    }
 
+    console.log("Setting up realtime message subscription");
+    
     // Subscribe to new messages where user is recipient
     const messagesChannel = supabase
       .channel('messages-channel')
@@ -95,6 +114,7 @@ export function useRealtimeMessages() {
         }
       )
       .subscribe((status) => {
+        console.log("Messages channel status:", status);
         if (status !== 'SUBSCRIBED') {
           console.error('Failed to subscribe to messages channel:', status);
         }
@@ -120,12 +140,14 @@ export function useRealtimeMessages() {
         setTypingUsers(newTypingStates);
       })
       .subscribe((status) => {
+        console.log("Typing indicators channel status:", status);
         if (status !== 'SUBSCRIBED') {
           console.error('Failed to subscribe to typing channel:', status);
         }
       });
 
     return () => {
+      console.log("Cleaning up realtime subscriptions");
       supabase.removeChannel(messagesChannel);
       supabase.removeChannel(typingChannel);
     };
@@ -134,16 +156,19 @@ export function useRealtimeMessages() {
   // Function to send a message - simplified to not rely on conversation_id
   const sendMessage = async (recipientId: string, content: string) => {
     if (!user?.id) {
+      console.error("Cannot send message: User not logged in");
       toast.error('You need to be logged in to send messages');
       return null;
     }
 
     if (!content.trim()) {
+      console.error("Cannot send message: Empty content");
       toast.error('Message cannot be empty');
       return null;
     }
 
     try {
+      console.log(`Sending message to user: ${recipientId}`);
       // Send the message without relying on conversation_id
       const { data, error } = await supabase
         .from('messages')
@@ -228,6 +253,7 @@ export function useRealtimeMessages() {
     if (!user?.id) return;
     
     try {
+      console.log(`Marking message as read: ${messageId}`);
       const { error } = await supabase
         .from('messages')
         .update({ is_read: true })
@@ -249,9 +275,13 @@ export function useRealtimeMessages() {
 
   // Get conversation messages between two users
   const getConversation = async (otherUserId: string) => {
-    if (!user?.id) return [];
+    if (!user?.id) {
+      console.log("Cannot get conversation: No user ID available");
+      return [];
+    }
     
     try {
+      console.log(`Getting conversation with user: ${otherUserId}`);
       // Simple filter to get messages between two users
       const { data, error } = await supabase
         .from('messages')
@@ -265,6 +295,7 @@ export function useRealtimeMessages() {
         return [];
       }
       
+      console.log(`Loaded ${data?.length || 0} messages for conversation`);
       return data || [];
     } catch (err) {
       console.error('Error in getConversation:', err);
@@ -280,8 +311,12 @@ export function useRealtimeMessages() {
 
   // Get unique conversations (grouped by the other participant)
   const getConversations = () => {
-    if (!user?.id) return [];
+    if (!user?.id) {
+      console.log("Cannot get conversations: No user ID available");
+      return [];
+    }
 
+    console.log(`Getting unique conversations from ${messages.length} messages`);
     const userIds = new Set<string>();
     const conversations: { userId: string; lastMessage: Message }[] = [];
 
@@ -308,6 +343,7 @@ export function useRealtimeMessages() {
       }
     });
 
+    console.log(`Found ${conversations.length} unique conversations`);
     return conversations;
   };
 
