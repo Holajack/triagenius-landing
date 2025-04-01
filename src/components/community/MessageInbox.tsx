@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Users, Clock, Loader2, AlertTriangle } from "lucide-react";
+import { Users, Clock, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
 import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,62 +84,35 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
   }, [user?.id]);
   
   // Load user details for conversations
-  useEffect(() => {
-    const loadConversationUsers = async () => {
-      if (!user?.id) {
-        setLoadingUsers(false);
-        return;
-      }
+  const loadConversationUsers = useCallback(async () => {
+    if (!user?.id) {
+      setLoadingUsers(false);
+      return;
+    }
+    
+    const conversations = getConversations();
+    if (conversations.length === 0) {
+      setLoadingUsers(false);
+      return;
+    }
+    
+    try {
+      setLoadingUsers(true);
+      setError(null);
+      const conversationsWithUserDetails: ConversationWithUser[] = [];
       
-      const conversations = getConversations();
-      if (conversations.length === 0) {
-        setLoadingUsers(false);
-        return;
-      }
-      
-      try {
-        setLoadingUsers(true);
-        setError(null);
-        const conversationsWithUserDetails: ConversationWithUser[] = [];
-        
-        for (const convo of conversations) {
-          try {
-            // Get user profile
-            const { data: otherUser, error: profileError } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', convo.userId)
-              .single();
-            
-            if (profileError) {
-              console.error('Error fetching user profile:', profileError);
-              // Continue with partial data
-              conversationsWithUserDetails.push({
-                userId: convo.userId,
-                lastMessage: convo.lastMessage,
-                username: `User-${convo.userId.substring(0, 4)}`,
-                full_name: null,
-                display_name_preference: null,
-                avatarUrl: null,
-                isTyping: isUserTyping(convo.userId)
-              });
-              continue;
-            }
-            
-            if (otherUser) {
-              conversationsWithUserDetails.push({
-                userId: convo.userId,
-                lastMessage: convo.lastMessage,
-                username: otherUser.username || `User-${convo.userId.substring(0, 4)}`,
-                full_name: otherUser.full_name,
-                display_name_preference: otherUser.display_name_preference as 'username' | 'full_name' | null,
-                avatarUrl: otherUser.avatar_url,
-                isTyping: isUserTyping(convo.userId)
-              });
-            }
-          } catch (userError) {
-            console.error('Error processing user:', userError);
-            // Add with minimal info
+      for (const convo of conversations) {
+        try {
+          // Get user profile
+          const { data: otherUser, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', convo.userId)
+            .single();
+          
+          if (profileError) {
+            console.error('Error fetching user profile:', profileError);
+            // Continue with partial data
             conversationsWithUserDetails.push({
               userId: convo.userId,
               lastMessage: convo.lastMessage,
@@ -149,18 +122,45 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
               avatarUrl: null,
               isTyping: isUserTyping(convo.userId)
             });
+            continue;
           }
+          
+          if (otherUser) {
+            conversationsWithUserDetails.push({
+              userId: convo.userId,
+              lastMessage: convo.lastMessage,
+              username: otherUser.username || `User-${convo.userId.substring(0, 4)}`,
+              full_name: otherUser.full_name,
+              display_name_preference: otherUser.display_name_preference as 'username' | 'full_name' | null,
+              avatarUrl: otherUser.avatar_url,
+              isTyping: isUserTyping(convo.userId)
+            });
+          }
+        } catch (userError) {
+          console.error('Error processing user:', userError);
+          // Add with minimal info
+          conversationsWithUserDetails.push({
+            userId: convo.userId,
+            lastMessage: convo.lastMessage,
+            username: `User-${convo.userId.substring(0, 4)}`,
+            full_name: null,
+            display_name_preference: null,
+            avatarUrl: null,
+            isTyping: isUserTyping(convo.userId)
+          });
         }
-        
-        setConversationsWithUsers(conversationsWithUserDetails);
-      } catch (error: any) {
-        console.error('Error loading conversation users:', error);
-        setError('Failed to load complete conversation data. Some information may be missing.');
-      } finally {
-        setLoadingUsers(false);
       }
-    };
-    
+      
+      setConversationsWithUsers(conversationsWithUserDetails);
+    } catch (error: any) {
+      console.error('Error loading conversation users:', error);
+      setError('Failed to load complete conversation data. Some information may be missing.');
+    } finally {
+      setLoadingUsers(false);
+    }
+  }, [getConversations, isUserTyping, user?.id]);
+
+  useEffect(() => {
     loadConversationUsers();
     
     // Set up an interval to refresh the conversation list
@@ -169,7 +169,7 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
     }, 10000); // Reduced from 5s to 10s to lower database load
     
     return () => clearInterval(intervalId);
-  }, [getConversations, isUserTyping, user?.id]);
+  }, [loadConversationUsers]);
   
   // Handle click on conversation
   const handleConversationClick = (userId: string) => {
@@ -183,6 +183,11 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
     } else {
       navigate(`/community/chat/${userId}`);
     }
+  };
+  
+  // Handle retry loading
+  const handleRetryLoad = () => {
+    loadConversationUsers();
   };
   
   // Filter conversations based on search query
@@ -225,15 +230,15 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
       <Alert variant="destructive" className="mb-4">
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Error Loading Messages</AlertTitle>
-        <AlertDescription>
-          {messagesError?.message || error || "There was an error loading your messages."}
+        <AlertDescription className="flex flex-col gap-2">
+          <p>{messagesError?.message || error || "There was an error loading your messages."}</p>
           <Button 
             variant="outline" 
             size="sm" 
-            className="mt-2"
-            onClick={() => window.location.reload()}
+            className="self-start mt-2"
+            onClick={handleRetryLoad}
           >
-            Retry
+            <RefreshCw className="h-3 w-3 mr-2" /> Retry
           </Button>
         </AlertDescription>
       </Alert>
@@ -320,4 +325,3 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
     </div>
   );
 };
-

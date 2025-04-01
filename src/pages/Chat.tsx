@@ -1,6 +1,7 @@
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle, RefreshCw } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -140,13 +141,13 @@ const Chat = () => {
     });
   }, [id, currentMessages, user?.id, markAsRead]);
 
-  useEffect(() => {
+  const fetchProfile = useCallback(async () => {
     if (!id) return;
     
-    const fetchProfile = async () => {
-      setContactLoading(true);
-      setContactError(null);
-      
+    setContactLoading(true);
+    setContactError(null);
+    
+    try {
       const { data: profileData, error } = await supabase
         .from('profiles')
         .select('id, username, full_name, display_name_preference, avatar_url')
@@ -155,8 +156,16 @@ const Chat = () => {
       
       if (error) {
         console.error('Error fetching contact profile:', error);
-        toast.error("Could not load contact information");
-        setContactError("Could not load contact information");
+        
+        // More descriptive error based on the specific error
+        if (error.code === 'PGRST116') {
+          setContactError("User profile not found. They may have deleted their account.");
+        } else if (error.code === 'PGRST301') {
+          setContactError("You don't have permission to view this profile.");
+        } else {
+          setContactError("Could not load contact information. Please try again later.");
+        }
+        
         setContactLoading(false);
         return;
       }
@@ -171,10 +180,18 @@ const Chat = () => {
         online: isOnline,
         status: isOnline ? "Online" : "Offline"
       });
-    };
-    
-    fetchProfile();
+      
+      setContactLoading(false);
+    } catch (err) {
+      console.error('Error in fetchProfile:', err);
+      setContactError("An unexpected error occurred. Please try again later.");
+      setContactLoading(false);
+    }
   }, [id, onlineUsers]);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
   
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -239,6 +256,16 @@ const Chat = () => {
       setMessageError("Error sending message. Please try again later.");
     } finally {
       setIsSending(false);
+    }
+  };
+  
+  const handleRetryLoad = () => {
+    if (contactError) {
+      fetchProfile();
+    }
+    
+    if (messageError) {
+      fetchConversationMessages();
     }
   };
   
@@ -312,10 +339,20 @@ const Chat = () => {
       
       <div className="flex-1 p-4 overflow-y-auto space-y-4">
         {contactError && (
-          <Alert variant="default" className="mb-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+          <Alert variant="warning" className="mb-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
             <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
             <AlertTitle>Contact Information Issue</AlertTitle>
-            <AlertDescription>{contactError}</AlertDescription>
+            <AlertDescription className="flex flex-col gap-2">
+              <p>{contactError}</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="self-start mt-2" 
+                onClick={handleRetryLoad}
+              >
+                <RefreshCw className="h-3 w-3 mr-2" /> Retry
+              </Button>
+            </AlertDescription>
           </Alert>
         )}
         
@@ -323,7 +360,17 @@ const Chat = () => {
           <Alert variant="destructive" className="mb-4">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Message Error</AlertTitle>
-            <AlertDescription>{messageError}</AlertDescription>
+            <AlertDescription className="flex flex-col gap-2">
+              <p>{messageError}</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="self-start mt-2 bg-background text-foreground hover:bg-muted" 
+                onClick={handleRetryLoad}
+              >
+                <RefreshCw className="h-3 w-3 mr-2" /> Retry
+              </Button>
+            </AlertDescription>
           </Alert>
         )}
         
