@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle } from "lucide-react";
@@ -37,7 +36,6 @@ const Chat = () => {
   
   const isContactTyping = id && isUserTyping(id);
 
-  // Function to fetch messages for the current conversation
   const fetchConversationMessages = useCallback(async () => {
     if (!id || !user?.id) return;
     
@@ -51,12 +49,10 @@ const Chat = () => {
     }
   }, [id, user?.id, getConversation]);
 
-  // Initialize the messages for this conversation
   useEffect(() => {
     fetchConversationMessages();
   }, [fetchConversationMessages]);
 
-  // Set up presence channel for online status
   useEffect(() => {
     if (!user?.id) return;
     
@@ -84,7 +80,6 @@ const Chat = () => {
         }
       });
       
-    // Track current user's presence
     channel.track({
       userId: user.id,
       online_at: new Date().toISOString(),
@@ -95,7 +90,6 @@ const Chat = () => {
     };
   }, [user?.id]);
   
-  // Subscribe to real-time message updates
   useEffect(() => {
     if (!id || !user?.id) return;
     
@@ -110,22 +104,18 @@ const Chat = () => {
       }, payload => {
         console.log('New message received:', payload);
         
-        // Only add if it's from the current chat
         if (payload.new.sender_id === id) {
           setCurrentMessages(prev => {
-            // Avoid duplicates
             if (prev.some(msg => msg.id === payload.new.id)) {
               return prev;
             }
             
-            // Add and sort by created_at
             const updated = [...prev, payload.new];
             return updated.sort((a, b) => 
               new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
             );
           });
           
-          // Mark as read since we're actively viewing this conversation
           markAsRead(payload.new.id);
         }
       })
@@ -140,7 +130,6 @@ const Chat = () => {
     };
   }, [id, user?.id, markAsRead]);
 
-  // Mark messages as read when viewed
   useEffect(() => {
     if (!id || !user?.id) return;
     
@@ -151,77 +140,57 @@ const Chat = () => {
     });
   }, [id, currentMessages, user?.id, markAsRead]);
 
-  // Fetch contact profile data
   useEffect(() => {
+    if (!id) return;
+    
     const fetchProfile = async () => {
-      if (!id) return;
+      setContactLoading(true);
+      setContactError(null);
       
-      try {
-        setContactLoading(true);
-        setContactError(null);
-        
-        const { data: profileData, error } = await supabase
-          .from('profiles')
-          .select('id, username, full_name, display_name_preference, avatar_url')
-          .eq('id', id)
-          .single();
-        
-        if (error) {
-          console.error('Error fetching contact profile:', error);
-          toast.error("Could not load contact information");
-          setContactError("Could not load contact information");
-          setContactLoading(false);
-          return;
-        }
-        
-        // If we found a profile, use it
-        const isOnline = onlineUsers.has(id);
-        setContact({
-          id: profileData.id,
-          username: profileData.username || `User-${id.substring(0, 4)}`,
-          full_name: profileData.full_name,
-          display_name_preference: profileData.display_name_preference,
-          avatar_url: profileData.avatar_url,
-          online: isOnline,
-          status: isOnline ? "Online" : "Offline"
-        });
-      } catch (err) {
-        console.error('Error in fetchProfile:', err);
-        // Create fallback profile
-        setContact({
-          id,
-          username: `User-${id.substring(0, 4)}`,
-          status: 'Unknown'
-        });
-        setContactError("Error retrieving complete profile info");
-      } finally {
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, display_name_preference, avatar_url')
+        .eq('id', id)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching contact profile:', error);
+        toast.error("Could not load contact information");
+        setContactError("Could not load contact information");
         setContactLoading(false);
+        return;
       }
+      
+      const isOnline = onlineUsers.has(id);
+      setContact({
+        id: profileData.id,
+        username: profileData.username || `User-${id.substring(0, 4)}`,
+        full_name: profileData.full_name,
+        display_name_preference: profileData.display_name_preference,
+        avatar_url: profileData.avatar_url,
+        online: isOnline,
+        status: isOnline ? "Online" : "Offline"
+      });
     };
     
     fetchProfile();
   }, [id, onlineUsers]);
   
-  // Auto-scroll to latest message
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [currentMessages, isContactTyping]);
   
-  // Handle typing status
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value);
     
     if (!id) return;
     
-    // Send typing indicator
     setTypingStatus(id, true);
     
-    // Clear previous timeout if it exists
     if (typingTimeout) {
       clearTimeout(typingTimeout);
     }
     
-    // Set a timeout to clear the typing status
     const timeout = setTimeout(() => {
       if (id) {
         setTypingStatus(id, false);
@@ -231,7 +200,6 @@ const Chat = () => {
     setTypingTimeout(timeout);
   };
   
-  // Send message - simplified
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !id || !user?.id || isSending) return;
     
@@ -243,13 +211,11 @@ const Chat = () => {
       if (sent) {
         setNewMessage("");
         
-        // Clear typing indicator
         if (typingTimeout) {
           clearTimeout(typingTimeout);
         }
         setTypingStatus(id, false);
         
-        // Add message to the local state
         const newMsg = {
           ...sent,
           sender_id: user.id,
@@ -276,7 +242,6 @@ const Chat = () => {
     }
   };
   
-  // Handle user not found case
   if ((!id) || (!user?.id)) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -297,7 +262,6 @@ const Chat = () => {
     );
   }
 
-  // Show loading state while contact info is being fetched
   if (contactLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -309,7 +273,6 @@ const Chat = () => {
     );
   }
   
-  // Get display name based on preference
   const contactDisplayName = contact ? getDisplayName({
     username: contact.username || '',
     full_name: contact.full_name || '',
@@ -349,8 +312,8 @@ const Chat = () => {
       
       <div className="flex-1 p-4 overflow-y-auto space-y-4">
         {contactError && (
-          <Alert variant="warning" className="mb-4">
-            <AlertTriangle className="h-4 w-4" />
+          <Alert variant="default" className="mb-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+            <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
             <AlertTitle>Contact Information Issue</AlertTitle>
             <AlertDescription>{contactError}</AlertDescription>
           </Alert>
