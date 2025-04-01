@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOnboarding } from "@/contexts/OnboardingContext";
-import { BrainCircuit, Clock, Lightbulb, Sparkles, TrendingUp, RefreshCw, ExternalLink } from "lucide-react";
+import { BrainCircuit, Clock, Lightbulb, Sparkles, TrendingUp, RefreshCw, ExternalLink, Users, Target } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ interface Insight {
     label: string;
     route: string;
     params?: Record<string, string>;
+    tab?: string;
   };
 }
 
@@ -89,7 +90,7 @@ const AIInsights = () => {
         let action;
         
         // Assign icons based on index for variety
-        switch (index % 3) {
+        switch (index % 4) {
           case 0:
             icon = <Clock className={`w-5 h-5 ${getAccentColor()}`} />;
             action = {
@@ -111,35 +112,64 @@ const AIInsights = () => {
               route: "/profile"
             };
             break;
+          case 3:
+            icon = <Users className={`w-5 h-5 ${getAccentColor()}`} />;
+            action = {
+              label: "Find friends",
+              route: "/community",
+              tab: "friends"
+            };
+            break;
         }
         
         // Match keywords in insight titles to determine appropriate actions
         const title = insight.title.toLowerCase();
-        if (title.includes("goal") || title.includes("target")) {
+        const description = insight.description.toLowerCase();
+        const fullText = title + " " + description;
+        
+        if (fullText.includes("accountability") || fullText.includes("partner") || 
+            fullText.includes("friend") || fullText.includes("social")) {
+          action = {
+            label: "Find partners",
+            route: "/community",
+            tab: "friends"
+          };
+          icon = <Users className={`w-5 h-5 ${getAccentColor()}`} />;
+        } else if (fullText.includes("goal") || fullText.includes("target") || 
+                  fullText.includes("aim") || fullText.includes("objective")) {
           action = {
             label: "Set goals",
             route: "/profile"
           };
-        } else if (title.includes("focus") || title.includes("session")) {
+          icon = <Target className={`w-5 h-5 ${getAccentColor()}`} />;
+        } else if (fullText.includes("focus") || fullText.includes("session") || 
+                  fullText.includes("concentrate") || fullText.includes("start now")) {
           action = {
             label: "Focus now",
             route: "/focus-session"
           };
-        } else if (title.includes("community") || title.includes("study room") || title.includes("group")) {
+          icon = <Clock className={`w-5 h-5 ${getAccentColor()}`} />;
+        } else if (fullText.includes("community") || fullText.includes("study room") || 
+                  fullText.includes("group") || fullText.includes("collaborate")) {
           action = {
             label: "Join others",
             route: "/community"
           };
-        } else if (title.includes("technique") || title.includes("method") || title.includes("learn")) {
+          icon = <Users className={`w-5 h-5 ${getAccentColor()}`} />;
+        } else if (fullText.includes("technique") || fullText.includes("method") || 
+                  fullText.includes("learn") || fullText.includes("approach")) {
           action = {
             label: "Learn more",
             route: "/learning-toolkit"
           };
-        } else if (title.includes("analyze") || title.includes("report") || title.includes("progress")) {
+          icon = <Lightbulb className={`w-5 h-5 ${getAccentColor()}`} />;
+        } else if (fullText.includes("analyze") || fullText.includes("report") || 
+                  fullText.includes("progress") || fullText.includes("statistic")) {
           action = {
             label: "View reports",
             route: "/reports"
           };
+          icon = <TrendingUp className={`w-5 h-5 ${getAccentColor()}`} />;
         }
         
         return {
@@ -226,6 +256,16 @@ const AIInsights = () => {
           }
         },
         {
+          title: "Accountability Boost",
+          description: "Schedule a daily check-in with a friend or accountability partner to report your progress. This will help you stay on track with your weekly focus goal of 20 hours and provide an added motivation to stay focused.",
+          icon: <Users className={`w-5 h-5 ${getAccentColor()}`} />,
+          action: {
+            label: "Find partners",
+            route: "/community",
+            tab: "friends"
+          }
+        },
+        {
           title: "Focus Improvement",
           description: "Try the Pomodoro technique with 25-min focus and 5-min breaks to boost your concentration.",
           icon: <BrainCircuit className={`w-5 h-5 ${getAccentColor()}`} />,
@@ -251,8 +291,24 @@ const AIInsights = () => {
   };
   
   // Handle navigation for insight actions
-  const handleActionClick = (action: { route: string; params?: Record<string, string> }) => {
+  const handleActionClick = (action: { route: string; params?: Record<string, string>; tab?: string }) => {
+    // Navigate to the specified route
     navigate(action.route, { state: action.params });
+    
+    // If a specific tab is specified, set it in localStorage to be selected when the page loads
+    if (action.tab) {
+      localStorage.setItem('selectedTab', action.tab);
+      
+      // For Community page, directly attempt to click the tab after a short delay
+      if (action.route === '/community' && action.tab) {
+        setTimeout(() => {
+          const tabElement = document.querySelector(`[data-walkthrough="${action.tab}"]`) as HTMLElement;
+          if (tabElement) {
+            tabElement.click();
+          }
+        }, 300);
+      }
+    }
   };
   
   if (isLoading) {

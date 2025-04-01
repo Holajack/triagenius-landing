@@ -10,16 +10,36 @@ import CommunityUserList from '@/components/community/CommunityUserList';
 import CommunityWalkthrough from '@/components/walkthrough/CommunityWalkthrough';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@/hooks/use-user';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 
 const Community = () => {
-  // Changed default tab to 'friends' to match the new order
-  const [activeTab, setActiveTab] = useState("friends");
+  // Get initial tab from localStorage or default to 'friends'
+  const getInitialTab = () => {
+    const savedTab = localStorage.getItem('selectedTab');
+    if (savedTab) {
+      // Clear the value after reading it
+      localStorage.removeItem('selectedTab');
+      return savedTab;
+    }
+    return "friends";
+  };
+  
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const [searchQuery, setSearchQuery] = useState("");
   const { user } = useUser();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  useEffect(() => {
+    // Handle tab selection from state if present
+    if (location.state?.tab) {
+      setActiveTab(location.state.tab);
+      // Clear the state to prevent tab from being selected again on refresh
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location, navigate]);
   
   useEffect(() => {
     if (!user?.id) return;
@@ -60,7 +80,7 @@ const Community = () => {
       />
 
       <div className="container mx-auto px-4 py-8 pb-24">
-        <Tabs defaultValue="friends" className="w-full" onValueChange={setActiveTab}>
+        <Tabs defaultValue={activeTab} className="w-full" onValueChange={setActiveTab} value={activeTab}>
           <TabsList className="grid w-full grid-cols-3">
             {/* Reordered tabs: Friends → Messages → All Users */}
             <TabsTrigger value="friends" data-walkthrough="friends">Friends</TabsTrigger>
