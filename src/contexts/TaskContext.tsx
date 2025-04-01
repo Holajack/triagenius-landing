@@ -166,7 +166,7 @@ const taskReducer = (state: TaskState, action: TaskAction): TaskState => {
               ? { 
                   ...task, 
                   ...(action.payload.title !== undefined && { title: action.payload.title }),
-                  ...(action.payload.priority !== undefined && { priority: action.payload.priority }))
+                  ...(action.payload.priority !== undefined && { priority: action.payload.priority })
                 }
               : task
           ),
@@ -175,7 +175,7 @@ const taskReducer = (state: TaskState, action: TaskAction): TaskState => {
               ? { 
                   ...task, 
                   ...(action.payload.title !== undefined && { title: action.payload.title }),
-                  ...(action.payload.priority !== undefined && { priority: action.payload.priority }))
+                  ...(action.payload.priority !== undefined && { priority: action.payload.priority })
                 }
               : task
           )
