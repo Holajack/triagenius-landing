@@ -1,3 +1,4 @@
+
 import { useRef, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -96,6 +97,8 @@ const FocusSessionContent = ({
     }
   };
 
+  const isAutoMode = priorityMode === 'auto';
+
   return (
     <Card className={cn(
       "w-full transition-all duration-300",
@@ -108,12 +111,12 @@ const FocusSessionContent = ({
             <div className="w-full mb-1 sm:mb-2">
               <div className={cn(
                 "px-2 py-0.5 sm:px-3 sm:py-1 rounded-full text-xs font-medium inline-flex items-center",
-                priorityMode === 'auto' 
+                isAutoMode 
                   ? "bg-blue-100 text-blue-800" 
                   : "bg-purple-100 text-purple-800"
               )}>
                 <ListChecks className="w-3 h-3 mr-1" />
-                {priorityMode === 'auto' ? 'Auto Priority' : 'Custom Order'}
+                {isAutoMode ? 'Auto Priority' : 'Custom Order'}
               </div>
             </div>
           )}
@@ -215,25 +218,33 @@ const FocusSessionContent = ({
             <div className="w-full max-w-md mx-auto mb-3">
               <div className={cn(
                 "bg-white/80 rounded-lg p-2 sm:p-3 shadow-sm border-l-4",
-                currentTaskCompleted ? "border-green-500" : "border-blue-500"
+                currentTaskCompleted ? "border-green-500" : "border-blue-500",
+                isAutoMode ? "border-l-8" : "border-l-4"
               )}>
                 <h3 className="text-xs sm:text-sm font-medium flex items-center mb-1">
                   <BookOpen className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                  Current Focus Task
+                  {isAutoMode ? "Current Highest Priority Task" : "Current Focus Task"}
                   {currentTaskCompleted && (
                     <span className="ml-1 text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full flex items-center">
                       <CheckCircle2 className="w-3 h-3 mr-0.5" /> Done
                     </span>
                   )}
                 </h3>
-                <div className="text-sm sm:text-base font-medium mb-1 line-clamp-2">{currentTask.title}</div>
+                <div className={cn(
+                  "font-medium mb-1 line-clamp-2",
+                  isAutoMode ? "text-base sm:text-lg" : "text-sm sm:text-base"
+                )}>
+                  {currentTask.title}
+                </div>
                 <div className="flex justify-between items-center">
                   <div className="text-xs inline-flex items-center px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-800">
                     Priority: <span className="font-medium ml-1 capitalize">{currentTask.priority}</span>
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {currentTaskIndex + 1}/{totalTasks}
-                  </div>
+                  {!isAutoMode && (
+                    <div className="text-xs text-gray-500">
+                      {currentTaskIndex + 1}/{totalTasks}
+                    </div>
+                  )}
                 </div>
                 {currentTask.subtasks && currentTask.subtasks.length > 0 && (
                   <div className="mt-1 sm:mt-2">
@@ -280,7 +291,7 @@ const FocusSessionContent = ({
             </div>
           )}
           
-          {totalTasks > 0 && (
+          {totalTasks > 0 && !isAutoMode && (
             <div className="w-full bg-white/80 rounded-lg p-2 sm:p-3 shadow-sm">
               <div className="flex items-center justify-between mb-1">
                 <h3 className="text-xs sm:text-sm font-medium flex items-center">
@@ -301,13 +312,16 @@ const FocusSessionContent = ({
             </div>
           )}
           
-          <div className="w-full mt-3">
-            <FocusMilestones 
-              currentMilestone={currentMilestone}
-              currentProgress={segmentProgress}
-              lowPowerMode={lowPowerMode}
-            />
-          </div>
+          {/* Only show Focus Milestones when NOT in auto priority mode */}
+          {!isAutoMode && (
+            <div className="w-full mt-3">
+              <FocusMilestones 
+                currentMilestone={currentMilestone}
+                currentProgress={segmentProgress}
+                lowPowerMode={lowPowerMode}
+              />
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
