@@ -81,18 +81,19 @@ const Community = () => {
 
       <div className="container mx-auto px-4 py-8 pb-24">
         <Tabs defaultValue={activeTab} className="w-full" onValueChange={setActiveTab} value={activeTab}>
-          <TabsList className="grid w-full grid-cols-3">
-            {/* Reordered tabs: Friends → Messages → All Users */}
+          <TabsList className="grid w-full grid-cols-4">
+            {/* Updated grid-cols from 3 to 4 for the new tab */}
             <TabsTrigger value="friends" data-walkthrough="friends">Friends</TabsTrigger>
             <TabsTrigger value="messages" data-walkthrough="message-inbox">Messages</TabsTrigger>
             <TabsTrigger value="users" data-walkthrough="users">All Users</TabsTrigger>
+            <TabsTrigger value="study-rooms" data-walkthrough="study-rooms">Study Rooms</TabsTrigger>
           </TabsList>
           
           <div className="relative mt-4">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Search..."
+              placeholder="Search users, messages, or study rooms..."
               className="pl-8"
               value={searchQuery}
               onChange={handleSearch}
@@ -100,7 +101,6 @@ const Community = () => {
             />
           </div>
           
-          {/* Reordered tab content to match the new tab order */}
           <TabsContent value="friends" className="space-y-4 mt-4">
             <CommunityUserList searchQuery={searchQuery} tabView="friends" />
           </TabsContent>
@@ -109,6 +109,9 @@ const Community = () => {
           </TabsContent>
           <TabsContent value="users" className="space-y-4 mt-4">
             <CommunityUserList searchQuery={searchQuery} tabView="all" />
+          </TabsContent>
+          <TabsContent value="study-rooms" className="space-y-4 mt-4">
+            <StudyRooms searchQuery={searchQuery} />
           </TabsContent>
         </Tabs>
       </div>

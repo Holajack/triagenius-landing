@@ -15,10 +15,10 @@ const CommunityWalkthrough = () => {
       placement: 'bottom',
     },
     {
-      id: 'users',
-      title: 'Users',
-      description: "Find and connect with other users in the community.",
-      targetSelector: '[data-walkthrough="users"]',
+      id: 'friends',
+      title: 'Friends',
+      description: "Connect with friends and build your study network.",
+      targetSelector: '[data-walkthrough="friends"]',
       placement: isMobile ? 'bottom' : 'right',
     },
     {
@@ -26,6 +26,13 @@ const CommunityWalkthrough = () => {
       title: 'Messages',
       description: "Check your messages and connect with friends in the community.",
       targetSelector: '[data-walkthrough="message-inbox"]',
+      placement: 'top',
+    },
+    {
+      id: 'users',
+      title: 'All Users',
+      description: "Find and connect with other users in the community.",
+      targetSelector: '[data-walkthrough="users"]',
       placement: 'top',
     },
     {
