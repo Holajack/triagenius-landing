@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useTasks } from "@/contexts/TaskContext";
 import { PriorityLevel } from "@/types/tasks";
@@ -9,6 +8,8 @@ import {
   FormField,
   FormItem,
   FormMessage,
+  FormLabel,
+  FormDescription
 } from "@/components/ui/form";
 import {
   Select,
@@ -45,7 +46,6 @@ import { useUser } from "@/hooks/use-user";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-// Form schema for adding tasks
 const taskFormSchema = z.object({
   title: z.string().min(2, {
     message: "Task name must be at least 2 characters.",
@@ -81,32 +81,24 @@ const TaskList = ({ persistToSupabase = false }: TaskListProps) => {
     },
   });
   
-  // Function to check if user can add more tasks based on work style
   const canAddMoreTasks = (): boolean => {
     if (!onboardingState.workStyle) return true;
     
-    // For deep-work style, limit to 2 tasks
     if (onboardingState.workStyle === 'deep-work' && state.tasks.length >= 2) {
       return false;
     }
     
-    // For other work styles, allow multiple tasks
     return true;
   };
   
-  // Save tasks to local storage whenever they change
   useEffect(() => {
     localStorage.setItem('userTasks', JSON.stringify(state.tasks));
     localStorage.setItem('userCompletedTasks', JSON.stringify(state.completedTasks));
     
-    // If user is logged in and we should persist to Supabase, sync tasks
     if (persistToSupabase && user && user.id) {
       const syncTasksToSupabase = async () => {
         try {
-          // For each task, upsert to Supabase
-          // We'll do this in a non-blocking way to prevent freezing
           setTimeout(async () => {
-            // First, get existing tasks
             const { data: existingTasks, error: fetchError } = await supabase
               .from('tasks')
               .select('id')
@@ -117,13 +109,10 @@ const TaskList = ({ persistToSupabase = false }: TaskListProps) => {
               return;
             }
             
-            // Create a map of existing task IDs
             const existingTaskIds = new Set((existingTasks || []).map(task => task.id));
             
-            // For each task in state, upsert to Supabase
             const allTasks = [...state.tasks, ...state.completedTasks];
             for (const task of allTasks) {
-              // Skip if this task already exists
               if (existingTaskIds.has(task.id)) continue;
               
               await supabase
@@ -147,14 +136,11 @@ const TaskList = ({ persistToSupabase = false }: TaskListProps) => {
     }
   }, [state.tasks, state.completedTasks, persistToSupabase, user]);
   
-  // Load tasks from local storage on component mount
   useEffect(() => {
-    // Tasks are already loaded from localStorage in the TaskContext
     console.log("Task List mounted with tasks:", state.tasks.length, "and completed tasks:", state.completedTasks.length);
   }, [state.tasks.length, state.completedTasks.length]);
 
   const onSubmit = (data: TaskFormValues) => {
-    // Check if user can add more tasks based on work style
     if (!canAddMoreTasks()) {
       toast.error(
         "Task limit reached", 
@@ -289,21 +275,25 @@ const TaskList = ({ persistToSupabase = false }: TaskListProps) => {
               name="priority"
               render={({ field }) => (
                 <FormItem className="w-full md:w-40">
+                  <FormLabel className="sr-only">Task Priority Level</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Priority" />
+                        <SelectValue placeholder="Select priority level..." />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="low">Low Priority</SelectItem>
+                      <SelectItem value="medium">Medium Priority</SelectItem>
+                      <SelectItem value="high">High Priority</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FormDescription className="sr-only">
+                    Choose how important this task is: low, medium, or high priority
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
