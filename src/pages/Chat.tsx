@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle, RefreshCw } from "lucide-react";
@@ -157,7 +156,6 @@ const Chat = () => {
       if (error) {
         console.error('Error fetching contact profile:', error);
         
-        // More descriptive error based on the specific error
         if (error.code === 'PGRST116') {
           setContactError("User profile not found. They may have deleted their account.");
         } else if (error.code === 'PGRST301') {
@@ -339,7 +337,7 @@ const Chat = () => {
       
       <div className="flex-1 p-4 overflow-y-auto space-y-4">
         {contactError && (
-          <Alert variant="warning" className="mb-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+          <Alert variant="default" className="mb-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
             <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
             <AlertTitle>Contact Information Issue</AlertTitle>
             <AlertDescription className="flex flex-col gap-2">
