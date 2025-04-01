@@ -146,6 +146,9 @@ const TaskSelectionFlow = ({ open, onOpenChange }: TaskSelectionFlowProps) => {
     localStorage.setItem('focusTaskPriority', JSON.stringify(orderedSelectedTasks));
     localStorage.setItem('selectedTasksForFocus', JSON.stringify(data));
     
+    // Set priority mode to custom to ensure we use user's selected order
+    localStorage.setItem('priorityMode', 'custom');
+    
     // Close the dialog and navigate to focus session
     onOpenChange(false);
     navigate("/focus-session");

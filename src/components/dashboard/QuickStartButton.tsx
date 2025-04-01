@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -130,7 +131,6 @@ const QuickStartButton = () => {
       };
       
       localStorage.setItem('selectedTasksForFocus', JSON.stringify(selectedTasksData));
-      
       localStorage.setItem('priorityMode', 'auto');
       
       return true;
