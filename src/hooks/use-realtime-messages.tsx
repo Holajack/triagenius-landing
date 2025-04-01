@@ -51,6 +51,7 @@ export function useRealtimeMessages() {
       } catch (err) {
         console.error('Error fetching messages:', err);
         setError(err instanceof Error ? err : new Error('Failed to fetch messages'));
+        toast.error('Could not load messages. Please try again later.');
       } finally {
         setLoading(false);
       }
@@ -93,7 +94,11 @@ export function useRealtimeMessages() {
           );
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') {
+          console.error('Failed to subscribe to messages channel:', status);
+        }
+      });
     
     // Set up presence channel for typing indicators
     const typingChannel = supabase.channel('typing-indicators');
@@ -114,7 +119,11 @@ export function useRealtimeMessages() {
         
         setTypingUsers(newTypingStates);
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') {
+          console.error('Failed to subscribe to typing channel:', status);
+        }
+      });
 
     return () => {
       supabase.removeChannel(messagesChannel);
@@ -126,6 +135,11 @@ export function useRealtimeMessages() {
   const sendMessage = async (recipientId: string, content: string) => {
     if (!user?.id) {
       toast.error('You need to be logged in to send messages');
+      return null;
+    }
+
+    if (!content.trim()) {
+      toast.error('Message cannot be empty');
       return null;
     }
 
@@ -141,12 +155,23 @@ export function useRealtimeMessages() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error sending message:', error);
+        
+        if (error.code === '42501') {
+          toast.error('Permission denied. Please check if you are logged in.');
+        } else if (error.message.includes('foreign key constraint')) {
+          toast.error('Invalid recipient. Please try again with a valid user.');
+        } else {
+          toast.error('Failed to send message. Please try again.');
+        }
+        
+        throw error;
+      }
       
       return data;
     } catch (err) {
       console.error('Error sending message:', err);
-      toast.error('Failed to send message. Please try again.');
       return null;
     }
   };
@@ -157,45 +182,51 @@ export function useRealtimeMessages() {
     
     const typingChannel = supabase.channel('typing-indicators');
     
-    if (isTyping) {
-      // Set typing indicator
-      typingChannel.track({
-        userId: user.id,
-        recipientId,
-        isTyping: true,
-        timestamp: new Date().toISOString()
-      });
-      
-      // Auto-clear typing after 3 seconds of inactivity
-      if (typingStatesRef.current[recipientId]?.timeout) {
-        clearTimeout(typingStatesRef.current[recipientId].timeout!);
+    try {
+      if (isTyping) {
+        // Set typing indicator
+        typingChannel.track({
+          userId: user.id,
+          recipientId,
+          isTyping: true,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Auto-clear typing after 3 seconds of inactivity
+        if (typingStatesRef.current[recipientId]?.timeout) {
+          clearTimeout(typingStatesRef.current[recipientId].timeout!);
+        }
+        
+        typingStatesRef.current[recipientId] = {
+          isTyping: true,
+          timeout: setTimeout(() => {
+            setTypingStatus(recipientId, false);
+          }, 3000)
+        };
+      } else {
+        // Clear typing indicator
+        typingChannel.track({
+          userId: user.id,
+          recipientId,
+          isTyping: false,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Clear timeout
+        if (typingStatesRef.current[recipientId]?.timeout) {
+          clearTimeout(typingStatesRef.current[recipientId].timeout!);
+          typingStatesRef.current[recipientId].timeout = null;
+        }
       }
-      
-      typingStatesRef.current[recipientId] = {
-        isTyping: true,
-        timeout: setTimeout(() => {
-          setTypingStatus(recipientId, false);
-        }, 3000)
-      };
-    } else {
-      // Clear typing indicator
-      typingChannel.track({
-        userId: user.id,
-        recipientId,
-        isTyping: false,
-        timestamp: new Date().toISOString()
-      });
-      
-      // Clear timeout
-      if (typingStatesRef.current[recipientId]?.timeout) {
-        clearTimeout(typingStatesRef.current[recipientId].timeout!);
-        typingStatesRef.current[recipientId].timeout = null;
-      }
+    } catch (err) {
+      console.error('Error setting typing status:', err);
     }
   };
 
   // Function to mark a message as read
   const markAsRead = async (messageId: string) => {
+    if (!user?.id) return;
+    
     try {
       const { error } = await supabase
         .from('messages')
@@ -203,7 +234,10 @@ export function useRealtimeMessages() {
         .eq('id', messageId)
         .eq('recipient_id', user?.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error marking message as read:', error);
+        throw error;
+      }
 
       setMessages((prev) =>
         prev.map((msg) => (msg.id === messageId ? { ...msg, is_read: true } : msg))
@@ -217,13 +251,26 @@ export function useRealtimeMessages() {
   const getConversation = async (otherUserId: string) => {
     if (!user?.id) return [];
     
-    // Simple filter to get messages between two users
-    return messages
-      .filter(msg => 
-        (msg.sender_id === user.id && msg.recipient_id === otherUserId) ||
-        (msg.sender_id === otherUserId && msg.recipient_id === user.id)
-      )
-      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    try {
+      // Simple filter to get messages between two users
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},recipient_id.eq.${user.id})`)
+        .order('created_at', { ascending: true });
+      
+      if (error) {
+        console.error('Error fetching conversation:', error);
+        toast.error('Failed to load conversation');
+        return [];
+      }
+      
+      return data || [];
+    } catch (err) {
+      console.error('Error in getConversation:', err);
+      toast.error('Failed to load conversation');
+      return [];
+    }
   };
 
   // Check if a user is currently typing

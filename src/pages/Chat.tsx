@@ -1,7 +1,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, Paperclip, Smile } from "lucide-react";
+import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from "date-fns";
 import { getDisplayName, getInitials } from "@/hooks/use-display-name";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const Chat = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +19,7 @@ const Chat = () => {
   const messageEndRef = useRef<HTMLDivElement>(null);
   const [contact, setContact] = useState<any | null>(null);
   const [contactLoading, setContactLoading] = useState(true);
+  const [contactError, setContactError] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
   const { user } = useUser();
@@ -31,6 +33,7 @@ const Chat = () => {
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const [currentMessages, setCurrentMessages] = useState<any[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const [messageError, setMessageError] = useState<string | null>(null);
   
   const isContactTyping = id && isUserTyping(id);
 
@@ -44,6 +47,7 @@ const Chat = () => {
     } catch (err) {
       console.error('Error fetching conversation messages:', err);
       toast.error("Could not load messages. Please try again.");
+      setMessageError("Failed to load conversation messages");
     }
   }, [id, user?.id, getConversation]);
 
@@ -74,7 +78,11 @@ const Chat = () => {
         
         setOnlineUsers(online);
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') {
+          console.error('Failed to subscribe to online users channel:', status);
+        }
+      });
       
     // Track current user's presence
     channel.track({
@@ -121,7 +129,11 @@ const Chat = () => {
           markAsRead(payload.new.id);
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') {
+          console.error('Failed to subscribe to private messages channel:', status);
+        }
+      });
     
     return () => {
       supabase.removeChannel(channel);
@@ -146,6 +158,7 @@ const Chat = () => {
       
       try {
         setContactLoading(true);
+        setContactError(null);
         
         const { data: profileData, error } = await supabase
           .from('profiles')
@@ -156,6 +169,7 @@ const Chat = () => {
         if (error) {
           console.error('Error fetching contact profile:', error);
           toast.error("Could not load contact information");
+          setContactError("Could not load contact information");
           setContactLoading(false);
           return;
         }
@@ -179,6 +193,7 @@ const Chat = () => {
           username: `User-${id.substring(0, 4)}`,
           status: 'Unknown'
         });
+        setContactError("Error retrieving complete profile info");
       } finally {
         setContactLoading(false);
       }
@@ -222,6 +237,7 @@ const Chat = () => {
     
     try {
       setIsSending(true);
+      setMessageError(null);
       const sent = await sendMessage(id, newMessage);
       
       if (sent) {
@@ -249,20 +265,34 @@ const Chat = () => {
       } else {
         console.error('Failed to send message');
         toast.error("Failed to send message. Please try again.");
+        setMessageError("Message could not be sent. Check your connection and try again.");
       }
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error("Failed to send message. Please try again.");
+      setMessageError("Error sending message. Please try again later.");
     } finally {
       setIsSending(false);
     }
   };
   
   // Handle user not found case
-  if ((!id)) {
+  if ((!id) || (!user?.id)) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <p>No user selected. Please select a conversation.</p>
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+          <p className="text-lg font-medium">{!id ? "No user selected" : "You need to be logged in"}</p>
+          <p className="mt-2 text-muted-foreground">
+            {!id ? "Please select a conversation." : "Please log in to view and send messages."}
+          </p>
+          <Button 
+            className="mt-4" 
+            onClick={() => navigate('/community')}
+          >
+            Go to Community
+          </Button>
+        </div>
       </div>
     );
   }
@@ -318,6 +348,22 @@ const Chat = () => {
       </div>
       
       <div className="flex-1 p-4 overflow-y-auto space-y-4">
+        {contactError && (
+          <Alert variant="warning" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Contact Information Issue</AlertTitle>
+            <AlertDescription>{contactError}</AlertDescription>
+          </Alert>
+        )}
+        
+        {messageError && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Message Error</AlertTitle>
+            <AlertDescription>{messageError}</AlertDescription>
+          </Alert>
+        )}
+        
         {currentMessages.length > 0 ? (
           currentMessages.map((message) => {
             const isUnread = !message.is_read;

@@ -3,13 +3,15 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Users, Clock, Loader2 } from "lucide-react";
+import { Users, Clock, Loader2, AlertTriangle } from "lucide-react";
 import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
 import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { getDisplayName } from "@/hooks/use-display-name";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 interface MessageInboxProps {
   searchQuery?: string;
@@ -28,10 +30,11 @@ interface ConversationWithUser {
 
 export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxProps) => {
   const navigate = useNavigate();
-  const { getConversations, loading, isUserTyping } = useRealtimeMessages();
+  const { getConversations, loading, isUserTyping, error: messagesError } = useRealtimeMessages();
   const { user } = useUser();
   const [conversationsWithUsers, setConversationsWithUsers] = useState<ConversationWithUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   
   // Set up presence channel for online status
@@ -56,12 +59,23 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
         
         setOnlineUsers(online);
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') {
+          console.error('Failed to subscribe to online users channel:', status);
+          setError("Failed to connect to the realtime service. Some features may not work properly.");
+        }
+      });
       
     // Track current user's presence
     channel.track({
       userId: user.id,
       online_at: new Date().toISOString(),
+    }).then((status) => {
+      if (status !== 'ok') {
+        console.error('Failed to track user presence:', status);
+      }
+    }).catch(err => {
+      console.error('Error tracking presence:', err);
     });
       
     return () => {
@@ -72,6 +86,11 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
   // Load user details for conversations
   useEffect(() => {
     const loadConversationUsers = async () => {
+      if (!user?.id) {
+        setLoadingUsers(false);
+        return;
+      }
+      
       const conversations = getConversations();
       if (conversations.length === 0) {
         setLoadingUsers(false);
@@ -80,32 +99,63 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
       
       try {
         setLoadingUsers(true);
+        setError(null);
         const conversationsWithUserDetails: ConversationWithUser[] = [];
         
         for (const convo of conversations) {
-          // Get user profile
-          const { data: otherUser } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', convo.userId)
-            .single();
-          
-          if (otherUser) {
+          try {
+            // Get user profile
+            const { data: otherUser, error: profileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', convo.userId)
+              .single();
+            
+            if (profileError) {
+              console.error('Error fetching user profile:', profileError);
+              // Continue with partial data
+              conversationsWithUserDetails.push({
+                userId: convo.userId,
+                lastMessage: convo.lastMessage,
+                username: `User-${convo.userId.substring(0, 4)}`,
+                full_name: null,
+                display_name_preference: null,
+                avatarUrl: null,
+                isTyping: isUserTyping(convo.userId)
+              });
+              continue;
+            }
+            
+            if (otherUser) {
+              conversationsWithUserDetails.push({
+                userId: convo.userId,
+                lastMessage: convo.lastMessage,
+                username: otherUser.username || `User-${convo.userId.substring(0, 4)}`,
+                full_name: otherUser.full_name,
+                display_name_preference: otherUser.display_name_preference as 'username' | 'full_name' | null,
+                avatarUrl: otherUser.avatar_url,
+                isTyping: isUserTyping(convo.userId)
+              });
+            }
+          } catch (userError) {
+            console.error('Error processing user:', userError);
+            // Add with minimal info
             conversationsWithUserDetails.push({
               userId: convo.userId,
               lastMessage: convo.lastMessage,
-              username: otherUser.username || `User-${convo.userId.substring(0, 4)}`,
-              full_name: otherUser.full_name,
-              display_name_preference: otherUser.display_name_preference as 'username' | 'full_name' | null,
-              avatarUrl: otherUser.avatar_url,
+              username: `User-${convo.userId.substring(0, 4)}`,
+              full_name: null,
+              display_name_preference: null,
+              avatarUrl: null,
               isTyping: isUserTyping(convo.userId)
             });
           }
         }
         
         setConversationsWithUsers(conversationsWithUserDetails);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error loading conversation users:', error);
+        setError('Failed to load complete conversation data. Some information may be missing.');
       } finally {
         setLoadingUsers(false);
       }
@@ -119,10 +169,15 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
     }, 10000); // Reduced from 5s to 10s to lower database load
     
     return () => clearInterval(intervalId);
-  }, [getConversations, isUserTyping]);
+  }, [getConversations, isUserTyping, user?.id]);
   
   // Handle click on conversation
   const handleConversationClick = (userId: string) => {
+    if (!user?.id) {
+      navigate('/auth');
+      return;
+    }
+    
     if (onMessageClick) {
       onMessageClick(userId);
     } else {
@@ -145,12 +200,43 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
            messageContent.includes(searchQuery.toLowerCase());
   });
   
+  if (!user?.id) {
+    return (
+      <div className="text-center py-8">
+        <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+        <p className="text-lg font-medium">Authentication Required</p>
+        <p className="text-muted-foreground mt-2">You need to be logged in to view messages</p>
+        <Button className="mt-4" onClick={() => navigate('/auth')}>Log In</Button>
+      </div>
+    );
+  }
+  
   if (loading || loadingUsers) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
         <p>Loading conversations...</p>
       </div>
+    );
+  }
+  
+  if (messagesError || error) {
+    return (
+      <Alert variant="destructive" className="mb-4">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Error Loading Messages</AlertTitle>
+        <AlertDescription>
+          {messagesError?.message || error || "There was an error loading your messages."}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="mt-2"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </Button>
+        </AlertDescription>
+      </Alert>
     );
   }
   
@@ -226,6 +312,7 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
       
       {filteredConversations.length === 0 && (
         <div className="text-center py-8">
+          <Users className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
           <p className="text-muted-foreground">No messages yet</p>
           <p className="text-sm mt-2">Start chatting with community members from the People tab</p>
         </div>
@@ -233,3 +320,4 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
     </div>
   );
 };
+
