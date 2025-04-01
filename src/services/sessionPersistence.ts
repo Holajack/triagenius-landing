@@ -1,4 +1,3 @@
-
 // Add the wasExited property to the SavedFocusSession type
 export interface SavedFocusSession {
   milestone: number;
@@ -10,6 +9,8 @@ export interface SavedFocusSession {
   wasExited?: boolean; // New property to track if user exited the session
   currentTaskIndex?: number; // Track the current task
   currentTaskCompleted?: boolean; // Track if the current task is completed
+  taskPriorities?: string[]; // Store task priority list
+  priorityMode?: string; // Store priority mode (auto or custom)
 }
 
 export interface SavedUserSession {
@@ -64,13 +65,25 @@ export const clearFocusSessionState = () => {
 // Added functions for user session persistence
 export const saveUserSession = async (userId: string) => {
   try {
+    // Get task priorities and mode
+    const taskPriorities = localStorage.getItem('focusTaskPriority');
+    const priorityMode = localStorage.getItem('priorityMode');
+    const currentTaskIndex = localStorage.getItem('currentTaskIndex');
+    const currentTaskCompleted = localStorage.getItem('currentTaskCompleted');
+    
     // Save current app state
     const sessionData: SavedUserSession = {
       theme: localStorage.getItem('theme') || undefined,
       environment: localStorage.getItem('environment') || undefined,
       lastRoute: window.location.pathname,
       lastVisited: new Date().toISOString(),
-      focusSession: getSavedFocusSession() || undefined
+      focusSession: {
+        ...getSavedFocusSession() || {},
+        taskPriorities: taskPriorities ? JSON.parse(taskPriorities) : undefined,
+        priorityMode: priorityMode || undefined,
+        currentTaskIndex: currentTaskIndex ? parseInt(currentTaskIndex, 10) : undefined,
+        currentTaskCompleted: currentTaskCompleted === 'true'
+      }
     };
     
     // Try to save to localStorage
@@ -122,6 +135,24 @@ export const applySessionPreferences = (
   
   // Restore focus session if it exists
   if (savedSession.focusSession) {
+    // Save the focus session state
     localStorage.setItem('focusSessionState', JSON.stringify(savedSession.focusSession));
+    
+    // Also restore task-related data
+    if (savedSession.focusSession.taskPriorities) {
+      localStorage.setItem('focusTaskPriority', JSON.stringify(savedSession.focusSession.taskPriorities));
+    }
+    
+    if (savedSession.focusSession.priorityMode) {
+      localStorage.setItem('priorityMode', savedSession.focusSession.priorityMode);
+    }
+    
+    if (savedSession.focusSession.currentTaskIndex !== undefined) {
+      localStorage.setItem('currentTaskIndex', savedSession.focusSession.currentTaskIndex.toString());
+    }
+    
+    if (savedSession.focusSession.currentTaskCompleted !== undefined) {
+      localStorage.setItem('currentTaskCompleted', savedSession.focusSession.currentTaskCompleted.toString());
+    }
   }
 };

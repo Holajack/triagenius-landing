@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, MutableRefObject } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -26,34 +25,33 @@ const FocusSession = () => {
   const [currentTaskCompleted, setCurrentTaskCompleted] = useState(false);
   const [priorityMode, setPriorityMode] = useState<string | null>(null);
   
-  // Load task priorities and priority mode from localStorage on mount
   useEffect(() => {
     try {
-      // Get priority mode
       const savedPriorityMode = localStorage.getItem('priorityMode');
       setPriorityMode(savedPriorityMode);
       
-      // Get task priorities
       const savedPriorities = localStorage.getItem('focusTaskPriority');
       if (savedPriorities) {
         const priorities = JSON.parse(savedPriorities);
         setTaskPriorities(priorities);
         
-        // Retrieve saved task index if it exists
         const savedTaskIndex = localStorage.getItem('currentTaskIndex');
         if (savedTaskIndex) {
           const index = parseInt(savedTaskIndex, 10);
           if (!isNaN(index) && index >= 0 && index < priorities.length) {
             setCurrentTaskIndex(index);
+            
+            const savedCompletedState = localStorage.getItem('currentTaskCompleted');
+            if (savedCompletedState) {
+              setCurrentTaskCompleted(savedCompletedState === 'true');
+            }
           } else {
             setCurrentTaskIndex(0);
           }
         } else {
-          // Always start with the first task (index 0)
           setCurrentTaskIndex(0);
         }
         
-        // Show toast with first task info if available
         if (priorities.length > 0) {
           const taskId = priorities[savedTaskIndex ? parseInt(savedTaskIndex, 10) : 0];
           const task = taskState.tasks.find(task => task.id === taskId);
@@ -71,14 +69,14 @@ const FocusSession = () => {
     }
   }, []);
   
-  // Save current task index to localStorage whenever it changes
   useEffect(() => {
     try {
       localStorage.setItem('currentTaskIndex', currentTaskIndex.toString());
+      localStorage.setItem('currentTaskCompleted', currentTaskCompleted.toString());
     } catch (error) {
-      console.error("Error saving current task index:", error);
+      console.error("Error saving current task state:", error);
     }
-  }, [currentTaskIndex]);
+  }, [currentTaskIndex, currentTaskCompleted]);
   
   const getCurrentTask = () => {
     if (taskPriorities.length === 0 || currentTaskIndex >= taskPriorities.length) {
@@ -86,20 +84,32 @@ const FocusSession = () => {
     }
     
     const currentTaskId = taskPriorities[currentTaskIndex];
-    return taskState.tasks.find(task => task.id === currentTaskId);
+    return taskState.tasks.find(task => task.id === currentTaskId) || 
+           taskState.completedTasks.find(task => task.id === currentTaskId);
   };
   
   const goToNextTask = () => {
+    const currentTask = getCurrentTask();
+    if (currentTask && !currentTask.completed) {
+      dispatch({
+        type: "UPDATE_TASK",
+        payload: {
+          taskId: currentTask.id,
+          completed: true
+        }
+      });
+    }
+    
     if (currentTaskIndex < taskPriorities.length - 1) {
       setCurrentTaskIndex(prevIndex => prevIndex + 1);
       setCurrentTaskCompleted(false);
       
-      const nextTask = taskState.tasks.find(task => task.id === taskPriorities[currentTaskIndex + 1]);
+      const nextTask = taskState.tasks.find(task => task.id === taskPriorities[currentTaskIndex + 1]) ||
+                        taskState.completedTasks.find(task => task.id === taskPriorities[currentTaskIndex + 1]);
       if (nextTask) {
         toast.success(`Task completed! Moving to next task: ${nextTask.title}`);
       }
     } else {
-      // All tasks completed
       toast.success("Congratulations! All tasks have been completed.");
     }
   };
@@ -150,22 +160,29 @@ const FocusSession = () => {
     setShowEndConfirmation
   } = useFocusSession();
   
-  // This function now only tracks milestone progress without automatically advancing tasks
   const handleMilestoneCompletionWithTask = (milestone: number) => {
     handleMilestoneReached(milestone);
     
-    // If we reach the final milestone (timer completion), mark the current task as completed
     if (milestone === 3) {
       setCurrentTaskCompleted(true);
       toast.success("Timer completed! Task is now finished.");
     }
   };
   
-  // New function to handle timer completion
   const handleTimerComplete = () => {
     setCurrentTaskCompleted(true);
     
-    // If there are more tasks, show a prompt to continue to the next task
+    const currentTask = getCurrentTask();
+    if (currentTask && !currentTask.completed) {
+      dispatch({
+        type: "UPDATE_TASK",
+        payload: {
+          taskId: currentTask.id,
+          completed: true
+        }
+      });
+    }
+    
     if (currentTaskIndex < taskPriorities.length - 1) {
       toast.success("Task completed! Continue to the next task when ready.", {
         action: {
@@ -175,12 +192,10 @@ const FocusSession = () => {
         duration: 10000
       });
     } else {
-      // This was the final task
       toast.success("All tasks completed! Great job!", {
         duration: 5000
       });
       
-      // Proceed with session end
       handleSessionEnd();
     }
   };

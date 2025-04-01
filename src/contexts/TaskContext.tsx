@@ -6,6 +6,7 @@ import { useUser } from '@/hooks/use-user';
 
 interface TaskState {
   tasks: Task[];
+  completedTasks: Task[]; // Added to store completed tasks separately
 }
 
 type TaskAction = 
@@ -16,23 +17,37 @@ type TaskAction =
   | { type: 'REMOVE_SUBTASK'; payload: { taskId: string; subtaskId: string } }
   | { type: 'TOGGLE_SUBTASK'; payload: { taskId: string; subtaskId: string } }
   | { type: 'CLEAR_COMPLETED_TASKS' }
-  | { type: 'LOAD_TASKS'; payload: { tasks: Task[] } };
+  | { type: 'LOAD_TASKS'; payload: { tasks: Task[]; completedTasks?: Task[] } };
 
 // Try to load initial state from localStorage
 const loadInitialState = (): TaskState => {
   try {
     const savedTasks = localStorage.getItem('userTasks');
+    const savedCompletedTasks = localStorage.getItem('userCompletedTasks');
+    
+    let tasks: Task[] = [];
+    let completedTasks: Task[] = [];
+    
     if (savedTasks) {
       const parsedTasks = JSON.parse(savedTasks);
       if (Array.isArray(parsedTasks)) {
-        return { tasks: parsedTasks };
+        tasks = parsedTasks;
       }
     }
+    
+    if (savedCompletedTasks) {
+      const parsedCompletedTasks = JSON.parse(savedCompletedTasks);
+      if (Array.isArray(parsedCompletedTasks)) {
+        completedTasks = parsedCompletedTasks;
+      }
+    }
+    
+    return { tasks, completedTasks };
   } catch (e) {
     console.error('Failed to load tasks from localStorage', e);
   }
   
-  return { tasks: [] };
+  return { tasks: [], completedTasks: [] };
 };
 
 const initialState: TaskState = loadInitialState();
@@ -48,7 +63,8 @@ const taskReducer = (state: TaskState, action: TaskAction): TaskState => {
     case 'LOAD_TASKS':
       newState = {
         ...state,
-        tasks: action.payload.tasks
+        tasks: action.payload.tasks,
+        completedTasks: action.payload.completedTasks || state.completedTasks
       };
       break;
       
@@ -71,30 +87,121 @@ const taskReducer = (state: TaskState, action: TaskAction): TaskState => {
     case 'REMOVE_TASK':
       newState = {
         ...state,
-        tasks: state.tasks.filter(task => task.id !== action.payload.taskId)
+        tasks: state.tasks.filter(task => task.id !== action.payload.taskId),
+        completedTasks: state.completedTasks.filter(task => task.id !== action.payload.taskId)
       };
       break;
       
     case 'UPDATE_TASK':
-      newState = {
-        ...state,
-        tasks: state.tasks.map(task => 
-          task.id === action.payload.taskId
-            ? { 
-                ...task, 
-                ...(action.payload.title !== undefined && { title: action.payload.title }),
-                ...(action.payload.priority !== undefined && { priority: action.payload.priority }),
-                ...(action.payload.completed !== undefined && { completed: action.payload.completed })
-              }
-            : task
-        )
-      };
+      // If task is being marked as completed, move it to completedTasks array
+      if (action.payload.completed === true) {
+        const taskToComplete = state.tasks.find(task => task.id === action.payload.taskId);
+        
+        if (taskToComplete) {
+          const updatedTask = { 
+            ...taskToComplete, 
+            ...(action.payload.title !== undefined && { title: action.payload.title }),
+            ...(action.payload.priority !== undefined && { priority: action.payload.priority }),
+            completed: true
+          };
+          
+          newState = {
+            tasks: state.tasks.filter(task => task.id !== action.payload.taskId),
+            completedTasks: [...state.completedTasks, updatedTask]
+          };
+        } else {
+          // If task not found in active tasks, update it in completed tasks if it exists there
+          newState = {
+            ...state,
+            completedTasks: state.completedTasks.map(task => 
+              task.id === action.payload.taskId
+                ? { 
+                    ...task, 
+                    ...(action.payload.title !== undefined && { title: action.payload.title }),
+                    ...(action.payload.priority !== undefined && { priority: action.payload.priority }),
+                    completed: true
+                  }
+                : task
+            )
+          };
+        }
+      } else if (action.payload.completed === false) {
+        // If task is being marked as not completed, move it back to tasks array
+        const taskToUncomplete = state.completedTasks.find(task => task.id === action.payload.taskId);
+        
+        if (taskToUncomplete) {
+          const updatedTask = { 
+            ...taskToUncomplete, 
+            ...(action.payload.title !== undefined && { title: action.payload.title }),
+            ...(action.payload.priority !== undefined && { priority: action.payload.priority }),
+            completed: false
+          };
+          
+          newState = {
+            completedTasks: state.completedTasks.filter(task => task.id !== action.payload.taskId),
+            tasks: [...state.tasks, updatedTask]
+          };
+        } else {
+          // Just update the task in the tasks array
+          newState = {
+            ...state,
+            tasks: state.tasks.map(task => 
+              task.id === action.payload.taskId
+                ? { 
+                    ...task, 
+                    ...(action.payload.title !== undefined && { title: action.payload.title }),
+                    ...(action.payload.priority !== undefined && { priority: action.payload.priority }),
+                    completed: false
+                  }
+                : task
+            )
+          };
+        }
+      } else {
+        // No completion status change, just update other properties
+        newState = {
+          ...state,
+          tasks: state.tasks.map(task => 
+            task.id === action.payload.taskId
+              ? { 
+                  ...task, 
+                  ...(action.payload.title !== undefined && { title: action.payload.title }),
+                  ...(action.payload.priority !== undefined && { priority: action.payload.priority }))
+                }
+              : task
+          ),
+          completedTasks: state.completedTasks.map(task => 
+            task.id === action.payload.taskId
+              ? { 
+                  ...task, 
+                  ...(action.payload.title !== undefined && { title: action.payload.title }),
+                  ...(action.payload.priority !== undefined && { priority: action.payload.priority }))
+                }
+              : task
+          )
+        };
+      }
       break;
       
     case 'ADD_SUBTASK':
       newState = {
         ...state,
         tasks: state.tasks.map(task => 
+          task.id === action.payload.taskId
+            ? { 
+                ...task, 
+                subtasks: [
+                  ...task.subtasks,
+                  {
+                    id: generateId(),
+                    title: action.payload.title,
+                    completed: false
+                  }
+                ]
+              }
+            : task
+        ),
+        completedTasks: state.completedTasks.map(task => 
           task.id === action.payload.taskId
             ? { 
                 ...task, 
@@ -124,6 +231,16 @@ const taskReducer = (state: TaskState, action: TaskAction): TaskState => {
                 )
               }
             : task
+        ),
+        completedTasks: state.completedTasks.map(task => 
+          task.id === action.payload.taskId
+            ? { 
+                ...task, 
+                subtasks: task.subtasks.filter(
+                  subtask => subtask.id !== action.payload.subtaskId
+                )
+              }
+            : task
         )
       };
       break;
@@ -142,6 +259,18 @@ const taskReducer = (state: TaskState, action: TaskAction): TaskState => {
                 )
               }
             : task
+        ),
+        completedTasks: state.completedTasks.map(task => 
+          task.id === action.payload.taskId
+            ? { 
+                ...task, 
+                subtasks: task.subtasks.map(subtask => 
+                  subtask.id === action.payload.subtaskId
+                    ? { ...subtask, completed: !subtask.completed }
+                    : subtask
+                )
+              }
+            : task
         )
       };
       break;
@@ -149,7 +278,7 @@ const taskReducer = (state: TaskState, action: TaskAction): TaskState => {
     case 'CLEAR_COMPLETED_TASKS':
       newState = {
         ...state,
-        tasks: state.tasks.filter(task => !task.completed)
+        completedTasks: []
       };
       break;
       
@@ -160,6 +289,7 @@ const taskReducer = (state: TaskState, action: TaskAction): TaskState => {
   // Save to localStorage after each action
   try {
     localStorage.setItem('userTasks', JSON.stringify(newState.tasks));
+    localStorage.setItem('userCompletedTasks', JSON.stringify(newState.completedTasks));
   } catch (e) {
     console.error('Failed to save tasks to localStorage', e);
   }
@@ -203,15 +333,26 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       if (data && data.length > 0) {
         // Convert Supabase tasks to our local task format
-        const tasks: Task[] = data.map(dbTask => ({
-          id: dbTask.id,
-          title: dbTask.title,
-          priority: (dbTask.priority as PriorityLevel) || 'medium',
-          completed: dbTask.status === 'completed',
-          subtasks: [] // We'll load subtasks separately in the future if needed
-        }));
+        const activeTasks: Task[] = [];
+        const completedTasks: Task[] = [];
         
-        dispatch({ type: 'LOAD_TASKS', payload: { tasks } });
+        data.forEach(dbTask => {
+          const task: Task = {
+            id: dbTask.id,
+            title: dbTask.title,
+            priority: (dbTask.priority as PriorityLevel) || 'medium',
+            completed: dbTask.status === 'completed',
+            subtasks: [] // We'll load subtasks separately in the future if needed
+          };
+          
+          if (task.completed) {
+            completedTasks.push(task);
+          } else {
+            activeTasks.push(task);
+          }
+        });
+        
+        dispatch({ type: 'LOAD_TASKS', payload: { tasks: activeTasks, completedTasks } });
       } else {
         // If no tasks in Supabase, use localStorage tasks
         console.log("No tasks found in Supabase, using localStorage tasks");
@@ -240,15 +381,16 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       
       // Skip if no tasks to sync
-      if (state.tasks.length === 0) return;
+      const allTasks = [...state.tasks, ...state.completedTasks];
+      if (allTasks.length === 0) return;
       
       // Insert all current tasks
-      const tasksToInsert = state.tasks.map(task => ({
+      const tasksToInsert = allTasks.map(task => ({
         title: task.title,
         user_id: user.id,
         priority: task.priority,
         status: task.completed ? 'completed' : 'pending',
-        description: '' // No description in our local model
+        description: JSON.stringify(task.subtasks)
       }));
       
       const { error: insertError } = await supabase
@@ -269,6 +411,7 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     try {
       localStorage.setItem('userTasks', JSON.stringify(state.tasks));
+      localStorage.setItem('userCompletedTasks', JSON.stringify(state.completedTasks));
       
       // Optionally sync with Supabase if user is logged in
       if (user?.id) {
@@ -281,7 +424,7 @@ export const TaskProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (e) {
       console.error('Failed to sync tasks to localStorage', e);
     }
-  }, [state.tasks, user?.id]);
+  }, [state.tasks, state.completedTasks, user?.id]);
 
   return (
     <TaskContext.Provider value={{ 

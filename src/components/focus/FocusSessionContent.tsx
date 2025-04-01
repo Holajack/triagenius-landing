@@ -221,18 +221,8 @@ const FocusSessionContent = ({
                   <BookOpen className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                   Current Focus Task
                   {currentTaskCompleted && (
-                    <span className="ml-1 text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full">
-                      Done
-                    </span>
-                  )}
-                  {priorityMode && (
-                    <span className={cn(
-                      "ml-auto text-xs px-1.5 py-0.5 rounded-full",
-                      priorityMode === 'auto' 
-                        ? "bg-blue-100 text-blue-800" 
-                        : "bg-purple-100 text-purple-800"
-                    )}>
-                      {priorityMode === 'auto' ? 'Auto' : 'Custom'} Order
+                    <span className="ml-1 text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full flex items-center">
+                      <CheckCircle2 className="w-3 h-3 mr-0.5" /> Done
                     </span>
                   )}
                 </h3>
@@ -252,7 +242,9 @@ const FocusSessionContent = ({
                       {currentTask.subtasks.slice(0, 2).map((subtask, idx) => (
                         <div key={subtask.id} className="flex items-center text-xs">
                           <span className="w-3 text-xs text-gray-500 mr-1">{idx + 1}.</span>
-                          <span className="truncate">{subtask.title}</span>
+                          <span className={subtask.completed ? "line-through text-gray-400" : "truncate"}>
+                            {subtask.title}
+                          </span>
                         </div>
                       ))}
                       {currentTask.subtasks.length > 2 && (
