@@ -1,16 +1,16 @@
 // Add the wasExited property to the SavedFocusSession type
 export interface SavedFocusSession {
-  milestone: number;
+  milestone: number; // Keep as required
   segmentProgress: number;
   isPaused: boolean;
   timestamp: string;
   remainingTime: number;
   environment?: string;
-  wasExited?: boolean; // New property to track if user exited the session
-  currentTaskIndex?: number; // Track the current task
-  currentTaskCompleted?: boolean; // Track if the current task is completed
-  taskPriorities?: string[]; // Store task priority list
-  priorityMode?: string; // Store priority mode (auto or custom)
+  wasExited?: boolean; 
+  currentTaskIndex?: number;
+  currentTaskCompleted?: boolean;
+  taskPriorities?: string[];
+  priorityMode?: string;
 }
 
 export interface SavedUserSession {
@@ -78,7 +78,14 @@ export const saveUserSession = async (userId: string) => {
       lastRoute: window.location.pathname,
       lastVisited: new Date().toISOString(),
       focusSession: {
-        ...getSavedFocusSession() || {},
+        ...(getSavedFocusSession() || {}),
+        // Ensure the required milestone field is always provided
+        milestone: getSavedFocusSession()?.milestone || 0,
+        segmentProgress: getSavedFocusSession()?.segmentProgress || 0,
+        isPaused: getSavedFocusSession()?.isPaused || false,
+        timestamp: new Date().toISOString(),
+        remainingTime: getSavedFocusSession()?.remainingTime || 0,
+        environment: localStorage.getItem('environment') || undefined,
         taskPriorities: taskPriorities ? JSON.parse(taskPriorities) : undefined,
         priorityMode: priorityMode || undefined,
         currentTaskIndex: currentTaskIndex ? parseInt(currentTaskIndex, 10) : undefined,

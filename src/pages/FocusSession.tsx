@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, MutableRefObject } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -15,7 +16,7 @@ import { toast } from "sonner";
 const FocusSession = () => {
   const { state } = useOnboarding();
   const { theme } = useTheme();
-  const { state: taskState } = useTasks();
+  const { state: taskState, dispatch } = useTasks(); // Properly destructure dispatch
   const isMobile = useIsMobile();
   const operationInProgressRef = useRef(false);
   const operationTimeoutRef = useRef<number | null>(null);
