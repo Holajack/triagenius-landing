@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, MutableRefObject } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -17,7 +16,7 @@ import { Task } from "@/types/tasks";
 const FocusSession = () => {
   const { state } = useOnboarding();
   const { theme } = useTheme();
-  const { state: taskState, dispatch } = useTasks(); // Properly destructure dispatch
+  const { state: taskState, dispatch } = useTasks();
   const isMobile = useIsMobile();
   const operationInProgressRef = useRef(false);
   const operationTimeoutRef = useRef<number | null>(null);
@@ -28,7 +27,6 @@ const FocusSession = () => {
   const [priorityMode, setPriorityMode] = useState<string | null>(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   
-  // Log the current state for debugging
   useEffect(() => {
     console.log("Tasks in state:", taskState.tasks);
     console.log("Task priorities:", taskPriorities);
@@ -83,7 +81,6 @@ const FocusSession = () => {
     }
   }, []);
   
-  // Handle auto-priority mode by sorting tasks when taskState changes
   useEffect(() => {
     if (initialLoadComplete && priorityMode === 'auto' && taskState.tasks.length > 0 && taskPriorities.length === 0) {
       console.log("Auto-priority mode active but no priorities, creating task order");
@@ -93,7 +90,6 @@ const FocusSession = () => {
       setTaskPriorities(newPriorities);
       localStorage.setItem('focusTaskPriority', JSON.stringify(newPriorities));
       
-      // Reset to first task
       setCurrentTaskIndex(0);
       localStorage.setItem('currentTaskIndex', '0');
     }
@@ -120,8 +116,6 @@ const FocusSession = () => {
     if (taskPriorities.length === 0) {
       console.log("No task priorities found");
       
-      // If in auto-priority mode and we have tasks but no priorities yet,
-      // let's create them now
       if (priorityMode === 'auto' && taskState.tasks.length > 0) {
         console.log("Auto-priority mode active with tasks, but no priorities set");
         const sortedTasks = groupTasksByPriority(taskState.tasks);
@@ -319,7 +313,7 @@ const FocusSession = () => {
       <div className="w-full max-w-4xl">
         <FocusSessionHeader 
           lowPowerMode={lowPowerMode}
-          toggleLowPowerMode={handleLowPowerMode}
+          toggleLowPowerMode={toggleLowPowerMode}
           operationInProgress={operationInProgressRef.current}
           currentTask={currentTask}
         />
