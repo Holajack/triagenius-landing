@@ -1,4 +1,3 @@
-
 import { useRef, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,6 +59,23 @@ const FocusSessionContent = ({
 }: FocusSessionContentProps) => {
   const isMobile = useIsMobile();
   const contentRef = useRef<HTMLDivElement>(null);
+  const [showTaskPlaceholder, setShowTaskPlaceholder] = useState(false);
+  
+  useEffect(() => {
+    let timer: number;
+    
+    if (!currentTask) {
+      timer = window.setTimeout(() => {
+        setShowTaskPlaceholder(true);
+      }, 2000);
+    } else {
+      setShowTaskPlaceholder(false);
+    }
+    
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [currentTask]);
   
   const getTimerDuration = () => {
     try {
@@ -99,7 +115,6 @@ const FocusSessionContent = ({
 
   const isAutoMode = priorityMode === 'auto';
   
-  // Get priority color based on task priority
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return "bg-red-100 text-red-800 border-red-400";
@@ -109,7 +124,6 @@ const FocusSessionContent = ({
     }
   };
   
-  // Get priority flag color
   const getPriorityFlagColor = (priority: string) => {
     switch (priority) {
       case 'high': return "text-red-600";
@@ -257,7 +271,7 @@ const FocusSessionContent = ({
                 <h3 className="text-xs sm:text-sm font-medium flex items-center mb-1">
                   <BookOpen className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
                   {isAutoMode 
-                    ? "Current Highest Priority Task" 
+                    ? `Current ${currentTask.priority.charAt(0).toUpperCase() + currentTask.priority.slice(1)} Priority Task` 
                     : "Current Focus Task"}
                   {currentTaskCompleted && (
                     <span className="ml-1 text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full flex items-center">
@@ -324,9 +338,24 @@ const FocusSessionContent = ({
           ) : (
             <div className="w-full max-w-md mx-auto mb-3">
               <div className="bg-white/80 rounded-lg p-3 shadow-sm border-l-4 border-gray-300">
-                <div className="text-center text-gray-500">
-                  No task selected
-                </div>
+                {isAutoMode && !showTaskPlaceholder ? (
+                  <div className="text-center">
+                    <div className="animate-pulse flex flex-col items-center">
+                      <div className="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
+                      <div className="h-6 bg-slate-200 rounded w-4/5 mb-2"></div>
+                      <div className="h-4 bg-slate-200 rounded w-1/2"></div>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-2">
+                      Loading highest priority tasks...
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-500">
+                    {isAutoMode 
+                      ? "No tasks found. Add tasks in the dashboard to get started."
+                      : "No task selected"}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -365,7 +394,6 @@ const FocusSessionContent = ({
             </div>
           )}
           
-          {/* Only show Focus Milestones when NOT in auto priority mode */}
           {!isAutoMode && (
             <div className="w-full mt-3">
               <FocusMilestones 

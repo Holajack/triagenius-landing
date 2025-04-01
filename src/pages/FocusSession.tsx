@@ -12,6 +12,7 @@ import FocusSessionHeader from "@/components/focus/FocusSessionHeader";
 import FocusSessionContent from "@/components/focus/FocusSessionContent";
 import FocusSessionWalkthrough from '@/components/walkthrough/FocusSessionWalkthrough';
 import { toast } from "sonner";
+import { Task } from "@/types/tasks";
 
 const FocusSession = () => {
   const { state } = useOnboarding();
@@ -25,6 +26,15 @@ const FocusSession = () => {
   const [taskPriorities, setTaskPriorities] = useState<string[]>([]);
   const [currentTaskCompleted, setCurrentTaskCompleted] = useState(false);
   const [priorityMode, setPriorityMode] = useState<string | null>(null);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  
+  // Log the current state for debugging
+  useEffect(() => {
+    console.log("Tasks in state:", taskState.tasks);
+    console.log("Task priorities:", taskPriorities);
+    console.log("Priority mode:", priorityMode);
+    console.log("Current task index:", currentTaskIndex);
+  }, [taskState.tasks, taskPriorities, priorityMode, currentTaskIndex]);
   
   useEffect(() => {
     try {
@@ -65,10 +75,29 @@ const FocusSession = () => {
           }
         }
       }
+      
+      setInitialLoadComplete(true);
     } catch (error) {
       console.error("Error loading task priorities:", error);
+      setInitialLoadComplete(true);
     }
   }, []);
+  
+  // Handle auto-priority mode by sorting tasks when taskState changes
+  useEffect(() => {
+    if (initialLoadComplete && priorityMode === 'auto' && taskState.tasks.length > 0 && taskPriorities.length === 0) {
+      console.log("Auto-priority mode active but no priorities, creating task order");
+      const sortedTasks = groupTasksByPriority(taskState.tasks);
+      const newPriorities = sortedTasks.map(task => task.id);
+      
+      setTaskPriorities(newPriorities);
+      localStorage.setItem('focusTaskPriority', JSON.stringify(newPriorities));
+      
+      // Reset to first task
+      setCurrentTaskIndex(0);
+      localStorage.setItem('currentTaskIndex', '0');
+    }
+  }, [taskState.tasks, initialLoadComplete, priorityMode, taskPriorities.length]);
   
   useEffect(() => {
     try {
@@ -79,14 +108,43 @@ const FocusSession = () => {
     }
   }, [currentTaskIndex, currentTaskCompleted]);
   
+  const groupTasksByPriority = (tasks: Task[]): Task[] => {
+    const highPriorityTasks = tasks.filter(task => task.priority === 'high');
+    const mediumPriorityTasks = tasks.filter(task => task.priority === 'medium');
+    const lowPriorityTasks = tasks.filter(task => task.priority === 'low');
+    
+    return [...highPriorityTasks, ...mediumPriorityTasks, ...lowPriorityTasks];
+  };
+  
   const getCurrentTask = () => {
-    if (taskPriorities.length === 0 || currentTaskIndex >= taskPriorities.length) {
+    if (taskPriorities.length === 0) {
+      console.log("No task priorities found");
+      
+      // If in auto-priority mode and we have tasks but no priorities yet,
+      // let's create them now
+      if (priorityMode === 'auto' && taskState.tasks.length > 0) {
+        console.log("Auto-priority mode active with tasks, but no priorities set");
+        const sortedTasks = groupTasksByPriority(taskState.tasks);
+        if (sortedTasks.length > 0) {
+          console.log("Returning first task by priority:", sortedTasks[0].title);
+          return sortedTasks[0];
+        }
+      }
+      
+      return null;
+    }
+    
+    if (currentTaskIndex >= taskPriorities.length) {
+      console.log("Current task index out of bounds");
       return null;
     }
     
     const currentTaskId = taskPriorities[currentTaskIndex];
-    return taskState.tasks.find(task => task.id === currentTaskId) || 
-           taskState.completedTasks.find(task => task.id === currentTaskId);
+    const task = taskState.tasks.find(task => task.id === currentTaskId) || 
+                 taskState.completedTasks.find(task => task.id === currentTaskId);
+    
+    console.log("Found current task:", task?.title || "No task found");
+    return task || null;
   };
   
   const goToNextTask = () => {
@@ -245,7 +303,7 @@ const FocusSession = () => {
   };
 
   const currentTask = getCurrentTask();
-  console.log("Current task:", currentTask, "Priority mode:", priorityMode);
+  console.log("Current task (final):", currentTask, "Priority mode:", priorityMode);
 
   const typedTimerRef = timerRef as MutableRefObject<{
     stopTimer: () => void;
@@ -261,7 +319,7 @@ const FocusSession = () => {
       <div className="w-full max-w-4xl">
         <FocusSessionHeader 
           lowPowerMode={lowPowerMode}
-          toggleLowPowerMode={handleLowPowerModeToggle}
+          toggleLowPowerMode={handleLowPowerMode}
           operationInProgress={operationInProgressRef.current}
           currentTask={currentTask}
         />
