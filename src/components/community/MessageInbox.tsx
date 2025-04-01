@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Users, Clock, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Users, Clock, Loader2, AlertTriangle, RefreshCw, MessageSquare, User } from "lucide-react";
 import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
 import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
@@ -246,11 +246,11 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
   }
   
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {filteredConversations.map((conversation) => {
         const { lastMessage } = conversation;
         const isUnread = lastMessage.recipient_id === user?.id && !lastMessage.is_read;
-        const messageTime = formatDistanceToNow(new Date(lastMessage.created_at), { addSuffix: true });
+        const messageTime = formatDistanceToNow(new Date(lastMessage.created_at), { addSuffix: false });
         const isOnline = onlineUsers.has(conversation.userId);
         const displayName = getDisplayName({
           username: conversation.username,
@@ -261,46 +261,55 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
         return (
           <Card 
             key={conversation.userId} 
-            className={`p-4 ${isUnread ? 'bg-muted/50' : ''} cursor-pointer hover:bg-muted/30 transition-colors`}
+            className={`p-3 ${isUnread ? 'bg-muted/50' : ''} cursor-pointer hover:bg-muted/30 transition-colors`}
             onClick={() => handleConversationClick(conversation.userId)}
           >
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <Avatar>
+            <div className="flex items-start gap-3">
+              <div className="relative flex-shrink-0">
+                <Avatar className="h-12 w-12">
                   <AvatarImage src={conversation.avatarUrl || ""} alt={displayName} />
                   <AvatarFallback>{displayName[0]}</AvatarFallback>
                 </Avatar>
                 {isOnline && (
-                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
+                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
                 )}
               </div>
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <h3 className={`font-medium ${isUnread ? 'font-semibold' : ''}`}>
+                    <h3 className={`font-medium text-sm ${isUnread ? 'font-semibold' : ''}`}>
                       {displayName}
                     </h3>
                     {isOnline && (
-                      <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 border-green-200">
+                      <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 bg-green-500/10 text-green-600 border-green-200">
                         Online
                       </Badge>
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     {messageTime}
                   </span>
                 </div>
-                <p className={`text-sm truncate ${isUnread ? 'text-foreground' : 'text-muted-foreground'}`}>
-                  {conversation.isTyping ? (
-                    <span className="italic text-primary">typing...</span>
+                
+                <div className="flex gap-1 items-center mt-0.5">
+                  {lastMessage.sender_id === user?.id ? (
+                    <User className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                   ) : (
-                    <>
-                      {lastMessage.sender_id === user?.id ? 'You: ' : ''}{lastMessage.content}
-                    </>
+                    <MessageSquare className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                   )}
-                </p>
+                  
+                  <p className={`text-xs truncate ${isUnread ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                    {conversation.isTyping ? (
+                      <span className="italic text-primary text-xs">typing...</span>
+                    ) : (
+                      <>
+                        {lastMessage.sender_id === user?.id ? 'You: ' : ''}{lastMessage.content}
+                      </>
+                    )}
+                  </p>
+                </div>
                 
                 <div className="mt-1 flex items-center justify-end gap-1">
                   {lastMessage.sender_id === user?.id && (
