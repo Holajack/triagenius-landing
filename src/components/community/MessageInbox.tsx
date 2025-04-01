@@ -34,22 +34,6 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   
-  // Request notification permission on component mount
-  useEffect(() => {
-    const requestNotificationPermission = async () => {
-      if ('Notification' in window && Notification.permission !== 'granted') {
-        try {
-          const permission = await Notification.requestPermission();
-          console.log('Notification permission:', permission);
-        } catch (error) {
-          console.error('Error requesting notification permission:', error);
-        }
-      }
-    };
-    
-    requestNotificationPermission();
-  }, []);
-  
   // Set up presence channel for online status
   useEffect(() => {
     if (!user?.id) return;
@@ -132,7 +116,7 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
     // Set up an interval to refresh the conversation list
     const intervalId = setInterval(() => {
       loadConversationUsers();
-    }, 5000);
+    }, 10000); // Reduced from 5s to 10s to lower database load
     
     return () => clearInterval(intervalId);
   }, [getConversations, isUserTyping]);

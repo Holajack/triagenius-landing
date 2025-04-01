@@ -1,7 +1,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, Paperclip, Smile, MoreVertical, Phone, Video } from "lucide-react";
+import { ArrowLeft, Send, Paperclip, Smile } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,45 +10,27 @@ import { useUser } from "@/hooks/use-user";
 import { useRealtimeMessages } from "@/hooks/use-realtime-messages";
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from "date-fns";
-import { requestMediaPermissions, sendNotification } from "@/components/pwa/ServiceWorker";
 import { getDisplayName, getInitials } from "@/hooks/use-display-name";
-
-interface ChatProfile {
-  id: string;
-  username: string | null;
-  full_name: string | null;
-  display_name_preference: 'username' | 'full_name' | null;
-  avatar_url: string | null;
-  online?: boolean;
-  status?: string;
-  typing?: boolean;
-  lastActive?: string;
-}
 
 const Chat = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const messageEndRef = useRef<HTMLDivElement>(null);
-  const [contact, setContact] = useState<ChatProfile | null>(null);
+  const [contact, setContact] = useState<any | null>(null);
   const [contactLoading, setContactLoading] = useState(true);
-  const [contactError, setContactError] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [typingTimeout, setTypingTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [isFriend, setIsFriend] = useState<boolean | null>(null);
-  const [isCheckingFriend, setIsCheckingFriend] = useState(true);
-  const [hasTriedAuth, setHasTriedAuth] = useState(false);
   const { user } = useUser();
   const { 
     getConversation, 
     sendMessage, 
     markAsRead, 
     setTypingStatus, 
-    isUserTyping,
-    subscribeToConversation 
+    isUserTyping
   } = useRealtimeMessages();
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const [currentMessages, setCurrentMessages] = useState<any[]>([]);
-  const channelRef = useRef<any>(null);
+  const [isSending, setIsSending] = useState(false);
   
   const isContactTyping = id && isUserTyping(id);
 
@@ -61,6 +43,7 @@ const Chat = () => {
       setCurrentMessages(conversationMessages);
     } catch (err) {
       console.error('Error fetching conversation messages:', err);
+      toast.error("Could not load messages. Please try again.");
     }
   }, [id, user?.id, getConversation]);
 
@@ -69,118 +52,6 @@ const Chat = () => {
     fetchConversationMessages();
   }, [fetchConversationMessages]);
 
-  // Subscribe to real-time updates for this conversation
-  useEffect(() => {
-    if (!id || !user?.id) return;
-
-    const setupSubscription = async () => {
-      // Clean up existing subscription
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-      }
-
-      // Set up subscription to conversation updates
-      const channel = await subscribeToConversation(id, (newMessage) => {
-        console.log('New real-time message received:', newMessage);
-        
-        // Update the messages state
-        setCurrentMessages(prev => {
-          // Avoid duplicates
-          if (prev.some(msg => msg.id === newMessage.id)) {
-            return prev;
-          }
-          
-          const updatedMessages = [...prev, newMessage];
-          return updatedMessages.sort((a, b) => 
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          );
-        });
-        
-        // Mark as read if the recipient is the current user
-        if (newMessage.recipient_id === user.id && !newMessage.is_read) {
-          markAsRead(newMessage.id);
-        }
-      });
-      
-      channelRef.current = channel;
-    };
-    
-    setupSubscription();
-    
-    return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-      }
-    };
-  }, [id, user?.id, subscribeToConversation, markAsRead]);
-
-  // Mark messages as read when viewed
-  useEffect(() => {
-    if (!id || !user?.id) return;
-    
-    currentMessages.forEach(msg => {
-      if (msg.sender_id === id && !msg.is_read) {
-        markAsRead(msg.id);
-      }
-    });
-  }, [id, currentMessages, user?.id, markAsRead]);
-
-  // Check if the user is a friend - improved with better error handling
-  useEffect(() => {
-    const checkFriendStatus = async () => {
-      if (!id || !user?.id) {
-        if (user?.id && !hasTriedAuth) {
-          setHasTriedAuth(true);
-        }
-        return;
-      }
-      
-      setIsCheckingFriend(true);
-      
-      try {
-        // First, try to find a direct friend connection
-        const { data: friendData, error: friendError } = await supabase
-          .from('friends')
-          .select('*')
-          .or(`and(user_id.eq.${user.id},friend_id.eq.${id}),and(user_id.eq.${id},friend_id.eq.${user.id})`)
-          .maybeSingle();
-          
-        if (friendError) {
-          console.error('Error checking friend status:', friendError);
-          // Continue with the check, don't set isFriend to false yet
-        } else if (friendData) {
-          // Direct entry in friends table found
-          setIsFriend(true);
-          setIsCheckingFriend(false);
-          return;
-        }
-        
-        // If no direct connection, check for approved friend requests
-        const { data: requestData, error: requestError } = await supabase
-          .from('friend_requests')
-          .select('*')
-          .or(`and(sender_id.eq.${user.id},recipient_id.eq.${id}),and(sender_id.eq.${id},recipient_id.eq.${user.id})`)
-          .eq('status', 'accepted')
-          .maybeSingle();
-          
-        if (requestError) {
-          console.error('Error checking friend requests:', requestError);
-          setIsFriend(false);
-        } else {
-          // Set isFriend based on whether we found an accepted request
-          setIsFriend(!!requestData);
-        }
-      } catch (error) {
-        console.error('Error checking friend status:', error);
-        setIsFriend(false);
-      } finally {
-        setIsCheckingFriend(false);
-      }
-    };
-    
-    checkFriendStatus();
-  }, [id, user?.id, hasTriedAuth]);
-  
   // Set up presence channel for online status
   useEffect(() => {
     if (!user?.id) return;
@@ -195,25 +66,13 @@ const Chat = () => {
         Object.keys(state).forEach(presenceKey => {
           const presences = state[presenceKey] as any[];
           presences.forEach(presence => {
-            if (presence.userId) {
+            if (presence.userId && presence.userId !== user.id) {
               online.add(presence.userId);
             }
           });
         });
         
         setOnlineUsers(online);
-        
-        if (contact && id) {
-          setContact(prev => {
-            if (!prev) return prev;
-            const isOnline = online.has(prev.id);
-            return {
-              ...prev,
-              online: isOnline,
-              status: isOnline ? "Online" : prev.status
-            };
-          });
-        }
       })
       .subscribe();
       
@@ -226,128 +85,112 @@ const Chat = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id, contact, id]);
+  }, [user?.id]);
   
-  // Fetch contact profile data with improved error handling and fallbacks
+  // Subscribe to real-time message updates
+  useEffect(() => {
+    if (!id || !user?.id) return;
+    
+    const channel = supabase.channel(`private-messages-${id}-${user.id}`);
+    
+    channel
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `recipient_id=eq.${user.id}`
+      }, payload => {
+        console.log('New message received:', payload);
+        
+        // Only add if it's from the current chat
+        if (payload.new.sender_id === id) {
+          setCurrentMessages(prev => {
+            // Avoid duplicates
+            if (prev.some(msg => msg.id === payload.new.id)) {
+              return prev;
+            }
+            
+            // Add and sort by created_at
+            const updated = [...prev, payload.new];
+            return updated.sort((a, b) => 
+              new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            );
+          });
+          
+          // Mark as read since we're actively viewing this conversation
+          markAsRead(payload.new.id);
+        }
+      })
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, user?.id, markAsRead]);
+
+  // Mark messages as read when viewed
+  useEffect(() => {
+    if (!id || !user?.id) return;
+    
+    currentMessages.forEach(msg => {
+      if (msg.sender_id === id && !msg.is_read) {
+        markAsRead(msg.id);
+      }
+    });
+  }, [id, currentMessages, user?.id, markAsRead]);
+
+  // Fetch contact profile data
   useEffect(() => {
     const fetchProfile = async () => {
       if (!id) return;
       
       try {
         setContactLoading(true);
-        setContactError(null);
         
-        // First try to get from profiles table with a direct query
-        const { data: profileData, error: profileError } = await supabase
+        const { data: profileData, error } = await supabase
           .from('profiles')
           .select('id, username, full_name, display_name_preference, avatar_url')
           .eq('id', id)
           .single();
         
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.error('Error fetching profile:', profileError);
-          // Continue with fallback options
-        }
-        
-        // If we found a profile, use it
-        if (profileData) {
-          console.log('Found profile data:', profileData);
-          const isOnline = onlineUsers.has(id);
-          const contactData: ChatProfile = {
-            id: profileData.id,
-            username: profileData.username || `User-${id.substring(0, 4)}`,
-            full_name: profileData.full_name,
-            display_name_preference: profileData.display_name_preference as 'username' | 'full_name' | null,
-            avatar_url: profileData.avatar_url,
-            online: isOnline,
-            status: isOnline ? "Online" : "Offline",
-            typing: isUserTyping(id)
-          };
-          
-          setContact(contactData);
-          setContactError(null);
+        if (error) {
+          console.error('Error fetching contact profile:', error);
+          toast.error("Could not load contact information");
           setContactLoading(false);
           return;
         }
         
-        console.log('No profile found in profiles table, trying fallback');
-        
-        // Fallback to auth.users reference from conversations or messages
-        try {
-          console.log('Attempting to get user info from conversations or messages');
-          // Try to get sender information from messages
-          const { data: messageData, error: messageError } = await supabase
-            .from('messages')
-            .select('sender_id, content')
-            .eq('sender_id', id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-            
-          if (messageData && messageData.sender_id) {
-            console.log('Found message from this user:', messageData);
-            // Create a basic profile with the available information
-            const contactData: ChatProfile = {
-              id,
-              username: `User-${id.substring(0, 4)}`,
-              full_name: null,
-              display_name_preference: null,
-              avatar_url: null,
-              online: onlineUsers.has(id),
-              status: onlineUsers.has(id) ? 'Online' : 'Offline'
-            };
-            
-            setContact(contactData);
-            setContactError("Limited user information available");
-            setContactLoading(false);
-            return;
-          } else {
-            console.log('No messages found for this user, using minimal profile');
-          }
-        } catch (fallbackErr) {
-          console.error('Error in message fallback:', fallbackErr);
-        }
-        
-        // Final fallback - create minimal profile
-        const contactData: ChatProfile = {
-          id,
-          username: `User-${id.substring(0, 4)}`,
-          full_name: null,
-          display_name_preference: null,
-          avatar_url: null,
-          status: onlineUsers.has(id) ? 'Online' : 'Offline',
-          online: onlineUsers.has(id)
-        };
-        
-        setContact(contactData);
-        setContactError("Limited contact information available");
-        setContactLoading(false);
-        
+        // If we found a profile, use it
+        const isOnline = onlineUsers.has(id);
+        setContact({
+          id: profileData.id,
+          username: profileData.username || `User-${id.substring(0, 4)}`,
+          full_name: profileData.full_name,
+          display_name_preference: profileData.display_name_preference,
+          avatar_url: profileData.avatar_url,
+          online: isOnline,
+          status: isOnline ? "Online" : "Offline"
+        });
       } catch (err) {
         console.error('Error in fetchProfile:', err);
-        
-        // Create fallback profile even if there's an error
+        // Create fallback profile
         setContact({
           id,
           username: `User-${id.substring(0, 4)}`,
-          full_name: null,
-          display_name_preference: null,
-          avatar_url: null,
           status: 'Unknown'
         });
-        
-        setContactError("Could not load complete contact information");
+      } finally {
         setContactLoading(false);
       }
     };
     
     fetchProfile();
-  }, [id, onlineUsers, isUserTyping]);
+  }, [id, onlineUsers]);
   
   // Auto-scroll to latest message
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [currentMessages]);
+  }, [currentMessages, isContactTyping]);
   
   // Handle typing status
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -373,128 +216,45 @@ const Chat = () => {
     setTypingTimeout(timeout);
   };
   
-  // Send message
+  // Send message - simplified
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !id || !user?.id) return;
-    
-    // Don't allow sending if not friends and friend-only messaging is enabled
-    if (isFriend === false) {
-      toast.error("You need to be friends with this user to send a message");
-      
-      // Show friend request option
-      toast("Send a friend request?", {
-        action: {
-          label: "Send Request",
-          onClick: handleSendFriendRequest
-        },
-        duration: 5000
-      });
-      return;
-    }
-    
-    const sent = await sendMessage(id, newMessage);
-    if (sent) {
-      setNewMessage("");
-      
-      // Clear typing indicator
-      if (typingTimeout) {
-        clearTimeout(typingTimeout);
-      }
-      setTypingStatus(id, false);
-      
-      // Update messages immediately
-      fetchConversationMessages();
-    }
-  };
-  
-  // Send friend request
-  const handleSendFriendRequest = async () => {
-    if (!id || !user?.id) return;
+    if (!newMessage.trim() || !id || !user?.id || isSending) return;
     
     try {
-      // Check if a request already exists
-      const { data: existingRequest } = await supabase
-        .from('friend_requests')
-        .select('*')
-        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${id}),and(sender_id.eq.${id},recipient_id.eq.${user.id})`)
-        .maybeSingle();
-        
-      if (existingRequest) {
-        if (existingRequest.sender_id === user.id) {
-          toast.info("You've already sent a friend request to this user");
-        } else {
-          toast.info("This user has already sent you a friend request");
-        }
-        return;
-      }
+      setIsSending(true);
+      const sent = await sendMessage(id, newMessage);
       
-      // Send friend request
-      const { error } = await supabase
-        .from('friend_requests')
-        .insert({
+      if (sent) {
+        setNewMessage("");
+        
+        // Clear typing indicator
+        if (typingTimeout) {
+          clearTimeout(typingTimeout);
+        }
+        setTypingStatus(id, false);
+        
+        // Add message to the local state
+        const newMsg = {
+          ...sent,
           sender_id: user.id,
           recipient_id: id,
-          status: 'pending'
-        });
+          content: newMessage,
+          is_read: false,
+          created_at: new Date().toISOString()
+        };
         
-      if (error) throw error;
-      
-      toast.success("Friend request sent!");
-    } catch (error) {
-      console.error('Error sending friend request:', error);
-      toast.error("Failed to send friend request");
-    }
-  };
-  
-  // Handle audio call
-  const handleAudioCall = async () => {
-    try {
-      const permissions = await requestMediaPermissions();
-      
-      if (permissions.audio) {
-        toast("Starting audio call...", {
-          description: "Audio calling feature is being implemented."
-        });
-        
-        sendNotification(
-          `Incoming call from ${user?.username || "Someone"}`,
-          {
-            body: "Tap to answer",
-            data: { url: `/community/chat/${user?.id}` }
-          }
-        );
+        setCurrentMessages(prev => [...prev, newMsg].sort((a, b) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        ));
       } else {
-        toast.error("Microphone access is required for audio calls");
+        console.error('Failed to send message');
+        toast.error("Failed to send message. Please try again.");
       }
     } catch (error) {
-      console.error('Error starting audio call:', error);
-      toast.error("Could not start audio call");
-    }
-  };
-  
-  // Handle video call
-  const handleVideoCall = async () => {
-    try {
-      const permissions = await requestMediaPermissions();
-      
-      if (permissions.video && permissions.audio) {
-        toast("Starting video call...", {
-          description: "Video calling feature is being implemented."
-        });
-        
-        sendNotification(
-          `Incoming video call from ${user?.username || "Someone"}`,
-          {
-            body: "Tap to answer",
-            data: { url: `/community/chat/${user?.id}` }
-          }
-        );
-      } else {
-        toast.error("Camera and microphone access is required for video calls");
-      }
-    } catch (error) {
-      console.error('Error starting video call:', error);
-      toast.error("Could not start video call");
+      console.error('Error sending message:', error);
+      toast.error("Failed to send message. Please try again.");
+    } finally {
+      setIsSending(false);
     }
   };
   
@@ -513,7 +273,7 @@ const Chat = () => {
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p>Loading contact information...</p>
+          <p>Loading conversation...</p>
         </div>
       </div>
     );
@@ -555,50 +315,9 @@ const Chat = () => {
             </div>
           </div>
         </div>
-        
-        <div className="flex items-center gap-1">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="rounded-full h-8 w-8"
-            onClick={handleAudioCall}
-            disabled={isFriend === false}
-          >
-            <Phone className="h-4 w-4" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="rounded-full h-8 w-8"
-            onClick={handleVideoCall}
-            disabled={isFriend === false}
-          >
-            <Video className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="rounded-full h-8 w-8">
-            <MoreVertical className="h-4 w-4" />
-          </Button>
-        </div>
       </div>
       
       <div className="flex-1 p-4 overflow-y-auto space-y-4">
-        {/* Contact error notice */}
-        {contactError && (
-          <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg text-center">
-            <p className="text-sm text-amber-600 dark:text-amber-400">{contactError}</p>
-          </div>
-        )}
-        
-        {/* Friend restriction notice */}
-        {isFriend === false && !isCheckingFriend && (
-          <div className="bg-muted p-3 rounded-lg text-center">
-            <p className="text-sm mb-2">You need to be friends to message this user</p>
-            <Button size="sm" onClick={handleSendFriendRequest}>
-              Send Friend Request
-            </Button>
-          </div>
-        )}
-        
         {currentMessages.length > 0 ? (
           currentMessages.map((message) => {
             const isUnread = !message.is_read;
@@ -671,7 +390,6 @@ const Chat = () => {
             size="icon" 
             className="rounded-full"
             onClick={() => toast.info("File sharing coming soon")}
-            disabled={isFriend === false}
           >
             <Paperclip className="h-5 w-5 text-muted-foreground" />
           </Button>
@@ -686,7 +404,6 @@ const Chat = () => {
                 handleSendMessage();
               }
             }}
-            disabled={isFriend === false}
           />
           
           <Button 
@@ -694,14 +411,13 @@ const Chat = () => {
             size="icon" 
             className="rounded-full"
             onClick={() => toast.info("Emoji picker coming soon")}
-            disabled={isFriend === false}
           >
             <Smile className="h-5 w-5 text-muted-foreground" />
           </Button>
           
           <Button 
             className="rounded-full h-10 w-10 p-0"
-            disabled={!newMessage.trim() || isFriend === false}
+            disabled={!newMessage.trim() || isSending}
             onClick={handleSendMessage}
           >
             <Send className="h-5 w-5" />
