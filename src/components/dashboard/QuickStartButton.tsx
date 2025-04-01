@@ -133,6 +133,9 @@ const QuickStartButton = () => {
       localStorage.setItem('selectedTasksForFocus', JSON.stringify(selectedTasksData));
       localStorage.setItem('priorityMode', 'auto');
       
+      // Reset current task index to 0 to start with the first task
+      localStorage.setItem('currentTaskIndex', '0');
+      
       return true;
     }
     
@@ -176,6 +179,22 @@ const QuickStartButton = () => {
     
     localStorage.setItem('autoStartFocusTimer', 'true');
     localStorage.setItem('priorityMode', 'auto');
+    
+    // Log the selected tasks for debugging
+    const savedPriorities = localStorage.getItem('focusTaskPriority');
+    if (savedPriorities) {
+      const priorities = JSON.parse(savedPriorities);
+      console.log("Auto priority task order:", priorities);
+      
+      // Find the first task and show it in toast for confirmation
+      if (priorities.length > 0) {
+        const firstTaskId = priorities[0];
+        const firstTask = taskState.tasks.find(task => task.id === firstTaskId);
+        if (firstTask) {
+          toast.success(`Starting with highest priority task: ${firstTask.title}`);
+        }
+      }
+    }
     
     navigate("/focus-session");
   };

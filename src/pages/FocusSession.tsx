@@ -24,10 +24,16 @@ const FocusSession = () => {
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
   const [taskPriorities, setTaskPriorities] = useState<string[]>([]);
   const [currentTaskCompleted, setCurrentTaskCompleted] = useState(false);
+  const [priorityMode, setPriorityMode] = useState<string | null>(null);
   
-  // Load task priorities from localStorage on mount
+  // Load task priorities and priority mode from localStorage on mount
   useEffect(() => {
     try {
+      // Get priority mode
+      const savedPriorityMode = localStorage.getItem('priorityMode');
+      setPriorityMode(savedPriorityMode);
+      
+      // Get task priorities
       const savedPriorities = localStorage.getItem('focusTaskPriority');
       if (savedPriorities) {
         const priorities = JSON.parse(savedPriorities);
@@ -52,8 +58,7 @@ const FocusSession = () => {
           const taskId = priorities[savedTaskIndex ? parseInt(savedTaskIndex, 10) : 0];
           const task = taskState.tasks.find(task => task.id === taskId);
           if (task) {
-            const priorityMode = localStorage.getItem('priorityMode');
-            if (priorityMode === 'auto') {
+            if (savedPriorityMode === 'auto') {
               toast.info(`Starting with highest priority task: ${task.title}`);
             } else {
               toast.info(`Starting with your first selected task: ${task.title}`);
@@ -224,6 +229,7 @@ const FocusSession = () => {
   };
 
   const currentTask = getCurrentTask();
+  console.log("Current task:", currentTask, "Priority mode:", priorityMode);
 
   const typedTimerRef = timerRef as MutableRefObject<{
     stopTimer: () => void;
@@ -263,6 +269,7 @@ const FocusSession = () => {
           currentTaskIndex={currentTaskIndex}
           currentTaskCompleted={currentTaskCompleted}
           onNextTask={goToNextTask}
+          priorityMode={priorityMode}
         />
       </div>
 

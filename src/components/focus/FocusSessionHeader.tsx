@@ -53,14 +53,18 @@ const FocusSessionHeader = ({
         <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
       </Button>
       
-      {currentTask && (
-        <div className={`flex items-center bg-white/80 backdrop-blur-sm ${isMobile ? 'px-2 py-1' : 'px-3 py-1.5'} rounded-full shadow-sm max-w-[65%] sm:max-w-none`}>
+      {currentTask ? (
+        <div className={`flex items-center bg-white/80 backdrop-blur-sm ${isMobile ? 'px-2 py-1' : 'px-3 py-1.5'} rounded-full shadow-sm max-w-[65%] sm:max-w-md overflow-hidden`}>
           <span className={`${isMobile ? 'text-xs' : 'text-sm'} font-medium mr-1 sm:mr-2 whitespace-nowrap`}>Current:</span>
           <span className={`${isMobile ? 'text-xs' : 'text-sm'} truncate`}>{currentTask.title}</span>
           <span className={`ml-1 sm:ml-2 inline-flex items-center px-1.5 py-0.5 text-xs font-medium rounded-full ${getPriorityColor(currentTask.priority)}`}>
-            {isMobile ? null : getPriorityIcon(currentTask.priority)}
-            {isMobile ? currentTask.priority.charAt(0).toUpperCase() : currentTask.priority}
+            {getPriorityIcon(currentTask.priority)}
+            <span className={isMobile ? "sr-only" : "ml-0.5"}>{currentTask.priority}</span>
           </span>
+        </div>
+      ) : (
+        <div className="flex items-center bg-white/80 backdrop-blur-sm px-2 py-1 sm:px-3 sm:py-1.5 rounded-full shadow-sm">
+          <span className="text-xs sm:text-sm font-medium text-gray-600">No task selected</span>
         </div>
       )}
       

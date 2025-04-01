@@ -1,4 +1,3 @@
-
 import { useRef, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import FocusTimer from "./FocusTimer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { motion, AnimatePresence } from "framer-motion";
 import { Task } from "@/types/tasks";
+import FocusMilestones from "./FocusMilestones";
 
 interface FocusSessionContentProps {
   timerRef: React.MutableRefObject<{ 
@@ -33,6 +33,7 @@ interface FocusSessionContentProps {
   currentTaskIndex?: number;
   currentTaskCompleted?: boolean;
   onNextTask?: () => void;
+  priorityMode?: string | null;
 }
 
 const FocusSessionContent = ({
@@ -53,11 +54,11 @@ const FocusSessionContent = ({
   totalTasks = 0,
   currentTaskIndex = 0,
   currentTaskCompleted = false,
-  onNextTask
+  onNextTask,
+  priorityMode
 }: FocusSessionContentProps) => {
   const isMobile = useIsMobile();
   const contentRef = useRef<HTMLDivElement>(null);
-  const [priorityMode, setPriorityMode] = useState<string | null>(null);
   
   const getTimerDuration = () => {
     try {
@@ -94,44 +95,6 @@ const FocusSessionContent = ({
       default: return "button-gradient";
     }
   };
-
-  const getPriorityMode = () => {
-    try {
-      const mode = localStorage.getItem('priorityMode');
-      return mode;
-    } catch (e) {
-      return null;
-    }
-  };
-
-  useEffect(() => {
-    setPriorityMode(getPriorityMode());
-    
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        navigator.serviceWorker.controller?.postMessage({
-          type: 'GET_BACKGROUND_TIMER',
-        });
-      }
-    };
-    
-    const handleServiceWorkerMessage = (event: MessageEvent) => {
-      if (event.data.type === 'BACKGROUND_TIMER_UPDATE') {
-        const { remainingTime } = event.data;
-        if (timerRef.current?.setRemainingTime && remainingTime) {
-          timerRef.current.setRemainingTime(remainingTime);
-        }
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
-    };
-  }, []);
 
   return (
     <Card className={cn(
@@ -248,7 +211,7 @@ const FocusSessionContent = ({
             </Button>
           </div>
           
-          {currentTask && (
+          {currentTask ? (
             <div className="w-full max-w-md mx-auto mb-3">
               <div className={cn(
                 "bg-white/80 rounded-lg p-2 sm:p-3 shadow-sm border-l-4",
@@ -260,6 +223,16 @@ const FocusSessionContent = ({
                   {currentTaskCompleted && (
                     <span className="ml-1 text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full">
                       Done
+                    </span>
+                  )}
+                  {priorityMode && (
+                    <span className={cn(
+                      "ml-auto text-xs px-1.5 py-0.5 rounded-full",
+                      priorityMode === 'auto' 
+                        ? "bg-blue-100 text-blue-800" 
+                        : "bg-purple-100 text-purple-800"
+                    )}>
+                      {priorityMode === 'auto' ? 'Auto' : 'Custom'} Order
                     </span>
                   )}
                 </h3>
@@ -290,6 +263,14 @@ const FocusSessionContent = ({
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          ) : (
+            <div className="w-full max-w-md mx-auto mb-3">
+              <div className="bg-white/80 rounded-lg p-3 shadow-sm border-l-4 border-gray-300">
+                <div className="text-center text-gray-500">
+                  No task selected
+                </div>
               </div>
             </div>
           )}
@@ -327,6 +308,14 @@ const FocusSessionContent = ({
               </div>
             </div>
           )}
+          
+          <div className="w-full mt-3">
+            <FocusMilestones 
+              currentMilestone={currentMilestone}
+              currentProgress={segmentProgress}
+              lowPowerMode={lowPowerMode}
+            />
+          </div>
         </div>
       </CardContent>
     </Card>
