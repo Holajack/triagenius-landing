@@ -113,7 +113,7 @@ const Index = () => {
             <motion.div 
               variants={itemVariants}
               className={`inline-flex items-center px-3 py-1 mb-6 text-sm rounded-full ${
-                theme === 'light' ? 'bg-purple-100/80 text-triage-purple' : 'bg-purple-900/50 text-purple-200'
+                theme === 'light' ? 'bg-purple-100/80 text-triage-forestGreen' : 'bg-purple-900/50 text-triage-forestGreen'
               }`}
             >
               <Clock className="w-4 h-4 mr-1" />
@@ -122,14 +122,14 @@ const Index = () => {
             
             <motion.h1 
               variants={itemVariants}
-              className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 text-gray-900 tracking-tight dark:text-gray-100"
+              className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 tracking-tight text-triage-forestGreen dark:text-triage-forestGreen"
             >
               Master Your Focus <span className="text-transparent bg-clip-text bg-gradient-to-r from-triage-indigo to-triage-purple">&amp; Productivity</span>
             </motion.h1>
             
             <motion.p 
               variants={itemVariants}
-              className="text-lg md:text-xl text-gray-600 mb-8 max-w-xl mx-auto dark:text-gray-300"
+              className="text-lg md:text-xl text-triage-forestGreen mb-8 max-w-xl mx-auto dark:text-triage-forestGreen"
             >
               Boost concentration, track progress, and level up through gamified work sessions.
             </motion.p>
@@ -174,7 +174,7 @@ const Index = () => {
               animate={{ opacity: 0.7, y: 0 }}
               transition={{ delay: 1.2, duration: 0.6, ease: "easeOut" }}
             >
-              <ArrowDown className={`w-5 h-5 ${theme === 'light' ? 'text-gray-400' : 'text-gray-500'}`} />
+              <ArrowDown className={`w-5 h-5 ${theme === 'light' ? 'text-triage-forestGreen' : 'text-triage-forestGreen'}`} />
             </motion.div>
           </motion.div>
         </section>
@@ -217,10 +217,10 @@ const Index = () => {
                   viewport={{ once: true, margin: "-100px" }}
                   transition={{ delay: feature.delay + 0.3, duration: 0.5 }}
                 >
-                  <h3 className={`text-xl font-semibold mb-2 ${theme === 'light' ? 'text-gray-900' : 'text-gray-100'}`}>
+                  <h3 className={`text-xl font-semibold mb-2 text-triage-forestGreen`}>
                     {feature.title}
                   </h3>
-                  <p className={`${theme === 'light' ? 'text-gray-600' : 'text-gray-300'}`}>
+                  <p className={`text-triage-forestGreen`}>
                     {feature.description}
                   </p>
                 </motion.div>
@@ -231,7 +231,7 @@ const Index = () => {
       </main>
       
       {/* Footer */}
-      <footer className="container mx-auto px-4 py-8 text-center text-sm text-gray-500">
+      <footer className="container mx-auto px-4 py-8 text-center text-sm text-triage-forestGreen">
         <p>© {new Date().getFullYear()} The Triage System. All rights reserved.</p>
       </footer>
     </div>

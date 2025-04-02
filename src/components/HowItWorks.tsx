@@ -7,6 +7,9 @@ import { Brain, Target, ChevronRight, Clock, Award, BarChart4 } from "lucide-rea
 const HowItWorks = () => {
   const [open, setOpen] = useState(false);
   
+  // Check if we're on the landing page (index route)
+  const isLandingPage = window.location.pathname === '/';
+  
   const features = [
     {
       icon: <Target className="w-6 h-6 text-triage-purple" />,
@@ -35,7 +38,7 @@ const HowItWorks = () => {
       <DialogTrigger asChild>
         <Button 
           variant="ghost" 
-          className="flex items-center justify-center text-gray-600 hover:text-gray-900 bg-transparent hover:bg-gray-100/50 rounded-xl px-4 py-2 transition-all duration-300"
+          className={`flex items-center justify-center ${isLandingPage ? 'text-triage-forestGreen hover:text-triage-forestGreen' : 'text-gray-600 hover:text-gray-900'} bg-transparent hover:bg-gray-100/50 rounded-xl px-4 py-2 transition-all duration-300`}
         >
           <span className="mr-1 text-sm font-medium">How It Works</span>
           <ChevronRight className="w-4 h-4" />

@@ -44,6 +44,9 @@ const Navbar = () => {
     }
   };
 
+  // Check if we're on the landing page (index route)
+  const isLandingPage = window.location.pathname === '/';
+
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 py-4 px-4 ${
@@ -63,14 +66,14 @@ const Navbar = () => {
         <div className="hidden md:flex items-center space-x-1">
           <Button 
             variant="ghost" 
-            className="text-gray-600 hover:text-gray-900 bg-transparent hover:bg-white/50 rounded-xl"
+            className={`${isLandingPage ? 'text-triage-forestGreen hover:text-triage-forestGreen' : 'text-gray-600 hover:text-gray-900'} bg-transparent hover:bg-white/50 rounded-xl`}
             onClick={() => navigate('/')}
           >
             Features
           </Button>
           <Button 
             variant="ghost" 
-            className="text-gray-600 hover:text-gray-900 bg-transparent hover:bg-white/50 rounded-xl"
+            className={`${isLandingPage ? 'text-triage-forestGreen hover:text-triage-forestGreen' : 'text-gray-600 hover:text-gray-900'} bg-transparent hover:bg-white/50 rounded-xl`}
           >
             About
           </Button>
@@ -89,9 +92,9 @@ const Navbar = () => {
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         >
           {mobileMenuOpen ? (
-            <X className="h-6 w-6 text-gray-700" />
+            <X className={`h-6 w-6 ${isLandingPage ? 'text-triage-forestGreen' : 'text-gray-700'}`} />
           ) : (
-            <Menu className="h-6 w-6 text-gray-700" />
+            <Menu className={`h-6 w-6 ${isLandingPage ? 'text-triage-forestGreen' : 'text-gray-700'}`} />
           )}
         </Button>
       </div>
@@ -105,7 +108,7 @@ const Navbar = () => {
         <div className="flex flex-col p-4 space-y-4">
           <Button 
             variant="ghost" 
-            className="text-gray-600 hover:text-gray-900 bg-transparent hover:bg-gray-100 w-full justify-start"
+            className={`${isLandingPage ? 'text-triage-forestGreen hover:text-triage-forestGreen' : 'text-gray-600 hover:text-gray-900'} bg-transparent hover:bg-gray-100 w-full justify-start`}
             onClick={() => {
               setMobileMenuOpen(false);
               navigate('/');
@@ -115,7 +118,7 @@ const Navbar = () => {
           </Button>
           <Button 
             variant="ghost" 
-            className="text-gray-600 hover:text-gray-900 bg-transparent hover:bg-gray-100 w-full justify-start"
+            className={`${isLandingPage ? 'text-triage-forestGreen hover:text-triage-forestGreen' : 'text-gray-600 hover:text-gray-900'} bg-transparent hover:bg-gray-100 w-full justify-start`}
             onClick={() => setMobileMenuOpen(false)}
           >
             About
