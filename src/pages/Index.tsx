@@ -8,6 +8,7 @@ import { ArrowDown, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
 const Index = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -15,13 +16,12 @@ const Index = () => {
     return localStorage.getItem('theme') || 'light';
   });
   const navigate = useNavigate();
+
   useEffect(() => {
-    // Set loaded state after a short delay to trigger animations
     const timer = setTimeout(() => {
       setIsLoaded(true);
     }, 100);
 
-    // Check if user is authenticated
     const checkAuth = async () => {
       const {
         data
@@ -30,7 +30,6 @@ const Index = () => {
     };
     checkAuth();
 
-    // Listen for auth changes
     const {
       data: authListener
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -41,6 +40,7 @@ const Index = () => {
       authListener.subscription.unsubscribe();
     };
   }, []);
+
   const containerVariants = {
     hidden: {
       opacity: 0
@@ -53,6 +53,7 @@ const Index = () => {
       }
     }
   };
+
   const itemVariants = {
     hidden: {
       opacity: 0,
@@ -67,6 +68,7 @@ const Index = () => {
       }
     }
   };
+
   const handleStartFocusing = () => {
     if (isAuthenticated) {
       navigate('/dashboard');
@@ -79,10 +81,10 @@ const Index = () => {
       });
     }
   };
+
   const handleLogin = async () => {
     if (isAuthenticated) {
       try {
-        // Sign the user out
         const {
           error
         } = await supabase.auth.signOut();
@@ -90,10 +92,8 @@ const Index = () => {
           throw error;
         }
 
-        // Show success message
         toast.success('Successfully logged out');
 
-        // Navigate to the home page (refresh current page)
         navigate('/', {
           replace: true
         });
@@ -109,11 +109,11 @@ const Index = () => {
       });
     }
   };
+
   return <div className={`flex flex-col min-h-screen ${theme === 'light' ? 'bg-gradient-to-b from-white to-purple-50/30' : 'bg-gradient-to-b from-gray-900 to-gray-800'}`}>
       <Navbar />
       
       <main className="flex-grow flex flex-col">
-        {/* Hero Section */}
         <section className="container mx-auto px-4 pt-28 pb-16 md:pt-32 md:pb-24 flex flex-col items-center justify-center text-center">
           <motion.div className="max-w-2xl mx-auto" variants={containerVariants} initial="hidden" animate={isLoaded ? "visible" : "hidden"}>
             <motion.div variants={itemVariants} className={`inline-flex items-center px-3 py-1 mb-6 text-sm rounded-full ${theme === 'light' ? 'bg-purple-100/80 text-triage-forestGreen' : 'bg-purple-900/50 text-triage-forestGreen'}`}>
@@ -122,7 +122,7 @@ const Index = () => {
             </motion.div>
             
             <motion.h1 variants={itemVariants} className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 tracking-tight text-triage-forestGreen">
-              Master Your Focus <span className="text-transparent bg-clip-text bg-gradient-to-r from-triage-indigo to-triage-purple">&amp; Productivity</span>
+              Master Your Focus <span className="text-triage-forestGreen">&amp; Productivity</span>
             </motion.h1>
             
             <motion.p variants={itemVariants} className="text-lg md:text-xl text-triage-forestGreen mb-8 max-w-xl mx-auto dark:text-triage-forestGreen">
@@ -168,7 +168,6 @@ const Index = () => {
           </motion.div>
         </section>
         
-        {/* Features Preview Section */}
         <section className="container mx-auto px-4 py-16 md:py-24">
           <div className="max-w-6xl mx-auto">
             <motion.div className="grid grid-cols-1 md:grid-cols-3 gap-6" initial={{
@@ -216,10 +215,10 @@ const Index = () => {
         </section>
       </main>
       
-      {/* Footer */}
       <footer className="container mx-auto px-4 py-8 text-center text-sm text-triage-forestGreen">
         <p>© {new Date().getFullYear()} The Triage System. All rights reserved.</p>
       </footer>
     </div>;
 };
+
 export default Index;
