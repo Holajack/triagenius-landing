@@ -122,7 +122,7 @@ const Index = () => {
             </motion.div>
             
             <motion.h1 variants={itemVariants} className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 tracking-tight text-triage-forestGreen">
-              Master Your Focus <span className="text-triage-forestGreen">&amp; Productivity</span>
+              Master Your Focus & Productivity
             </motion.h1>
             
             <motion.p variants={itemVariants} className="text-lg md:text-xl text-triage-forestGreen mb-8 max-w-xl mx-auto dark:text-triage-forestGreen">
