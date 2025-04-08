@@ -1,3 +1,4 @@
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
@@ -66,15 +67,14 @@ detectPWA();
 // Register service worker for PWA functionality with improved error handling
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // Use the correct service worker path for each domain
-    const hostname = window.location.hostname;
+    // Use the main service worker path (sw.js)
     const swUrl = '/sw.js';
     
     // More reliable service worker registration
     const registerSW = async () => {
       try {
         const registration = await navigator.serviceWorker.register(swUrl);
-        console.log('Service worker registered successfully:', registration.scope);
+        console.log('Main service worker registered successfully:', registration.scope);
         
         // Handle updates
         registration.onupdatefound = () => {
@@ -97,10 +97,11 @@ if ('serviceWorker' in navigator) {
           };
         };
         
-        // Enable background sync for focus sessions - with PWA detection
+        // Enable background sync for focus sessions - with PWA detection and standardized tag name
         if ('SyncManager' in window && localStorage.getItem('isPWA') === 'true') {
           setTimeout(() => {
             try {
+              // Standardize on "sync-focus-session" tag name
               // Use type assertion to handle the sync property that TypeScript doesn't recognize
               const syncRegistration = registration as unknown as { sync?: { register: (tag: string) => Promise<void> } };
               if (syncRegistration.sync) {
@@ -113,6 +114,16 @@ if ('serviceWorker' in navigator) {
             }
           }, 1000); // Delay to ensure service worker is fully active
         }
+        
+        // Listen for messages from the redirector service worker
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (event.data && event.data.type === 'REGISTER_MAIN_SW') {
+            console.log('Received instruction to register main SW');
+            navigator.serviceWorker.register(event.data.swUrl)
+              .then(reg => console.log('Main service worker registered via redirector'))
+              .catch(err => console.error('Failed to register main service worker:', err));
+          }
+        });
         
         return registration;
       } catch (error) {

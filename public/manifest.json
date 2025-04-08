@@ -1,5 +1,6 @@
 
 {
+  "id": "app.lovable.0e9564c712834938899898c4b60f0bf4",
   "name": "The Triage System",
   "short_name": "The Triage",
   "description": "Boost concentration, track progress, and level up your productivity with gamified work sessions",
@@ -74,5 +75,8 @@
       "text": "text",
       "url": "url"
     }
+  },
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
   }
 }

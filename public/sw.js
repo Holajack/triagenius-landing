@@ -1,5 +1,5 @@
 // Cache version identifier - change this when files are updated
-const CACHE_NAME = 'triage-system-v10'; // Incremented version
+const CACHE_NAME = 'triage-system-v11'; // Incremented version
 const APP_NAME = 'The Triage System';
 
 // Dynamic version control based on the last deployment time
@@ -39,7 +39,7 @@ const CRITICAL_ROUTES = [
 
 // Install event - cache static resources with better error handling
 self.addEventListener('install', event => {
-  console.log(`Installing service worker v10 (${DEPLOYMENT_TIMESTAMP}) - with Supabase user update system`);
+  console.log(`Installing service worker v11 (${DEPLOYMENT_TIMESTAMP}) - with Supabase user update system`);
   
   // Force the waiting service worker to become the active service worker
   self.skipWaiting();
@@ -380,16 +380,104 @@ self.addEventListener('message', event => {
       });
     }
   }
+  
+  // Handle background timer control messages
+  if (event.data.type === 'START_BACKGROUND_TIMER') {
+    const { duration, timestamp } = event.data.data;
+    startBackgroundTimer(duration, timestamp);
+  }
+  
+  // Get current background timer state
+  if (event.data.type === 'GET_BACKGROUND_TIMER') {
+    if (!backgroundTimer.isRunning) return;
+    
+    const now = Date.now();
+    const remainingTime = Math.max(0, Math.floor((backgroundTimer.endTime - now) / 1000));
+    
+    // Send current timer state to client
+    event.source.postMessage({
+      type: 'BACKGROUND_TIMER_UPDATE',
+      remainingTime
+    });
+    
+    // Stop background timer if app is visible again
+    backgroundTimer.isRunning = false;
+  }
+  
+  // Stop background timer
+  if (event.data.type === 'STOP_BACKGROUND_TIMER') {
+    backgroundTimer.isRunning = false;
+  }
 });
 
-// Handle background sync for focus session data
+// Handle background sync for focus session data - standardized tag name
 self.addEventListener('sync', event => {
   if (event.tag === 'sync-focus-session') {
     event.waitUntil(syncFocusSession());
   }
 });
 
-// More robust implementation of focus session sync
+// Variables to track background timer
+let backgroundTimer = {
+  endTime: null,
+  duration: 0,
+  isRunning: false
+};
+
+// Function to start background timer
+function startBackgroundTimer(duration, timestamp) {
+  if (!duration) return;
+  
+  backgroundTimer.duration = duration;
+  backgroundTimer.endTime = timestamp + (duration * 1000);
+  backgroundTimer.isRunning = true;
+  
+  console.log('Background timer started:', {
+    duration,
+    endTime: new Date(backgroundTimer.endTime).toISOString()
+  });
+  
+  // Set up periodic checks while the app is in the background
+  checkBackgroundTimer();
+}
+
+// Function to check background timer state
+function checkBackgroundTimer() {
+  if (!backgroundTimer.isRunning) return;
+  
+  const now = Date.now();
+  const remainingTime = Math.max(0, Math.floor((backgroundTimer.endTime - now) / 1000));
+  
+  // If timer completed, send notification
+  if (remainingTime === 0) {
+    backgroundTimer.isRunning = false;
+    
+    // Show notification if supported
+    if (self.registration.showNotification) {
+      self.registration.showNotification('Focus Session Complete', {
+        body: 'Your focus session has finished.',
+        icon: '/favicon.ico',
+        vibrate: [200, 100, 200]
+      });
+    }
+    
+    // Notify all clients
+    self.clients.matchAll().then(clients => {
+      clients.forEach(client => {
+        client.postMessage({
+          type: 'BACKGROUND_TIMER_COMPLETE'
+        });
+      });
+    });
+    
+    return;
+  }
+  
+  // Schedule next check
+  setTimeout(checkBackgroundTimer, 1000);
+}
+
+// More robust implementation of focus session sync - standardized function name
 async function syncFocusSession() {
   try {
     console.log('Background sync: Processing focus session data');

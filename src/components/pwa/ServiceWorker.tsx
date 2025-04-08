@@ -34,7 +34,7 @@ export function register() {
             };
           };
           
-          // Register for background sync if browser supports it
+          // Register for background sync if browser supports it - standardized tag name
           if ('SyncManager' in window) {
             // Use optional chaining and type checking to safely access the sync property
             (registration as any).sync?.register('sync-focus-session')
