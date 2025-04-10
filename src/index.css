@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -106,16 +105,16 @@
   }
 
   .theme-coffee-shop {
-    /* Updated for #854836 - Rich brown for coffee shop */
-    --env-primary: 14 43% 37%;
-    --env-secondary: 14 44% 34%;
-    --env-accent: 14 45% 31%;
-    --env-muted: 14 40% 40%;
-    --env-border: 14 40% 75%;
-    --env-background: 14 30% 96%;
-    --env-card: 14 25% 98%;
-    --env-hover: 14 40% 85%;
-    --env-focus: 14 43% 37%;
+    /* Updated for rich brown color from image */
+    --env-primary: 25 40% 30%; // Deep brown
+    --env-secondary: 25 39% 28%;
+    --env-accent: 25 38% 25%;
+    --env-muted: 25 35% 40%;
+    --env-border: 25 40% 75%;
+    --env-background: 25 40% 96%;
+    --env-card: 25 35% 98%;
+    --env-hover: 25 40% 85%;
+    --env-focus: 25 40% 30%;
   }
 
   .theme-library {
