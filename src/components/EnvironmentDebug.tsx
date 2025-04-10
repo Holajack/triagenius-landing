@@ -1,16 +1,15 @@
-
 import { useTheme } from "@/contexts/ThemeContext";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { useEffect, useState } from "react";
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react"; // Import from lucide-react instead of @radix-ui/react-icons
+import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { StudyEnvironment } from "@/types/onboarding";
 
-// Set to true to enable debugging
-const SHOW_DEBUG = true;
+// Set to false to disable debugging
+const SHOW_DEBUG = false;
 
 const EnvironmentDebug = () => {
   const { environmentTheme, setEnvironmentTheme } = useTheme();
