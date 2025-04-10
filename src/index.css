@@ -260,7 +260,7 @@
   }
   
   .theme-coffee-shop .env-card {
-    @apply border-amber-700 bg-gradient-to-br from-amber-100 to-white;
+    @apply border-amber-700 bg-gradient-to-br from-amber-100/20 to-amber-800/5;
   }
   
   .theme-library .env-card {
