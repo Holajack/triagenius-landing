@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -105,8 +106,8 @@
   }
 
   .theme-coffee-shop {
-    /* Updated for rich brown color from image */
-    --env-primary: 25 40% 30%; // Deep brown
+    /* Updated for rich brown color from image - #6E4E3A */
+    --env-primary: 25 40% 30%; /* Deep brown */
     --env-secondary: 25 39% 28%;
     --env-accent: 25 38% 25%;
     --env-muted: 25 35% 40%;
