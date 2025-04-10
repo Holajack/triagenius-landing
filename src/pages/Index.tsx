@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
@@ -122,7 +121,10 @@ const Index = () => {
               <span>Your productivity journey starts here</span>
             </motion.div>
             
-            <motion.h1 variants={itemVariants} className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 tracking-tight text-triage-purple">
+            <motion.h1 
+              variants={itemVariants} 
+              className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4 tracking-tight text-triage-purple dark:text-triage-purple"
+            >
               Master Your Focus & Productivity
             </motion.h1>
             
