@@ -1,7 +1,7 @@
 import React from 'react';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { StudyEnvironment } from '@/types/onboarding';
-import { Coffee, Building2, Tree, Home, BookOpen } from 'lucide-react';
+import { Coffee, Building2, Trees, Home, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const EnvironmentStep = () => {
@@ -25,7 +25,7 @@ export const EnvironmentStep = () => {
       id: 'park',
       title: 'Park',
       description: 'Outdoor nature environment',
-      icon: <Tree className="w-6 h-6" />,
+      icon: <Trees className="w-6 h-6" />,
       colors: {
         primary: 'bg-[#2E6F40]',
         bg: 'from-[#2E6F40]/10 to-[#2E6F40]/5',
