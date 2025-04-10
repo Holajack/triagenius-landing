@@ -14,6 +14,8 @@ import { FriendRequest } from "@/types/database";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getDisplayName } from "@/hooks/use-display-name";
 import { useNavigate } from "react-router-dom";
+import { useOnboarding } from "@/contexts/OnboardingContext";
+import { cn } from "@/lib/utils";
 
 interface CommunityUserListProps {
   searchQuery?: string;
@@ -55,6 +57,33 @@ const CommunityUserList = ({ searchQuery = "", filters = [], tabView = "all" }: 
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"all" | "friends" | "pending">(tabView);
   const isMobile = useIsMobile();
+  const { state } = useOnboarding();
+
+  const getEnvBorderColor = () => {
+    if (!state || !state.environment) return "";
+    
+    switch (state.environment) {
+      case 'office': return "hover:border-blue-400 border-blue-200";
+      case 'park': return "hover:border-green-600 border-green-200";
+      case 'home': return "hover:border-orange-400 border-orange-200";
+      case 'coffee-shop': return "hover:border-amber-700 border-amber-300/30";
+      case 'library': return "hover:border-gray-400 border-gray-200";
+      default: return "hover:border-purple-400 border-purple-200";
+    }
+  };
+
+  const getEnvBackground = () => {
+    if (!state || !state.environment) return "";
+    
+    switch (state.environment) {
+      case 'office': return "bg-gradient-to-br from-blue-100/80 to-white";
+      case 'park': return "bg-gradient-to-br from-green-100/80 to-white";
+      case 'home': return "bg-gradient-to-br from-orange-100/80 to-white";
+      case 'coffee-shop': return "bg-gradient-to-br from-amber-800/10 to-amber-700/5";
+      case 'library': return "bg-gradient-to-br from-gray-100/80 to-white";
+      default: return "bg-gradient-to-br from-purple-100/80 to-white";
+    }
+  };
 
   useEffect(() => {
     setActiveTab(tabView as "all" | "friends" | "pending");
@@ -412,7 +441,11 @@ const CommunityUserList = ({ searchQuery = "", filters = [], tabView = "all" }: 
             return (
               <div 
                 key={authUser.id}
-                className="flex items-center justify-between p-3 rounded-lg border"
+                className={cn(
+                  "flex items-center justify-between p-3 rounded-lg border transition-colors duration-300",
+                  getEnvBorderColor(),
+                  getEnvBackground()
+                )}
               >
                 <div className="flex items-center space-x-3">
                   <Avatar className="h-10 w-10">
