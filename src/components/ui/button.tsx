@@ -19,6 +19,8 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        homeEnvironment: 
+          "bg-gradient-to-br from-[#FEC6A1] to-[#FEF7CD] text-gray-800 hover:from-[#FEC6A1]/90 hover:to-[#FEF7CD]/90 shadow-sm", // Soft Orange and Soft Yellow
       },
       size: {
         default: "h-10 px-4 py-2",

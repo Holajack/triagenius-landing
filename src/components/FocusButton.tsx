@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,7 +22,7 @@ const FocusButton = ({
   navigateTo,
   isPrimary = true,
   className = "",
-  theme = "light" // Default to light theme 
+  theme = "light" 
 }: FocusButtonProps) => {
   const [isHovered, setIsHovered] = useState(false);
   const navigate = useNavigate();
@@ -69,14 +68,21 @@ const FocusButton = ({
     }
   };
 
+  const getHomeButtonGradient = () => {
+    return "bg-gradient-to-r from-[#FDE1D3] to-[#FEF7CD] text-gray-800 hover:from-[#FDE1D3]/90 hover:to-[#FEF7CD]/90"; // Soft Peach and Soft Yellow
+  };
+
   return (
     <Button
-      className={`relative group overflow-hidden transition-all duration-300 px-6 py-6 h-auto ${
-        isPrimary 
-          ? getEnvButtonGradient() || "button-gradient text-white" 
-          : theme === 'dark' 
-            ? "bg-gray-800 border border-gray-700 text-gray-100 hover:bg-gray-700" 
-            : "bg-white border border-gray-200 text-gray-800 hover:bg-gray-50"
+      variant={state.environment === 'home' ? "homeEnvironment" : "default"}
+      className={`group overflow-hidden transition-all duration-300 px-6 py-6 h-auto ${
+        isPrimary && state.environment === 'home'
+          ? getHomeButtonGradient() 
+          : isPrimary 
+            ? getEnvButtonGradient() || "button-gradient text-white" 
+            : theme === 'dark' 
+              ? "bg-gray-800 border border-gray-700 text-gray-100 hover:bg-gray-700" 
+              : "bg-white border border-gray-200 text-gray-800 hover:bg-gray-50"
       } rounded-xl subtle-shadow ${className} ${isPWA ? 'touch-manipulation' : ''}`}
       onClick={handleClick}
       onMouseEnter={() => setIsHovered(true)}
