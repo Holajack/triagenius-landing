@@ -13,6 +13,8 @@ import { useUser } from '@/hooks/use-user';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import { useOnboarding } from '@/contexts/OnboardingContext';
+import { cn } from '@/lib/utils';
 
 const Community = () => {
   // Get initial tab from localStorage or default to 'friends'
@@ -31,6 +33,51 @@ const Community = () => {
   const { user } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
+  const { state } = useOnboarding();
+  
+  // Function to get environment-specific classes for cards and tabs
+  const getEnvClasses = () => {
+    switch (state.environment) {
+      case 'office': 
+        return {
+          activeTab: "bg-blue-100 text-blue-700",
+          tabBorder: "border-blue-300",
+          inputFocus: "focus:border-blue-400 focus:ring-blue-200"
+        };
+      case 'park': 
+        return {
+          activeTab: "bg-green-100 text-green-700",
+          tabBorder: "border-green-300",
+          inputFocus: "focus:border-green-600 focus:ring-green-200"
+        };
+      case 'home': 
+        return {
+          activeTab: "bg-orange-100 text-orange-600",
+          tabBorder: "border-orange-300",
+          inputFocus: "focus:border-orange-400 focus:ring-orange-200"
+        };
+      case 'coffee-shop': 
+        return {
+          activeTab: "bg-amber-800/10 text-amber-800",
+          tabBorder: "border-amber-700",
+          inputFocus: "focus:border-amber-700 focus:ring-amber-200"
+        };
+      case 'library': 
+        return {
+          activeTab: "bg-gray-100 text-gray-700",
+          tabBorder: "border-gray-300",
+          inputFocus: "focus:border-gray-400 focus:ring-gray-200"
+        };
+      default: 
+        return {
+          activeTab: "bg-purple-100 text-purple-700",
+          tabBorder: "border-purple-300",
+          inputFocus: "focus:border-purple-400 focus:ring-purple-200"
+        };
+    }
+  };
+  
+  const envClasses = getEnvClasses();
   
   useEffect(() => {
     // Handle tab selection from state if present
@@ -81,12 +128,35 @@ const Community = () => {
 
       <div className="container mx-auto px-4 py-8 pb-24">
         <Tabs defaultValue={activeTab} className="w-full" onValueChange={setActiveTab} value={activeTab}>
-          <TabsList className="grid w-full grid-cols-4">
-            {/* Updated grid-cols from 3 to 4 for the new tab */}
-            <TabsTrigger value="friends" data-walkthrough="friends">Friends</TabsTrigger>
-            <TabsTrigger value="messages" data-walkthrough="message-inbox">Messages</TabsTrigger>
-            <TabsTrigger value="users" data-walkthrough="users">All Users</TabsTrigger>
-            <TabsTrigger value="study-rooms" data-walkthrough="study-rooms">Study Rooms</TabsTrigger>
+          <TabsList className={cn("grid w-full grid-cols-4", envClasses.tabBorder)}>
+            <TabsTrigger 
+              value="friends" 
+              data-walkthrough="friends"
+              className={activeTab === "friends" ? envClasses.activeTab : ""}
+            >
+              Friends
+            </TabsTrigger>
+            <TabsTrigger 
+              value="messages" 
+              data-walkthrough="message-inbox"
+              className={activeTab === "messages" ? envClasses.activeTab : ""}
+            >
+              Messages
+            </TabsTrigger>
+            <TabsTrigger 
+              value="users" 
+              data-walkthrough="users"
+              className={activeTab === "users" ? envClasses.activeTab : ""}
+            >
+              All Users
+            </TabsTrigger>
+            <TabsTrigger 
+              value="study-rooms" 
+              data-walkthrough="study-rooms"
+              className={activeTab === "study-rooms" ? envClasses.activeTab : ""}
+            >
+              Study Rooms
+            </TabsTrigger>
           </TabsList>
           
           <div className="relative mt-4">
@@ -94,7 +164,7 @@ const Community = () => {
             <Input
               type="search"
               placeholder="Search users, messages, or study rooms..."
-              className="pl-8"
+              className={cn("pl-8", envClasses.inputFocus)}
               value={searchQuery}
               onChange={handleSearch}
               aria-label="Search users, messages, or study rooms"

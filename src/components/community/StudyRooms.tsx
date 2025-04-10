@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,8 @@ import { useUser } from "@/hooks/use-user";
 import { requestMediaPermissions } from "@/components/pwa/ServiceWorker";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
+import { useOnboarding } from "@/contexts/OnboardingContext";
+import { cn } from "@/lib/utils";
 
 interface StudyRoomsProps {
   searchQuery?: string;
@@ -28,6 +31,7 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+  const { state } = useOnboarding();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -38,6 +42,42 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
     newSubject: ''
   });
   const [activeRoomIds, setActiveRoomIds] = useState<Set<string>>(new Set());
+  
+  // Get environment-specific button style
+  const getButtonStyle = () => {
+    switch (state.environment) {
+      case 'office': return "bg-blue-600 hover:bg-blue-700 text-white";
+      case 'park': return "bg-green-700 hover:bg-green-800 text-white";
+      case 'home': return "bg-orange-500 hover:bg-orange-600 text-white";
+      case 'coffee-shop': return "bg-amber-700 hover:bg-amber-800 text-white";
+      case 'library': return "bg-gray-600 hover:bg-gray-700 text-white";
+      default: return "bg-purple-600 hover:bg-purple-700 text-white";
+    }
+  };
+  
+  // Get environment-specific badge style
+  const getBadgeStyle = () => {
+    switch (state.environment) {
+      case 'office': return "bg-blue-100 text-blue-800 border-blue-200";
+      case 'park': return "bg-green-100 text-green-800 border-green-200";
+      case 'home': return "bg-orange-100 text-orange-800 border-orange-200";
+      case 'coffee-shop': return "bg-amber-100 text-amber-800 border-amber-200";
+      case 'library': return "bg-gray-100 text-gray-800 border-gray-200";
+      default: return "bg-purple-100 text-purple-800 border-purple-200";
+    }
+  };
+  
+  // Get environment-specific live badge style
+  const getLiveBadgeStyle = () => {
+    switch (state.environment) {
+      case 'office': return "bg-blue-500";
+      case 'park': return "bg-green-500";
+      case 'home': return "bg-orange-500";
+      case 'coffee-shop': return "bg-amber-600";
+      case 'library': return "bg-gray-500";
+      default: return "bg-green-500"; // Default green for "Live"
+    }
+  };
   
   useEffect(() => {
     if (!user?.id) return;
@@ -246,7 +286,7 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
                 <div className="flex items-center gap-2">
                   <h3 className="font-medium">{room.name}</h3>
                   {room.is_active && (
-                    <Badge variant="default" className="bg-green-500 text-xs">Live</Badge>
+                    <Badge variant="default" className={cn("text-xs", getLiveBadgeStyle())}>Live</Badge>
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
@@ -257,6 +297,7 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
               <Button 
                 variant={room.is_active ? "default" : "outline"}
                 onClick={() => handleJoinRoom(room.id)}
+                className={room.is_active ? getButtonStyle() : ""}
               >
                 {room.is_active ? "Join Now" : "Join Next Session"}
               </Button>
@@ -285,7 +326,7 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
             
             <div className="flex flex-wrap gap-1 mt-1">
               {room.subjects && room.subjects.map((subject, index) => (
-                <Badge key={index} variant="outline" className="text-xs">
+                <Badge key={index} variant="outline" className={cn("text-xs", getBadgeStyle())}>
                   {subject}
                 </Badge>
               ))}
@@ -448,6 +489,7 @@ export const StudyRooms = ({ searchQuery = "", filters = [] }: StudyRoomsProps) 
             <Button 
               onClick={handleCreateRoom} 
               disabled={isCreating}
+              className={getButtonStyle()}
             >
               {isCreating ? (
                 <>

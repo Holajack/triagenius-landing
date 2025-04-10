@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Heart, MessageCircle, Clock, User, Trophy, Flame, Brain, Sparkles } from "lucide-react";
@@ -15,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { useUser } from "@/hooks/use-user";
+import { useOnboarding } from "@/contexts/OnboardingContext";
 
 interface ActivityUser {
   displayName: string;
@@ -74,6 +74,56 @@ const ActivityFeed = () => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [encourageActivity, setEncourageActivity] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { state } = useOnboarding();
+  
+  const getEnvClasses = () => {
+    switch (state.environment) {
+      case 'office': 
+        return {
+          cardBorder: "border-blue-200",
+          activeTab: "bg-blue-100 text-blue-700",
+          buttonHover: "hover:bg-blue-100 active:bg-blue-200",
+          likeFill: "text-blue-500"
+        };
+      case 'park': 
+        return {
+          cardBorder: "border-green-200",
+          activeTab: "bg-green-100 text-green-700",
+          buttonHover: "hover:bg-green-100 active:bg-green-200",
+          likeFill: "text-green-500"
+        };
+      case 'home': 
+        return {
+          cardBorder: "border-orange-200",
+          activeTab: "bg-orange-100 text-orange-600",
+          buttonHover: "hover:bg-orange-100 active:bg-orange-200",
+          likeFill: "text-orange-500"
+        };
+      case 'coffee-shop': 
+        return {
+          cardBorder: "border-amber-700",
+          activeTab: "bg-amber-800/10 text-amber-800",
+          buttonHover: "hover:bg-amber-100 active:bg-amber-200",
+          likeFill: "text-amber-800"
+        };
+      case 'library': 
+        return {
+          cardBorder: "border-gray-200",
+          activeTab: "bg-gray-100 text-gray-700",
+          buttonHover: "hover:bg-gray-100 active:bg-gray-200",
+          likeFill: "text-gray-500"
+        };
+      default: 
+        return {
+          cardBorder: "border-purple-200",
+          activeTab: "bg-purple-100 text-purple-700",
+          buttonHover: "hover:bg-purple-100 active:bg-purple-200",
+          likeFill: "text-purple-500"
+        };
+    }
+  };
+  
+  const envClasses = getEnvClasses();
   
   const getActionIcon = (actionType: string) => {
     switch (actionType) {
@@ -97,7 +147,6 @@ const ActivityFeed = () => {
     setError(null);
     
     try {
-      // Always pass the user ID if available for proper filtering
       const userId = user?.id || null;
       
       const response = await supabase.functions.invoke('get-community-activity', {
@@ -254,7 +303,6 @@ const ActivityFeed = () => {
   useEffect(() => {
     fetchActivities();
     
-    // Setup realtime subscription for activity updates
     const channel = supabase
       .channel('activity_changes')
       .on('postgres_changes', 
@@ -356,12 +404,18 @@ const ActivityFeed = () => {
   return (
     <TooltipProvider>
       <Tabs value={feedType} onValueChange={(value) => setFeedType(value as "friends" | "global")} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-4">
-          <TabsTrigger value="friends" className="flex items-center gap-2">
+        <TabsList className={cn("grid w-full grid-cols-2 mb-4", envClasses.cardBorder)}>
+          <TabsTrigger 
+            value="friends" 
+            className={cn("flex items-center gap-2", feedType === "friends" ? envClasses.activeTab : "")}
+          >
             <User className="h-4 w-4" />
             <span>Friends Activity</span>
           </TabsTrigger>
-          <TabsTrigger value="global" className="flex items-center gap-2">
+          <TabsTrigger 
+            value="global" 
+            className={cn("flex items-center gap-2", feedType === "global" ? envClasses.activeTab : "")}
+          >
             <MessageCircle className="h-4 w-4" />
             <span>Global Activity</span>
           </TabsTrigger>
@@ -376,6 +430,7 @@ const ActivityFeed = () => {
               reactToActivity={reactToActivity}
               encourageActivity={encourageActivity}
               setEncourageActivity={setEncourageActivity}
+              envClasses={envClasses}
             />
           ))}
         </TabsContent>
@@ -389,6 +444,7 @@ const ActivityFeed = () => {
               reactToActivity={reactToActivity}
               encourageActivity={encourageActivity}
               setEncourageActivity={setEncourageActivity}
+              envClasses={envClasses}
             />
           ))}
         </TabsContent>
@@ -422,6 +478,12 @@ interface ActivityCardProps {
   reactToActivity: (activityId: string, reactionType: "like" | "encouragement", message?: string) => void;
   encourageActivity: string | null;
   setEncourageActivity: (activityId: string | null) => void;
+  envClasses: {
+    cardBorder: string;
+    activeTab: string;
+    buttonHover: string;
+    likeFill: string;
+  };
 }
 
 const ActivityCard = ({ 
@@ -429,11 +491,15 @@ const ActivityCard = ({
   getActionIcon, 
   reactToActivity,
   encourageActivity,
-  setEncourageActivity
+  setEncourageActivity,
+  envClasses
 }: ActivityCardProps) => {
   return (
     <div 
-      className={`p-4 border rounded-lg animate-fade-in ${activity.user.isCurrentUser ? "bg-muted/10" : ""}`}
+      className={cn(
+        `p-4 border rounded-lg animate-fade-in ${activity.user.isCurrentUser ? "bg-muted/10" : ""}`,
+        envClasses.cardBorder
+      )}
     >
       <div className="flex items-start gap-3">
         <Avatar className="h-9 w-9">
@@ -475,7 +541,7 @@ const ActivityCard = ({
                   <Badge 
                     key={index}
                     variant="outline"
-                    className="cursor-pointer hover:bg-secondary"
+                    className={cn("cursor-pointer", envClasses.buttonHover)}
                     onClick={() => reactToActivity(activity.id, "encouragement", message)}
                   >
                     {message}
