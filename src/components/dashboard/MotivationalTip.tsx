@@ -29,13 +29,13 @@ const MotivationalTip = () => {
   const { state } = useOnboarding();
   const [tip, setTip] = useState(() => getRandomTip());
   
-  // Get environment-specific gradient class with more vibrant colors
+  // Get environment-specific gradient class
   const getGradientClass = () => {
     switch (state.environment) {
       case 'office': return "from-blue-200 to-blue-50";
       case 'park': return "from-green-200 to-emerald-50"; // Enhanced for Park/#2E6F40
       case 'home': return "from-orange-200 to-amber-50"; // Enhanced for Home/#FFA263
-      case 'coffee-shop': return "from-amber-200 to-yellow-50"; // Enhanced for Coffee Shop/#854836
+      case 'coffee-shop': return "from-amber-800/10 to-amber-700/5"; // Updated to match transparent brown
       case 'library': return "from-slate-200 to-gray-50";
       default: return "from-purple-200 to-indigo-50";
     }
@@ -70,14 +70,14 @@ const MotivationalTip = () => {
   };
   
   return (
-    <Card className="overflow-hidden mt-4 env-card shadow-sm">
+    <Card className="overflow-hidden mt-4 shadow-sm">
       <div className={cn(
         "bg-gradient-to-r p-5", 
         getGradientClass(),
         state.environment === 'office' ? "border-l-4 border-l-blue-400" :
         state.environment === 'park' ? "border-l-4 border-l-green-600" : // Enhanced for Park/#2E6F40
         state.environment === 'home' ? "border-l-4 border-l-orange-400" : // Enhanced for Home/#FFA263
-        state.environment === 'coffee-shop' ? "border-l-4 border-l-amber-700" : // Enhanced for Coffee Shop/#854836
+        state.environment === 'coffee-shop' ? "border-l-4 border-l-amber-700" : // Enhanced for Coffee Shop
         state.environment === 'library' ? "border-l-4 border-l-gray-400" :
         "border-l-4 border-l-purple-400"
       )}>
@@ -90,11 +90,13 @@ const MotivationalTip = () => {
           </div>
           <Button 
             variant="ghost" 
-            size="icon" 
-            className={`h-8 w-8 rounded-full opacity-70 hover:opacity-100 ${getButtonStyle()}`}
+            size="sm" 
+            className={`h-8 w-8 p-0`}
             onClick={handleRefresh}
+            disabled={false}
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className={`h-4 w-4`} />
+            <span className="sr-only">Refresh insights</span>
           </Button>
         </div>
         

@@ -50,14 +50,15 @@ const QuickStartButton = () => {
     setTimer(minutes * 60 + seconds);
   }, [state.workStyle, minutes, seconds]);
   
+  // Get environment-specific gradient class
   const getGradientClass = () => {
     switch (state.environment) {
-      case 'office': return "from-blue-100 to-blue-50";
-      case 'park': return "from-green-100 to-emerald-50";
-      case 'home': return "from-orange-100 to-amber-50";
-      case 'coffee-shop': return "from-amber-100 to-yellow-50";
-      case 'library': return "from-slate-100 to-gray-50";
-      default: return "from-purple-100 to-indigo-50";
+      case 'office': return "bg-gradient-to-br from-blue-100/80 to-white";
+      case 'park': return "bg-gradient-to-br from-green-100/80 to-white";
+      case 'home': return "bg-gradient-to-br from-orange-100/80 to-white";
+      case 'coffee-shop': return "bg-gradient-to-br from-amber-800/10 to-amber-700/5";
+      case 'library': return "bg-gradient-to-br from-gray-100/80 to-white";
+      default: return "bg-gradient-to-br from-purple-100/80 to-white";
     }
   };
   
@@ -220,7 +221,7 @@ const QuickStartButton = () => {
         state.environment === 'library' ? "border-gray-200" :
         "border-purple-200"
       )}>
-        <div className={cn("bg-gradient-to-r p-6", getGradientClass())}>
+        <div className={cn("p-6", getGradientClass())}>
           <h3 className="text-lg font-semibold mb-1">Ready to focus?</h3>
           <p className="text-sm text-gray-600">
             {state.workStyle === 'pomodoro' 
