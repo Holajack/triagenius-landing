@@ -13,6 +13,7 @@ import { getDisplayName } from "@/hooks/use-display-name";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { toast } from "sonner";
 
 interface MessageInboxProps {
   searchQuery?: string;
@@ -37,6 +38,8 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const [fetchRetries, setFetchRetries] = useState(0);
+  const [hasInitialLoad, setHasInitialLoad] = useState(false);
   
   // Debug logs for tracking component state
   console.log("MessageInbox render state:", { 
@@ -44,7 +47,8 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
     messagesLoading, 
     loadingUsers, 
     conversationsCount: conversationsWithUsers.length,
-    error: error || messagesError?.message
+    error: error || messagesError?.message,
+    retries: fetchRetries
   });
   
   // Set up presence channel for online status
@@ -98,20 +102,22 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
   }, [user?.id]);
   
   // Load user details for conversations
-  const loadConversationUsers = useCallback(async () => {
+  const loadConversationUsers = useCallback(async (retry = false) => {
     if (!user?.id) {
       console.log("No user ID, skipping conversation load");
       setLoadingUsers(false);
+      setHasInitialLoad(true);
       return;
     }
     
-    console.log("Loading conversations with user details");
+    console.log(`Loading conversations with user details${retry ? ' (retry attempt)' : ''}`);
     const conversations = getConversations();
     console.log(`Found ${conversations.length} conversations`);
     
     if (conversations.length === 0) {
       console.log("No conversations available");
       setLoadingUsers(false);
+      setHasInitialLoad(true);
       return;
     }
     
@@ -119,6 +125,7 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
       setLoadingUsers(true);
       setError(null);
       const conversationsWithUserDetails: ConversationWithUser[] = [];
+      let profileFetchErrors = false;
       
       for (const convo of conversations) {
         try {
@@ -132,6 +139,7 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
           
           if (profileError) {
             console.error('Error fetching user profile:', profileError);
+            profileFetchErrors = true;
             // Continue with partial data
             conversationsWithUserDetails.push({
               userId: convo.userId,
@@ -155,6 +163,17 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
               avatarUrl: otherUser.avatar_url,
               isTyping: isUserTyping(convo.userId)
             });
+          } else {
+            // No profile found, use minimal information
+            conversationsWithUserDetails.push({
+              userId: convo.userId,
+              lastMessage: convo.lastMessage,
+              username: `User-${convo.userId.substring(0, 4)}`,
+              full_name: null,
+              display_name_preference: null,
+              avatarUrl: null,
+              isTyping: isUserTyping(convo.userId)
+            });
           }
         } catch (userError) {
           console.error('Error processing user:', userError);
@@ -173,13 +192,33 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
       
       console.log(`Processed ${conversationsWithUserDetails.length} conversations with user details`);
       setConversationsWithUsers(conversationsWithUserDetails);
+      
+      if (profileFetchErrors && !retry && conversationsWithUserDetails.length > 0) {
+        // Some profiles failed to load, but we have message data
+        setError('Some user profiles could not be loaded. Conversation details may be incomplete.');
+      }
     } catch (error: any) {
       console.error('Error loading conversation users:', error);
-      setError('Failed to load complete conversation data. Some information may be missing.');
+      
+      // If this is the first load and it failed, store a more descriptive error
+      if (!hasInitialLoad) {
+        setError('Failed to load conversations. Please check your connection and try again.');
+      } else {
+        setError('Failed to refresh conversation data. Some information may be outdated.');
+      }
+      
+      if (!retry && fetchRetries < 3) {
+        console.log(`Scheduling retry ${fetchRetries + 1} in 3 seconds...`);
+        setTimeout(() => {
+          setFetchRetries(prev => prev + 1);
+          loadConversationUsers(true);
+        }, 3000);
+      }
     } finally {
       setLoadingUsers(false);
+      setHasInitialLoad(true);
     }
-  }, [getConversations, isUserTyping, user?.id]);
+  }, [getConversations, isUserTyping, user?.id, fetchRetries, hasInitialLoad]);
 
   useEffect(() => {
     loadConversationUsers();
@@ -187,7 +226,7 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
     // Set up an interval to refresh the conversation list
     const intervalId = setInterval(() => {
       loadConversationUsers();
-    }, 10000); // Reduced from 5s to 10s to lower database load
+    }, 30000); // Increased from 10s to 30s to reduce database load
     
     return () => clearInterval(intervalId);
   }, [loadConversationUsers]);
@@ -208,8 +247,10 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
   
   // Handle retry loading
   const handleRetryLoad = () => {
-    console.log("Retrying conversation load");
-    loadConversationUsers();
+    console.log("Manually retrying conversation load");
+    toast.info("Reloading conversations...");
+    setFetchRetries(prev => prev + 1);
+    loadConversationUsers(true);
   };
   
   // Filter conversations based on search query
@@ -221,7 +262,11 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
       full_name: convo.full_name || '',
       display_name_preference: convo.display_name_preference
     });
-    const messageContent = convo.lastMessage.content.toLowerCase();
+    
+    // Make sure lastMessage isn't undefined before accessing content
+    const messageContent = convo.lastMessage && convo.lastMessage.content 
+      ? convo.lastMessage.content.toLowerCase() 
+      : '';
     
     return displayName.toLowerCase().includes(searchQuery.toLowerCase()) || 
            messageContent.includes(searchQuery.toLowerCase());
@@ -241,7 +286,7 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
   }
   
   // Loading state
-  const isLoading = messagesLoading || loadingUsers;
+  const isLoading = (messagesLoading || loadingUsers) && !hasInitialLoad;
   if (isLoading) {
     console.log("Showing loading state");
     return (
@@ -252,8 +297,8 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
     );
   }
   
-  // Error state
-  if (messagesError || error) {
+  // Error state when no conversations could be loaded at all
+  if ((messagesError || error) && conversationsWithUsers.length === 0) {
     console.log("Showing error state:", messagesError || error);
     return (
       <Alert variant="destructive" className="mb-4">
@@ -307,10 +352,35 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
       </Alert>
     }>
       <div className="space-y-3">
+        {/* Warning message for partial data */}
+        {error && conversationsWithUsers.length > 0 && (
+          <Alert variant="warning" className="mb-2">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription className="flex justify-between items-center">
+              <span>{error}</span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-7"
+                onClick={handleRetryLoad}
+              >
+                <RefreshCw className="h-3 w-3 mr-1" /> Refresh
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        
         {filteredConversations.map((conversation) => {
+          if (!conversation.lastMessage) {
+            console.log("Skipping conversation with missing lastMessage", conversation);
+            return null;
+          }
+          
           const { lastMessage } = conversation;
           const isUnread = lastMessage.recipient_id === user?.id && !lastMessage.is_read;
-          const messageTime = formatDistanceToNow(new Date(lastMessage.created_at), { addSuffix: false });
+          const messageTime = lastMessage.created_at ? 
+            formatDistanceToNow(new Date(lastMessage.created_at), { addSuffix: false }) : 
+            'Recent';
           const isOnline = onlineUsers.has(conversation.userId);
           const displayName = getDisplayName({
             username: conversation.username,
@@ -328,7 +398,7 @@ export const MessageInbox = ({ searchQuery = "", onMessageClick }: MessageInboxP
                 <div className="relative flex-shrink-0">
                   <Avatar className="h-10 w-10">
                     <AvatarImage src={conversation.avatarUrl || ""} alt={displayName} />
-                    <AvatarFallback>{displayName[0]}</AvatarFallback>
+                    <AvatarFallback>{displayName[0].toUpperCase()}</AvatarFallback>
                   </Avatar>
                   {isOnline && (
                     <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
