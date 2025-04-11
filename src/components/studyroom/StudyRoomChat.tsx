@@ -7,6 +7,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { SendHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/hooks/use-user';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export interface RoomMessage {
   id: string;
@@ -40,6 +41,45 @@ export const StudyRoomChat = ({
 }: StudyRoomChatProps) => {
   const { user } = useUser();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Detect keyboard visibility on mobile
+  useEffect(() => {
+    if (!isMobile) return;
+    
+    const detectKeyboard = () => {
+      // On iOS, the viewport height changes when the keyboard appears
+      const isKeyboardOpen = window.visualViewport && 
+        window.visualViewport.height < window.innerHeight;
+      
+      setIsKeyboardVisible(isKeyboardOpen);
+      
+      if (chatContainerRef.current && isKeyboardOpen) {
+        // Adjust container padding when keyboard is open
+        chatContainerRef.current.style.paddingBottom = 
+          `${window.innerHeight - window.visualViewport.height}px`;
+      } else if (chatContainerRef.current) {
+        chatContainerRef.current.style.paddingBottom = '';
+      }
+    };
+    
+    // Listen for visualViewport changes (modern browsers)
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', detectKeyboard);
+    }
+    
+    // Also listen for window resize as a fallback
+    window.addEventListener('resize', detectKeyboard);
+    
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', detectKeyboard);
+      }
+      window.removeEventListener('resize', detectKeyboard);
+    };
+  }, [isMobile]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -53,13 +93,22 @@ export const StudyRoomChat = ({
   };
 
   return (
-    <Card className="flex flex-col h-[500px] md:h-[70vh] mb-4 md:mb-0 md:mr-4">
+    <Card 
+      className={cn(
+        "flex flex-col h-[500px] md:h-[70vh] mb-4 md:mb-0 md:mr-4",
+        isKeyboardVisible && isMobile && "h-screen"
+      )}
+      ref={chatContainerRef}
+    >
       <CardContent className="flex flex-col h-full p-0">
         <div className="p-3 border-b">
           <h3 className="font-medium">Chat</h3>
         </div>
 
-        <div className="flex-grow overflow-y-auto p-4 space-y-4">
+        <div className={cn(
+          "flex-grow overflow-y-auto p-4 space-y-4",
+          isKeyboardVisible && isMobile && "pb-16"
+        )}>
           {isLoading ? (
             <div className="flex justify-center items-center h-full">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-500"></div>
@@ -115,14 +164,26 @@ export const StudyRoomChat = ({
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="p-3 border-t mt-auto">
+        <div className={cn(
+          "p-3 border-t mt-auto",
+          isKeyboardVisible && isMobile && "sticky bottom-0 bg-card z-10 shadow-md"
+        )}>
           <div className="flex gap-2">
             <Textarea
               placeholder="Type your message..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={onKeyDown}
-              className="min-h-[80px]"
+              className={cn(
+                "min-h-[80px]",
+                isKeyboardVisible && isMobile && "min-h-[60px]"
+              )}
+              onFocus={() => {
+                // Scroll to bottom when input is focused
+                setTimeout(() => {
+                  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }, 300);
+              }}
             />
             <Button
               onClick={onSendMessage}

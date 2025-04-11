@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
@@ -47,6 +48,24 @@ const PWADetector = () => {
     
     checkStandalone();
     
+    // Set viewport meta tag for better mobile keyboard handling
+    const setViewportForKeyboard = () => {
+      const viewportMeta = document.querySelector('meta[name="viewport"]');
+      if (!viewportMeta) {
+        const meta = document.createElement('meta');
+        meta.name = 'viewport';
+        meta.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, height=device-height';
+        document.head.appendChild(meta);
+      } else {
+        viewportMeta.setAttribute('content', 
+          'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, height=device-height');
+      }
+    };
+    
+    if (isMobile) {
+      setViewportForKeyboard();
+    }
+    
     // Only proceed if we're in a browser context, not in standalone mode
     if (!isStandalone) {
       // Listen for beforeinstallprompt event
@@ -87,7 +106,7 @@ const PWADetector = () => {
         window.removeEventListener('appinstalled', handleAppInstalled);
       };
     }
-  }, [toast, isStandalone, permissionsRequested]);
+  }, [toast, isStandalone, permissionsRequested, isMobile]);
   
   // Request permissions needed for PWA functionality
   const requestPWAPermissions = async () => {

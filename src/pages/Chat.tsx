@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle, RefreshCw } from "lucide-react";
@@ -11,11 +12,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from "date-fns";
 import { getDisplayName, getInitials } from "@/hooks/use-display-name";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Chat = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const messageEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const [contact, setContact] = useState<any | null>(null);
   const [contactLoading, setContactLoading] = useState(true);
   const [contactError, setContactError] = useState<string | null>(null);
@@ -33,8 +38,51 @@ const Chat = () => {
   const [currentMessages, setCurrentMessages] = useState<any[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   
   const isContactTyping = id && isUserTyping(id);
+
+  // Detect keyboard visibility on mobile
+  useEffect(() => {
+    if (!isMobile) return;
+    
+    const detectKeyboard = () => {
+      // On iOS, the viewport height changes when the keyboard appears
+      const isKeyboardOpen = window.visualViewport && 
+        window.visualViewport.height < window.innerHeight;
+      
+      setIsKeyboardVisible(isKeyboardOpen);
+      
+      if (chatContainerRef.current && isKeyboardOpen) {
+        // Adjust container padding when keyboard is open
+        chatContainerRef.current.style.paddingBottom = 
+          `${window.innerHeight - window.visualViewport.height}px`;
+          
+        // Ensure the message end is visible
+        setTimeout(() => {
+          messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      } else if (chatContainerRef.current) {
+        chatContainerRef.current.style.paddingBottom = '';
+      }
+    };
+    
+    // Listen for visualViewport changes (modern browsers)
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', detectKeyboard);
+    }
+    
+    // Also listen for window resize as a fallback
+    window.addEventListener('resize', detectKeyboard);
+    
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', detectKeyboard);
+      }
+      window.removeEventListener('resize', detectKeyboard);
+    };
+  }, [isMobile]);
 
   const fetchConversationMessages = useCallback(async () => {
     if (!id || !user?.id) return;
@@ -243,6 +291,14 @@ const Chat = () => {
         setCurrentMessages(prev => [...prev, newMsg].sort((a, b) => 
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         ));
+        
+        // Focus back on input after sending for easy continuous messaging
+        inputRef.current?.focus();
+        
+        // Make sure to scroll to the latest message
+        setTimeout(() => {
+          messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
       } else {
         console.error('Failed to send message');
         toast.error("Failed to send message. Please try again.");
@@ -307,7 +363,7 @@ const Chat = () => {
   const contactInitials = contact ? getInitials(contactDisplayName) : "?";
   
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen bg-background" ref={chatContainerRef}>
       <div className="border-b p-3 flex items-center justify-between bg-card">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate('/community')}>
@@ -437,7 +493,10 @@ const Chat = () => {
         <div ref={messageEndRef} />
       </div>
       
-      <div className="border-t p-3 bg-card">
+      <div className={cn(
+        "border-t p-3 bg-card",
+        isKeyboardVisible && isMobile && "sticky bottom-0 z-50"
+      )}>
         <div className="flex items-center gap-2">
           <Button 
             variant="ghost" 
@@ -449,6 +508,7 @@ const Chat = () => {
           </Button>
           
           <Input
+            ref={inputRef}
             placeholder="Type a message..."
             className="rounded-full"
             value={newMessage}
@@ -457,6 +517,12 @@ const Chat = () => {
               if (e.key === 'Enter') {
                 handleSendMessage();
               }
+            }}
+            onFocus={() => {
+              // Scroll to bottom when input is focused
+              setTimeout(() => {
+                messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+              }, 300);
             }}
           />
           
