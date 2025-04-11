@@ -54,7 +54,9 @@ const StudyRoom = () => {
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   
-  const { isKeyboardVisible } = useKeyboardVisibility();
+  const { isKeyboardVisible } = useKeyboardVisibility({
+    debounceTime: 150
+  });
 
   useEffect(() => {
     // Set viewport height custom property
@@ -132,7 +134,8 @@ const StudyRoom = () => {
       style={{
         minHeight: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100vh',
         height: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100vh',
-        paddingBottom: isKeyboardVisible && isMobile ? '0' : undefined
+        paddingBottom: isKeyboardVisible && isMobile ? '0' : undefined,
+        overflow: 'hidden'
       }}
     >
       <PageHeader title={currentRoom.name} />
@@ -148,10 +151,10 @@ const StudyRoom = () => {
       </div>
 
       <div className={cn(
-        "flex flex-col md:flex-row flex-1 h-full",
-        isKeyboardVisible && isMobile ? "pb-16" : ""
+        "flex flex-col md:flex-row flex-1 h-full overflow-hidden",
+        isKeyboardVisible && isMobile ? "pb-0" : ""
       )}>
-        <div className="w-full md:w-3/4 flex flex-col mb-4 md:mb-0">
+        <div className="w-full md:w-3/4 flex flex-col mb-4 md:mb-0 max-h-full">
           <StudyRoomChat
             messages={formattedMessages}
             isLoading={isMessagesLoading}

@@ -46,34 +46,34 @@ export const StudyRoomChat = ({
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   
   const { isKeyboardVisible, keyboardHeight } = useKeyboardVisibility({
+    debounceTime: 150,
     onKeyboardShow: () => {
-      // Add a small delay to let the layout adjust
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 300);
+      if (autoScrollEnabled) {
+        // Add a small delay to let the layout adjust
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 300);
+      }
     }
   });
 
   // Scroll to bottom when messages change
   useEffect(() => {
-    if (messagesEndRef.current) {
+    if (autoScrollEnabled && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages]);
+  }, [messages, autoScrollEnabled]);
   
-  // Set initial height on component mount
+  // Update viewport height on resize and orientation change
   useEffect(() => {
     const setInitialHeight = () => {
       if (chatContainerRef.current) {
         const vh = window.innerHeight * 0.01;
         document.documentElement.style.setProperty('--vh', `${vh}px`);
-        
-        if (isMobile) {
-          chatContainerRef.current.style.height = `calc(100vh - 80px)`;
-          chatContainerRef.current.style.maxHeight = `calc(100vh - 80px)`;
-        }
       }
     };
     
@@ -85,7 +85,28 @@ export const StudyRoomChat = ({
       window.removeEventListener('resize', setInitialHeight);
       window.removeEventListener('orientationchange', setInitialHeight);
     };
-  }, [isMobile]);
+  }, []);
+
+  // Detect if user has manually scrolled up
+  useEffect(() => {
+    if (!messagesContainerRef.current) return;
+    
+    const handleScroll = () => {
+      if (!messagesContainerRef.current) return;
+      
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+      const isScrolledToBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 10;
+      
+      setAutoScrollEnabled(isScrolledToBottom);
+    };
+    
+    const container = messagesContainerRef.current;
+    container.addEventListener('scroll', handleScroll);
+    
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   const formatTimestamp = (timestamp: string): string => {
     const date = new Date(timestamp);
@@ -109,7 +130,7 @@ export const StudyRoomChat = ({
           className="flex-grow overflow-y-auto p-4 space-y-4"
           ref={messagesContainerRef}
           style={{
-            paddingBottom: isKeyboardVisible && isMobile ? `${Math.max(60, keyboardHeight/2)}px` : '1rem',
+            paddingBottom: isKeyboardVisible && isMobile ? '80px' : '1rem',
             overscrollBehavior: 'contain'
           }}
         >
@@ -169,8 +190,8 @@ export const StudyRoomChat = ({
         </div>
 
         <div className={cn(
-          "p-3 border-t mt-auto bg-card",
-          isKeyboardVisible && isMobile && "fixed bottom-0 left-0 right-0 z-50 shadow-lg"
+          "p-3 border-t mt-auto bg-card z-10",
+          isKeyboardVisible && isMobile ? "fixed bottom-0 left-0 right-0 shadow-lg" : ""
         )}>
           <div className="flex gap-2">
             <Textarea
@@ -179,19 +200,19 @@ export const StudyRoomChat = ({
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={onKeyDown}
-              className={cn(
-                "min-h-[60px] resize-none",
-                isKeyboardVisible && isMobile && "min-h-[40px] max-h-[80px]"
-              )}
-              onClick={() => {
-                if (isMobile && textareaRef.current) {
-                  // Focus and make sure the input stays visible
-                  textareaRef.current.focus();
+              onFocus={() => {
+                setIsInputFocused(true);
+                if (autoScrollEnabled) {
                   setTimeout(() => {
                     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
                   }, 100);
                 }
               }}
+              onBlur={() => setIsInputFocused(false)}
+              className={cn(
+                "min-h-[60px] resize-none",
+                isKeyboardVisible && isMobile && "min-h-[40px] max-h-[80px]"
+              )}
               style={{
                 height: isKeyboardVisible && isMobile ? '50px' : '60px'
               }}
