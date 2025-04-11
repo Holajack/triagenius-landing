@@ -12,6 +12,7 @@ type FocusTimerProps = {
   isPaused?: boolean;
   lowPowerMode?: boolean;
   className?: string;
+  timerId?: string;
 };
 
 const FocusTimer = forwardRef<
@@ -24,7 +25,8 @@ const FocusTimer = forwardRef<
   onProgressUpdate,
   isPaused = false,
   lowPowerMode = false,
-  className
+  className,
+  timerId = 'focus-session-timer'
 }, ref) => {
   const [remainingTime, setRemainingTime] = useState(initialTime);
   const [animationKey, setAnimationKey] = useState(0);
@@ -35,6 +37,8 @@ const FocusTimer = forwardRef<
   const lastMilestoneRef = useRef<number>(-1);
   const hasCompletedRef = useRef<boolean>(false);
   const isMobile = useIsMobile();
+  const backgroundModeRef = useRef<boolean>(false);
+  const serviceWorkerAvailable = useRef<boolean>('serviceWorker' in navigator && navigator.serviceWorker.controller !== null);
   
   // Calculate milestones based on initialTime (typically 3 milestones)
   const milestoneTimePoints = [
@@ -43,6 +47,183 @@ const FocusTimer = forwardRef<
     0 // Final milestone at completion
   ];
   
+  // Set up background timer message listener
+  useEffect(() => {
+    const handleBackgroundTimerMessage = (event: MessageEvent) => {
+      if (!event.data) return;
+      
+      // Handle completed timer message
+      if (event.data.type === 'BACKGROUND_TIMER_COMPLETE' && event.data.timerId === timerId) {
+        console.log('Background timer completed via service worker message');
+        setRemainingTime(0);
+        
+        if (onComplete && !hasCompletedRef.current) {
+          hasCompletedRef.current = true;
+          onComplete();
+        }
+      }
+      
+      // Handle timer update message
+      if (event.data.type === 'BACKGROUND_TIMER_UPDATE' && event.data.timerId === timerId) {
+        console.log('Background timer update:', event.data.remainingTime);
+        
+        if (backgroundModeRef.current) {
+          const newRemainingTime = event.data.remainingTime;
+          setRemainingTime(newRemainingTime);
+          
+          if (onProgressUpdate) {
+            const progress = 1 - (newRemainingTime / initialTime);
+            onProgressUpdate(progress);
+          }
+          
+          // Check if any milestones were reached while in background
+          const timePassed = initialTime - newRemainingTime;
+          milestoneTimePoints.forEach((milestoneTime, index) => {
+            if (timePassed >= initialTime - milestoneTime && index > lastMilestoneRef.current) {
+              if (onMilestoneReached) onMilestoneReached(index);
+              lastMilestoneRef.current = index;
+            }
+          });
+        }
+      }
+    };
+    
+    if (serviceWorkerAvailable.current) {
+      navigator.serviceWorker.addEventListener('message', handleBackgroundTimerMessage);
+    }
+    
+    return () => {
+      if (serviceWorkerAvailable.current) {
+        navigator.serviceWorker.removeEventListener('message', handleBackgroundTimerMessage);
+      }
+    };
+  }, [initialTime, onComplete, onMilestoneReached, onProgressUpdate, timerId]);
+  
+  // Handle visibility change events
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        // App going to background
+        enterBackgroundMode();
+      } else {
+        // App coming to foreground
+        exitBackgroundMode();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isPaused]);
+  
+  // Start or resume a background timer
+  const startBackgroundTimer = () => {
+    if (!serviceWorkerAvailable.current || isPaused) return;
+    
+    backgroundModeRef.current = true;
+    
+    if (navigator.serviceWorker.controller) {
+      const messageChannel = new MessageChannel();
+      
+      messageChannel.port1.onmessage = (event) => {
+        console.log('Background timer started response:', event.data);
+      };
+      
+      navigator.serviceWorker.controller.postMessage({
+        type: 'START_BACKGROUND_TIMER',
+        id: timerId,
+        duration: initialTime,
+        startTime: startTimeRef.current,
+        options: {
+          notificationTitle: 'Focus Session Complete',
+          notificationBody: 'Your focus session has finished.',
+          notificationUrl: '/focus-session'
+        }
+      }, [messageChannel.port2]);
+    }
+  };
+  
+  // Stop a background timer
+  const stopBackgroundTimer = () => {
+    if (!serviceWorkerAvailable.current) return;
+    
+    backgroundModeRef.current = false;
+    
+    if (navigator.serviceWorker.controller) {
+      const messageChannel = new MessageChannel();
+      
+      messageChannel.port1.onmessage = (event) => {
+        console.log('Background timer stopped response:', event.data);
+      };
+      
+      navigator.serviceWorker.controller.postMessage({
+        type: 'STOP_BACKGROUND_TIMER',
+        id: timerId
+      }, [messageChannel.port2]);
+    }
+  };
+  
+  // Pause a background timer
+  const pauseBackgroundTimer = () => {
+    if (!serviceWorkerAvailable.current) return;
+    
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'PAUSE_BACKGROUND_TIMER',
+        id: timerId
+      });
+    }
+  };
+  
+  // Resume a background timer
+  const resumeBackgroundTimer = () => {
+    if (!serviceWorkerAvailable.current) return;
+    
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'RESUME_BACKGROUND_TIMER',
+        id: timerId
+      });
+    }
+  };
+  
+  // When app goes to background
+  const enterBackgroundMode = () => {
+    if (intervalRef.current !== null) {
+      window.clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
+    if (!isPaused && remainingTime > 0) {
+      console.log('App entering background, starting background timer');
+      startBackgroundTimer();
+    } else if (isPaused) {
+      console.log('App entering background while timer is paused');
+    }
+  };
+  
+  // When app comes back to foreground
+  const exitBackgroundMode = () => {
+    if (backgroundModeRef.current) {
+      console.log('App coming to foreground, checking background timer status');
+      backgroundModeRef.current = false;
+      
+      if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'GET_BACKGROUND_TIMER',
+          id: timerId
+        });
+      }
+      
+      // If not paused, restart the normal interval timer
+      if (!isPaused && remainingTime > 0) {
+        startTimeRef.current = Date.now() - (initialTime - remainingTime) * 1000;
+      }
+    }
+  };
+  
   // Expose methods to parent components
   useImperativeHandle(ref, () => ({
     stopTimer: () => {
@@ -50,6 +231,7 @@ const FocusTimer = forwardRef<
         window.clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+      stopBackgroundTimer();
     },
     setRemainingTime: (time: number) => {
       setRemainingTime(time);
@@ -66,7 +248,18 @@ const FocusTimer = forwardRef<
       startTimeRef.current = Date.now() - (initialTime - remainingTime) * 1000;
       lastTickTimeRef.current = Date.now();
       
+      // When resuming, sync with background timer if needed
+      if (backgroundModeRef.current && serviceWorkerAvailable.current) {
+        resumeBackgroundTimer();
+        backgroundModeRef.current = false; // Reset since we're in foreground now
+      }
+      
       intervalRef.current = window.setInterval(() => {
+        if (document.visibilityState === 'hidden') {
+          // Skip ticks while hidden - background timer will handle it
+          return;
+        }
+        
         const now = Date.now();
         let elapsed = (now - startTimeRef.current) / 1000;
         let newRemainingTime = initialTime - elapsed;
@@ -75,6 +268,7 @@ const FocusTimer = forwardRef<
           newRemainingTime = 0;
           window.clearInterval(intervalRef.current);
           intervalRef.current = null;
+          stopBackgroundTimer();
           
           // Only trigger onComplete once
           if (!hasCompletedRef.current && onComplete) {
@@ -103,6 +297,11 @@ const FocusTimer = forwardRef<
     } else if (isPaused && intervalRef.current !== null) {
       window.clearInterval(intervalRef.current);
       intervalRef.current = null;
+      
+      // When pausing, also pause background timer if active
+      if (backgroundModeRef.current && serviceWorkerAvailable.current) {
+        pauseBackgroundTimer();
+      }
     }
     
     return () => {
@@ -117,6 +316,17 @@ const FocusTimer = forwardRef<
   useEffect(() => {
     hasCompletedRef.current = false;
   }, [initialTime]);
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopBackgroundTimer();
+      if (intervalRef.current !== null) {
+        window.clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, []);
   
   const formatTime = (timeInSeconds: number): string => {
     const minutes = Math.floor(timeInSeconds / 60);

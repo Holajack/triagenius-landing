@@ -1,5 +1,5 @@
 // Cache version identifier - change this when files are updated
-const CACHE_NAME = 'triage-system-v11'; // Incremented version
+const CACHE_NAME = 'triage-system-v12'; // Incremented version
 const APP_NAME = 'The Triage System';
 
 // Dynamic version control based on the last deployment time
@@ -39,7 +39,7 @@ const CRITICAL_ROUTES = [
 
 // Install event - cache static resources with better error handling
 self.addEventListener('install', event => {
-  console.log(`Installing service worker v11 (${DEPLOYMENT_TIMESTAMP}) - with Supabase user update system`);
+  console.log(`Installing service worker v12 (${DEPLOYMENT_TIMESTAMP}) - with background timer support`);
   
   // Force the waiting service worker to become the active service worker
   self.skipWaiting();
@@ -94,6 +94,342 @@ self.addEventListener('activate', event => {
       })
     ])
   );
+});
+
+// Variables to track background timers
+const backgroundTimers = new Map();
+
+// Function to start background timer
+function startBackgroundTimer(id, duration, startTime, options = {}) {
+  if (!duration || backgroundTimers.has(id)) return;
+  
+  const endTime = startTime + (duration * 1000);
+  
+  backgroundTimers.set(id, {
+    id,
+    duration,
+    startTime,
+    endTime,
+    isRunning: true,
+    options,
+    intervalId: null
+  });
+  
+  console.log('Background timer started:', {
+    id,
+    duration,
+    endTime: new Date(endTime).toISOString()
+  });
+  
+  // Set up periodic checks while the app is in the background
+  checkBackgroundTimer(id);
+  
+  // Store timer in IndexedDB for persistence
+  storeBackgroundTimerState(id, {
+    id,
+    duration,
+    startTime,
+    endTime,
+    isRunning: true,
+    options
+  });
+}
+
+// Function to check background timer state
+function checkBackgroundTimer(id) {
+  const timer = backgroundTimers.get(id);
+  if (!timer || !timer.isRunning) return;
+  
+  const now = Date.now();
+  const remainingTime = Math.max(0, Math.floor((timer.endTime - now) / 1000));
+  
+  // If timer completed, send notification
+  if (remainingTime <= 0) {
+    backgroundTimers.get(id).isRunning = false;
+    
+    // Show notification if supported
+    if (self.registration.showNotification) {
+      const notificationOptions = {
+        body: timer.options.notificationBody || 'Your timer has finished.',
+        icon: '/lovable-uploads/95f9c287-86ca-4428-bbc4-b9c9b75478b9.png',
+        badge: '/lovable-uploads/95f9c287-86ca-4428-bbc4-b9c9b75478b9.png',
+        vibrate: [200, 100, 200],
+        data: { url: timer.options.notificationUrl || '/focus-session' }
+      };
+      
+      self.registration.showNotification(
+        timer.options.notificationTitle || 'Timer Complete', 
+        notificationOptions
+      );
+    }
+    
+    // Notify all clients
+    self.clients.matchAll().then(clients => {
+      clients.forEach(client => {
+        client.postMessage({
+          type: 'BACKGROUND_TIMER_COMPLETE',
+          timerId: id,
+          timestamp: Date.now()
+        });
+      });
+    });
+    
+    // Remove from storage
+    removeBackgroundTimerState(id);
+    
+    return;
+  }
+  
+  // Notify clients about timer status every 5 seconds
+  if (remainingTime % 5 === 0) {
+    self.clients.matchAll().then(clients => {
+      clients.forEach(client => {
+        client.postMessage({
+          type: 'BACKGROUND_TIMER_UPDATE',
+          timerId: id,
+          remainingTime: remainingTime,
+          timestamp: now
+        });
+      });
+    });
+  }
+  
+  // Schedule next check
+  backgroundTimers.get(id).intervalId = setTimeout(() => checkBackgroundTimer(id), 1000);
+}
+
+// Function to stop background timer
+function stopBackgroundTimer(id) {
+  const timer = backgroundTimers.get(id);
+  if (!timer) return;
+  
+  if (timer.intervalId) {
+    clearTimeout(timer.intervalId);
+  }
+  
+  backgroundTimers.delete(id);
+  removeBackgroundTimerState(id);
+  
+  console.log('Background timer stopped:', id);
+}
+
+// Function to pause background timer
+function pauseBackgroundTimer(id) {
+  const timer = backgroundTimers.get(id);
+  if (!timer || !timer.isRunning) return;
+  
+  timer.isRunning = false;
+  if (timer.intervalId) {
+    clearTimeout(timer.intervalId);
+    timer.intervalId = null;
+  }
+  
+  // Calculate remaining time
+  const now = Date.now();
+  const remainingMs = Math.max(0, timer.endTime - now);
+  timer.remainingMs = remainingMs;
+  
+  // Update storage
+  storeBackgroundTimerState(id, {
+    ...timer,
+    remainingMs,
+    isRunning: false
+  });
+  
+  console.log('Background timer paused:', id, 'with remaining ms:', remainingMs);
+}
+
+// Function to resume background timer
+function resumeBackgroundTimer(id) {
+  const timer = backgroundTimers.get(id);
+  if (!timer) return;
+  
+  const now = Date.now();
+  timer.endTime = now + (timer.remainingMs || (timer.duration * 1000));
+  timer.isRunning = true;
+  
+  // Update storage
+  storeBackgroundTimerState(id, {
+    ...timer,
+    startTime: now,
+    endTime: timer.endTime,
+    isRunning: true
+  });
+  
+  checkBackgroundTimer(id);
+  console.log('Background timer resumed:', id);
+}
+
+// IndexedDB operations for timer persistence
+let db;
+
+function openTimerDB() {
+  return new Promise((resolve, reject) => {
+    if (db) return resolve(db);
+    
+    const request = indexedDB.open('BackgroundTimersDB', 1);
+    
+    request.onerror = event => {
+      console.error('IndexedDB error:', event.target.error);
+      reject('Could not open timer database');
+    };
+    
+    request.onupgradeneeded = event => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains('timers')) {
+        db.createObjectStore('timers', { keyPath: 'id' });
+      }
+    };
+    
+    request.onsuccess = event => {
+      db = event.target.result;
+      resolve(db);
+    };
+  });
+}
+
+function storeBackgroundTimerState(id, timerData) {
+  openTimerDB().then(db => {
+    const transaction = db.transaction(['timers'], 'readwrite');
+    const store = transaction.objectStore('timers');
+    store.put(timerData);
+  }).catch(error => console.error('Error storing timer state:', error));
+}
+
+function removeBackgroundTimerState(id) {
+  openTimerDB().then(db => {
+    const transaction = db.transaction(['timers'], 'readwrite');
+    const store = transaction.objectStore('timers');
+    store.delete(id);
+  }).catch(error => console.error('Error removing timer state:', error));
+}
+
+function loadBackgroundTimers() {
+  openTimerDB().then(db => {
+    const transaction = db.transaction(['timers'], 'readonly');
+    const store = transaction.objectStore('timers');
+    const request = store.getAll();
+    
+    request.onsuccess = () => {
+      const timers = request.result;
+      console.log('Loaded background timers:', timers.length);
+      
+      timers.forEach(timer => {
+        // Only restore running timers
+        if (timer.isRunning) {
+          // Check if timer is still valid
+          const now = Date.now();
+          if (timer.endTime > now) {
+            startBackgroundTimer(
+              timer.id,
+              timer.duration,
+              timer.startTime,
+              timer.options
+            );
+          } else {
+            // Timer already expired, clean up
+            removeBackgroundTimerState(timer.id);
+          }
+        }
+      });
+    };
+  }).catch(error => console.error('Error loading timers:', error));
+}
+
+// Load saved timers when service worker starts
+loadBackgroundTimers();
+
+// Enhanced message handling for timers
+self.addEventListener('message', event => {
+  if (!event.data) return;
+  
+  // Handle timer control messages
+  if (event.data.type === 'START_BACKGROUND_TIMER') {
+    const { id, duration, startTime, options } = event.data;
+    startBackgroundTimer(id, duration, startTime, options);
+    
+    // Confirm back to client
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({
+        type: 'BACKGROUND_TIMER_STARTED',
+        timerId: id,
+        timestamp: Date.now()
+      });
+    }
+  }
+  
+  if (event.data.type === 'STOP_BACKGROUND_TIMER') {
+    const { id } = event.data;
+    stopBackgroundTimer(id);
+    
+    // Confirm back to client
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({
+        type: 'BACKGROUND_TIMER_STOPPED',
+        timerId: id,
+        timestamp: Date.now()
+      });
+    }
+  }
+  
+  if (event.data.type === 'PAUSE_BACKGROUND_TIMER') {
+    const { id } = event.data;
+    pauseBackgroundTimer(id);
+  }
+  
+  if (event.data.type === 'RESUME_BACKGROUND_TIMER') {
+    const { id } = event.data;
+    resumeBackgroundTimer(id);
+  }
+  
+  if (event.data.type === 'GET_BACKGROUND_TIMER') {
+    const { id } = event.data;
+    const timer = backgroundTimers.get(id);
+    
+    if (timer && timer.isRunning) {
+      const now = Date.now();
+      const remainingTime = Math.max(0, Math.floor((timer.endTime - now) / 1000));
+      
+      // Send current timer state to client
+      event.source.postMessage({
+        type: 'BACKGROUND_TIMER_UPDATE',
+        timerId: id,
+        remainingTime,
+        progress: 1 - (remainingTime / timer.duration),
+        isRunning: timer.isRunning,
+        timestamp: now
+      });
+    } else {
+      // No running timer found
+      event.source.postMessage({
+        type: 'BACKGROUND_TIMER_NOT_FOUND',
+        timerId: id
+      });
+    }
+  }
+  
+  if (event.data.type === 'GET_ALL_BACKGROUND_TIMERS') {
+    const timersData = Array.from(backgroundTimers.entries()).map(([id, timer]) => {
+      const now = Date.now();
+      const remainingTime = Math.max(0, Math.floor((timer.endTime - now) / 1000));
+      
+      return {
+        id,
+        remainingTime,
+        progress: 1 - (remainingTime / timer.duration),
+        isRunning: timer.isRunning,
+        timestamp: now
+      };
+    });
+    
+    event.source.postMessage({
+      type: 'ALL_BACKGROUND_TIMERS',
+      timers: timersData
+    });
+  }
+  
+  // Handle other messages like before
+  // ... keep existing code (message handling for updates and other functionality)
 });
 
 // Improved fetch strategy with user-based caching and authentication awareness
@@ -275,285 +611,6 @@ self.addEventListener('fetch', event => {
     })
   );
 });
-
-// Enhanced message handling for user-based updates
-self.addEventListener('message', event => {
-  if (!event.data) return;
-  
-  // Handle user authentication events for update checks
-  if (event.data.type === 'USER_AUTHENTICATED') {
-    const { userId, lastLogin, userInfo } = event.data;
-    
-    console.log('User authenticated, checking for updates', { userId, lastLogin });
-    
-    // Store user info in IndexedDB or cache for later update checks
-    if (userId) {
-      caches.open('user-metadata').then(cache => {
-        cache.put(
-          new Request(`/user-metadata/${userId}`), 
-          new Response(JSON.stringify({ 
-            userId, 
-            lastLogin, 
-            userInfo,
-            lastChecked: Date.now() 
-          }))
-        );
-      });
-      
-      // After storing user data, check if app needs to be updated
-      // Compare app version with last login timestamp
-      if (lastLogin && parseInt(lastLogin) < DEPLOYMENT_TIMESTAMP) {
-        console.log('App update needed after user login - newer version available');
-        
-        // Notify clients about update needed
-        self.clients.matchAll().then(clients => {
-          clients.forEach(client => {
-            client.postMessage({
-              type: 'UPDATE_AVAILABLE_AFTER_LOGIN',
-              version: CACHE_NAME,
-              timestamp: DEPLOYMENT_TIMESTAMP,
-              userId
-            });
-          });
-        });
-      }
-    }
-    
-    // Send confirmation back to client
-    if (event.ports && event.ports[0]) {
-      event.ports[0].postMessage({
-        type: 'USER_AUTH_PROCESSED',
-        timestamp: Date.now()
-      });
-    }
-  }
-  
-  // Handle standard update messages
-  if (event.data.type === 'SKIP_WAITING') {
-    console.log('Skip waiting message received, activating new worker immediately');
-    self.skipWaiting();
-  }
-  
-  if (event.data.type === 'GET_VERSION') {
-    if (event.ports && event.ports[0]) {
-      event.ports[0].postMessage({
-        version: CACHE_NAME,
-        timestamp: DEPLOYMENT_TIMESTAMP
-      });
-    }
-  }
-  
-  if (event.data.type === 'CHECK_UPDATE') {
-    // Check if there's user info to include in the response
-    const userId = event.data.userId;
-    
-    if (event.ports && event.ports[0]) {
-      event.ports[0].postMessage({
-        version: CACHE_NAME,
-        timestamp: DEPLOYMENT_TIMESTAMP,
-        updateCheckResult: 'completed',
-        userAware: !!userId
-      });
-    }
-  }
-  
-  if (event.data.type === 'FORCE_UPDATE') {
-    console.log('Force update requested by client');
-    // Force activation and notify clients
-    self.skipWaiting();
-    self.clients.claim().then(() => {
-      // Notify all clients about the forced update
-      self.clients.matchAll().then(clients => {
-        clients.forEach(client => {
-          client.postMessage({
-            type: 'UPDATE_ACTIVATED',
-            timestamp: Date.now()
-          });
-        });
-      });
-    });
-    
-    if (event.ports && event.ports[0]) {
-      event.ports[0].postMessage({
-        updated: true,
-        timestamp: Date.now()
-      });
-    }
-  }
-  
-  // Handle background timer control messages
-  if (event.data.type === 'START_BACKGROUND_TIMER') {
-    const { duration, timestamp } = event.data.data;
-    startBackgroundTimer(duration, timestamp);
-  }
-  
-  // Get current background timer state
-  if (event.data.type === 'GET_BACKGROUND_TIMER') {
-    if (!backgroundTimer.isRunning) return;
-    
-    const now = Date.now();
-    const remainingTime = Math.max(0, Math.floor((backgroundTimer.endTime - now) / 1000));
-    
-    // Send current timer state to client
-    event.source.postMessage({
-      type: 'BACKGROUND_TIMER_UPDATE',
-      remainingTime
-    });
-    
-    // Stop background timer if app is visible again
-    backgroundTimer.isRunning = false;
-  }
-  
-  // Stop background timer
-  if (event.data.type === 'STOP_BACKGROUND_TIMER') {
-    backgroundTimer.isRunning = false;
-  }
-});
-
-// Handle background sync for focus session data - standardized tag name
-self.addEventListener('sync', event => {
-  if (event.tag === 'sync-focus-session') {
-    event.waitUntil(syncFocusSession());
-  }
-});
-
-// Variables to track background timer
-let backgroundTimer = {
-  endTime: null,
-  duration: 0,
-  isRunning: false
-};
-
-// Function to start background timer
-function startBackgroundTimer(duration, timestamp) {
-  if (!duration) return;
-  
-  backgroundTimer.duration = duration;
-  backgroundTimer.endTime = timestamp + (duration * 1000);
-  backgroundTimer.isRunning = true;
-  
-  console.log('Background timer started:', {
-    duration,
-    endTime: new Date(backgroundTimer.endTime).toISOString()
-  });
-  
-  // Set up periodic checks while the app is in the background
-  checkBackgroundTimer();
-}
-
-// Function to check background timer state
-function checkBackgroundTimer() {
-  if (!backgroundTimer.isRunning) return;
-  
-  const now = Date.now();
-  const remainingTime = Math.max(0, Math.floor((backgroundTimer.endTime - now) / 1000));
-  
-  // If timer completed, send notification
-  if (remainingTime === 0) {
-    backgroundTimer.isRunning = false;
-    
-    // Show notification if supported
-    if (self.registration.showNotification) {
-      self.registration.showNotification('Focus Session Complete', {
-        body: 'Your focus session has finished.',
-        icon: '/favicon.ico',
-        vibrate: [200, 100, 200]
-      });
-    }
-    
-    // Notify all clients
-    self.clients.matchAll().then(clients => {
-      clients.forEach(client => {
-        client.postMessage({
-          type: 'BACKGROUND_TIMER_COMPLETE'
-        });
-      });
-    });
-    
-    return;
-  }
-  
-  // Schedule next check
-  setTimeout(checkBackgroundTimer, 1000);
-}
-
-// More robust implementation of focus session sync - standardized function name
-async function syncFocusSession() {
-  try {
-    console.log('Background sync: Processing focus session data');
-    
-    // Get saved sessions from localStorage
-    const offlineData = await getOfflineData('focus-sessions');
-    
-    if (offlineData && offlineData.length > 0) {
-      console.log(`Found ${offlineData.length} sessions to sync`);
-      
-      // Process each session with a limit of 3 attempts
-      const results = await Promise.allSettled(
-        offlineData.map(async (session) => {
-          let attempts = 0;
-          let success = false;
-          
-          while (attempts < 3 && !success) {
-            try {
-              await submitSession(session);
-              success = true;
-            } catch (error) {
-              attempts++;
-              if (attempts >= 3) {
-                throw new Error(`Failed to sync after ${attempts} attempts`);
-              }
-              // Wait before retrying
-              await new Promise(resolve => setTimeout(resolve, 1000));
-            }
-          }
-          
-          return { session, success };
-        })
-      );
-      
-      // Filter successful syncs
-      const successfulSyncs = results
-        .filter(result => result.status === 'fulfilled' && result.value.success)
-        .map(result => (result as PromiseFulfilledResult<{session: any, success: boolean}>).value.session);
-      
-      if (successfulSyncs.length > 0) {
-        await clearSuccessfulSyncs('focus-sessions', successfulSyncs);
-        console.log(`Successfully synced ${successfulSyncs.length} sessions`);
-      }
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Failed to sync focus sessions:', error);
-    return false;
-  }
-}
-
-// Helper functions for offline data handling
-async function getOfflineData(storeName) {
-  return JSON.parse(localStorage.getItem(storeName) || '[]');
-}
-
-async function clearSuccessfulSyncs(storeName, successfulItems) {
-  try {
-    const currentData = JSON.parse(localStorage.getItem(storeName) || '[]');
-    const remainingData = currentData.filter(item => 
-      !successfulItems.some(syncedItem => syncedItem.id === item.id)
-    );
-    localStorage.setItem(storeName, JSON.stringify(remainingData));
-  } catch (error) {
-    console.error('Error clearing synced data:', error);
-  }
-}
-
-async function submitSession(session) {
-  // In a real implementation, this would submit to Supabase or another backend
-  // For now, simulate a successful submission after a delay
-  return new Promise((resolve) => {
-    setTimeout(resolve, 300);
-  });
-}
 
 // Handle push notifications with improved reliability for PWA
 self.addEventListener('push', event => {

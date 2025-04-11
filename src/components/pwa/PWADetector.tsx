@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
@@ -32,6 +31,11 @@ const PWADetector = () => {
       
       if (isInStandaloneMode) {
         localStorage.setItem('isPWA', 'true');
+        
+        // Request necessary permissions for PWA functionality
+        setTimeout(() => {
+          requestPWAPermissions();
+        }, 3000);
       }
     };
     
@@ -58,6 +62,11 @@ const PWADetector = () => {
           title: "App installed!",
           description: "The Triage System has been added to your home screen",
         });
+        
+        // Request necessary permissions after installation
+        setTimeout(() => {
+          requestPWAPermissions();
+        }, 3000);
       };
       
       window.addEventListener('appinstalled', handleAppInstalled);
@@ -69,6 +78,49 @@ const PWADetector = () => {
       };
     }
   }, [toast, isStandalone]);
+  
+  // Request permissions needed for PWA functionality
+  const requestPWAPermissions = async () => {
+    try {
+      // Request notification permission for timer completion alerts
+      if ('Notification' in window) {
+        const permissionResult = await Notification.requestPermission();
+        if (permissionResult === 'granted') {
+          console.log('Notification permission granted');
+        }
+      }
+      
+      // Request wake lock permission to keep screen on during focus sessions
+      if ('wakeLock' in navigator) {
+        try {
+          // Just test if we can obtain a wake lock
+          const wakeLock = await (navigator as any).wakeLock.request('screen');
+          console.log('Wake lock obtained');
+          // Release it immediately after testing
+          await wakeLock.release();
+          console.log('Wake lock released');
+        } catch (err) {
+          console.log('Wake lock request failed:', err);
+        }
+      }
+      
+      // Check background sync permission for offline use
+      if ('serviceWorker' in navigator && 'SyncManager' in window) {
+        try {
+          const registration = await navigator.serviceWorker.ready;
+          if ('sync' in registration) {
+            await (registration as any).sync.register('test-sync');
+            console.log('Background sync registered');
+          }
+        } catch (err) {
+          console.log('Background sync registration failed:', err);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error requesting PWA permissions:', error);
+    }
+  };
   
   const handleInstallClick = async () => {
     if (!installPrompt) return;
@@ -102,7 +154,7 @@ const PWADetector = () => {
         className="flex items-center gap-2 shadow-lg bg-black hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
       >
         <img 
-          src="/lovable-uploads/23611129-00f0-4247-b8df-4bceac3d4631.png" 
+          src="/lovable-uploads/95f9c287-86ca-4428-bbc4-b9c9b75478b9.png" 
           alt="The Triage System" 
           className="w-4 h-4 mr-1"
         />
