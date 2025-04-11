@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle, RefreshCw } from "lucide-react";
@@ -23,6 +24,7 @@ const Chat = () => {
   const messageEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null); // New ref for direct access to messages container
   const [contact, setContact] = useState<any | null>(null);
   const [contactLoading, setContactLoading] = useState(true);
   const [contactError, setContactError] = useState<string | null>(null);
@@ -42,19 +44,20 @@ const Chat = () => {
   const [messageError, setMessageError] = useState<string | null>(null);
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
   const isMobile = useIsMobile();
+  const [isRetrying, setIsRetrying] = useState(false);
   
   const { isKeyboardVisible, keyboardHeight } = useKeyboardVisibility({
     onKeyboardShow: () => {
       if (autoScrollEnabled) {
         setTimeout(() => {
-          messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          scrollToBottom(true);
         }, 150);
       }
     },
     onKeyboardHide: () => {
       if (autoScrollEnabled) {
         setTimeout(() => {
-          messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          scrollToBottom(true);
         }, 100);
       }
     }
@@ -66,12 +69,21 @@ const Chat = () => {
     if (!id || !user?.id) return;
     
     try {
+      setIsRetrying(true);
+      console.log("Fetching conversation messages for user ID:", id);
       const conversationMessages = await getConversation(id);
       setCurrentMessages(conversationMessages);
+      setMessageError(null);
+      console.log(`Retrieved ${conversationMessages.length} messages`);
+      
+      // Ensure we scroll to bottom after loading messages
+      setTimeout(() => scrollToBottom(true), 100);
     } catch (err) {
       console.error('Error fetching conversation messages:', err);
       toast.error("Could not load messages. Please try again.");
       setMessageError("Failed to load conversation messages");
+    } finally {
+      setIsRetrying(false);
     }
   }, [id, user?.id, getConversation]);
 
@@ -143,6 +155,11 @@ const Chat = () => {
           });
           
           markAsRead(payload.new.id);
+          
+          // Scroll to bottom when receiving new message if auto-scroll is enabled
+          if (autoScrollEnabled) {
+            setTimeout(() => scrollToBottom(true), 100);
+          }
         }
       })
       .subscribe((status) => {
@@ -154,7 +171,7 @@ const Chat = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [id, user?.id, markAsRead]);
+  }, [id, user?.id, markAsRead, autoScrollEnabled]);
 
   useEffect(() => {
     if (!id || !user?.id) return;
@@ -217,32 +234,58 @@ const Chat = () => {
     fetchProfile();
   }, [fetchProfile]);
   
-  const scrollToBottom = useCallback(() => {
-    if (autoScrollEnabled && messageEndRef.current) {
-      messageEndRef.current.scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'end'
+  // Improved scroll to bottom function with force option
+  const scrollToBottom = useCallback((force = false) => {
+    if ((!autoScrollEnabled && !force) || !messageEndRef.current) return;
+    
+    // Try multiple scrolling methods to ensure compatibility
+    try {
+      // Method 1: Using scrollIntoView
+      messageEndRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'end',
       });
+      
+      // Method 2: Direct scrollTop manipulation (backup)
+      if (messagesContainerRef.current) {
+        const scrollContainer = messagesContainerRef.current;
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+      
+      // Method 3: Using ScrollArea ref if available
+      if (scrollAreaRef.current) {
+        scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+      }
+    } catch (err) {
+      console.error('Error scrolling to bottom:', err);
     }
   }, [autoScrollEnabled]);
   
-  useEffect(() => {
-    if (isContactTyping || currentMessages.length > 0) {
-      scrollToBottom();
-    }
-  }, [currentMessages, isContactTyping, scrollToBottom]);
-  
+  // Improved scroll handler with better detection
   const handleScroll = useCallback(() => {
-    if (!scrollAreaRef.current) return;
+    // Try to detect if user is near bottom
+    if (!scrollAreaRef.current && !messagesContainerRef.current) return;
     
-    const scrollElement = scrollAreaRef.current;
+    const scrollElement = scrollAreaRef.current || messagesContainerRef.current;
+    if (!scrollElement) return;
+    
     const viewportHeight = scrollElement.clientHeight;
     const scrollHeight = scrollElement.scrollHeight;
     const scrollTop = scrollElement.scrollTop;
     
-    const isScrolledToBottom = Math.abs(scrollHeight - viewportHeight - scrollTop) < 30;
+    // More generous threshold (50px from bottom)
+    const isScrolledToBottom = scrollHeight - viewportHeight - scrollTop < 50;
     
     setAutoScrollEnabled(isScrolledToBottom);
+    
+    // Debug scroll values
+    console.log('Scroll values:', {
+      viewportHeight,
+      scrollHeight,
+      scrollTop,
+      difference: scrollHeight - viewportHeight - scrollTop,
+      autoScrollEnabled: isScrolledToBottom,
+    });
   }, []);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -297,8 +340,9 @@ const Chat = () => {
         inputRef.current?.focus();
         setAutoScrollEnabled(true);
         
+        // Use the improved scroll to bottom function
         setTimeout(() => {
-          scrollToBottom();
+          scrollToBottom(true);
         }, 100);
       } else {
         console.error('Failed to send message');
@@ -339,6 +383,14 @@ const Chat = () => {
       window.removeEventListener('orientationchange', setInitialHeight);
     };
   }, []);
+  
+  // Effect to ensure proper scrolling when messages change or component mounts
+  useEffect(() => {
+    if (currentMessages.length > 0 || isContactTyping) {
+      // Short delay to ensure DOM is updated before scrolling
+      setTimeout(() => scrollToBottom(), 200);
+    }
+  }, [currentMessages, isContactTyping, scrollToBottom]);
   
   if ((!id) || (!user?.id)) {
     return (
@@ -415,15 +467,18 @@ const Chat = () => {
         </div>
       </div>
       
-      <ScrollArea 
-        className="flex-1 overflow-y-auto pb-safe"
+      {/* Messages container with native scrolling for better mobile performance */}
+      <div 
+        className="flex-1 overflow-y-auto pb-safe relative"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+        ref={messagesContainerRef}
         onScroll={handleScroll}
-        ref={scrollAreaRef}
       >
         <div 
           className="p-4 space-y-4"
           style={{ 
-            paddingBottom: isKeyboardVisible && isMobile ? `${Math.max(20, keyboardHeight * 0.1)}px` : '70px'
+            paddingBottom: isKeyboardVisible && isMobile ? `${Math.max(20, keyboardHeight * 0.1)}px` : '70px',
+            minHeight: '100%',
           }}
         >
           {contactError && (
@@ -437,8 +492,18 @@ const Chat = () => {
                   size="sm" 
                   className="self-start mt-2" 
                   onClick={handleRetryLoad}
+                  disabled={isRetrying}
                 >
-                  <RefreshCw className="h-3 w-3 mr-2" /> Retry
+                  {isRetrying ? (
+                    <>
+                      <div className="animate-spin h-3 w-3 mr-2 border-2 border-primary border-t-transparent rounded-full"></div>
+                      Retrying...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-3 w-3 mr-2" /> Retry
+                    </>
+                  )}
                 </Button>
               </AlertDescription>
             </Alert>
@@ -455,8 +520,18 @@ const Chat = () => {
                   size="sm" 
                   className="self-start mt-2 bg-background text-foreground hover:bg-muted" 
                   onClick={handleRetryLoad}
+                  disabled={isRetrying}
                 >
-                  <RefreshCw className="h-3 w-3 mr-2" /> Retry
+                  {isRetrying ? (
+                    <>
+                      <div className="animate-spin h-3 w-3 mr-2 border-2 border-primary border-t-transparent rounded-full"></div>
+                      Retrying...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-3 w-3 mr-2" /> Retry
+                    </>
+                  )}
                 </Button>
               </AlertDescription>
             </Alert>
@@ -528,7 +603,7 @@ const Chat = () => {
           
           <div ref={messageEndRef} />
         </div>
-      </ScrollArea>
+      </div>
       
       <div 
         className={cn(
@@ -559,25 +634,7 @@ const Chat = () => {
             placeholder="Type a message..."
             className="rounded-full border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
             value={newMessage}
-            onChange={(e) => {
-              setNewMessage(e.target.value);
-              
-              if (!id) return;
-              
-              setTypingStatus(id, true);
-              
-              if (typingTimeout) {
-                clearTimeout(typingTimeout);
-              }
-              
-              const timeout = setTimeout(() => {
-                if (id) {
-                  setTypingStatus(id, false);
-                }
-              }, 3000);
-              
-              setTypingTimeout(timeout);
-            }}
+            onChange={handleInputChange}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 handleSendMessage();
@@ -588,7 +645,7 @@ const Chat = () => {
                 inputRef.current.focus();
                 setAutoScrollEnabled(true);
                 setTimeout(() => {
-                  scrollToBottom();
+                  scrollToBottom(true);
                 }, 100);
               }
             }}
@@ -608,7 +665,11 @@ const Chat = () => {
             disabled={!newMessage.trim() || isSending}
             onClick={handleSendMessage}
           >
-            <Send className="h-5 w-5" />
+            {isSending ? (
+              <div className="animate-spin h-4 w-4 border-2 border-background border-t-transparent rounded-full"></div>
+            ) : (
+              <Send className="h-5 w-5" />
+            )}
           </Button>
         </div>
       </div>

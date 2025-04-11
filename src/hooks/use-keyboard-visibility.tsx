@@ -58,10 +58,12 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
     // If keyboard visibility state changed, trigger appropriate callbacks
     if (currentIsVisible !== isKeyboardVisible) {
       if (currentIsVisible) {
+        console.log(`Keyboard showing, height: ${estimatedKeyboardHeight}px`);
         setKeyboardHeight(estimatedKeyboardHeight);
         setIsKeyboardVisible(true);
         onKeyboardShow?.();
       } else {
+        console.log('Keyboard hiding');
         setKeyboardHeight(0);
         setIsKeyboardVisible(false);
         onKeyboardHide?.();
@@ -69,6 +71,7 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
     } else if (currentIsVisible) {
       // Update keyboard height if keyboard is still visible but height changed
       if (Math.abs(estimatedKeyboardHeight - keyboardHeight) > 20) {
+        console.log(`Keyboard height updated: ${estimatedKeyboardHeight}px`);
         setKeyboardHeight(estimatedKeyboardHeight);
       }
     }
@@ -80,17 +83,27 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
     // Set initial viewport height reference
     setLastViewportHeight(window.visualViewport.height);
     
-    // Improved debounced handler to prevent excessive updates but ensure smooth transitions
+    // Enhanced debounced handler with immediate execution for smoother transitions
     let timeout: NodeJS.Timeout | null = null;
+    let immediateTimeout: NodeJS.Timeout | null = null;
+    
     const debouncedDetectKeyboard = () => {
+      // Clear any existing timeouts
       if (timeout) clearTimeout(timeout);
-      // First quickly update with current values to avoid lag
-      detectKeyboard();
-      // Then properly update after debounce time for stabilization
-      timeout = setTimeout(detectKeyboard, debounceTime);
+      if (immediateTimeout) clearTimeout(immediateTimeout);
+      
+      // Run an immediate detection for responsive feel
+      immediateTimeout = setTimeout(() => {
+        detectKeyboard();
+      }, 10);
+      
+      // Then do a stable detection after debounce time
+      timeout = setTimeout(() => {
+        detectKeyboard();
+      }, debounceTime);
     };
     
-    // Listen for visualViewport changes
+    // Listen for visualViewport changes - primary detection method
     window.visualViewport.addEventListener('resize', debouncedDetectKeyboard);
     
     // Also listen for orientation changes and window resize as fallbacks
@@ -120,7 +133,9 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
       window.removeEventListener('resize', debouncedDetectKeyboard);
       window.removeEventListener('orientationchange', debouncedDetectKeyboard);
       document.removeEventListener('focusin', handleFocus);
+      
       if (timeout) clearTimeout(timeout);
+      if (immediateTimeout) clearTimeout(immediateTimeout);
     };
   }, [isMobile, detectKeyboard, debounceTime]);
   
