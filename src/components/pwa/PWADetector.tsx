@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
@@ -101,7 +102,7 @@ const PWADetector = () => {
         className="flex items-center gap-2 shadow-lg bg-black hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
       >
         <img 
-          src="/lovable-uploads/95f9c287-86ca-4428-bbc4-b9c9b75478b9.png" 
+          src="/lovable-uploads/9b12a457-c35c-4dbb-9398-0247dff27d1a.png" 
           alt="The Triage System" 
           className="w-4 h-4 mr-1"
         />

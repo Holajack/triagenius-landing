@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Download, Share } from 'lucide-react';
@@ -145,7 +146,7 @@ const InstallPrompt = () => {
               <div className="flex-1">
                 <div className="flex items-center mb-3">
                   <img 
-                    src="/lovable-uploads/95f9c287-86ca-4428-bbc4-b9c9b75478b9.png" 
+                    src="/lovable-uploads/9b12a457-c35c-4dbb-9398-0247dff27d1a.png" 
                     alt="The Triage System" 
                     className="w-8 h-8 mr-2"
                   />
