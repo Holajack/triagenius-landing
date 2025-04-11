@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useIsMobile } from './use-mobile';
 
 interface KeyboardVisibilityOptions {
@@ -19,40 +19,40 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const isMobile = useIsMobile();
   
+  const detectKeyboard = useCallback(() => {
+    if (!window.visualViewport) return;
+    
+    // Calculate if keyboard is likely visible based on viewport height
+    const currentIsVisible = window.visualViewport.height < window.innerHeight * threshold;
+    
+    // If keyboard visibility state changed, trigger appropriate callbacks
+    if (currentIsVisible !== isKeyboardVisible) {
+      if (currentIsVisible) {
+        onKeyboardShow?.();
+      } else {
+        onKeyboardHide?.();
+      }
+      setIsKeyboardVisible(currentIsVisible);
+    }
+    
+    // Always update keyboard height when viewport changes
+    if (currentIsVisible) {
+      // Estimate keyboard height
+      const estimatedKeyboardHeight = window.innerHeight - window.visualViewport.height;
+      setKeyboardHeight(estimatedKeyboardHeight);
+    } else {
+      setKeyboardHeight(0);
+    }
+  }, [threshold, isKeyboardVisible, onKeyboardShow, onKeyboardHide]);
+  
   useEffect(() => {
     if (!isMobile || !window.visualViewport) return;
     
-    const detectKeyboard = () => {
-      if (!window.visualViewport) return;
-      
-      // Calculate if keyboard is likely visible based on viewport height
-      const currentIsVisible = window.visualViewport.height < window.innerHeight * threshold;
-      
-      // If keyboard visibility state changed, trigger appropriate callbacks
-      if (currentIsVisible !== isKeyboardVisible) {
-        if (currentIsVisible) {
-          onKeyboardShow?.();
-        } else {
-          onKeyboardHide?.();
-        }
-      }
-      
-      setIsKeyboardVisible(currentIsVisible);
-      
-      if (currentIsVisible) {
-        // Estimate keyboard height
-        const estimatedKeyboardHeight = window.innerHeight - window.visualViewport.height;
-        setKeyboardHeight(estimatedKeyboardHeight);
-      } else {
-        setKeyboardHeight(0);
-      }
-    };
+    // Listen for visualViewport changes
+    window.visualViewport.addEventListener('resize', detectKeyboard);
+    window.visualViewport.addEventListener('scroll', detectKeyboard);
     
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', detectKeyboard);
-      window.visualViewport.addEventListener('scroll', detectKeyboard);
-    }
-    
+    // Also listen for window resize as a fallback
     window.addEventListener('resize', detectKeyboard);
     
     // Initial check
@@ -65,7 +65,7 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
       }
       window.removeEventListener('resize', detectKeyboard);
     };
-  }, [isMobile, threshold, isKeyboardVisible, onKeyboardShow, onKeyboardHide]);
+  }, [isMobile, detectKeyboard]);
   
   return { isKeyboardVisible, keyboardHeight };
 }

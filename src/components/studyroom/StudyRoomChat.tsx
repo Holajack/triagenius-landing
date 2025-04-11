@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { SendHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/hooks/use-user';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useKeyboardVisibility } from '@/hooks/use-keyboard-visibility';
 
 export interface RoomMessage {
   id: string;
@@ -41,74 +43,16 @@ export const StudyRoomChat = ({
   const { user } = useUser();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  
-  // Detect keyboard visibility on mobile
-  useEffect(() => {
-    if (!isMobile) return;
-    
-    const detectKeyboard = () => {
-      if (!window.visualViewport) return;
-      
-      // On iOS, the viewport height changes when the keyboard appears
-      const isKeyboardOpen = window.visualViewport.height < window.innerHeight * 0.8;
-      
-      setIsKeyboardVisible(isKeyboardOpen);
-      
-      if (chatContainerRef.current && isKeyboardOpen) {
-        // Update the container to accommodate keyboard
-        const viewportHeight = window.visualViewport.height;
-        const keyboardHeight = window.innerHeight - viewportHeight;
-        
-        // Set a fixed position for the input area when keyboard is visible
-        chatContainerRef.current.style.height = `${viewportHeight}px`;
-        chatContainerRef.current.style.maxHeight = `${viewportHeight}px`;
-        
-        // Ensure messages are visible above the keyboard
-        if (textareaRef.current) {
-          const textAreaRect = textareaRef.current.getBoundingClientRect();
-          if (textAreaRect.bottom > viewportHeight) {
-            // Scroll to keep the input field visible
-            window.scrollTo({
-              top: window.scrollY + (textAreaRect.bottom - viewportHeight) + 20,
-              behavior: 'smooth'
-            });
-          }
-        }
-        
-        // Scroll to latest message with delay to let layout settle
-        setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 300);
-      } else if (chatContainerRef.current) {
-        // Reset styles when keyboard is hidden
-        chatContainerRef.current.style.height = '';
-        chatContainerRef.current.style.maxHeight = '';
-      }
-    };
-    
-    // Listen for visualViewport changes (modern browsers)
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', detectKeyboard);
-      window.visualViewport.addEventListener('scroll', detectKeyboard);
+  const { isKeyboardVisible, keyboardHeight } = useKeyboardVisibility({
+    onKeyboardShow: () => {
+      // Scroll to bottom when keyboard appears
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 300);
     }
-    
-    // Also listen for window resize as a fallback
-    window.addEventListener('resize', detectKeyboard);
-    
-    // Initial check
-    detectKeyboard();
-    
-    return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', detectKeyboard);
-        window.visualViewport.removeEventListener('scroll', detectKeyboard);
-      }
-      window.removeEventListener('resize', detectKeyboard);
-    };
-  }, [isMobile]);
+  });
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -116,17 +60,6 @@ export const StudyRoomChat = ({
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
-
-  // Additional effect to keep input visible when keyboard is shown
-  useEffect(() => {
-    if (isKeyboardVisible && isMobile && textareaRef.current) {
-      // Short timeout to let the keyboard fully appear
-      setTimeout(() => {
-        textareaRef.current?.focus();
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 300);
-    }
-  }, [isKeyboardVisible, isMobile]);
 
   const formatTimestamp = (timestamp: string): string => {
     const date = new Date(timestamp);
@@ -220,13 +153,12 @@ export const StudyRoomChat = ({
                 "min-h-[80px]",
                 isKeyboardVisible && isMobile && "min-h-[60px]"
               )}
-              onFocus={() => {
-                // Ensure input is visible when focused
-                setTimeout(() => {
-                  if (textareaRef.current) {
-                    textareaRef.current.scrollIntoView({ behavior: 'smooth' });
-                  }
-                }, 300);
+              onClick={() => {
+                if (isMobile && textareaRef.current) {
+                  // Focus and make sure the input stays visible
+                  textareaRef.current.focus();
+                  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }
               }}
             />
             <Button

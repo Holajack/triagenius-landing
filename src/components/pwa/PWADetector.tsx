@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -79,34 +78,18 @@ const PWADetector = () => {
               left: 0;
               right: 0;
               z-index: 1000;
+              background-color: var(--background);
+              padding: 8px;
+              border-top: 1px solid var(--border);
             }
           }
         `;
         document.head.appendChild(cssStyle);
       }
-      
-      // Listen for keyboard visibility changes
-      if (window.visualViewport) {
-        const handleVisualViewportResize = () => {
-          // If more than 20% of the screen is covered, we assume keyboard is visible
-          if (window.visualViewport.height < window.innerHeight * 0.8) {
-            document.body.classList.add('keyboard-visible');
-          } else {
-            document.body.classList.remove('keyboard-visible');
-          }
-        };
-        
-        window.visualViewport.addEventListener('resize', handleVisualViewportResize);
-        
-        return () => {
-          window.visualViewport.removeEventListener('resize', handleVisualViewportResize);
-        };
-      }
     };
     
     if (isMobile) {
-      const cleanup = setViewportForKeyboard();
-      return cleanup;
+      setViewportForKeyboard();
     }
     
     // Only proceed if we're in a browser context, not in standalone mode

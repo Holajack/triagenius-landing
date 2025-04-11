@@ -13,6 +13,7 @@ import { getDisplayName, getInitials } from "@/hooks/use-display-name";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useKeyboardVisibility } from "@/hooks/use-keyboard-visibility";
 
 const Chat = () => {
   const { id } = useParams<{ id: string }>();
@@ -39,79 +40,25 @@ const Chat = () => {
   const [isSending, setIsSending] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
   const isMobile = useIsMobile();
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   
-  const isContactTyping = id && isUserTyping(id);
-
-  useEffect(() => {
-    if (!isMobile) return;
-    
-    const detectKeyboard = () => {
-      if (!window.visualViewport) return;
-      
-      const isKeyboardOpen = window.visualViewport.height < window.innerHeight * 0.8;
-      
-      setIsKeyboardVisible(isKeyboardOpen);
-      
-      if (chatContainerRef.current && isKeyboardOpen) {
-        const viewportHeight = window.visualViewport.height;
-        const keyboardHeight = window.innerHeight - viewportHeight;
-        
-        chatContainerRef.current.style.height = `${viewportHeight}px`;
-        chatContainerRef.current.style.maxHeight = `${viewportHeight}px`;
-        
+  const { isKeyboardVisible, keyboardHeight } = useKeyboardVisibility({
+    onKeyboardShow: () => {
+      setTimeout(() => {
         if (contentAreaRef.current) {
           contentAreaRef.current.style.paddingBottom = "120px";
         }
         
-        if (inputRef.current) {
-          const inputRect = inputRef.current.getBoundingClientRect();
-          if (inputRect.bottom > viewportHeight) {
-            window.scrollTo({
-              top: window.scrollY + (inputRect.bottom - viewportHeight) + 20,
-              behavior: 'smooth'
-            });
-          }
-        }
-        
-        setTimeout(() => {
-          messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 300);
-      } else if (chatContainerRef.current) {
-        chatContainerRef.current.style.height = '';
-        chatContainerRef.current.style.maxHeight = '';
-        
-        if (contentAreaRef.current) {
-          contentAreaRef.current.style.paddingBottom = '';
-        }
-      }
-    };
-    
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', detectKeyboard);
-      window.visualViewport.addEventListener('scroll', detectKeyboard);
-    }
-    
-    window.addEventListener('resize', detectKeyboard);
-    
-    detectKeyboard();
-    
-    return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', detectKeyboard);
-        window.visualViewport.removeEventListener('scroll', detectKeyboard);
-      }
-      window.removeEventListener('resize', detectKeyboard);
-    };
-  }, [isMobile]);
-
-  useEffect(() => {
-    if (isKeyboardVisible && isMobile && inputRef.current) {
-      setTimeout(() => {
         messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 300);
+    },
+    onKeyboardHide: () => {
+      if (contentAreaRef.current) {
+        contentAreaRef.current.style.paddingBottom = '';
+      }
     }
-  }, [isKeyboardVisible, isMobile]);
+  });
+  
+  const isContactTyping = id && isUserTyping(id);
 
   const fetchConversationMessages = useCallback(async () => {
     if (!id || !user?.id) return;
@@ -166,7 +113,7 @@ const Chat = () => {
       supabase.removeChannel(channel);
     };
   }, [user?.id]);
-  
+
   useEffect(() => {
     if (!id || !user?.id) return;
     
@@ -545,13 +492,11 @@ const Chat = () => {
                 handleSendMessage();
               }
             }}
-            onFocus={() => {
-              setTimeout(() => {
-                if (inputRef.current) {
-                  inputRef.current.scrollIntoView({ behavior: 'smooth' });
-                  messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-                }
-              }, 300);
+            onClick={() => {
+              if (isMobile && inputRef.current) {
+                inputRef.current.focus();
+                messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+              }
             }}
           />
           
