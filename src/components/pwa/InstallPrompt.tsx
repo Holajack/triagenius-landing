@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { X, Download, Share } from 'lucide-react';
@@ -25,7 +24,6 @@ const InstallPrompt = () => {
   const { toast } = useToast();
   
   useEffect(() => {
-    // Check if user is on mobile
     const checkMobile = () => {
       const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
       return /android|iPad|iPhone|iPod/.test(userAgent);
@@ -33,7 +31,6 @@ const InstallPrompt = () => {
     
     setIsMobile(checkMobile());
     
-    // Check if already installed
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                         (window.navigator as any).standalone === true;
     if (isStandalone) {
@@ -41,19 +38,13 @@ const InstallPrompt = () => {
       return;
     }
     
-    // Only proceed if we're in a browser context, not in standalone mode
     if (!isStandalone) {
-      // Capture the beforeinstallprompt event
       const beforeInstallPromptHandler = (e: Event) => {
-        // Prevent Chrome 67 and earlier from automatically showing the prompt
         e.preventDefault();
-        // Store the event so it can be triggered later
         console.log('Captured beforeinstallprompt event');
         setInstallPrompt(e as BeforeInstallPromptEvent);
         
-        // Only show our custom prompt for mobile users
         if (checkMobile()) {
-          // Show our custom prompt after a short delay
           setTimeout(() => {
             const lastPrompt = localStorage.getItem('installPromptDismissed');
             const currentDate = new Date().toISOString();
@@ -69,7 +60,6 @@ const InstallPrompt = () => {
       console.log('Adding beforeinstallprompt event listener');
       window.addEventListener('beforeinstallprompt', beforeInstallPromptHandler);
       
-      // Cleanup
       return () => {
         window.removeEventListener('beforeinstallprompt', beforeInstallPromptHandler);
       };
@@ -78,7 +68,6 @@ const InstallPrompt = () => {
   
   const handleInstallClick = async () => {
     if (!installPrompt) {
-      // Show iOS instructions instead
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
       if (isIOS) {
         setIsIOSDialogOpen(true);
@@ -86,15 +75,12 @@ const InstallPrompt = () => {
       return;
     }
     
-    // Show the browser install prompt
     console.log('Triggering browser install prompt');
     installPrompt.prompt();
     
     try {
-      // Wait for the user to respond to the prompt
       const choiceResult = await installPrompt.userChoice;
       
-      // User accepted installation
       if (choiceResult.outcome === 'accepted') {
         console.log('User accepted the install prompt');
         toast({
@@ -108,7 +94,6 @@ const InstallPrompt = () => {
       console.error('Error with install prompt:', err);
     }
     
-    // Clear the saved prompt since it can't be used again
     setInstallPrompt(null);
     setIsVisible(false);
   };
@@ -116,17 +101,15 @@ const InstallPrompt = () => {
   const handleDismiss = () => {
     console.log('User dismissed our custom install prompt');
     setIsVisible(false);
-    // Save the current time to localStorage so we don't prompt again for a while
     localStorage.setItem('installPromptDismissed', new Date().toISOString());
   };
   
   const daysBetween = (date1: Date, date2: Date) => {
-    const oneDay = 24 * 60 * 60 * 1000; // hours*minutes*seconds*milliseconds
+    const oneDay = 24 * 60 * 60 * 1000;
     const diffDays = Math.round(Math.abs((date1.getTime() - date2.getTime()) / oneDay));
     return diffDays;
   };
   
-  // Don't render anything if not on mobile or already installed as PWA
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                        (window.navigator as any).standalone === true;
   if (!isMobile || isStandalone) return null;
@@ -146,7 +129,7 @@ const InstallPrompt = () => {
               <div className="flex-1">
                 <div className="flex items-center mb-3">
                   <img 
-                    src="/lovable-uploads/9b12a457-c35c-4dbb-9398-0247dff27d1a.png" 
+                    src="/lovable-uploads/23611129-00f0-4247-b8df-4bceac3d4631.png" 
                     alt="The Triage System" 
                     className="w-8 h-8 mr-2"
                   />

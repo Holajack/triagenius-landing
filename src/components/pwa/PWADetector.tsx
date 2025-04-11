@@ -102,7 +102,7 @@ const PWADetector = () => {
         className="flex items-center gap-2 shadow-lg bg-black hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
       >
         <img 
-          src="/lovable-uploads/9b12a457-c35c-4dbb-9398-0247dff27d1a.png" 
+          src="/lovable-uploads/23611129-00f0-4247-b8df-4bceac3d4631.png" 
           alt="The Triage System" 
           className="w-4 h-4 mr-1"
         />
