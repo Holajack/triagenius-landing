@@ -41,27 +41,17 @@ const Chat = () => {
   const [messageError, setMessageError] = useState<string | null>(null);
   const isMobile = useIsMobile();
   
-  useEffect(() => {
-    const updateVh = () => {
-      const vh = window.innerHeight * 0.01;
-      document.documentElement.style.setProperty('--vh', `${vh}px`);
-    };
-
-    updateVh();
-    window.addEventListener('resize', updateVh);
-    window.addEventListener('orientationchange', updateVh);
-    
-    return () => {
-      window.removeEventListener('resize', updateVh);
-      window.removeEventListener('orientationchange', updateVh);
-    };
-  }, []);
-  
-  const { isKeyboardVisible } = useKeyboardVisibility({
+  const { isKeyboardVisible, keyboardHeight } = useKeyboardVisibility({
     onKeyboardShow: () => {
       setTimeout(() => {
         messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 300);
+    },
+    onKeyboardHide: () => {
+      contentAreaRef.current?.scrollTo({
+        top: contentAreaRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
     }
   });
   
@@ -353,7 +343,7 @@ const Chat = () => {
         overflow: 'hidden'
       }}
     >
-      <div className="border-b p-3 flex items-center justify-between bg-card">
+      <div className="border-b p-3 flex items-center justify-between bg-card z-10">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate('/community')}>
             <ArrowLeft className="h-5 w-5" />
@@ -385,7 +375,9 @@ const Chat = () => {
         ref={contentAreaRef}
         style={{ 
           overscrollBehavior: 'contain',
-          paddingBottom: isKeyboardVisible && isMobile ? '8rem' : '1rem'
+          paddingBottom: isKeyboardVisible && isMobile ? `${Math.max(80, keyboardHeight/2)}px` : '1rem',
+          height: '100%',
+          maxHeight: isKeyboardVisible && isMobile ? `calc(100% - ${keyboardHeight/2}px)` : '100%'
         }}
       >
         {contactError && (
@@ -492,14 +484,14 @@ const Chat = () => {
       <div className={cn(
         "border-t p-3 bg-card",
         isKeyboardVisible && isMobile 
-          ? "sticky bottom-0 left-0 right-0 z-50 shadow-lg" 
+          ? "fixed bottom-0 left-0 right-0 z-50 shadow-lg" 
           : "relative"
       )}>
         <div className="flex items-center gap-2">
           <Button 
             variant="ghost" 
             size="icon" 
-            className="rounded-full"
+            className="rounded-full shrink-0"
             onClick={() => toast.info("File sharing coming soon")}
           >
             <Paperclip className="h-5 w-5 text-muted-foreground" />
@@ -519,7 +511,9 @@ const Chat = () => {
             onClick={() => {
               if (isMobile && inputRef.current) {
                 inputRef.current.focus();
-                messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                setTimeout(() => {
+                  messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }, 100);
               }
             }}
           />
@@ -527,14 +521,14 @@ const Chat = () => {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="rounded-full"
+            className="rounded-full shrink-0"
             onClick={() => toast.info("Emoji picker coming soon")}
           >
             <Smile className="h-5 w-5 text-muted-foreground" />
           </Button>
           
           <Button 
-            className="rounded-full h-10 w-10 p-0"
+            className="rounded-full h-10 w-10 p-0 shrink-0"
             disabled={!newMessage.trim() || isSending}
             onClick={handleSendMessage}
           >

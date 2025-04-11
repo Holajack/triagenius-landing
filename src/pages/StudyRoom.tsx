@@ -15,6 +15,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 import { Clock, X } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useKeyboardVisibility } from '@/hooks/use-keyboard-visibility';
 
 // Define a proper interface for the StudyRoom
 interface StudyRoom {
@@ -52,6 +53,8 @@ const StudyRoom = () => {
   const { state } = useOnboarding();
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  const { isKeyboardVisible } = useKeyboardVisibility();
 
   useEffect(() => {
     // Set viewport height custom property
@@ -128,7 +131,8 @@ const StudyRoom = () => {
       )}
       style={{
         minHeight: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100vh',
-        height: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100vh'
+        height: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100vh',
+        paddingBottom: isKeyboardVisible && isMobile ? '0' : undefined
       }}
     >
       <PageHeader title={currentRoom.name} />
@@ -143,7 +147,10 @@ const StudyRoom = () => {
         </Button>
       </div>
 
-      <div className="flex flex-col md:flex-row flex-1 h-full">
+      <div className={cn(
+        "flex flex-col md:flex-row flex-1 h-full",
+        isKeyboardVisible && isMobile ? "pb-16" : ""
+      )}>
         <div className="w-full md:w-3/4 flex flex-col mb-4 md:mb-0">
           <StudyRoomChat
             messages={formattedMessages}
@@ -155,7 +162,10 @@ const StudyRoom = () => {
           />
         </div>
 
-        <div className="w-full md:w-1/4 flex flex-col">
+        <div className={cn(
+          "w-full md:w-1/4 flex flex-col",
+          isKeyboardVisible && isMobile ? "hidden" : ""
+        )}>
           <StudyRoomMember roomId={id || ''} />
           <StudyRoomResources roomId={id || ''} />
         </div>

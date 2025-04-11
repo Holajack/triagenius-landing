@@ -47,7 +47,7 @@ export const StudyRoomChat = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   
-  const { isKeyboardVisible } = useKeyboardVisibility({
+  const { isKeyboardVisible, keyboardHeight } = useKeyboardVisibility({
     onKeyboardShow: () => {
       // Add a small delay to let the layout adjust
       setTimeout(() => {
@@ -108,6 +108,10 @@ export const StudyRoomChat = ({
         <div 
           className="flex-grow overflow-y-auto p-4 space-y-4"
           ref={messagesContainerRef}
+          style={{
+            paddingBottom: isKeyboardVisible && isMobile ? `${Math.max(60, keyboardHeight/2)}px` : '1rem',
+            overscrollBehavior: 'contain'
+          }}
         >
           {isLoading ? (
             <div className="flex justify-center items-center h-full">
@@ -166,7 +170,7 @@ export const StudyRoomChat = ({
 
         <div className={cn(
           "p-3 border-t mt-auto bg-card",
-          isKeyboardVisible && isMobile && "sticky bottom-0 left-0 right-0 z-50 shadow-lg"
+          isKeyboardVisible && isMobile && "fixed bottom-0 left-0 right-0 z-50 shadow-lg"
         )}>
           <div className="flex gap-2">
             <Textarea
@@ -176,23 +180,26 @@ export const StudyRoomChat = ({
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={onKeyDown}
               className={cn(
-                "min-h-[80px] resize-none",
-                isKeyboardVisible && isMobile && "min-h-[60px] max-h-[100px]"
+                "min-h-[60px] resize-none",
+                isKeyboardVisible && isMobile && "min-h-[40px] max-h-[80px]"
               )}
               onClick={() => {
                 if (isMobile && textareaRef.current) {
                   // Focus and make sure the input stays visible
                   textareaRef.current.focus();
+                  setTimeout(() => {
+                    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                  }, 100);
                 }
               }}
               style={{
-                height: isKeyboardVisible && isMobile ? '60px' : '80px'
+                height: isKeyboardVisible && isMobile ? '50px' : '60px'
               }}
             />
             <Button
               onClick={onSendMessage}
               disabled={!message.trim()}
-              className="self-end"
+              className="self-end shrink-0"
             >
               <SendHorizontal className="h-5 w-5" />
             </Button>

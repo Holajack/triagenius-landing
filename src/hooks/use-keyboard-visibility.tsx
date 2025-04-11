@@ -20,7 +20,7 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
   const isMobile = useIsMobile();
   
   const detectKeyboard = useCallback(() => {
-    if (!window.visualViewport) return;
+    if (!window || !window.visualViewport) return;
     
     // Calculate if keyboard is likely visible based on viewport height ratio
     const viewportRatio = window.visualViewport.height / window.innerHeight;
@@ -47,7 +47,7 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
   }, [threshold, isKeyboardVisible, onKeyboardShow, onKeyboardHide]);
   
   useEffect(() => {
-    if (!isMobile || !window.visualViewport) return;
+    if (!isMobile || typeof window === 'undefined' || !window.visualViewport) return;
     
     // Listen for visualViewport changes
     window.visualViewport.addEventListener('resize', detectKeyboard);
