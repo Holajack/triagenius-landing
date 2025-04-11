@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,22 +43,31 @@ export const StudyRoomChat = ({
   const isMobile = useIsMobile();
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   // Detect keyboard visibility on mobile
   useEffect(() => {
     if (!isMobile) return;
     
     const detectKeyboard = () => {
+      if (!window.visualViewport) return;
+      
       // On iOS, the viewport height changes when the keyboard appears
-      const isKeyboardOpen = window.visualViewport && 
-        window.visualViewport.height < window.innerHeight;
+      const isKeyboardOpen = window.visualViewport.height < window.innerHeight * 0.8;
       
       setIsKeyboardVisible(isKeyboardOpen);
       
       if (chatContainerRef.current && isKeyboardOpen) {
-        // Adjust container padding when keyboard is open
-        chatContainerRef.current.style.paddingBottom = 
-          `${window.innerHeight - window.visualViewport.height}px`;
+        // Calculate keyboard height as the difference between window inner height and visual viewport height
+        const keyboardHeight = window.innerHeight - window.visualViewport.height;
+        
+        // Add padding to ensure content isn't hidden behind keyboard
+        chatContainerRef.current.style.paddingBottom = `${keyboardHeight + 20}px`;
+        
+        // Scroll the messages container to keep the input in view
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
       } else if (chatContainerRef.current) {
         chatContainerRef.current.style.paddingBottom = '';
       }
@@ -68,24 +76,41 @@ export const StudyRoomChat = ({
     // Listen for visualViewport changes (modern browsers)
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', detectKeyboard);
+      window.visualViewport.addEventListener('scroll', detectKeyboard);
     }
     
     // Also listen for window resize as a fallback
     window.addEventListener('resize', detectKeyboard);
     
+    // Initial check
+    detectKeyboard();
+    
     return () => {
       if (window.visualViewport) {
         window.visualViewport.removeEventListener('resize', detectKeyboard);
+        window.visualViewport.removeEventListener('scroll', detectKeyboard);
       }
       window.removeEventListener('resize', detectKeyboard);
     };
   }, [isMobile]);
 
+  // Scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
+
+  // Additional effect to keep input visible when keyboard is shown
+  useEffect(() => {
+    if (isKeyboardVisible && isMobile && textareaRef.current) {
+      // Short timeout to let the keyboard fully appear
+      setTimeout(() => {
+        textareaRef.current?.focus();
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 300);
+    }
+  }, [isKeyboardVisible, isMobile]);
 
   const formatTimestamp = (timestamp: string): string => {
     const date = new Date(timestamp);
@@ -96,7 +121,7 @@ export const StudyRoomChat = ({
     <Card 
       className={cn(
         "flex flex-col h-[500px] md:h-[70vh] mb-4 md:mb-0 md:mr-4",
-        isKeyboardVisible && isMobile && "h-screen"
+        isKeyboardVisible && isMobile && "h-[85vh]"
       )}
       ref={chatContainerRef}
     >
@@ -107,7 +132,7 @@ export const StudyRoomChat = ({
 
         <div className={cn(
           "flex-grow overflow-y-auto p-4 space-y-4",
-          isKeyboardVisible && isMobile && "pb-16"
+          isKeyboardVisible && isMobile && "pb-20"
         )}>
           {isLoading ? (
             <div className="flex justify-center items-center h-full">
@@ -170,6 +195,7 @@ export const StudyRoomChat = ({
         )}>
           <div className="flex gap-2">
             <Textarea
+              ref={textareaRef}
               placeholder="Type your message..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}

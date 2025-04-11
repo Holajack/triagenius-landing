@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
@@ -54,11 +53,11 @@ const PWADetector = () => {
       if (!viewportMeta) {
         const meta = document.createElement('meta');
         meta.name = 'viewport';
-        meta.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, height=device-height';
+        meta.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, height=device-height, interactive-widget=resizes-content';
         document.head.appendChild(meta);
       } else {
         viewportMeta.setAttribute('content', 
-          'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, height=device-height');
+          'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, height=device-height, interactive-widget=resizes-content');
       }
     };
     
