@@ -14,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useKeyboardVisibility } from "@/hooks/use-keyboard-visibility";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const Chat = () => {
   const { id } = useParams<{ id: string }>();
@@ -43,10 +44,9 @@ const Chat = () => {
   
   const { isKeyboardVisible, keyboardHeight } = useKeyboardVisibility({
     onKeyboardShow: () => {
-      // No auto-scrolling on keyboard show
+      inputRef.current?.focus();
     },
     onKeyboardHide: () => {
-      // No auto-scrolling on keyboard hide
     }
   });
   
@@ -346,14 +346,13 @@ const Chat = () => {
   
   return (
     <div 
-      className="flex flex-col bg-background" 
+      className="flex flex-col fixed inset-0 bg-background"
       style={{ 
-        height: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100vh',
-        maxHeight: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100vh',
-        overflow: 'hidden'
+        height: '100%',
+        maxHeight: '100%'
       }}
     >
-      <div className="border-b p-3 flex items-center justify-between bg-card z-20 sticky top-0 shadow-sm">
+      <header className="border-b p-3 flex items-center justify-between bg-card z-20 shadow-sm">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate('/community')}>
             <ArrowLeft className="h-5 w-5" />
@@ -378,24 +377,18 @@ const Chat = () => {
             </div>
           </div>
         </div>
-      </div>
+      </header>
       
-      {/* Message container with standard scrolling behavior */}
       <div 
         ref={messagesContainerRef}
-        className="flex-grow overflow-y-auto pb-safe"
+        className="flex-1 overflow-y-auto"
         style={{ 
-          WebkitOverflowScrolling: 'touch',
           overscrollBehavior: 'contain',
+          WebkitOverflowScrolling: 'touch',
+          paddingBottom: isKeyboardVisible ? `${keyboardHeight * 0.2}px` : '0'
         }}
       >
-        <div 
-          className="p-4 space-y-4"
-          style={{ 
-            paddingBottom: isKeyboardVisible && isMobile ? `${Math.max(20, keyboardHeight * 0.1)}px` : '70px',
-            minHeight: currentMessages.length === 0 ? '100%' : 'auto',
-          }}
-        >
+        <div className="p-4 space-y-4">
           {contactError && (
             <Alert variant="default" className="mb-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
               <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
@@ -498,7 +491,7 @@ const Chat = () => {
               );
             })
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground py-20">
               <p>No messages yet</p>
               <p className="text-sm mt-2">Send a message to start the conversation</p>
             </div>
@@ -516,22 +509,21 @@ const Chat = () => {
             </div>
           )}
           
-          <div ref={messageEndRef} />
+          <div ref={messageEndRef} className="pt-16" />
         </div>
       </div>
       
       <div 
         className={cn(
-          "p-2 bg-card transition-all duration-200",
-          isKeyboardVisible && isMobile ? "fixed bottom-0 left-0 right-0 shadow-lg z-50" : "sticky bottom-0 z-20 border-t"
+          "p-2 bg-card border-t z-20 absolute left-0 right-0",
+          isKeyboardVisible && isMobile ? "fixed bottom-0 shadow-lg" : "bottom-0"
         )}
         style={{
-          bottom: isKeyboardVisible && isMobile ? `0` : undefined,
+          bottom: isKeyboardVisible && isMobile ? `${keyboardHeight > 0 ? 0 : 0}px` : 0,
           paddingBottom: isKeyboardVisible && isMobile ? 
             `calc(${Math.min(4, keyboardHeight * 0.01)}px + env(safe-area-inset-bottom, 0px))` : 
             'env(safe-area-inset-bottom, 0.5rem)',
-          transform: `translateY(0)`,
-          willChange: 'transform',
+          transition: 'bottom 0.3s ease-out'
         }}
       >
         <div className="flex items-center gap-2 bg-background rounded-full border px-2">
