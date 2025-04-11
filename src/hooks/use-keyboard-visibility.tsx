@@ -37,11 +37,27 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
     const viewportRatio = viewportHeight / windowHeight;
     const currentIsVisible = viewportRatio < threshold;
     
+    // Calculate keyboard height more accurately
+    let estimatedKeyboardHeight = 0;
+    if (currentIsVisible) {
+      // Get the difference between window height and visual viewport height
+      estimatedKeyboardHeight = Math.round(windowHeight - viewportHeight);
+      
+      // Adjust for iOS Safari additional padding (if needed)
+      if (
+        /iPad|iPhone|iPod/.test(navigator.userAgent) && 
+        !window.MSStream &&
+        estimatedKeyboardHeight > 0
+      ) {
+        // iOS Safari might need an adjustment for the bottom toolbar
+        const safariFactor = 0.85; // Adjust this based on testing
+        estimatedKeyboardHeight = Math.round(estimatedKeyboardHeight * safariFactor);
+      }
+    }
+    
     // If keyboard visibility state changed, trigger appropriate callbacks
     if (currentIsVisible !== isKeyboardVisible) {
       if (currentIsVisible) {
-        // Estimate keyboard height with more accuracy
-        const estimatedKeyboardHeight = Math.round(windowHeight - viewportHeight);
         setKeyboardHeight(estimatedKeyboardHeight);
         setIsKeyboardVisible(true);
         onKeyboardShow?.();
@@ -52,7 +68,6 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
       }
     } else if (currentIsVisible) {
       // Update keyboard height if keyboard is still visible but height changed
-      const estimatedKeyboardHeight = Math.round(windowHeight - viewportHeight);
       if (Math.abs(estimatedKeyboardHeight - keyboardHeight) > 20) {
         setKeyboardHeight(estimatedKeyboardHeight);
       }
@@ -79,6 +94,19 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
     window.addEventListener('resize', debouncedDetectKeyboard);
     window.addEventListener('orientationchange', debouncedDetectKeyboard);
     
+    // Listen for focus events on input elements, which often trigger keyboard
+    const handleFocus = (e: FocusEvent) => {
+      if (
+        e.target instanceof HTMLInputElement || 
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        // Wait a moment for the keyboard to appear
+        setTimeout(detectKeyboard, 300);
+      }
+    };
+    
+    document.addEventListener('focusin', handleFocus);
+    
     // Initial check
     detectKeyboard();
     
@@ -88,6 +116,7 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
       }
       window.removeEventListener('resize', debouncedDetectKeyboard);
       window.removeEventListener('orientationchange', debouncedDetectKeyboard);
+      document.removeEventListener('focusin', handleFocus);
       if (timeout) clearTimeout(timeout);
     };
   }, [isMobile, detectKeyboard, debounceTime]);
