@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useUser } from "@/hooks/use-user";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -13,6 +12,14 @@ interface UpdateInfo {
   version?: string;
   timestamp?: number;
 }
+
+// Track notification state globally to prevent duplicates across component remounts
+const notificationState = {
+  lastNotificationTime: 0,
+  lastVersion: '',
+  notificationShown: false,
+  cooldownPeriod: 60 * 60 * 1000, // 1 hour cooldown between same notifications
+};
 
 export function usePwaUpdates() {
   const { user } = useUser();
@@ -31,59 +38,86 @@ export function usePwaUpdates() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
     
-    // More aggressive update checks for PWA users
-    const checkIntervalTime = isPWA ? 1 * 60 * 1000 : 5 * 60 * 1000; // 1 min for PWA, 5 min for browser
+    // More deliberate update checks - reduced frequency
+    const checkIntervalTime = isPWA ? 5 * 60 * 1000 : 15 * 60 * 1000; // 5 min for PWA, 15 min for browser
     
-    // Check for updates when component mounts
-    checkForUpdate(true, user, setUpdateInfo, setLastCheckTime);
+    // Only check for updates when component mounts if we haven't shown a notification recently
+    const shouldCheckOnMount = !notificationState.notificationShown || 
+                              (Date.now() - notificationState.lastNotificationTime > notificationState.cooldownPeriod);
     
-    // Listen for update messages from the service worker
+    if (shouldCheckOnMount) {
+      // Initial check with debounce
+      setTimeout(() => {
+        checkForUpdate(true, user, handleUpdateAvailable, setLastCheckTime);
+      }, 3000); // Delay initial check to avoid race conditions
+    }
+    
+    // Single event handler for all update-related messages
     const handleUpdateMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
-        setUpdateInfo({
-          available: true,
-          version: event.data.version,
-          timestamp: event.data.timestamp
-        });
-      }
+      if (!event.data || !event.data.type) return;
       
-      // Handle new message type for user-based updates
-      if (event.data && event.data.type === 'UPDATE_AVAILABLE_AFTER_LOGIN') {
-        setUpdateInfo({
-          available: true,
-          version: event.data.version,
-          timestamp: event.data.timestamp
-        });
-      }
-      
-      // Handle activated update message
-      if (event.data && event.data.type === 'UPDATE_ACTIVATED') {
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
+      switch (event.data.type) {
+        case 'UPDATE_AVAILABLE':
+        case 'UPDATE_AVAILABLE_AFTER_LOGIN':
+          // Prevent duplicate notifications for the same version
+          if (event.data.version === notificationState.lastVersion && 
+              Date.now() - notificationState.lastNotificationTime < notificationState.cooldownPeriod) {
+            console.log('Suppressing duplicate update notification for version:', event.data.version);
+            return;
+          }
+          
+          handleUpdateAvailable({
+            available: true,
+            version: event.data.version,
+            timestamp: event.data.timestamp
+          });
+          break;
+          
+        case 'UPDATE_ACTIVATED':
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+          break;
       }
     };
+    
+    // Update handler function that prevents duplicates
+    function handleUpdateAvailable(info: UpdateInfo) {
+      // Skip if this is the same version we already notified about recently
+      if (info.version === notificationState.lastVersion && 
+          Date.now() - notificationState.lastNotificationTime < notificationState.cooldownPeriod) {
+        return;
+      }
+      
+      // Update global tracking state
+      notificationState.notificationShown = true;
+      notificationState.lastNotificationTime = Date.now();
+      notificationState.lastVersion = info.version || '';
+      
+      // Update component state
+      setUpdateInfo(info);
+    }
     
     // Add event listener for messages from service worker
     navigator.serviceWorker.addEventListener('message', handleUpdateMessage);
     
-    // Set up periodic update checks
+    // Set up periodic update checks with reduced frequency
     const intervalId = setInterval(() => {
       const now = Date.now();
       // Only check if it's been at least the interval time since the last check
       if (now - lastCheckTime >= checkIntervalTime) {
-        checkForUpdate(false, user, setUpdateInfo, setLastCheckTime);
+        checkForUpdate(false, user, handleUpdateAvailable, setLastCheckTime);
         setLastCheckTime(now);
       }
     }, checkIntervalTime);
     
-    // Additional forced check when the app regains focus (user returns to the app)
+    // Additional check when the app regains focus, but less frequently
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        // Only check if it's been at least 30 seconds since the last check
+        // Only check if it's been at least 5 minutes since the last check
         const now = Date.now();
-        if (now - lastCheckTime >= 30000) {
-          checkForUpdate(false, user, setUpdateInfo, setLastCheckTime);
+        if (now - lastCheckTime >= 5 * 60 * 1000) {
+          checkForUpdate(false, user, handleUpdateAvailable, setLastCheckTime);
           setLastCheckTime(now);
         }
       }
@@ -91,12 +125,18 @@ export function usePwaUpdates() {
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    // For PWA, check more frequently during the first 5 minutes after launch
+    // For PWA, more moderate check schedule - once per 1 minute for the first 5 minutes
     let quickCheckIntervalId: number | undefined;
     if (isPWA) {
       quickCheckIntervalId = window.setInterval(() => {
-        checkForUpdate(false, user, setUpdateInfo, setLastCheckTime);
-      }, 20000); // Check every 20 seconds
+        // Skip checks if notification already shown recently
+        if (notificationState.notificationShown && 
+            Date.now() - notificationState.lastNotificationTime < 60 * 1000) {
+          return;
+        }
+        
+        checkForUpdate(false, user, handleUpdateAvailable, setLastCheckTime);
+      }, 60 * 1000); // Check every 60 seconds instead of 20
       
       // Clear the quick check interval after 5 minutes
       setTimeout(() => {
@@ -116,18 +156,25 @@ export function usePwaUpdates() {
     };
   }, [isPWA, lastCheckTime, user]);
   
-  // Effect for handling user authentication state
+  // Effect for handling user authentication state - keep this minimal
   useEffect(() => {
-    if (user && user.id) {
+    // Only process user auth once per session
+    const userChecked = sessionStorage.getItem(`user-update-check-${user?.id}`);
+    if (user && user.id && !userChecked) {
       handleUserAuthenticated(user);
+      sessionStorage.setItem(`user-update-check-${user.id}`, 'true');
     }
   }, [user]);
   
-  // Listen for Supabase auth changes
+  // Listen for Supabase auth changes, but limit frequency
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        handleUserAuthenticated(session.user);
+        const userChecked = sessionStorage.getItem(`user-update-check-${session.user.id}`);
+        if (!userChecked) {
+          handleUserAuthenticated(session.user);
+          sessionStorage.setItem(`user-update-check-${session.user.id}`, 'true');
+        }
       }
     });
     
@@ -139,6 +186,12 @@ export function usePwaUpdates() {
   // Handle authenticated user and check for updates
   const handleUserAuthenticated = async (userData: any) => {
     if (!userData || !userData.id) return;
+    
+    // Skip if we've checked for this user recently
+    const lastUserCheck = localStorage.getItem(`last-user-check-${userData.id}`);
+    if (lastUserCheck && Date.now() - parseInt(lastUserCheck) < 15 * 60 * 1000) {
+      return;
+    }
     
     console.log('User authenticated, checking for user-specific updates');
     
@@ -154,15 +207,22 @@ export function usePwaUpdates() {
       const updateCheck = await checkForAuthAwareUpdates(userData.id);
       
       if (updateCheck.updateAvailable) {
+        // Use the same handler to prevent duplicates
         setUpdateInfo({
           available: true,
           version: updateCheck.version,
           timestamp: updateCheck.timestamp
         });
+        
+        // Update notification tracking
+        notificationState.notificationShown = true;
+        notificationState.lastNotificationTime = Date.now();
+        notificationState.lastVersion = updateCheck.version || '';
       }
       
       // Store current login time for future reference
       localStorage.setItem(`last-login-${userData.id}`, Date.now().toString());
+      localStorage.setItem(`last-user-check-${userData.id}`, Date.now().toString());
     } catch (error) {
       console.error('Error checking for user-specific updates:', error);
     }
@@ -171,6 +231,9 @@ export function usePwaUpdates() {
   const handleRefreshApp = () => {
     setIsUpdating(true);
     refreshApp(setIsUpdating);
+    
+    // Clear notification state on refresh
+    notificationState.notificationShown = false;
   };
 
   return {

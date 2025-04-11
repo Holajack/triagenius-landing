@@ -1,7 +1,11 @@
-
 import React from "react";
 import { RotateCw, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
+
+// Track notification state to prevent duplicates
+let lastUpdateNotificationTime = 0;
+let lastNotifiedVersion = '';
+const NOTIFICATION_COOLDOWN = 60 * 60 * 1000; // 1 hour cooldown
 
 // Export the toast function to show update notifications
 export function showUpdateNotification(isUserBased = false, isMobile = false, isPWA = false, refreshApp: () => void, isUpdating = false) {
@@ -10,9 +14,28 @@ export function showUpdateNotification(isUserBased = false, isMobile = false, is
   const isProduction = hostname === 'triagenius-landing.lovable.app' || hostname === 'triagenius.lovable.app';
   const isDev = hostname.includes('lovableproject.com');
   
+  // Check for duplicate notifications
+  const now = Date.now();
+  const storedVersion = localStorage.getItem('notified-version');
+  
+  if (storedVersion && storedVersion === lastNotifiedVersion && 
+      now - lastUpdateNotificationTime < NOTIFICATION_COOLDOWN) {
+    console.log('Suppressing duplicate update notification');
+    return;
+  }
+  
+  // Update tracking state
+  lastUpdateNotificationTime = now;
+  lastNotifiedVersion = localStorage.getItem('pwa-version') || 'unknown';
+  localStorage.setItem('notified-version', lastNotifiedVersion);
+  
+  // Customize message based on source
   const updateMessage = isUserBased ? 
     "A new version was released since your last login. Please update to ensure you have the latest features." :
     "A new version is available. Please update to ensure you have the latest features and improvements.";
+  
+  // Dismiss any existing update notifications first
+  toast.dismiss('update-notification');
   
   // Show different notification style for mobile PWA vs desktop
   if (isMobile && isPWA) {
@@ -43,10 +66,11 @@ export function showUpdateNotification(isUserBased = false, isMobile = false, is
           </button>
         </div>
       </div>
-    ), { duration: 0 }); // Don't auto-dismiss
+    ), { duration: 0, id: 'update-notification' }); // Use consistent ID
   } else {
     // Desktop or non-PWA - standard notification
     toast.message("Update Available", {
+      id: 'update-notification', // Use consistent ID
       description: `${updateMessage}${isProduction ? ' for production' : isDev ? ' on preview' : ''}. Tap to refresh.`,
       action: {
         label: "Update",
@@ -57,14 +81,14 @@ export function showUpdateNotification(isUserBased = false, isMobile = false, is
   }
 }
 
-// Check for updates function
+// Check for updates function with improved deduplication
 export const checkForUpdate = async (
   isInitialCheck = false, 
   user: any, 
-  setUpdateInfo: React.Dispatch<React.SetStateAction<{available: boolean, version?: string, timestamp?: number}>>,
+  setUpdateInfo: (info: {available: boolean, version?: string, timestamp?: number}) => void,
   setLastCheckTime: React.Dispatch<React.SetStateAction<number>>
 ) => {
-  if (!navigator.serviceWorker.controller) return;
+  if (!navigator.serviceWorker?.controller) return;
   
   // Update last check time
   setLastCheckTime(Date.now());
@@ -97,23 +121,35 @@ export const checkForUpdate = async (
           const userSpecificVersion = user?.id ? 
             localStorage.getItem(`pwa-version-${user.id}`) : null;
           
-          if ((storedVersion && storedVersion !== data.version) || 
+          // Avoid notifying about the same version we've already notified about
+          const lastNotifiedVersion = localStorage.getItem('notified-version');
+          const lastNotificationTime = localStorage.getItem('last-notification-time');
+          
+          const isDuplicate = lastNotifiedVersion === data.version && 
+                             lastNotificationTime && 
+                             (Date.now() - parseInt(lastNotificationTime)) < NOTIFICATION_COOLDOWN;
+          
+          if (!isDuplicate && 
+              ((storedVersion && storedVersion !== data.version) || 
               (storedTimestamp && parseInt(storedTimestamp) < data.timestamp) ||
-              (userSpecificVersion && userSpecificVersion !== data.version)) {
-            setUpdateInfo({
-              available: true,
-              version: data.version,
-              timestamp: data.timestamp
-            });
+              (userSpecificVersion && userSpecificVersion !== data.version))) {
             
             // Update stored values
             localStorage.setItem('pwa-version', data.version);
             localStorage.setItem('pwa-timestamp', data.timestamp.toString());
+            localStorage.setItem('notified-version', data.version);
+            localStorage.setItem('last-notification-time', Date.now().toString());
             
             // Also update user-specific version if user is logged in
             if (user?.id) {
               localStorage.setItem(`pwa-version-${user.id}`, data.version);
             }
+            
+            setUpdateInfo({
+              available: true,
+              version: data.version,
+              timestamp: data.timestamp
+            });
           }
         }
       } catch (error) {
@@ -129,10 +165,10 @@ export const checkForUpdate = async (
   }
 };
 
-// Use message channel for update checking
+// Use message channel for update checking with deduplication
 const useMessageChannelForUpdate = (
   user: any, 
-  setUpdateInfo: React.Dispatch<React.SetStateAction<{available: boolean, version?: string, timestamp?: number}>>
+  setUpdateInfo: (info: {available: boolean, version?: string, timestamp?: number}) => void
 ) => {
   // Create a MessageChannel for the service worker to respond
   const messageChannel = new MessageChannel();
@@ -148,23 +184,35 @@ const useMessageChannelForUpdate = (
       const userSpecificVersion = user?.id ? 
         localStorage.getItem(`pwa-version-${user.id}`) : null;
       
-      if ((storedVersion && storedVersion !== event.data.version) || 
+      // Check for duplicate notifications
+      const lastNotifiedVersion = localStorage.getItem('notified-version');
+      const lastNotificationTime = localStorage.getItem('last-notification-time');
+      
+      const isDuplicate = lastNotifiedVersion === event.data.version && 
+                         lastNotificationTime && 
+                         (Date.now() - parseInt(lastNotificationTime)) < NOTIFICATION_COOLDOWN;
+      
+      if (!isDuplicate && 
+          ((storedVersion && storedVersion !== event.data.version) || 
           (storedTimestamp && parseInt(storedTimestamp) < event.data.timestamp) ||
-          (userSpecificVersion && userSpecificVersion !== event.data.version)) {
-        setUpdateInfo({
-          available: true,
-          version: event.data.version,
-          timestamp: event.data.timestamp
-        });
+          (userSpecificVersion && userSpecificVersion !== event.data.version))) {
         
         // Update stored values
         localStorage.setItem('pwa-version', event.data.version);
         localStorage.setItem('pwa-timestamp', event.data.timestamp.toString());
+        localStorage.setItem('notified-version', event.data.version);
+        localStorage.setItem('last-notification-time', Date.now().toString());
         
         // Also update user-specific version if user is logged in
         if (user?.id) {
           localStorage.setItem(`pwa-version-${user.id}`, event.data.version);
         }
+        
+        setUpdateInfo({
+          available: true,
+          version: event.data.version,
+          timestamp: event.data.timestamp
+        });
       }
     }
   };
@@ -181,7 +229,7 @@ const useMessageChannelForUpdate = (
   }
 };
 
-// Refresh app function
+// Refresh app function - keep this unchanged
 export const refreshApp = (setIsUpdating: React.Dispatch<React.SetStateAction<boolean>>) => {
   setIsUpdating(true);
   
@@ -239,7 +287,7 @@ export const refreshApp = (setIsUpdating: React.Dispatch<React.SetStateAction<bo
   }
 };
 
-// Regular update method
+// Regular update method - keep this unchanged
 const regularUpdateMethod = (setIsUpdating: React.Dispatch<React.SetStateAction<boolean>>) => {
   // Tell service worker to skip waiting
   if (navigator.serviceWorker.controller) {
