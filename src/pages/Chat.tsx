@@ -416,14 +416,14 @@ const Chat = () => {
       </div>
       
       <ScrollArea 
-        className="flex-1 overflow-y-auto"
+        className="flex-1 overflow-y-auto pb-safe"
         onScroll={handleScroll}
         ref={scrollAreaRef}
       >
         <div 
           className="p-4 space-y-4"
           style={{ 
-            paddingBottom: isKeyboardVisible && isMobile ? `${Math.max(60, keyboardHeight * 0.15)}px` : '80px'
+            paddingBottom: isKeyboardVisible && isMobile ? `${Math.max(20, keyboardHeight * 0.1)}px` : '70px'
           }}
         >
           {contactError && (
@@ -532,18 +532,19 @@ const Chat = () => {
       
       <div 
         className={cn(
-          "border-t p-3 bg-card sticky bottom-0 z-20 transition-all duration-200",
-          isKeyboardVisible && isMobile ? "shadow-lg" : ""
+          "p-2 bg-card transition-all duration-200",
+          isKeyboardVisible && isMobile ? "fixed bottom-0 left-0 right-0 shadow-lg z-50" : "sticky bottom-0 z-20 border-t"
         )}
         style={{
-          position: "sticky",
-          bottom: isKeyboardVisible && isMobile ? `0px` : 0,
-          width: '100%',
-          transform: isKeyboardVisible && isMobile ? 'translateY(0)' : 'translateY(0)',
-          padding: isKeyboardVisible && isMobile ? '0.5rem 0.75rem' : '0.75rem',
+          bottom: isKeyboardVisible && isMobile ? `0` : undefined,
+          paddingBottom: isKeyboardVisible && isMobile ? 
+            `calc(${Math.min(8, keyboardHeight * 0.03)}px + env(safe-area-inset-bottom, 0px))` : 
+            'env(safe-area-inset-bottom, 0.5rem)',
+          transform: `translateY(0)`,
+          willChange: 'transform',
         }}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 bg-background rounded-full border px-2">
           <Button 
             variant="ghost" 
             size="icon" 
@@ -556,9 +557,27 @@ const Chat = () => {
           <Input
             ref={inputRef}
             placeholder="Type a message..."
-            className="rounded-full"
+            className="rounded-full border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
             value={newMessage}
-            onChange={handleInputChange}
+            onChange={(e) => {
+              setNewMessage(e.target.value);
+              
+              if (!id) return;
+              
+              setTypingStatus(id, true);
+              
+              if (typingTimeout) {
+                clearTimeout(typingTimeout);
+              }
+              
+              const timeout = setTimeout(() => {
+                if (id) {
+                  setTypingStatus(id, false);
+                }
+              }, 3000);
+              
+              setTypingTimeout(timeout);
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 handleSendMessage();

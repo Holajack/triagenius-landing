@@ -43,15 +43,15 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
       // Get the difference between window height and visual viewport height
       estimatedKeyboardHeight = Math.round(windowHeight - viewportHeight);
       
-      // Adjust for iOS Safari additional padding (if needed)
+      // More accurate keyboard height detection for iOS Safari
       if (
         /iPad|iPhone|iPod/.test(navigator.userAgent) && 
         !(window as any).MSStream &&
         estimatedKeyboardHeight > 0
       ) {
-        // iOS Safari might need an adjustment for the bottom toolbar
-        const safariFactor = 0.85; // Adjust this based on testing
-        estimatedKeyboardHeight = Math.round(estimatedKeyboardHeight * safariFactor);
+        // Apply a more accurate factor for iOS devices
+        const iosFactor = 0.95; // Better estimation for iOS
+        estimatedKeyboardHeight = Math.round(estimatedKeyboardHeight * iosFactor);
       }
     }
     
