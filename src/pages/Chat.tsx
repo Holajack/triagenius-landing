@@ -41,20 +41,27 @@ const Chat = () => {
   const [messageError, setMessageError] = useState<string | null>(null);
   const isMobile = useIsMobile();
   
-  const { isKeyboardVisible, keyboardHeight } = useKeyboardVisibility({
+  useEffect(() => {
+    const updateVh = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+
+    updateVh();
+    window.addEventListener('resize', updateVh);
+    window.addEventListener('orientationchange', updateVh);
+    
+    return () => {
+      window.removeEventListener('resize', updateVh);
+      window.removeEventListener('orientationchange', updateVh);
+    };
+  }, []);
+  
+  const { isKeyboardVisible } = useKeyboardVisibility({
     onKeyboardShow: () => {
       setTimeout(() => {
-        if (contentAreaRef.current) {
-          contentAreaRef.current.style.paddingBottom = "120px";
-        }
-        
         messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 300);
-    },
-    onKeyboardHide: () => {
-      if (contentAreaRef.current) {
-        contentAreaRef.current.style.paddingBottom = '';
-      }
     }
   });
   
@@ -337,7 +344,15 @@ const Chat = () => {
   const contactInitials = contact ? getInitials(contactDisplayName) : "?";
   
   return (
-    <div className="flex flex-col h-screen bg-background" ref={chatContainerRef}>
+    <div 
+      className="flex flex-col bg-background" 
+      ref={chatContainerRef}
+      style={{ 
+        height: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100vh',
+        maxHeight: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100vh',
+        overflow: 'hidden'
+      }}
+    >
       <div className="border-b p-3 flex items-center justify-between bg-card">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate('/community')}>
@@ -365,7 +380,14 @@ const Chat = () => {
         </div>
       </div>
       
-      <div className="flex-1 p-4 overflow-y-auto space-y-4" ref={contentAreaRef}>
+      <div 
+        className="flex-1 p-4 overflow-y-auto space-y-4" 
+        ref={contentAreaRef}
+        style={{ 
+          overscrollBehavior: 'contain',
+          paddingBottom: isKeyboardVisible && isMobile ? '8rem' : '1rem'
+        }}
+      >
         {contactError && (
           <Alert variant="default" className="mb-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
             <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
@@ -469,7 +491,9 @@ const Chat = () => {
       
       <div className={cn(
         "border-t p-3 bg-card",
-        isKeyboardVisible && isMobile && "fixed bottom-0 left-0 right-0 z-50 shadow-lg"
+        isKeyboardVisible && isMobile 
+          ? "sticky bottom-0 left-0 right-0 z-50 shadow-lg" 
+          : "relative"
       )}>
         <div className="flex items-center gap-2">
           <Button 

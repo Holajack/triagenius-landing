@@ -22,8 +22,9 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
   const detectKeyboard = useCallback(() => {
     if (!window.visualViewport) return;
     
-    // Calculate if keyboard is likely visible based on viewport height
-    const currentIsVisible = window.visualViewport.height < window.innerHeight * threshold;
+    // Calculate if keyboard is likely visible based on viewport height ratio
+    const viewportRatio = window.visualViewport.height / window.innerHeight;
+    const currentIsVisible = viewportRatio < threshold;
     
     // If keyboard visibility state changed, trigger appropriate callbacks
     if (currentIsVisible !== isKeyboardVisible) {
@@ -38,7 +39,7 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
     // Always update keyboard height when viewport changes
     if (currentIsVisible) {
       // Estimate keyboard height
-      const estimatedKeyboardHeight = window.innerHeight - window.visualViewport.height;
+      const estimatedKeyboardHeight = Math.round(window.innerHeight - window.visualViewport.height);
       setKeyboardHeight(estimatedKeyboardHeight);
     } else {
       setKeyboardHeight(0);
@@ -52,8 +53,9 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
     window.visualViewport.addEventListener('resize', detectKeyboard);
     window.visualViewport.addEventListener('scroll', detectKeyboard);
     
-    // Also listen for window resize as a fallback
+    // Also listen for orientation changes and window resize as fallbacks
     window.addEventListener('resize', detectKeyboard);
+    window.addEventListener('orientationchange', detectKeyboard);
     
     // Initial check
     detectKeyboard();
@@ -64,6 +66,7 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
         window.visualViewport.removeEventListener('scroll', detectKeyboard);
       }
       window.removeEventListener('resize', detectKeyboard);
+      window.removeEventListener('orientationchange', detectKeyboard);
     };
   }, [isMobile, detectKeyboard]);
   

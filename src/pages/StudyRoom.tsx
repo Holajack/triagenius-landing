@@ -5,7 +5,6 @@ import { useStudyRooms } from '@/hooks/use-study-rooms';
 import { useRoomMessages } from '@/hooks/use-room-messages';
 import { useUser } from '@/hooks/use-user';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { StudyRoomChat } from '@/components/studyroom/StudyRoomChat';
 import { StudyRoomMember } from '@/components/studyroom/StudyRoomMember';
 import { StudyRoomResources } from '@/components/studyroom/StudyRoomResources';
@@ -14,9 +13,8 @@ import PageHeader from '@/components/common/PageHeader';
 import { useOnboarding } from '@/contexts/OnboardingContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
-import FocusTimer from "@/components/focus/FocusTimer";
-import { Check, Clock, X } from 'lucide-react';
-import { useFocusSession } from "@/hooks/use-focus-session";
+import { Clock, X } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Define a proper interface for the StudyRoom
 interface StudyRoom {
@@ -33,6 +31,7 @@ const StudyRoom = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { rooms, loading: isRoomsLoading, error: roomError } = useStudyRooms();
+  const isMobile = useIsMobile();
   
   // Safely cast found room to our defined StudyRoom interface
   const foundRoom = rooms.find(room => room.id === id);
@@ -52,17 +51,24 @@ const StudyRoom = () => {
   const [isFocusDialogOpen, setIsFocusDialogOpen] = useState(false);
   const { state } = useOnboarding();
   const { theme } = useTheme();
-  const [isTimerActive, setIsTimerActive] = useState(false);
-  const [timerDuration, setTimerDuration] = useState(25 * 60);
-  const timerRef = useRef<{ stopTimer: () => void; setRemainingTime: (time: number) => void } | null>(null);
-  const [remainingTime, setRemainingTime] = useState(timerDuration);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (currentRoom && currentRoom.timer_duration) {
-      setTimerDuration(currentRoom.timer_duration * 60);
-      setRemainingTime(currentRoom.timer_duration * 60);
-    }
-  }, [currentRoom]);
+    // Set viewport height custom property
+    const updateVh = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    
+    updateVh();
+    window.addEventListener('resize', updateVh);
+    window.addEventListener('orientationchange', updateVh);
+    
+    return () => {
+      window.removeEventListener('resize', updateVh);
+      window.removeEventListener('orientationchange', updateVh);
+    };
+  }, []);
 
   const handleSendMessage = async () => {
     if (message.trim() && id) {
@@ -83,23 +89,8 @@ const StudyRoom = () => {
   };
 
   const handleConfirmFocus = (duration: number) => {
-    setTimerDuration(duration * 60);
-    setRemainingTime(duration * 60);
-    setIsTimerActive(true);
+    // Focus session start logic
     setIsFocusDialogOpen(false);
-  };
-
-  const handleTimerComplete = () => {
-    setIsTimerActive(false);
-    alert('Focus session complete!');
-  };
-
-  const handleTimerPause = () => {
-    setIsTimerActive(false);
-  };
-
-  const handleTimerResume = () => {
-    setIsTimerActive(true);
   };
 
   const handleLeaveRoom = () => {
@@ -107,15 +98,15 @@ const StudyRoom = () => {
   };
 
   if (isRoomsLoading) {
-    return <div>Loading study room...</div>;
+    return <div className="flex justify-center items-center h-screen">Loading study room...</div>;
   }
 
   if (roomError) {
-    return <div>Error: {roomError.message}</div>;
+    return <div className="flex justify-center items-center h-screen">Error: {roomError.message}</div>;
   }
 
   if (!currentRoom) {
-    return <div>Study room not found.</div>;
+    return <div className="flex justify-center items-center h-screen">Study room not found.</div>;
   }
 
   // Convert RoomMessage[] to the format expected by StudyRoomChat
@@ -129,10 +120,17 @@ const StudyRoom = () => {
   }));
 
   return (
-    <div className={cn(
-      "min-h-screen bg-background text-foreground flex flex-col p-4",
-      `theme-${state.environment || 'default'} ${theme}`
-    )}>
+    <div 
+      ref={containerRef}
+      className={cn(
+        "min-h-screen bg-background text-foreground flex flex-col p-4",
+        `theme-${state.environment || 'default'} ${theme}`
+      )}
+      style={{
+        minHeight: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100vh',
+        height: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100vh'
+      }}
+    >
       <PageHeader title={currentRoom.name} />
       <div className="flex justify-between items-center mb-4">
         <Button onClick={handleLeaveRoom} variant="ghost">
@@ -145,8 +143,8 @@ const StudyRoom = () => {
         </Button>
       </div>
 
-      <div className="flex flex-col md:flex-row h-full">
-        <div className="w-full md:w-3/4 flex flex-col">
+      <div className="flex flex-col md:flex-row flex-1 h-full">
+        <div className="w-full md:w-3/4 flex flex-col mb-4 md:mb-0">
           <StudyRoomChat
             messages={formattedMessages}
             isLoading={isMessagesLoading}

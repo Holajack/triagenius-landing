@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -52,12 +53,22 @@ const PWADetector = () => {
       if (!viewportMeta) {
         const meta = document.createElement('meta');
         meta.name = 'viewport';
-        meta.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, height=device-height, interactive-widget=resizes-content';
+        meta.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-visual';
         document.head.appendChild(meta);
       } else {
         viewportMeta.setAttribute('content', 
-          'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, height=device-height, interactive-widget=resizes-content');
+          'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-visual');
       }
+      
+      // Set custom viewport height variable
+      const updateVh = () => {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+      };
+      
+      updateVh();
+      window.addEventListener('resize', updateVh);
+      window.addEventListener('orientationchange', updateVh);
       
       // Add global styles for better keyboard handling
       const style = document.getElementById('mobile-keyboard-styles');
@@ -65,22 +76,54 @@ const PWADetector = () => {
         const cssStyle = document.createElement('style');
         cssStyle.id = 'mobile-keyboard-styles';
         cssStyle.textContent = `
-          @media (max-width: 768px) {
-            body.keyboard-visible {
-              height: 100%;
-              overflow: hidden;
-              position: fixed;
-              width: 100%;
+          :root {
+            --app-height: 100%;
+          }
+          
+          @supports (height: 100dvh) {
+            :root {
+              --app-height: 100dvh;
             }
-            .input-fixed-bottom {
-              position: fixed;
+          }
+          
+          @media (max-width: 768px) {
+            html, body {
+              height: var(--app-height);
+              overflow: hidden;
+              position: relative;
+            }
+            
+            .h-screen {
+              height: var(--app-height) !important;
+            }
+            
+            .min-h-screen {
+              min-height: var(--app-height) !important;
+            }
+            
+            .max-h-screen {
+              max-height: var(--app-height) !important;
+            }
+            
+            .chat-container {
+              height: var(--app-height);
+              display: flex;
+              flex-direction: column;
+            }
+            
+            .chat-messages {
+              flex: 1;
+              overflow-y: auto;
+              overscroll-behavior: contain;
+            }
+            
+            .chat-input {
+              position: sticky;
               bottom: 0;
-              left: 0;
-              right: 0;
-              z-index: 1000;
-              background-color: var(--background);
+              background: var(--background);
               padding: 8px;
               border-top: 1px solid var(--border);
+              z-index: 10;
             }
           }
         `;
@@ -92,52 +135,47 @@ const PWADetector = () => {
       setViewportForKeyboard();
     }
     
-    // Only proceed if we're in a browser context, not in standalone mode
-    if (!isStandalone) {
-      // Listen for beforeinstallprompt event
-      const handleBeforeInstallPrompt = (e: Event) => {
-        // Prevent Chrome 76+ from automatically showing the prompt
-        e.preventDefault();
-        // Save the event so it can be triggered later
-        setInstallPrompt(e as BeforeInstallPromptEvent);
-      };
+    // Listen for beforeinstallprompt event
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e as BeforeInstallPromptEvent);
+    };
+    
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    
+    // Listen for app installed event
+    const handleAppInstalled = () => {
+      setInstallPrompt(null);
+      setIsStandalone(true);
+      localStorage.setItem('isPWA', 'true');
+      toast({
+        title: "App installed!",
+        description: "The Triage System has been added to your home screen",
+      });
       
-      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      
-      // Listen for app installed event
-      const handleAppInstalled = () => {
-        setInstallPrompt(null);
-        setIsStandalone(true);
-        localStorage.setItem('isPWA', 'true');
-        toast({
-          title: "App installed!",
-          description: "The Triage System has been added to your home screen",
-        });
-        
-        // Request necessary permissions after installation
-        setTimeout(() => {
-          if (!permissionsRequested) {
-            requestPWAPermissions();
-            localStorage.setItem('permissionsRequested', 'true');
-            setPermissionsRequested(true);
-          }
-        }, 3000);
-      };
-      
-      window.addEventListener('appinstalled', handleAppInstalled);
-      
-      // Clean up event listeners
-      return () => {
-        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-        window.removeEventListener('appinstalled', handleAppInstalled);
-      };
-    }
-  }, [toast, isStandalone, permissionsRequested, isMobile]);
+      // Request necessary permissions after installation
+      setTimeout(() => {
+        if (!permissionsRequested) {
+          requestPWAPermissions();
+          localStorage.setItem('permissionsRequested', 'true');
+          setPermissionsRequested(true);
+        }
+      }, 3000);
+    };
+    
+    window.addEventListener('appinstalled', handleAppInstalled);
+    
+    // Clean up event listeners
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, [toast, permissionsRequested, isMobile]);
   
   // Request permissions needed for PWA functionality
   const requestPWAPermissions = async () => {
     try {
-      // Request notification permission for timer completion alerts
+      // Request notification permission
       if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
         const permissionResult = await Notification.requestPermission();
         if (permissionResult === 'granted') {
@@ -145,13 +183,11 @@ const PWADetector = () => {
         }
       }
       
-      // Request wake lock permission to keep screen on during focus sessions
+      // Request wake lock permission
       if ('wakeLock' in navigator) {
         try {
-          // Just test if we can obtain a wake lock
           const wakeLock = await (navigator as any).wakeLock.request('screen');
           console.log('Wake lock obtained');
-          // Release it immediately after testing
           await wakeLock.release();
           console.log('Wake lock released');
         } catch (err) {
@@ -159,7 +195,7 @@ const PWADetector = () => {
         }
       }
       
-      // Check background sync permission for offline use
+      // Check background sync permission
       if ('serviceWorker' in navigator && 'SyncManager' in window) {
         try {
           const registration = await navigator.serviceWorker.ready;
@@ -171,7 +207,6 @@ const PWADetector = () => {
           console.log('Background sync registration failed:', err);
         }
       }
-      
     } catch (error) {
       console.error('Error requesting PWA permissions:', error);
     }
@@ -181,10 +216,7 @@ const PWADetector = () => {
     if (!installPrompt) return;
     
     try {
-      // Show the install prompt
       await installPrompt.prompt();
-      
-      // Wait for the user to respond to the prompt
       const choiceResult = await installPrompt.userChoice;
       
       if (choiceResult.outcome === 'accepted') {
@@ -198,12 +230,10 @@ const PWADetector = () => {
     }
   };
   
-  // Don't render anything if already installed or can't install
-  // Or if not on mobile (since this is mobile-only)
   if (isStandalone || !installPrompt || !isMobile) return null;
   
   return (
-    <div className="fixed bottom-16 right-4 z-50">
+    <div className="fixed bottom-16 right-4 z-40">
       <Button 
         onClick={handleInstallClick}
         className="flex items-center gap-2 shadow-lg bg-black hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"

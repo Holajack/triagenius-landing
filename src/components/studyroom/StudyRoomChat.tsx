@@ -45,9 +45,11 @@ export const StudyRoomChat = ({
   const isMobile = useIsMobile();
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { isKeyboardVisible, keyboardHeight } = useKeyboardVisibility({
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  
+  const { isKeyboardVisible } = useKeyboardVisibility({
     onKeyboardShow: () => {
-      // Scroll to bottom when keyboard appears
+      // Add a small delay to let the layout adjust
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 300);
@@ -60,6 +62,30 @@ export const StudyRoomChat = ({
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
+  
+  // Set initial height on component mount
+  useEffect(() => {
+    const setInitialHeight = () => {
+      if (chatContainerRef.current) {
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+        
+        if (isMobile) {
+          chatContainerRef.current.style.height = `calc(100vh - 80px)`;
+          chatContainerRef.current.style.maxHeight = `calc(100vh - 80px)`;
+        }
+      }
+    };
+    
+    setInitialHeight();
+    window.addEventListener('resize', setInitialHeight);
+    window.addEventListener('orientationchange', setInitialHeight);
+    
+    return () => {
+      window.removeEventListener('resize', setInitialHeight);
+      window.removeEventListener('orientationchange', setInitialHeight);
+    };
+  }, [isMobile]);
 
   const formatTimestamp = (timestamp: string): string => {
     const date = new Date(timestamp);
@@ -69,8 +95,8 @@ export const StudyRoomChat = ({
   return (
     <Card 
       className={cn(
-        "flex flex-col h-[500px] md:h-[70vh] mb-4 md:mb-0 md:mr-4 relative",
-        isKeyboardVisible && isMobile && "h-screen"
+        "flex flex-col md:h-[70vh] mb-4 md:mb-0 md:mr-4 relative",
+        isMobile ? "h-[calc(var(--vh,1vh)*100-80px)]" : "h-[500px]"
       )}
       ref={chatContainerRef}
     >
@@ -79,10 +105,10 @@ export const StudyRoomChat = ({
           <h3 className="font-medium">Chat</h3>
         </div>
 
-        <div className={cn(
-          "flex-grow overflow-y-auto p-4 space-y-4",
-          isKeyboardVisible && isMobile && "pb-32"
-        )}>
+        <div 
+          className="flex-grow overflow-y-auto p-4 space-y-4"
+          ref={messagesContainerRef}
+        >
           {isLoading ? (
             <div className="flex justify-center items-center h-full">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-500"></div>
@@ -140,7 +166,7 @@ export const StudyRoomChat = ({
 
         <div className={cn(
           "p-3 border-t mt-auto bg-card",
-          isKeyboardVisible && isMobile && "fixed bottom-0 left-0 right-0 z-50 shadow-lg"
+          isKeyboardVisible && isMobile && "sticky bottom-0 left-0 right-0 z-50 shadow-lg"
         )}>
           <div className="flex gap-2">
             <Textarea
@@ -150,15 +176,17 @@ export const StudyRoomChat = ({
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={onKeyDown}
               className={cn(
-                "min-h-[80px]",
-                isKeyboardVisible && isMobile && "min-h-[60px]"
+                "min-h-[80px] resize-none",
+                isKeyboardVisible && isMobile && "min-h-[60px] max-h-[100px]"
               )}
               onClick={() => {
                 if (isMobile && textareaRef.current) {
                   // Focus and make sure the input stays visible
                   textareaRef.current.focus();
-                  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
                 }
+              }}
+              style={{
+                height: isKeyboardVisible && isMobile ? '60px' : '80px'
               }}
             />
             <Button
