@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle, RefreshCw } from "lucide-react";
@@ -14,14 +15,14 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useKeyboardVisibility } from "@/hooks/use-keyboard-visibility";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const Chat = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const messageEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-  const contentAreaRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [contact, setContact] = useState<any | null>(null);
   const [contactLoading, setContactLoading] = useState(true);
   const [contactError, setContactError] = useState<string | null>(null);
@@ -39,19 +40,23 @@ const Chat = () => {
   const [currentMessages, setCurrentMessages] = useState<any[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
   const isMobile = useIsMobile();
   
   const { isKeyboardVisible, keyboardHeight } = useKeyboardVisibility({
     onKeyboardShow: () => {
-      setTimeout(() => {
-        messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 300);
+      if (autoScrollEnabled) {
+        setTimeout(() => {
+          messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 300);
+      }
     },
     onKeyboardHide: () => {
-      contentAreaRef.current?.scrollTo({
-        top: contentAreaRef.current.scrollHeight,
-        behavior: 'smooth'
-      });
+      if (autoScrollEnabled) {
+        setTimeout(() => {
+          messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
     }
   });
   
@@ -212,9 +217,33 @@ const Chat = () => {
     fetchProfile();
   }, [fetchProfile]);
   
+  // Scroll to bottom when messages change
+  const scrollToBottom = () => {
+    if (autoScrollEnabled && messageEndRef.current) {
+      messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+  
   useEffect(() => {
-    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (isContactTyping || currentMessages.length > 0) {
+      scrollToBottom();
+    }
   }, [currentMessages, isContactTyping]);
+  
+  // Monitor scroll position to detect if user has scrolled up
+  const handleScroll = () => {
+    if (!scrollAreaRef.current) return;
+    
+    const scrollElement = scrollAreaRef.current;
+    const viewportHeight = scrollElement.clientHeight;
+    const scrollHeight = scrollElement.scrollHeight;
+    const scrollTop = scrollElement.scrollTop;
+    
+    // Consider "scrolled to bottom" if within 20px of the bottom
+    const isScrolledToBottom = Math.abs(scrollHeight - viewportHeight - scrollTop) < 20;
+    
+    setAutoScrollEnabled(isScrolledToBottom);
+  };
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value);
@@ -266,9 +295,10 @@ const Chat = () => {
         ));
         
         inputRef.current?.focus();
+        setAutoScrollEnabled(true);
         
         setTimeout(() => {
-          messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+          scrollToBottom();
         }, 100);
       } else {
         console.error('Failed to send message');
@@ -293,6 +323,23 @@ const Chat = () => {
       fetchConversationMessages();
     }
   };
+  
+  // Update viewport height on resize and orientation change
+  useEffect(() => {
+    const setInitialHeight = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    
+    setInitialHeight();
+    window.addEventListener('resize', setInitialHeight);
+    window.addEventListener('orientationchange', setInitialHeight);
+    
+    return () => {
+      window.removeEventListener('resize', setInitialHeight);
+      window.removeEventListener('orientationchange', setInitialHeight);
+    };
+  }, []);
   
   if ((!id) || (!user?.id)) {
     return (
@@ -336,14 +383,14 @@ const Chat = () => {
   return (
     <div 
       className="flex flex-col bg-background" 
-      ref={chatContainerRef}
       style={{ 
         height: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100vh',
         maxHeight: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100vh',
         overflow: 'hidden'
       }}
     >
-      <div className="border-b p-3 flex items-center justify-between bg-card z-10">
+      {/* Fixed header that stays at the top */}
+      <div className="border-b p-3 flex items-center justify-between bg-card z-20 sticky top-0">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate('/community')}>
             <ArrowLeft className="h-5 w-5" />
@@ -370,123 +417,133 @@ const Chat = () => {
         </div>
       </div>
       
-      <div 
-        className="flex-1 p-4 overflow-y-auto space-y-4" 
-        ref={contentAreaRef}
-        style={{ 
-          overscrollBehavior: 'contain',
-          paddingBottom: isKeyboardVisible && isMobile ? `${Math.max(80, keyboardHeight/2)}px` : '1rem',
-          height: '100%',
-          maxHeight: isKeyboardVisible && isMobile ? `calc(100% - ${keyboardHeight/2}px)` : '100%'
-        }}
+      {/* Scrollable message area */}
+      <ScrollArea 
+        className="flex-1 overflow-y-auto"
+        onScroll={handleScroll}
+        ref={scrollAreaRef}
       >
-        {contactError && (
-          <Alert variant="default" className="mb-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
-            <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
-            <AlertTitle>Contact Information Issue</AlertTitle>
-            <AlertDescription className="flex flex-col gap-2">
-              <p>{contactError}</p>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="self-start mt-2" 
-                onClick={handleRetryLoad}
-              >
-                <RefreshCw className="h-3 w-3 mr-2" /> Retry
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        {messageError && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Message Error</AlertTitle>
-            <AlertDescription className="flex flex-col gap-2">
-              <p>{messageError}</p>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="self-start mt-2 bg-background text-foreground hover:bg-muted" 
-                onClick={handleRetryLoad}
-              >
-                <RefreshCw className="h-3 w-3 mr-2" /> Retry
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-        
-        {currentMessages.length > 0 ? (
-          currentMessages.map((message) => {
-            const isUnread = !message.is_read;
-            const isCurrentUserSender = message.sender_id === user?.id;
-            const messageTime = formatDistanceToNow(new Date(message.created_at), { addSuffix: true });
-            
-            return (
-              <div 
-                key={message.id} 
-                className={`flex ${isCurrentUserSender ? 'justify-end' : 'justify-start'}`}
-              >
-                {!isCurrentUserSender && (
-                  <Avatar className="h-8 w-8 mr-2 mt-1">
-                    <AvatarImage src={contact?.avatar_url || ""} alt={contactDisplayName} />
-                    <AvatarFallback>{contactInitials}</AvatarFallback>
-                  </Avatar>
-                )}
-                
-                <div 
-                  className={`max-w-[75%] p-3 rounded-lg ${
-                    isCurrentUserSender 
-                      ? 'bg-primary text-primary-foreground' 
-                      : isUnread ? 'bg-muted/80' : 'bg-muted'
-                  }`}
+        <div 
+          className="p-4 space-y-4"
+          style={{ 
+            paddingBottom: isKeyboardVisible && isMobile ? `${Math.max(80, keyboardHeight/2)}px` : '80px'
+          }}
+        >
+          {contactError && (
+            <Alert variant="default" className="mb-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+              <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
+              <AlertTitle>Contact Information Issue</AlertTitle>
+              <AlertDescription className="flex flex-col gap-2">
+                <p>{contactError}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="self-start mt-2" 
+                  onClick={handleRetryLoad}
                 >
-                  <p className="text-sm">{message.content}</p>
-                  <div className={`flex items-center justify-end gap-1 mt-1 text-xs ${
-                    isCurrentUserSender ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                  }`}>
-                    <span>{messageTime}</span>
-                    {isCurrentUserSender && (
-                      <span>{message.is_read ? '✓✓' : '✓'}</span>
-                    )}
+                  <RefreshCw className="h-3 w-3 mr-2" /> Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {messageError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Message Error</AlertTitle>
+              <AlertDescription className="flex flex-col gap-2">
+                <p>{messageError}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="self-start mt-2 bg-background text-foreground hover:bg-muted" 
+                  onClick={handleRetryLoad}
+                >
+                  <RefreshCw className="h-3 w-3 mr-2" /> Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+          
+          {currentMessages.length > 0 ? (
+            currentMessages.map((message) => {
+              const isUnread = !message.is_read;
+              const isCurrentUserSender = message.sender_id === user?.id;
+              const messageTime = formatDistanceToNow(new Date(message.created_at), { addSuffix: true });
+              
+              return (
+                <div 
+                  key={message.id} 
+                  className={`flex ${isCurrentUserSender ? 'justify-end' : 'justify-start'}`}
+                >
+                  {!isCurrentUserSender && (
+                    <Avatar className="h-8 w-8 mr-2 mt-1">
+                      <AvatarImage src={contact?.avatar_url || ""} alt={contactDisplayName} />
+                      <AvatarFallback>{contactInitials}</AvatarFallback>
+                    </Avatar>
+                  )}
+                  
+                  <div 
+                    className={`max-w-[75%] p-3 rounded-lg ${
+                      isCurrentUserSender 
+                        ? 'bg-primary text-primary-foreground' 
+                        : isUnread ? 'bg-muted/80' : 'bg-muted'
+                    }`}
+                  >
+                    <p className="text-sm">{message.content}</p>
+                    <div className={`flex items-center justify-end gap-1 mt-1 text-xs ${
+                      isCurrentUserSender ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                    }`}>
+                      <span>{messageTime}</span>
+                      {isCurrentUserSender && (
+                        <span>{message.is_read ? '✓✓' : '✓'}</span>
+                      )}
+                    </div>
                   </div>
+                  
+                  {isCurrentUserSender && (
+                    <Avatar className="h-8 w-8 ml-2 mt-1">
+                      <AvatarImage src={user?.avatarUrl || ""} />
+                      <AvatarFallback>{(user?.username || "?")[0]}</AvatarFallback>
+                    </Avatar>
+                  )}
                 </div>
-                
-                {isCurrentUserSender && (
-                  <Avatar className="h-8 w-8 ml-2 mt-1">
-                    <AvatarImage src={user?.avatarUrl || ""} />
-                    <AvatarFallback>{(user?.username || "?")[0]}</AvatarFallback>
-                  </Avatar>
-                )}
-              </div>
-            );
-          })
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-            <p>No messages yet</p>
-            <p className="text-sm mt-2">Send a message to start the conversation</p>
-          </div>
-        )}
-        {isContactTyping && (
-          <div className="flex justify-start">
-            <div className="bg-muted p-3 rounded-lg">
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
-                <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "100ms" }}></div>
-                <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "200ms" }}></div>
+              );
+            })
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground py-12">
+              <p>No messages yet</p>
+              <p className="text-sm mt-2">Send a message to start the conversation</p>
+            </div>
+          )}
+          
+          {isContactTyping && (
+            <div className="flex justify-start">
+              <div className="bg-muted p-3 rounded-lg">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
+                  <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "100ms" }}></div>
+                  <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "200ms" }}></div>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-        <div ref={messageEndRef} />
-      </div>
+          )}
+          
+          <div ref={messageEndRef} />
+        </div>
+      </ScrollArea>
       
+      {/* Input area that stays fixed at the bottom */}
       <div className={cn(
-        "border-t p-3 bg-card",
-        isKeyboardVisible && isMobile 
-          ? "fixed bottom-0 left-0 right-0 z-50 shadow-lg" 
-          : "relative"
-      )}>
+        "border-t p-3 bg-card sticky bottom-0 z-20",
+        isKeyboardVisible && isMobile ? "shadow-lg" : ""
+      )}
+      style={{
+        position: "sticky",
+        bottom: isKeyboardVisible && isMobile ? `${keyboardHeight}px` : 0,
+        width: '100%'
+      }}
+      >
         <div className="flex items-center gap-2">
           <Button 
             variant="ghost" 
@@ -511,8 +568,9 @@ const Chat = () => {
             onClick={() => {
               if (isMobile && inputRef.current) {
                 inputRef.current.focus();
+                setAutoScrollEnabled(true);
                 setTimeout(() => {
-                  messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                  scrollToBottom();
                 }, 100);
               }
             }}
