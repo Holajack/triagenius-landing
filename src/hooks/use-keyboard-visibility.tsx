@@ -46,7 +46,7 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
       // Adjust for iOS Safari additional padding (if needed)
       if (
         /iPad|iPhone|iPod/.test(navigator.userAgent) && 
-        !window.MSStream &&
+        !(window as any).MSStream &&
         estimatedKeyboardHeight > 0
       ) {
         // iOS Safari might need an adjustment for the bottom toolbar
