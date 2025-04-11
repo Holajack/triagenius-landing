@@ -130,7 +130,7 @@ export const StudyRoomChat = ({
           className="flex-grow overflow-y-auto p-4 space-y-4"
           ref={messagesContainerRef}
           style={{
-            paddingBottom: isKeyboardVisible && isMobile ? '80px' : '1rem',
+            paddingBottom: isKeyboardVisible && isMobile ? `${keyboardHeight > 0 ? keyboardHeight + 80 : 80}px` : '1rem',
             overscrollBehavior: 'contain'
           }}
         >
@@ -192,7 +192,12 @@ export const StudyRoomChat = ({
         <div className={cn(
           "p-3 border-t mt-auto bg-card z-10",
           isKeyboardVisible && isMobile ? "fixed bottom-0 left-0 right-0 shadow-lg" : ""
-        )}>
+        )}
+        style={{
+          position: isKeyboardVisible && isMobile ? 'fixed' : 'relative',
+          bottom: isKeyboardVisible && isMobile ? `${keyboardHeight}px` : 'auto'
+        }}
+        >
           <div className="flex gap-2">
             <Textarea
               ref={textareaRef}
