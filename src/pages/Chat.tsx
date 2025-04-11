@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle, RefreshCw } from "lucide-react";
@@ -529,7 +528,7 @@ const Chat = () => {
         style={{
           bottom: isKeyboardVisible && isMobile ? `0` : undefined,
           paddingBottom: isKeyboardVisible && isMobile ? 
-            `calc(${Math.min(8, keyboardHeight * 0.03)}px + env(safe-area-inset-bottom, 0px))` : 
+            `calc(${Math.min(4, keyboardHeight * 0.01)}px + env(safe-area-inset-bottom, 0px))` : 
             'env(safe-area-inset-bottom, 0.5rem)',
           transform: `translateY(0)`,
           willChange: 'transform',
@@ -585,4 +584,3 @@ const Chat = () => {
 };
 
 export default Chat;
-
