@@ -36,6 +36,7 @@ const FocusTimer = forwardRef<
   const lastTickTimeRef = useRef<number>(Date.now());
   const lastMilestoneRef = useRef<number>(-1);
   const hasCompletedRef = useRef<boolean>(false);
+  const notificationSentRef = useRef<boolean>(false);
   const isMobile = useIsMobile();
   const backgroundModeRef = useRef<boolean>(false);
   const serviceWorkerAvailable = useRef<boolean>('serviceWorker' in navigator && navigator.serviceWorker.controller !== null);
@@ -59,6 +60,7 @@ const FocusTimer = forwardRef<
         
         if (onComplete && !hasCompletedRef.current) {
           hasCompletedRef.current = true;
+          notificationSentRef.current = true;
           onComplete();
         }
       }
@@ -108,6 +110,14 @@ const FocusTimer = forwardRef<
       } else {
         // App coming to foreground
         exitBackgroundMode();
+        
+        // Clear any existing notifications for this timer
+        if (serviceWorkerAvailable.current && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'CLEAR_TIMER_NOTIFICATIONS',
+            id: timerId
+          });
+        }
       }
     };
     
@@ -116,7 +126,7 @@ const FocusTimer = forwardRef<
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isPaused]);
+  }, [isPaused, timerId]);
   
   // Start or resume a background timer
   const startBackgroundTimer = () => {
@@ -162,6 +172,12 @@ const FocusTimer = forwardRef<
         type: 'STOP_BACKGROUND_TIMER',
         id: timerId
       }, [messageChannel.port2]);
+      
+      // Clear any existing notifications for this timer
+      navigator.serviceWorker.controller.postMessage({
+        type: 'CLEAR_TIMER_NOTIFICATIONS',
+        id: timerId
+      });
     }
   };
   
@@ -270,9 +286,10 @@ const FocusTimer = forwardRef<
           intervalRef.current = null;
           stopBackgroundTimer();
           
-          // Only trigger onComplete once
-          if (!hasCompletedRef.current && onComplete) {
+          // Only trigger onComplete once and ensure we're not sending duplicate notifications
+          if (!hasCompletedRef.current && onComplete && !notificationSentRef.current) {
             hasCompletedRef.current = true;
+            notificationSentRef.current = true;
             onComplete();
           }
         }
@@ -315,6 +332,7 @@ const FocusTimer = forwardRef<
   // Reset the completed state when the component is reused
   useEffect(() => {
     hasCompletedRef.current = false;
+    notificationSentRef.current = false;
   }, [initialTime]);
   
   // Cleanup on unmount

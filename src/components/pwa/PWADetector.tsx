@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
@@ -12,6 +13,7 @@ const PWADetector = () => {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [permissionsRequested, setPermissionsRequested] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -32,10 +34,15 @@ const PWADetector = () => {
       if (isInStandaloneMode) {
         localStorage.setItem('isPWA', 'true');
         
-        // Request necessary permissions for PWA functionality
-        setTimeout(() => {
-          requestPWAPermissions();
-        }, 3000);
+        // Request necessary permissions for PWA functionality only once
+        const permissionsRequested = localStorage.getItem('permissionsRequested');
+        if (!permissionsRequested) {
+          setTimeout(() => {
+            requestPWAPermissions();
+            localStorage.setItem('permissionsRequested', 'true');
+            setPermissionsRequested(true);
+          }, 3000);
+        }
       }
     };
     
@@ -65,7 +72,11 @@ const PWADetector = () => {
         
         // Request necessary permissions after installation
         setTimeout(() => {
-          requestPWAPermissions();
+          if (!permissionsRequested) {
+            requestPWAPermissions();
+            localStorage.setItem('permissionsRequested', 'true');
+            setPermissionsRequested(true);
+          }
         }, 3000);
       };
       
@@ -77,13 +88,13 @@ const PWADetector = () => {
         window.removeEventListener('appinstalled', handleAppInstalled);
       };
     }
-  }, [toast, isStandalone]);
+  }, [toast, isStandalone, permissionsRequested]);
   
   // Request permissions needed for PWA functionality
   const requestPWAPermissions = async () => {
     try {
       // Request notification permission for timer completion alerts
-      if ('Notification' in window) {
+      if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
         const permissionResult = await Notification.requestPermission();
         if (permissionResult === 'granted') {
           console.log('Notification permission granted');

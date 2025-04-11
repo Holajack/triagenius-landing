@@ -1,3 +1,4 @@
+
 // Cache version identifier - change this when files are updated
 const CACHE_NAME = 'triage-system-v12'; // Incremented version
 const APP_NAME = 'The Triage System';
@@ -99,6 +100,34 @@ self.addEventListener('activate', event => {
 // Variables to track background timers
 const backgroundTimers = new Map();
 
+// Track sent notifications to prevent duplicates
+const sentNotifications = new Map();
+const NOTIFICATION_COOLDOWN = 60000; // 1 minute cooldown between similar notifications
+
+// Helper function to check if a notification was recently sent
+function wasNotificationRecentlySent(id, type) {
+  const notificationKey = `${id}-${type}`;
+  const lastSent = sentNotifications.get(notificationKey);
+  const now = Date.now();
+  
+  if (lastSent && now - lastSent < NOTIFICATION_COOLDOWN) {
+    console.log(`Skipping duplicate notification: ${notificationKey} - Last sent ${now - lastSent}ms ago`);
+    return true;
+  }
+  
+  // Record this notification
+  sentNotifications.set(notificationKey, now);
+  
+  // Clean up old notification records (older than 2x the cooldown period)
+  for (const [key, timestamp] of sentNotifications.entries()) {
+    if (now - timestamp > NOTIFICATION_COOLDOWN * 2) {
+      sentNotifications.delete(key);
+    }
+  }
+  
+  return false;
+}
+
 // Function to start background timer
 function startBackgroundTimer(id, duration, startTime, options = {}) {
   if (!duration || backgroundTimers.has(id)) return;
@@ -112,7 +141,8 @@ function startBackgroundTimer(id, duration, startTime, options = {}) {
     endTime,
     isRunning: true,
     options,
-    intervalId: null
+    intervalId: null,
+    notificationSent: false // Track if completion notification was already sent
   });
   
   console.log('Background timer started:', {
@@ -131,7 +161,8 @@ function startBackgroundTimer(id, duration, startTime, options = {}) {
     startTime,
     endTime,
     isRunning: true,
-    options
+    options,
+    notificationSent: false
   });
 }
 
@@ -147,20 +178,36 @@ function checkBackgroundTimer(id) {
   if (remainingTime <= 0) {
     backgroundTimers.get(id).isRunning = false;
     
-    // Show notification if supported
-    if (self.registration.showNotification) {
-      const notificationOptions = {
-        body: timer.options.notificationBody || 'Your timer has finished.',
-        icon: '/lovable-uploads/95f9c287-86ca-4428-bbc4-b9c9b75478b9.png',
-        badge: '/lovable-uploads/95f9c287-86ca-4428-bbc4-b9c9b75478b9.png',
-        vibrate: [200, 100, 200],
-        data: { url: timer.options.notificationUrl || '/focus-session' }
-      };
+    // Only show notification if it hasn't been sent and not in cooldown period
+    if (!timer.notificationSent && !wasNotificationRecentlySent(id, 'timer-complete')) {
+      timer.notificationSent = true;
       
-      self.registration.showNotification(
-        timer.options.notificationTitle || 'Timer Complete', 
-        notificationOptions
-      );
+      // Show notification if supported
+      if (self.registration.showNotification) {
+        const notificationOptions = {
+          body: timer.options.notificationBody || 'Your timer has finished.',
+          icon: '/lovable-uploads/95f9c287-86ca-4428-bbc4-b9c9b75478b9.png',
+          badge: '/lovable-uploads/95f9c287-86ca-4428-bbc4-b9c9b75478b9.png',
+          vibrate: [200, 100, 200],
+          data: { 
+            url: timer.options.notificationUrl || '/focus-session',
+            id: id,
+            timestamp: now
+          },
+          tag: `timer-completed-${id}` // Use tag to replace existing notifications for this timer
+        };
+        
+        self.registration.showNotification(
+          timer.options.notificationTitle || 'Timer Complete', 
+          notificationOptions
+        );
+      }
+      
+      // Update timer state in storage
+      storeBackgroundTimerState(id, {
+        ...timer,
+        notificationSent: true
+      });
     }
     
     // Notify all clients
@@ -428,6 +475,17 @@ self.addEventListener('message', event => {
     });
   }
   
+  // Clear any existing notifications for a specific timer
+  if (event.data.type === 'CLEAR_TIMER_NOTIFICATIONS') {
+    const { id } = event.data;
+    if (self.registration.getNotifications) {
+      self.registration.getNotifications({ tag: `timer-completed-${id}` })
+        .then(notifications => {
+          notifications.forEach(notification => notification.close());
+        });
+    }
+  }
+  
   // Handle other messages like before
   // ... keep existing code (message handling for updates and other functionality)
 });
@@ -619,14 +677,24 @@ self.addEventListener('push', event => {
   try {
     const data = event.data.json();
     
+    // Check for duplicate notifications
+    const notificationId = data.id || 'generic-push';
+    if (wasNotificationRecentlySent(notificationId, 'push')) {
+      return; // Skip duplicate notification
+    }
+    
     const options = {
       body: data.body || 'New notification from The Triage System',
       icon: '/icons/icon-192x192.png',
       badge: '/icons/icon-192x192.png',
       vibrate: [100, 50, 100],
+      tag: data.tag || `push-${notificationId}`, // Use tag for deduplication
       data: {
-        url: data.url || '/'
-      }
+        url: data.url || '/',
+        id: notificationId,
+        timestamp: Date.now()
+      },
+      renotify: false // Don't vibrate/alert if replacing existing notification
     };
     
     event.waitUntil(
@@ -637,10 +705,14 @@ self.addEventListener('push', event => {
     // Try to parse as text if JSON parsing failed
     try {
       const text = event.data.text();
-      self.registration.showNotification(APP_NAME, {
-        body: text,
-        icon: '/icons/icon-192x192.png'
-      });
+      
+      if (!wasNotificationRecentlySent('text-push', 'push')) {
+        self.registration.showNotification(APP_NAME, {
+          body: text,
+          icon: '/icons/icon-192x192.png',
+          tag: 'text-push' // Use consistent tag for text notifications
+        });
+      }
     } catch (e) {
       console.error('Failed to show notification:', e);
     }
@@ -667,4 +739,9 @@ self.addEventListener('notificationclick', event => {
       }
     })
   );
+});
+
+// Close duplicate notifications
+self.addEventListener('notificationclose', event => {
+  // Nothing to do here, but could be used for analytics
 });
