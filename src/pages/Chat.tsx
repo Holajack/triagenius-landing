@@ -54,15 +54,36 @@ const Chat = () => {
       setIsKeyboardVisible(isKeyboardOpen);
       
       if (chatContainerRef.current && isKeyboardOpen) {
-        const keyboardHeight = window.innerHeight - window.visualViewport.height;
+        const viewportHeight = window.visualViewport.height;
+        const keyboardHeight = window.innerHeight - viewportHeight;
         
-        chatContainerRef.current.style.paddingBottom = `${keyboardHeight + 20}px`;
+        chatContainerRef.current.style.height = `${viewportHeight}px`;
+        chatContainerRef.current.style.maxHeight = `${viewportHeight}px`;
+        
+        if (contentAreaRef.current) {
+          contentAreaRef.current.style.paddingBottom = "120px";
+        }
+        
+        if (inputRef.current) {
+          const inputRect = inputRef.current.getBoundingClientRect();
+          if (inputRect.bottom > viewportHeight) {
+            window.scrollTo({
+              top: window.scrollY + (inputRect.bottom - viewportHeight) + 20,
+              behavior: 'smooth'
+            });
+          }
+        }
         
         setTimeout(() => {
           messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
+        }, 300);
       } else if (chatContainerRef.current) {
-        chatContainerRef.current.style.paddingBottom = '';
+        chatContainerRef.current.style.height = '';
+        chatContainerRef.current.style.maxHeight = '';
+        
+        if (contentAreaRef.current) {
+          contentAreaRef.current.style.paddingBottom = '';
+        }
       }
     };
     
@@ -501,7 +522,7 @@ const Chat = () => {
       
       <div className={cn(
         "border-t p-3 bg-card",
-        isKeyboardVisible && isMobile && "sticky bottom-0 z-50 shadow-lg"
+        isKeyboardVisible && isMobile && "fixed bottom-0 left-0 right-0 z-50 shadow-lg"
       )}>
         <div className="flex items-center gap-2">
           <Button 
@@ -526,7 +547,10 @@ const Chat = () => {
             }}
             onFocus={() => {
               setTimeout(() => {
-                messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                if (inputRef.current) {
+                  inputRef.current.scrollIntoView({ behavior: 'smooth' });
+                  messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }
               }, 300);
             }}
           />

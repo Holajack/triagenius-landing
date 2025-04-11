@@ -58,18 +58,34 @@ export const StudyRoomChat = ({
       setIsKeyboardVisible(isKeyboardOpen);
       
       if (chatContainerRef.current && isKeyboardOpen) {
-        // Calculate keyboard height as the difference between window inner height and visual viewport height
-        const keyboardHeight = window.innerHeight - window.visualViewport.height;
+        // Update the container to accommodate keyboard
+        const viewportHeight = window.visualViewport.height;
+        const keyboardHeight = window.innerHeight - viewportHeight;
         
-        // Add padding to ensure content isn't hidden behind keyboard
-        chatContainerRef.current.style.paddingBottom = `${keyboardHeight + 20}px`;
+        // Set a fixed position for the input area when keyboard is visible
+        chatContainerRef.current.style.height = `${viewportHeight}px`;
+        chatContainerRef.current.style.maxHeight = `${viewportHeight}px`;
         
-        // Scroll the messages container to keep the input in view
+        // Ensure messages are visible above the keyboard
+        if (textareaRef.current) {
+          const textAreaRect = textareaRef.current.getBoundingClientRect();
+          if (textAreaRect.bottom > viewportHeight) {
+            // Scroll to keep the input field visible
+            window.scrollTo({
+              top: window.scrollY + (textAreaRect.bottom - viewportHeight) + 20,
+              behavior: 'smooth'
+            });
+          }
+        }
+        
+        // Scroll to latest message with delay to let layout settle
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
+        }, 300);
       } else if (chatContainerRef.current) {
-        chatContainerRef.current.style.paddingBottom = '';
+        // Reset styles when keyboard is hidden
+        chatContainerRef.current.style.height = '';
+        chatContainerRef.current.style.maxHeight = '';
       }
     };
     
@@ -120,8 +136,8 @@ export const StudyRoomChat = ({
   return (
     <Card 
       className={cn(
-        "flex flex-col h-[500px] md:h-[70vh] mb-4 md:mb-0 md:mr-4",
-        isKeyboardVisible && isMobile && "h-[85vh]"
+        "flex flex-col h-[500px] md:h-[70vh] mb-4 md:mb-0 md:mr-4 relative",
+        isKeyboardVisible && isMobile && "h-screen"
       )}
       ref={chatContainerRef}
     >
@@ -132,7 +148,7 @@ export const StudyRoomChat = ({
 
         <div className={cn(
           "flex-grow overflow-y-auto p-4 space-y-4",
-          isKeyboardVisible && isMobile && "pb-20"
+          isKeyboardVisible && isMobile && "pb-32"
         )}>
           {isLoading ? (
             <div className="flex justify-center items-center h-full">
@@ -190,8 +206,8 @@ export const StudyRoomChat = ({
         </div>
 
         <div className={cn(
-          "p-3 border-t mt-auto",
-          isKeyboardVisible && isMobile && "sticky bottom-0 bg-card z-10 shadow-md"
+          "p-3 border-t mt-auto bg-card",
+          isKeyboardVisible && isMobile && "fixed bottom-0 left-0 right-0 z-50 shadow-lg"
         )}>
           <div className="flex gap-2">
             <Textarea
@@ -205,9 +221,11 @@ export const StudyRoomChat = ({
                 isKeyboardVisible && isMobile && "min-h-[60px]"
               )}
               onFocus={() => {
-                // Scroll to bottom when input is focused
+                // Ensure input is visible when focused
                 setTimeout(() => {
-                  messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                  if (textareaRef.current) {
+                    textareaRef.current.scrollIntoView({ behavior: 'smooth' });
+                  }
                 }, 300);
               }}
             />

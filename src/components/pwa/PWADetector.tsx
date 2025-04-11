@@ -1,6 +1,6 @@
+
 import { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -59,10 +59,54 @@ const PWADetector = () => {
         viewportMeta.setAttribute('content', 
           'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, height=device-height, interactive-widget=resizes-content');
       }
+      
+      // Add global styles for better keyboard handling
+      const style = document.getElementById('mobile-keyboard-styles');
+      if (!style) {
+        const cssStyle = document.createElement('style');
+        cssStyle.id = 'mobile-keyboard-styles';
+        cssStyle.textContent = `
+          @media (max-width: 768px) {
+            body.keyboard-visible {
+              height: 100%;
+              overflow: hidden;
+              position: fixed;
+              width: 100%;
+            }
+            .input-fixed-bottom {
+              position: fixed;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              z-index: 1000;
+            }
+          }
+        `;
+        document.head.appendChild(cssStyle);
+      }
+      
+      // Listen for keyboard visibility changes
+      if (window.visualViewport) {
+        const handleVisualViewportResize = () => {
+          // If more than 20% of the screen is covered, we assume keyboard is visible
+          if (window.visualViewport.height < window.innerHeight * 0.8) {
+            document.body.classList.add('keyboard-visible');
+          } else {
+            document.body.classList.remove('keyboard-visible');
+          }
+        };
+        
+        window.visualViewport.addEventListener('resize', handleVisualViewportResize);
+        
+        return () => {
+          window.visualViewport.removeEventListener('resize', handleVisualViewportResize);
+        };
+      }
     };
     
     if (isMobile) {
-      setViewportForKeyboard();
+      const cleanup = setViewportForKeyboard();
+      return cleanup;
     }
     
     // Only proceed if we're in a browser context, not in standalone mode
