@@ -39,29 +39,20 @@ const Chat = () => {
   const [currentMessages, setCurrentMessages] = useState<any[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
-  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
-  const isMobile = useIsMobile();
-  const [isRetrying, setIsRetrying] = useState(false);
   const [hasLoadedMessages, setHasLoadedMessages] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   
   const { isKeyboardVisible, keyboardHeight } = useKeyboardVisibility({
     onKeyboardShow: () => {
-      if (autoScrollEnabled) {
-        setTimeout(() => {
-          scrollToBottom(true);
-        }, 150);
-      }
+      // No auto-scrolling on keyboard show
     },
     onKeyboardHide: () => {
-      if (autoScrollEnabled) {
-        setTimeout(() => {
-          scrollToBottom(true);
-        }, 100);
-      }
+      // No auto-scrolling on keyboard hide
     }
   });
   
   const isContactTyping = id && isUserTyping(id);
+  const isMobile = useIsMobile();
 
   const fetchConversationMessages = useCallback(async () => {
     if (!id || !user?.id) return;
@@ -74,9 +65,6 @@ const Chat = () => {
       setMessageError(null);
       console.log(`Retrieved ${conversationMessages.length} messages`);
       setHasLoadedMessages(true);
-      
-      // Ensure we scroll to bottom after loading messages
-      setTimeout(() => scrollToBottom(true), 100);
     } catch (err) {
       console.error('Error fetching conversation messages:', err);
       toast.error("Could not load messages. Please try again.");
@@ -154,11 +142,6 @@ const Chat = () => {
           });
           
           markAsRead(payload.new.id);
-          
-          // Scroll to bottom when receiving new message if auto-scroll is enabled
-          if (autoScrollEnabled) {
-            setTimeout(() => scrollToBottom(true), 100);
-          }
         }
       })
       .subscribe((status) => {
@@ -170,7 +153,7 @@ const Chat = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [id, user?.id, markAsRead, autoScrollEnabled]);
+  }, [id, user?.id, markAsRead]);
 
   useEffect(() => {
     if (!id || !user?.id) return;
@@ -233,41 +216,6 @@ const Chat = () => {
     fetchProfile();
   }, [fetchProfile]);
   
-  // Improved scroll to bottom function with force option
-  const scrollToBottom = useCallback((force = false) => {
-    if ((!autoScrollEnabled && !force) || !messagesContainerRef.current) return;
-    
-    try {
-      // Direct scrollTop manipulation for best native-like performance
-      if (messagesContainerRef.current) {
-        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-      }
-      
-      // Also try scrollIntoView as backup
-      if (messageEndRef.current) {
-        messageEndRef.current.scrollIntoView({
-          behavior: force ? 'auto' : 'smooth',
-          block: 'end',
-        });
-      }
-    } catch (err) {
-      console.error('Error scrolling to bottom:', err);
-    }
-  }, [autoScrollEnabled]);
-  
-  // Handle scroll events to determine if auto-scroll should be enabled
-  const handleScroll = useCallback(() => {
-    if (!messagesContainerRef.current) return;
-    
-    const scrollElement = messagesContainerRef.current;
-    const isAtBottom = scrollElement.scrollHeight - scrollElement.clientHeight - scrollElement.scrollTop < 50;
-    
-    // Only change auto-scroll state if it's different to avoid unnecessary re-renders
-    if (isAtBottom !== autoScrollEnabled) {
-      setAutoScrollEnabled(isAtBottom);
-    }
-  }, [autoScrollEnabled]);
-  
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value);
     
@@ -318,12 +266,6 @@ const Chat = () => {
         ));
         
         inputRef.current?.focus();
-        setAutoScrollEnabled(true);
-        
-        // Force scroll to bottom when sending new message
-        setTimeout(() => {
-          scrollToBottom(true);
-        }, 50);
       } else {
         console.error('Failed to send message');
         toast.error("Failed to send message. Please try again.");
@@ -363,22 +305,6 @@ const Chat = () => {
       window.removeEventListener('orientationchange', setInitialHeight);
     };
   }, []);
-  
-  // Effect to ensure proper scrolling when messages change or component mounts
-  useEffect(() => {
-    if (hasLoadedMessages && (currentMessages.length > 0 || isContactTyping)) {
-      // Short delay to ensure DOM is updated before scrolling
-      setTimeout(() => scrollToBottom(true), 100);
-    }
-  }, [currentMessages, isContactTyping, scrollToBottom, hasLoadedMessages]);
-
-  // Initial scroll position setup - start at the bottom
-  useEffect(() => {
-    // Only run once initial messages are loaded
-    if (hasLoadedMessages) {
-      scrollToBottom(true);
-    }
-  }, [hasLoadedMessages, scrollToBottom]);
   
   if ((!id) || (!user?.id)) {
     return (
@@ -455,39 +381,19 @@ const Chat = () => {
         </div>
       </div>
       
-      {/* 
-        Modified chat container to use flexbox for native-like messaging layout:
-        - A flex container that grows but doesn't shrink 
-        - Messages pushed to the bottom initially with flex-end
-        - Scrolling enabled for overflow
-      */}
+      {/* Message container with standard scrolling behavior */}
       <div 
         ref={messagesContainerRef}
-        className="flex-grow flex flex-col overflow-y-auto pb-safe relative"
+        className="flex-grow overflow-y-auto pb-safe"
         style={{ 
           WebkitOverflowScrolling: 'touch',
-          // Add this to make it feel more native
           overscrollBehavior: 'contain',
         }}
-        onScroll={handleScroll}
       >
-        {/* 
-          This empty div with auto margin pushes all messages to the bottom initially,
-          creating the native messaging app experience
-        */}
-        {currentMessages.length > 0 && (
-          <div className="mt-auto"></div>
-        )}
-        
         <div 
-          className={cn(
-            "p-4 space-y-4",
-            // Apply flex layout only when we have messages
-            currentMessages.length === 0 ? "h-full flex flex-col justify-end" : ""
-          )}
+          className="p-4 space-y-4"
           style={{ 
             paddingBottom: isKeyboardVisible && isMobile ? `${Math.max(20, keyboardHeight * 0.1)}px` : '70px',
-            // Ensure minimum height for proper spacing
             minHeight: currentMessages.length === 0 ? '100%' : 'auto',
           }}
         >
@@ -611,7 +517,6 @@ const Chat = () => {
             </div>
           )}
           
-          {/* This ref is used to scroll to the bottom */}
           <div ref={messageEndRef} />
         </div>
       </div>
@@ -651,15 +556,6 @@ const Chat = () => {
                 handleSendMessage();
               }
             }}
-            onClick={() => {
-              if (isMobile && inputRef.current) {
-                inputRef.current.focus();
-                setAutoScrollEnabled(true);
-                setTimeout(() => {
-                  scrollToBottom(true);
-                }, 100);
-              }
-            }}
           />
           
           <Button 
@@ -689,3 +585,4 @@ const Chat = () => {
 };
 
 export default Chat;
+
