@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle, RefreshCw } from "lucide-react";
@@ -16,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useKeyboardVisibility } from "@/hooks/use-keyboard-visibility";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
 
 const Chat = () => {
   const { id } = useParams<{ id: string }>();
@@ -48,7 +48,7 @@ const Chat = () => {
       if (autoScrollEnabled) {
         setTimeout(() => {
           messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 300);
+        }, 150);
       }
     },
     onKeyboardHide: () => {
@@ -217,21 +217,22 @@ const Chat = () => {
     fetchProfile();
   }, [fetchProfile]);
   
-  // Scroll to bottom when messages change
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     if (autoScrollEnabled && messageEndRef.current) {
-      messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      messageEndRef.current.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'end'
+      });
     }
-  };
+  }, [autoScrollEnabled]);
   
   useEffect(() => {
     if (isContactTyping || currentMessages.length > 0) {
       scrollToBottom();
     }
-  }, [currentMessages, isContactTyping]);
+  }, [currentMessages, isContactTyping, scrollToBottom]);
   
-  // Monitor scroll position to detect if user has scrolled up
-  const handleScroll = () => {
+  const handleScroll = useCallback(() => {
     if (!scrollAreaRef.current) return;
     
     const scrollElement = scrollAreaRef.current;
@@ -239,11 +240,10 @@ const Chat = () => {
     const scrollHeight = scrollElement.scrollHeight;
     const scrollTop = scrollElement.scrollTop;
     
-    // Consider "scrolled to bottom" if within 20px of the bottom
-    const isScrolledToBottom = Math.abs(scrollHeight - viewportHeight - scrollTop) < 20;
+    const isScrolledToBottom = Math.abs(scrollHeight - viewportHeight - scrollTop) < 30;
     
     setAutoScrollEnabled(isScrolledToBottom);
-  };
+  }, []);
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value);
@@ -324,7 +324,6 @@ const Chat = () => {
     }
   };
   
-  // Update viewport height on resize and orientation change
   useEffect(() => {
     const setInitialHeight = () => {
       const vh = window.innerHeight * 0.01;
@@ -389,8 +388,7 @@ const Chat = () => {
         overflow: 'hidden'
       }}
     >
-      {/* Fixed header that stays at the top */}
-      <div className="border-b p-3 flex items-center justify-between bg-card z-20 sticky top-0">
+      <div className="border-b p-3 flex items-center justify-between bg-card z-20 sticky top-0 shadow-sm">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate('/community')}>
             <ArrowLeft className="h-5 w-5" />
@@ -417,7 +415,6 @@ const Chat = () => {
         </div>
       </div>
       
-      {/* Scrollable message area */}
       <ScrollArea 
         className="flex-1 overflow-y-auto"
         onScroll={handleScroll}
@@ -426,7 +423,7 @@ const Chat = () => {
         <div 
           className="p-4 space-y-4"
           style={{ 
-            paddingBottom: isKeyboardVisible && isMobile ? `${Math.max(80, keyboardHeight/2)}px` : '80px'
+            paddingBottom: isKeyboardVisible && isMobile ? `${Math.max(60, keyboardHeight * 0.15)}px` : '80px'
           }}
         >
           {contactError && (
@@ -477,7 +474,7 @@ const Chat = () => {
                   className={`flex ${isCurrentUserSender ? 'justify-end' : 'justify-start'}`}
                 >
                   {!isCurrentUserSender && (
-                    <Avatar className="h-8 w-8 mr-2 mt-1">
+                    <Avatar className="h-8 w-8 mr-2 mt-1 shrink-0">
                       <AvatarImage src={contact?.avatar_url || ""} alt={contactDisplayName} />
                       <AvatarFallback>{contactInitials}</AvatarFallback>
                     </Avatar>
@@ -490,7 +487,7 @@ const Chat = () => {
                         : isUnread ? 'bg-muted/80' : 'bg-muted'
                     }`}
                   >
-                    <p className="text-sm">{message.content}</p>
+                    <p className="text-sm break-words">{message.content}</p>
                     <div className={`flex items-center justify-end gap-1 mt-1 text-xs ${
                       isCurrentUserSender ? 'text-primary-foreground/70' : 'text-muted-foreground'
                     }`}>
@@ -502,7 +499,7 @@ const Chat = () => {
                   </div>
                   
                   {isCurrentUserSender && (
-                    <Avatar className="h-8 w-8 ml-2 mt-1">
+                    <Avatar className="h-8 w-8 ml-2 mt-1 shrink-0">
                       <AvatarImage src={user?.avatarUrl || ""} />
                       <AvatarFallback>{(user?.username || "?")[0]}</AvatarFallback>
                     </Avatar>
@@ -533,16 +530,18 @@ const Chat = () => {
         </div>
       </ScrollArea>
       
-      {/* Input area that stays fixed at the bottom */}
-      <div className={cn(
-        "border-t p-3 bg-card sticky bottom-0 z-20",
-        isKeyboardVisible && isMobile ? "shadow-lg" : ""
-      )}
-      style={{
-        position: "sticky",
-        bottom: isKeyboardVisible && isMobile ? `${keyboardHeight}px` : 0,
-        width: '100%'
-      }}
+      <div 
+        className={cn(
+          "border-t p-3 bg-card sticky bottom-0 z-20 transition-all duration-200",
+          isKeyboardVisible && isMobile ? "shadow-lg" : ""
+        )}
+        style={{
+          position: "sticky",
+          bottom: isKeyboardVisible && isMobile ? `0px` : 0,
+          width: '100%',
+          transform: isKeyboardVisible && isMobile ? 'translateY(0)' : 'translateY(0)',
+          padding: isKeyboardVisible && isMobile ? '0.5rem 0.75rem' : '0.75rem',
+        }}
       >
         <div className="flex items-center gap-2">
           <Button 

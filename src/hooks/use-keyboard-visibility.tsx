@@ -80,10 +80,13 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
     // Set initial viewport height reference
     setLastViewportHeight(window.visualViewport.height);
     
-    // Debounced handler to prevent excessive updates
+    // Improved debounced handler to prevent excessive updates but ensure smooth transitions
     let timeout: NodeJS.Timeout | null = null;
     const debouncedDetectKeyboard = () => {
       if (timeout) clearTimeout(timeout);
+      // First quickly update with current values to avoid lag
+      detectKeyboard();
+      // Then properly update after debounce time for stabilization
       timeout = setTimeout(detectKeyboard, debounceTime);
     };
     
@@ -101,7 +104,7 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
         e.target instanceof HTMLTextAreaElement
       ) {
         // Wait a moment for the keyboard to appear
-        setTimeout(detectKeyboard, 300);
+        setTimeout(detectKeyboard, 200);
       }
     };
     
