@@ -1,3 +1,4 @@
+
 // Add the wasExited property to the SavedFocusSession type
 export interface SavedFocusSession {
   milestone: number; // Keep as required
@@ -11,6 +12,7 @@ export interface SavedFocusSession {
   currentTaskCompleted?: boolean;
   taskPriorities?: string[];
   priorityMode?: string;
+  lastActiveTime?: number; // Added to track when the tab was last active
 }
 
 export interface SavedUserSession {
@@ -28,7 +30,8 @@ export const saveFocusSessionState = (data: Partial<SavedFocusSession>) => {
     const updatedData = {
       ...currentData,
       ...data,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      lastActiveTime: Date.now() // Always update the last active time
     };
     
     localStorage.setItem('focusSessionState', JSON.stringify(updatedData));
@@ -86,6 +89,7 @@ export const saveUserSession = async (userId: string) => {
         timestamp: new Date().toISOString(),
         remainingTime: getSavedFocusSession()?.remainingTime || 0,
         environment: localStorage.getItem('environment') || undefined,
+        lastActiveTime: Date.now(),
         taskPriorities: taskPriorities ? JSON.parse(taskPriorities) : undefined,
         priorityMode: priorityMode || undefined,
         currentTaskIndex: currentTaskIndex ? parseInt(currentTaskIndex, 10) : undefined,

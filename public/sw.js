@@ -1,4 +1,3 @@
-
 // Cache version identifier - change this when files are updated
 const CACHE_NAME = 'triage-system-v12'; // Incremented version
 const APP_NAME = 'The Triage System';
@@ -128,16 +127,23 @@ function wasNotificationRecentlySent(id, type) {
   return false;
 }
 
-// Function to start background timer
-function startBackgroundTimer(id, duration, startTime, options = {}) {
+// Function to start background timer with current remaining time
+function startBackgroundTimer(id, duration, startTime, options = {}, currentRemaining = null) {
   if (!duration || backgroundTimers.has(id)) return;
   
-  const endTime = startTime + (duration * 1000);
+  // If current remaining time is provided, use it to adjust the start time
+  let adjustedStartTime = startTime;
+  if (currentRemaining !== null) {
+    const elapsedSeconds = duration - currentRemaining;
+    adjustedStartTime = Date.now() - (elapsedSeconds * 1000);
+  }
+  
+  const endTime = adjustedStartTime + (duration * 1000);
   
   backgroundTimers.set(id, {
     id,
     duration,
-    startTime,
+    startTime: adjustedStartTime,
     endTime,
     isRunning: true,
     options,
@@ -148,7 +154,8 @@ function startBackgroundTimer(id, duration, startTime, options = {}) {
   console.log('Background timer started:', {
     id,
     duration,
-    endTime: new Date(endTime).toISOString()
+    endTime: new Date(endTime).toISOString(),
+    currentRemaining: currentRemaining
   });
   
   // Set up periodic checks while the app is in the background
@@ -158,7 +165,7 @@ function startBackgroundTimer(id, duration, startTime, options = {}) {
   storeBackgroundTimerState(id, {
     id,
     duration,
-    startTime,
+    startTime: adjustedStartTime,
     endTime,
     isRunning: true,
     options,
@@ -286,13 +293,21 @@ function pauseBackgroundTimer(id) {
   console.log('Background timer paused:', id, 'with remaining ms:', remainingMs);
 }
 
-// Function to resume background timer
-function resumeBackgroundTimer(id) {
+// Function to resume background timer with current remaining time
+function resumeBackgroundTimer(id, currentRemaining = null) {
   const timer = backgroundTimers.get(id);
   if (!timer) return;
   
   const now = Date.now();
-  timer.endTime = now + (timer.remainingMs || (timer.duration * 1000));
+  
+  if (currentRemaining !== null) {
+    // Use provided remaining time
+    timer.endTime = now + (currentRemaining * 1000);
+  } else {
+    // Use stored remaining time
+    timer.endTime = now + (timer.remainingMs || (timer.duration * 1000));
+  }
+  
   timer.isRunning = true;
   
   // Update storage
@@ -392,8 +407,8 @@ self.addEventListener('message', event => {
   
   // Handle timer control messages
   if (event.data.type === 'START_BACKGROUND_TIMER') {
-    const { id, duration, startTime, options } = event.data;
-    startBackgroundTimer(id, duration, startTime, options);
+    const { id, duration, startTime, options, currentRemaining } = event.data;
+    startBackgroundTimer(id, duration, startTime, options, currentRemaining);
     
     // Confirm back to client
     if (event.ports && event.ports[0]) {
@@ -425,8 +440,8 @@ self.addEventListener('message', event => {
   }
   
   if (event.data.type === 'RESUME_BACKGROUND_TIMER') {
-    const { id } = event.data;
-    resumeBackgroundTimer(id);
+    const { id, currentRemaining } = event.data;
+    resumeBackgroundTimer(id, currentRemaining);
   }
   
   if (event.data.type === 'GET_BACKGROUND_TIMER') {

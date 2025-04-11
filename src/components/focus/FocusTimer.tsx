@@ -40,6 +40,7 @@ const FocusTimer = forwardRef<
   const isMobile = useIsMobile();
   const backgroundModeRef = useRef<boolean>(false);
   const serviceWorkerAvailable = useRef<boolean>('serviceWorker' in navigator && navigator.serviceWorker.controller !== null);
+  const visibilityChangeTimeRef = useRef<number | null>(null);
   
   // Calculate milestones based on initialTime (typically 3 milestones)
   const milestoneTimePoints = [
@@ -104,12 +105,15 @@ const FocusTimer = forwardRef<
   // Handle visibility change events
   useEffect(() => {
     const handleVisibilityChange = () => {
+      const now = Date.now();
+      
       if (document.visibilityState === 'hidden') {
-        // App going to background
+        // App going to background or tab switching
+        visibilityChangeTimeRef.current = now;
         enterBackgroundMode();
       } else {
-        // App coming to foreground
-        exitBackgroundMode();
+        // App coming to foreground or tab becomes active
+        exitBackgroundMode(now);
         
         // Clear any existing notifications for this timer
         if (serviceWorkerAvailable.current && navigator.serviceWorker.controller) {
@@ -146,6 +150,7 @@ const FocusTimer = forwardRef<
         id: timerId,
         duration: initialTime,
         startTime: startTimeRef.current,
+        currentRemaining: remainingTime,
         options: {
           notificationTitle: 'Focus Session Complete',
           notificationBody: 'Your focus session has finished.',
@@ -200,7 +205,8 @@ const FocusTimer = forwardRef<
     if (navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage({
         type: 'RESUME_BACKGROUND_TIMER',
-        id: timerId
+        id: timerId,
+        currentRemaining: remainingTime
       });
     }
   };
@@ -212,6 +218,12 @@ const FocusTimer = forwardRef<
       intervalRef.current = null;
     }
     
+    // Save the current time so we know how long the tab was inactive
+    localStorage.setItem(`${timerId}_hidden_time`, Date.now().toString());
+    
+    // Save the current remaining time
+    localStorage.setItem(`${timerId}_remaining`, remainingTime.toString());
+    
     if (!isPaused && remainingTime > 0) {
       console.log('App entering background, starting background timer');
       startBackgroundTimer();
@@ -221,7 +233,53 @@ const FocusTimer = forwardRef<
   };
   
   // When app comes back to foreground
-  const exitBackgroundMode = () => {
+  const exitBackgroundMode = (now: number) => {
+    const hiddenTimeStamp = localStorage.getItem(`${timerId}_hidden_time`);
+    const savedRemainingTime = localStorage.getItem(`${timerId}_remaining`);
+    
+    if (hiddenTimeStamp && savedRemainingTime && !isPaused) {
+      const hiddenTime = parseInt(hiddenTimeStamp, 10);
+      const elapsedSeconds = (now - hiddenTime) / 1000;
+      const previousRemaining = parseFloat(savedRemainingTime);
+      
+      // Calculate the new remaining time
+      let newRemainingTime = Math.max(0, previousRemaining - elapsedSeconds);
+      
+      // Update the timer
+      setRemainingTime(newRemainingTime);
+      
+      // Reset the start time reference based on the new remaining time
+      startTimeRef.current = now - (initialTime - newRemainingTime) * 1000;
+      
+      console.log(`Tab was hidden for ${elapsedSeconds}s, adjusted remaining time to ${newRemainingTime}s`);
+      
+      // Check if timer should have completed while away
+      if (newRemainingTime <= 0 && !hasCompletedRef.current) {
+        console.log('Timer completed while tab was hidden');
+        hasCompletedRef.current = true;
+        
+        if (onComplete && !notificationSentRef.current) {
+          notificationSentRef.current = true;
+          onComplete();
+        }
+      }
+      
+      // Check if any milestones were reached
+      const timePassed = initialTime - newRemainingTime;
+      milestoneTimePoints.forEach((milestoneTime, index) => {
+        if (timePassed >= initialTime - milestoneTime && index > lastMilestoneRef.current) {
+          console.log(`Milestone ${index} reached while tab was hidden`);
+          if (onMilestoneReached) onMilestoneReached(index);
+          lastMilestoneRef.current = index;
+        }
+      });
+      
+      if (onProgressUpdate) {
+        const progress = 1 - (newRemainingTime / initialTime);
+        onProgressUpdate(progress);
+      }
+    }
+    
     if (backgroundModeRef.current) {
       console.log('App coming to foreground, checking background timer status');
       backgroundModeRef.current = false;
@@ -232,12 +290,69 @@ const FocusTimer = forwardRef<
           id: timerId
         });
       }
-      
-      // If not paused, restart the normal interval timer
-      if (!isPaused && remainingTime > 0) {
-        startTimeRef.current = Date.now() - (initialTime - remainingTime) * 1000;
-      }
     }
+    
+    // Clean up the stored timestamp
+    localStorage.removeItem(`${timerId}_hidden_time`);
+    localStorage.removeItem(`${timerId}_remaining`);
+    
+    // If not paused, restart the normal interval timer
+    if (!isPaused && remainingTime > 0) {
+      // Start the interval timer
+      startIntervalTimer();
+    }
+  };
+  
+  // Start the interval timer for active tab
+  const startIntervalTimer = () => {
+    // Clear any existing interval
+    if (intervalRef.current !== null) {
+      window.clearInterval(intervalRef.current);
+    }
+    
+    lastTickTimeRef.current = Date.now();
+    
+    intervalRef.current = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') {
+        // Skip ticks while hidden - background timer will handle it
+        return;
+      }
+      
+      const now = Date.now();
+      const elapsed = (now - startTimeRef.current) / 1000;
+      let newRemainingTime = initialTime - elapsed;
+      
+      if (newRemainingTime <= 0) {
+        newRemainingTime = 0;
+        window.clearInterval(intervalRef.current);
+        intervalRef.current = null;
+        stopBackgroundTimer();
+        
+        // Only trigger onComplete once and ensure we're not sending duplicate notifications
+        if (!hasCompletedRef.current && onComplete && !notificationSentRef.current) {
+          hasCompletedRef.current = true;
+          notificationSentRef.current = true;
+          onComplete();
+        }
+      }
+      
+      setRemainingTime(newRemainingTime);
+      
+      const timePassed = initialTime - newRemainingTime;
+      milestoneTimePoints.forEach((milestoneTime, index) => {
+        if (timePassed >= initialTime - milestoneTime && index > lastMilestoneRef.current) {
+          if (onMilestoneReached) onMilestoneReached(index);
+          lastMilestoneRef.current = index;
+        }
+      });
+      
+      if (onProgressUpdate) {
+        const progress = 1 - (newRemainingTime / initialTime);
+        onProgressUpdate(progress);
+      }
+      
+      lastTickTimeRef.current = now;
+    }, lowPowerMode ? 1000 : 100);
   };
   
   // Expose methods to parent components
@@ -262,55 +377,15 @@ const FocusTimer = forwardRef<
   useEffect(() => {
     if (!isPaused && remainingTime > 0) {
       startTimeRef.current = Date.now() - (initialTime - remainingTime) * 1000;
-      lastTickTimeRef.current = Date.now();
+      
+      // Start the interval timer
+      startIntervalTimer();
       
       // When resuming, sync with background timer if needed
       if (backgroundModeRef.current && serviceWorkerAvailable.current) {
         resumeBackgroundTimer();
         backgroundModeRef.current = false; // Reset since we're in foreground now
       }
-      
-      intervalRef.current = window.setInterval(() => {
-        if (document.visibilityState === 'hidden') {
-          // Skip ticks while hidden - background timer will handle it
-          return;
-        }
-        
-        const now = Date.now();
-        let elapsed = (now - startTimeRef.current) / 1000;
-        let newRemainingTime = initialTime - elapsed;
-        
-        if (newRemainingTime <= 0) {
-          newRemainingTime = 0;
-          window.clearInterval(intervalRef.current);
-          intervalRef.current = null;
-          stopBackgroundTimer();
-          
-          // Only trigger onComplete once and ensure we're not sending duplicate notifications
-          if (!hasCompletedRef.current && onComplete && !notificationSentRef.current) {
-            hasCompletedRef.current = true;
-            notificationSentRef.current = true;
-            onComplete();
-          }
-        }
-        
-        setRemainingTime(newRemainingTime);
-        
-        const timePassed = initialTime - newRemainingTime;
-        milestoneTimePoints.forEach((milestoneTime, index) => {
-          if (timePassed >= initialTime - milestoneTime && index > lastMilestoneRef.current) {
-            if (onMilestoneReached) onMilestoneReached(index);
-            lastMilestoneRef.current = index;
-          }
-        });
-        
-        if (onProgressUpdate) {
-          const progress = 1 - (newRemainingTime / initialTime);
-          onProgressUpdate(progress);
-        }
-        
-        lastTickTimeRef.current = now;
-      }, lowPowerMode ? 1000 : 100);
     } else if (isPaused && intervalRef.current !== null) {
       window.clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -327,7 +402,7 @@ const FocusTimer = forwardRef<
         intervalRef.current = null;
       }
     };
-  }, [isPaused, initialTime, onComplete, onMilestoneReached, onProgressUpdate, lowPowerMode, remainingTime]);
+  }, [isPaused, lowPowerMode]);
   
   // Reset the completed state when the component is reused
   useEffect(() => {

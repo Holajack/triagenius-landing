@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -35,7 +34,6 @@ export const useFocusSession = () => {
   const navigationAttemptedRef = useRef(false);
   const navigationTimeoutRef = useRef<number | null>(null);
   const autoStartedRef = useRef(false);
-  
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -67,6 +65,24 @@ export const useFocusSession = () => {
     } catch (error) {
       console.error('useFocusSession: Error detecting PWA state:', error);
     }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        localStorage.setItem('focus_tab_hidden_time', Date.now().toString());
+      } else {
+        const hiddenTimeStr = localStorage.getItem('focus_tab_hidden_time');
+        if (hiddenTimeStr) {
+          const hiddenTime = parseInt(hiddenTimeStr, 10);
+          const now = Date.now();
+          const timeInBackground = (now - hiddenTime) / 1000;
+          
+          console.log(`Tab was hidden for ${timeInBackground.toFixed(1)} seconds`);
+          localStorage.removeItem('focus_tab_hidden_time');
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     
     const shouldAutoStart = localStorage.getItem('autoStartFocusTimer') === 'true';
     
@@ -189,6 +205,7 @@ export const useFocusSession = () => {
         const focusData = getSavedFocusSession();
         if (focusData) {
           focusData.wasExited = true;
+          focusData.lastActiveTime = Date.now();
           saveFocusSessionState(focusData);
         }
       } catch (error) {
@@ -203,6 +220,7 @@ export const useFocusSession = () => {
       document.body.style.overflow = 'auto';
       
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       
       if (navigationTimeoutRef.current) {
         window.clearTimeout(navigationTimeoutRef.current);
@@ -327,6 +345,7 @@ export const useFocusSession = () => {
         remainingTime,
         environment: localStorage.getItem('environment') || 'default',
         wasExited: false,
+        lastActiveTime: Date.now(),
         currentTaskIndex: parseInt(currentTaskIndex, 10),
         currentTaskCompleted
       };
