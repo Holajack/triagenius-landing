@@ -112,27 +112,22 @@ export const StudyRoomChat = ({
   return (
     <Card 
       className={cn(
-        "flex flex-col md:h-[70vh] mb-4 md:mb-0 md:mr-4 relative",
-        isMobile ? "h-[calc(var(--vh,1vh)*100-80px)]" : "h-[500px]"
+        "flex flex-col overflow-hidden",
+        isMobile ? "h-[calc(var(--vh,1vh)*100-80px)]" : "h-[70vh] md:mr-4"
       )}
     >
       <CardContent className="flex flex-col h-full p-0">
-        <div className="p-3 border-b">
+        <div className="p-3 border-b shrink-0">
           <h3 className="font-medium">Chat</h3>
         </div>
 
-        {/* ScrollArea for better scrolling experience */}
+        {/* Scrollable message area */}
         <ScrollArea 
-          className="flex-grow"
+          className="flex-1 h-[calc(100%-120px)]"
           onScroll={handleScroll}
           ref={scrollAreaRef}
         >
-          <div 
-            className="p-4 space-y-4"
-            style={{
-              paddingBottom: isKeyboardVisible && isMobile ? `${keyboardHeight > 0 ? keyboardHeight + 100 : 120}px` : '80px'
-            }}
-          >
+          <div className="p-4 space-y-4">
             {isLoading ? (
               <div className="flex justify-center items-center h-full">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-500"></div>
@@ -185,20 +180,23 @@ export const StudyRoomChat = ({
                 );
               })
             )}
+            {/* Space at the bottom to prevent messages being hidden under input */}
+            <div className="h-16" />
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
 
-        {/* Input area that stays fixed at the bottom */}
+        {/* Fixed input area */}
         <div 
           className={cn(
-            "p-3 border-t bg-card",
-            isKeyboardVisible && isMobile ? "fixed bottom-0 left-0 right-0 z-10 shadow-lg" : "relative"
+            "p-3 border-t bg-card shrink-0",
+            isKeyboardVisible && isMobile ? "fixed bottom-0 left-0 right-0 z-10 shadow-lg animate-slide-up" : ""
           )}
           style={{
             position: isKeyboardVisible && isMobile ? 'fixed' : 'relative',
             bottom: isKeyboardVisible && isMobile ? `${keyboardHeight}px` : 'auto',
-            width: '100%'
+            width: '100%',
+            paddingBottom: `calc(0.5rem + env(safe-area-inset-bottom, 0.5rem))`,
           }}
         >
           <div className="flex gap-2">
@@ -217,10 +215,7 @@ export const StudyRoomChat = ({
                 }
               }}
               onBlur={() => setIsInputFocused(false)}
-              className={cn(
-                "min-h-[60px] resize-none",
-                isKeyboardVisible && isMobile && "min-h-[40px] max-h-[80px]"
-              )}
+              className="min-h-[60px] resize-none"
               style={{
                 height: isKeyboardVisible && isMobile ? '50px' : '60px'
               }}

@@ -46,9 +46,7 @@ const Chat = () => {
   const { isKeyboardVisible, keyboardHeight } = useKeyboardVisibility({
     onKeyboardShow: () => {
       inputRef.current?.focus();
-      setTimeout(() => scrollToBottom('auto'), 100);
-    },
-    onKeyboardHide: () => {
+      setTimeout(() => scrollToBottom('auto'), 300);
     }
   });
   
@@ -373,14 +371,8 @@ const Chat = () => {
   const contactInitials = contact ? getInitials(contactDisplayName) : "?";
   
   return (
-    <div 
-      className="flex flex-col fixed inset-0 bg-background"
-      style={{ 
-        height: '100%',
-        maxHeight: '100%'
-      }}
-    >
-      <header className="border-b p-3 flex items-center justify-between bg-card z-20 shadow-sm">
+    <div className="flex flex-col h-screen bg-background overflow-hidden">
+      <header className="border-b p-3 flex items-center justify-between bg-card z-30 shadow-sm shrink-0">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate('/community')}>
             <ArrowLeft className="h-5 w-5" />
@@ -407,155 +399,152 @@ const Chat = () => {
         </div>
       </header>
       
-      <div 
-        ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto flex flex-col"
-        style={{ 
-          overscrollBehavior: 'contain',
-          WebkitOverflowScrolling: 'touch',
-          paddingBottom: isKeyboardVisible ? `${keyboardHeight * 0.05}px` : '0'
-        }}
-      >
-        {currentMessages.length > 0 && (
-          <div className="flex-grow" />
-        )}
-        
-        <div className="p-4 space-y-4">
-          {contactError && (
-            <Alert variant="default" className="mb-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
-              <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
-              <AlertTitle>Contact Information Issue</AlertTitle>
-              <AlertDescription className="flex flex-col gap-2">
-                <p>{contactError}</p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="self-start mt-2" 
-                  onClick={handleRetryLoad}
-                  disabled={isRetrying}
-                >
-                  {isRetrying ? (
-                    <>
-                      <div className="animate-spin h-3 w-3 mr-2 border-2 border-primary border-t-transparent rounded-full"></div>
-                      Retrying...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-3 w-3 mr-2" /> Retry
-                    </>
-                  )}
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {messageError && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Message Error</AlertTitle>
-              <AlertDescription className="flex flex-col gap-2">
-                <p>{messageError}</p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="self-start mt-2 bg-background text-foreground hover:bg-muted" 
-                  onClick={handleRetryLoad}
-                  disabled={isRetrying}
-                >
-                  {isRetrying ? (
-                    <>
-                      <div className="animate-spin h-3 w-3 mr-2 border-2 border-primary border-t-transparent rounded-full"></div>
-                      Retrying...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-3 w-3 mr-2" /> Retry
-                    </>
-                  )}
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {currentMessages.length > 0 ? (
-            currentMessages.map((message) => {
-              const isUnread = !message.is_read;
-              const isCurrentUserSender = message.sender_id === user?.id;
-              const messageTime = formatDistanceToNow(new Date(message.created_at), { addSuffix: true });
+      <div className="flex-1 overflow-hidden relative">
+        <ScrollArea className="h-full pb-safe">
+          <div className="flex flex-col min-h-full">
+            {currentMessages.length > 0 && (
+              <div className="flex-grow" />
+            )}
+            
+            <div className="p-4 space-y-4">
+              {contactError && (
+                <Alert variant="default" className="mb-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
+                  <AlertTitle>Contact Information Issue</AlertTitle>
+                  <AlertDescription className="flex flex-col gap-2">
+                    <p>{contactError}</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="self-start mt-2" 
+                      onClick={handleRetryLoad}
+                      disabled={isRetrying}
+                    >
+                      {isRetrying ? (
+                        <>
+                          <div className="animate-spin h-3 w-3 mr-2 border-2 border-primary border-t-transparent rounded-full"></div>
+                          Retrying...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-3 w-3 mr-2" /> Retry
+                        </>
+                      )}
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
               
-              return (
-                <div 
-                  key={message.id} 
-                  className={`flex ${isCurrentUserSender ? 'justify-end' : 'justify-start'}`}
-                >
-                  {!isCurrentUserSender && (
-                    <Avatar className="h-8 w-8 mr-2 mt-1 shrink-0">
-                      <AvatarImage src={contact?.avatar_url || ""} alt={contactDisplayName} />
-                      <AvatarFallback>{contactInitials}</AvatarFallback>
-                    </Avatar>
-                  )}
+              {messageError && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Message Error</AlertTitle>
+                  <AlertDescription className="flex flex-col gap-2">
+                    <p>{messageError}</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="self-start mt-2 bg-background text-foreground hover:bg-muted" 
+                      onClick={handleRetryLoad}
+                      disabled={isRetrying}
+                    >
+                      {isRetrying ? (
+                        <>
+                          <div className="animate-spin h-3 w-3 mr-2 border-2 border-primary border-t-transparent rounded-full"></div>
+                          Retrying...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="h-3 w-3 mr-2" /> Retry
+                        </>
+                      )}
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {currentMessages.length > 0 ? (
+                currentMessages.map((message) => {
+                  const isUnread = !message.is_read;
+                  const isCurrentUserSender = message.sender_id === user?.id;
+                  const messageTime = formatDistanceToNow(new Date(message.created_at), { addSuffix: true });
                   
-                  <div 
-                    className={`max-w-[75%] p-3 rounded-lg ${
-                      isCurrentUserSender 
-                        ? 'bg-primary text-primary-foreground' 
-                        : isUnread ? 'bg-muted/80' : 'bg-muted'
-                    }`}
-                  >
-                    <p className="text-sm break-words">{message.content}</p>
-                    <div className={`flex items-center justify-end gap-1 mt-1 text-xs ${
-                      isCurrentUserSender ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                    }`}>
-                      <span>{messageTime}</span>
+                  return (
+                    <div 
+                      key={message.id} 
+                      className={`flex ${isCurrentUserSender ? 'justify-end' : 'justify-start'}`}
+                    >
+                      {!isCurrentUserSender && (
+                        <Avatar className="h-8 w-8 mr-2 mt-1 shrink-0">
+                          <AvatarImage src={contact?.avatar_url || ""} alt={contactDisplayName} />
+                          <AvatarFallback>{contactInitials}</AvatarFallback>
+                        </Avatar>
+                      )}
+                      
+                      <div 
+                        className={`max-w-[75%] p-3 rounded-lg ${
+                          isCurrentUserSender 
+                            ? 'bg-primary text-primary-foreground' 
+                            : isUnread ? 'bg-muted/80' : 'bg-muted'
+                        }`}
+                      >
+                        <p className="text-sm break-words">{message.content}</p>
+                        <div className={`flex items-center justify-end gap-1 mt-1 text-xs ${
+                          isCurrentUserSender ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                        }`}>
+                          <span>{messageTime}</span>
+                          {isCurrentUserSender && (
+                            <span>{message.is_read ? '✓✓' : '✓'}</span>
+                          )}
+                        </div>
+                      </div>
+                      
                       {isCurrentUserSender && (
-                        <span>{message.is_read ? '✓✓' : '✓'}</span>
+                        <Avatar className="h-8 w-8 ml-2 mt-1 shrink-0">
+                          <AvatarImage src={user?.avatarUrl || ""} />
+                          <AvatarFallback>{(user?.username || "?")[0]}</AvatarFallback>
+                        </Avatar>
                       )}
                     </div>
+                  );
+                })
+              ) : (
+                <div className="flex flex-col items-center justify-center min-h-[70vh] text-center text-muted-foreground py-20">
+                  <p>No messages yet</p>
+                  <p className="text-sm mt-2">Send a message to start the conversation</p>
+                </div>
+              )}
+              
+              {isContactTyping && (
+                <div className="flex justify-start">
+                  <div className="bg-muted p-3 rounded-lg">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
+                      <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "100ms" }}></div>
+                      <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "200ms" }}></div>
+                    </div>
                   </div>
-                  
-                  {isCurrentUserSender && (
-                    <Avatar className="h-8 w-8 ml-2 mt-1 shrink-0">
-                      <AvatarImage src={user?.avatarUrl || ""} />
-                      <AvatarFallback>{(user?.username || "?")[0]}</AvatarFallback>
-                    </Avatar>
-                  )}
                 </div>
-              );
-            })
-          ) : (
-            <div className="flex flex-col items-center justify-center min-h-[70vh] text-center text-muted-foreground py-20">
-              <p>No messages yet</p>
-              <p className="text-sm mt-2">Send a message to start the conversation</p>
+              )}
+              
+              <div className="h-16 md:h-4" />
+              <div ref={messageEndRef} className="h-1" />
             </div>
-          )}
-          
-          {isContactTyping && (
-            <div className="flex justify-start">
-              <div className="bg-muted p-3 rounded-lg">
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
-                  <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "100ms" }}></div>
-                  <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "200ms" }}></div>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          <div ref={messageEndRef} className="h-1" />
-        </div>
+          </div>
+        </ScrollArea>
       </div>
       
       <div 
         className={cn(
-          "p-2 bg-card border-t z-20 absolute left-0 right-0",
-          isKeyboardVisible && isMobile ? "fixed bottom-0 shadow-lg animate-fade-in" : "bottom-0"
+          "p-2 bg-card border-t z-30 shrink-0",
+          isKeyboardVisible && isMobile ? "animate-slide-up" : ""
         )}
         style={{
-          bottom: isKeyboardVisible && isMobile ? `${keyboardHeight > 0 ? 0 : 0}px` : 0,
-          paddingBottom: isKeyboardVisible && isMobile ? 
-            `calc(0.5rem + env(safe-area-inset-bottom, 0px))` : 
-            'env(safe-area-inset-bottom, 0.5rem)',
-          transition: 'transform 0.3s ease-out'
+          position: isKeyboardVisible && isMobile ? 'fixed' : 'relative',
+          bottom: isKeyboardVisible && isMobile ? `${keyboardHeight}px` : 0,
+          left: 0,
+          right: 0,
+          paddingBottom: `calc(0.5rem + env(safe-area-inset-bottom, 0.5rem))`,
         }}
       >
         <div className="flex items-center gap-2 bg-background rounded-full border px-2">
