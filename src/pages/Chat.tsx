@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle, RefreshCw } from "lucide-react";
@@ -16,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useKeyboardVisibility } from "@/hooks/use-keyboard-visibility";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { RealtimeChannel, REALTIME_SUBSCRIBE_STATES } from "@supabase/supabase-js";
+import { REALTIME_SUBSCRIBE_STATES, RealtimeChannel } from "@supabase/supabase-js";
 
 const MAX_RETRY_ATTEMPTS = 3;
 
@@ -47,7 +46,7 @@ const Chat = () => {
   const [isRetrying, setIsRetrying] = useState(false);
   const [initialScrollComplete, setInitialScrollComplete] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
-  const [channelStatus, setChannelStatus] = useState<string | null>(null);
+  const [channelStatus, setChannelStatus] = useState<REALTIME_SUBSCRIBE_STATES | null>(null);
   
   const { isKeyboardVisible, keyboardHeight } = useKeyboardVisibility({
     onKeyboardShow: () => {
@@ -457,7 +456,7 @@ const Chat = () => {
   
   return (
     <div 
-      className="flex flex-col h-[100vh] bg-background overflow-hidden"
+      className="flex flex-col h-[100vh] bg-gray-50 dark:bg-gray-900 overflow-hidden"
       style={{
         height: `calc(var(--vh, 1vh) * 100)`, 
         maxHeight: `calc(var(--vh, 1vh) * 100)`
