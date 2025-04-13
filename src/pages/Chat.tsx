@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle, RefreshCw } from "lucide-react";
@@ -16,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useKeyboardVisibility } from "@/hooks/use-keyboard-visibility";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { RealtimeChannel } from "@supabase/supabase-js";
 
 const MAX_RETRY_ATTEMPTS = 3;
 
@@ -88,16 +88,14 @@ const Chat = () => {
       setCurrentMessages(conversationMessages);
       setMessageError(null);
       setHasLoadedMessages(true);
-      setRetryCount(0); // Reset retry counter on success
+      setRetryCount(0);
     } catch (err) {
       console.error('Error fetching conversation messages:', err);
       
-      // Implement progressive retry logic
       if (retryCount < MAX_RETRY_ATTEMPTS) {
         const nextRetry = retryCount + 1;
         setRetryCount(nextRetry);
         
-        // Exponential backoff
         const delay = Math.min(1000 * Math.pow(2, nextRetry), 8000);
         console.log(`Retry attempt ${nextRetry}/${MAX_RETRY_ATTEMPTS} in ${delay}ms`);
         
@@ -182,7 +180,6 @@ const Chat = () => {
     
     const channelName = `private-messages-${id}-${user.id}`;
     
-    // Track the channel to avoid duplication issues
     const channel = supabase.channel(channelName, {
       config: {
         broadcast: {
@@ -218,14 +215,11 @@ const Chat = () => {
       .subscribe((status) => {
         setChannelStatus(status);
         
-        // Fix: Convert string comparison to correct string literal type comparison
         if (status !== 'SUBSCRIBED' && status !== 'TIMED_OUT') {
           console.error('Failed to subscribe to private messages channel:', status);
           
-          // Automatic channel recovery on failure
           if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
             setTimeout(() => {
-              // Re-subscribe with exponential backoff
               console.log('Attempting to reconnect to message channel');
               const reconnectionChannel = supabase.channel(channelName);
               reconnectionChannel
