@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle, RefreshCw } from "lucide-react";
@@ -215,9 +216,11 @@ const Chat = () => {
       .subscribe((status) => {
         setChannelStatus(status);
         
+        // Use the enum for comparison instead of string literal
         if (status !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
           console.error('Failed to subscribe to private messages channel:', status);
           
+          // Use enum values for comparison
           if (
             status === REALTIME_SUBSCRIBE_STATES.CLOSED || 
             status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR ||
