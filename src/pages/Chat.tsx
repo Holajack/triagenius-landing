@@ -43,7 +43,7 @@ const Chat = () => {
   const [isSending, setIsSending] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
   const [hasLoadedMessages, setHasLoadedMessages] = useState(false);
-  const [isRetrying, setIsRetrying] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(isRetrying);
   const [initialScrollComplete, setInitialScrollComplete] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [channelStatus, setChannelStatus] = useState<string | null>(null);
@@ -215,15 +215,13 @@ const Chat = () => {
       .subscribe((status) => {
         setChannelStatus(status);
         
-        if (
-          status !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED && 
-          status !== REALTIME_SUBSCRIBE_STATES.TIMED_OUT
-        ) {
+        if (status !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
           console.error('Failed to subscribe to private messages channel:', status);
           
           if (
             status === REALTIME_SUBSCRIBE_STATES.CLOSED || 
-            status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR
+            status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR ||
+            status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT
           ) {
             setTimeout(() => {
               console.log('Attempting to reconnect to message channel');
