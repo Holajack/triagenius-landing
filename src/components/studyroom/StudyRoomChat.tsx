@@ -58,6 +58,14 @@ export const StudyRoomChat = ({
           messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }, 300);
       }
+    },
+    onKeyboardHide: () => {
+      // Also scroll when keyboard hides to maintain context
+      if (autoScrollEnabled) {
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
     }
   });
 
@@ -99,7 +107,7 @@ export const StudyRoomChat = ({
     const scrollTop = scrollElement.scrollTop;
     
     // Consider "scrolled to bottom" if within 20px of the bottom
-    const isScrolledToBottom = Math.abs(scrollHeight - viewportHeight - scrollTop) < 20;
+    const isScrolledToBottom = Math.abs(scrollHeight - viewportHeight - scrollTop) < 50;
     
     setAutoScrollEnabled(isScrolledToBottom);
   };
@@ -190,13 +198,16 @@ export const StudyRoomChat = ({
         <div 
           className={cn(
             "p-3 border-t bg-card shrink-0",
-            isKeyboardVisible && isMobile ? "fixed bottom-0 left-0 right-0 z-10 shadow-lg animate-slide-up" : ""
+            isKeyboardVisible && isMobile ? "animate-slide-up" : ""
           )}
           style={{
             position: isKeyboardVisible && isMobile ? 'fixed' : 'relative',
             bottom: isKeyboardVisible && isMobile ? `${keyboardHeight}px` : 'auto',
+            left: 0,
+            right: 0,
             width: '100%',
-            paddingBottom: `calc(0.5rem + env(safe-area-inset-bottom, 0.5rem))`,
+            paddingBottom: `calc(0.5rem + var(--sat-bottom, 0.5rem))`,
+            zIndex: 10
           }}
         >
           <div className="flex gap-2">

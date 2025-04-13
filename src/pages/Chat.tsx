@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle, RefreshCw } from "lucide-react";
@@ -15,6 +16,8 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useKeyboardVisibility } from "@/hooks/use-keyboard-visibility";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
+const MAX_RETRY_ATTEMPTS = 3;
 
 const Chat = () => {
   const { id } = useParams<{ id: string }>();
@@ -42,12 +45,18 @@ const Chat = () => {
   const [hasLoadedMessages, setHasLoadedMessages] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const [initialScrollComplete, setInitialScrollComplete] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [channelStatus, setChannelStatus] = useState<string | null>(null);
   
   const { isKeyboardVisible, keyboardHeight } = useKeyboardVisibility({
     onKeyboardShow: () => {
       inputRef.current?.focus();
       setTimeout(() => scrollToBottom('auto'), 300);
-    }
+    },
+    onKeyboardHide: () => {
+      setTimeout(() => scrollToBottom('auto'), 300);
+    },
+    debounceTime: 150
   });
   
   const isContactTyping = id && isUserTyping(id);
@@ -69,18 +78,40 @@ const Chat = () => {
       setIsRetrying(true);
       console.log("Fetching conversation messages for user ID:", id);
       const conversationMessages = await getConversation(id);
+      
+      if (!conversationMessages || conversationMessages.length === 0) {
+        console.log("No messages found or empty response");
+      } else {
+        console.log(`Retrieved ${conversationMessages.length} messages`);
+      }
+      
       setCurrentMessages(conversationMessages);
       setMessageError(null);
-      console.log(`Retrieved ${conversationMessages.length} messages`);
       setHasLoadedMessages(true);
+      setRetryCount(0); // Reset retry counter on success
     } catch (err) {
       console.error('Error fetching conversation messages:', err);
-      toast.error("Could not load messages. Please try again.");
-      setMessageError("Failed to load conversation messages");
+      
+      // Implement progressive retry logic
+      if (retryCount < MAX_RETRY_ATTEMPTS) {
+        const nextRetry = retryCount + 1;
+        setRetryCount(nextRetry);
+        
+        // Exponential backoff
+        const delay = Math.min(1000 * Math.pow(2, nextRetry), 8000);
+        console.log(`Retry attempt ${nextRetry}/${MAX_RETRY_ATTEMPTS} in ${delay}ms`);
+        
+        setTimeout(() => {
+          if (id && user?.id) fetchConversationMessages();
+        }, delay);
+      } else {
+        toast.error("Could not load messages. Please try again.");
+        setMessageError("Failed to load conversation messages. Please check your connection.");
+      }
     } finally {
       setIsRetrying(false);
     }
-  }, [id, user?.id, getConversation]);
+  }, [id, user?.id, getConversation, retryCount]);
 
   useEffect(() => {
     fetchConversationMessages();
@@ -106,7 +137,13 @@ const Chat = () => {
   useEffect(() => {
     if (!user?.id) return;
     
-    const channel = supabase.channel('online-users');
+    const channel = supabase.channel('online-users', {
+      config: {
+        presence: {
+          key: user.id,
+        },
+      },
+    });
     
     channel
       .on('presence', { event: 'sync' }, () => {
@@ -125,25 +162,34 @@ const Chat = () => {
         setOnlineUsers(online);
       })
       .subscribe((status) => {
-        if (status !== 'SUBSCRIBED') {
+        if (status === 'SUBSCRIBED') {
+          channel.track({
+            userId: user.id,
+            online_at: new Date().toISOString(),
+          });
+        } else if (status !== 'SUBSCRIBED' && status !== 'TIMED_OUT') {
           console.error('Failed to subscribe to online users channel:', status);
         }
       });
       
-    channel.track({
-      userId: user.id,
-      online_at: new Date().toISOString(),
-    });
-      
     return () => {
-      supabase.removeChannel(channel);
+      channel.unsubscribe();
     };
   }, [user?.id]);
 
   useEffect(() => {
     if (!id || !user?.id) return;
     
-    const channel = supabase.channel(`private-messages-${id}-${user.id}`);
+    const channelName = `private-messages-${id}-${user.id}`;
+    
+    // Track the channel to avoid duplication issues
+    const channel = supabase.channel(channelName, {
+      config: {
+        broadcast: {
+          self: false
+        }
+      }
+    });
     
     channel
       .on('postgres_changes', {
@@ -170,13 +216,50 @@ const Chat = () => {
         }
       })
       .subscribe((status) => {
-        if (status !== 'SUBSCRIBED') {
+        setChannelStatus(status);
+        
+        if (status !== 'SUBSCRIBED' && status !== 'TIMED_OUT') {
           console.error('Failed to subscribe to private messages channel:', status);
+          
+          // Automatic channel recovery on failure
+          if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+            setTimeout(() => {
+              // Re-subscribe with exponential backoff
+              console.log('Attempting to reconnect to message channel');
+              const reconnectionChannel = supabase.channel(channelName);
+              reconnectionChannel
+                .on('postgres_changes', {
+                  event: 'INSERT',
+                  schema: 'public',
+                  table: 'messages',
+                  filter: `recipient_id=eq.${user.id}`
+                }, payload => {
+                  if (payload.new.sender_id === id) {
+                    setCurrentMessages(prev => {
+                      if (prev.some(msg => msg.id === payload.new.id)) {
+                        return prev;
+                      }
+                      
+                      const updated = [...prev, payload.new];
+                      return updated.sort((a, b) => 
+                        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                      );
+                    });
+                    
+                    markAsRead(payload.new.id);
+                  }
+                })
+                .subscribe((newStatus) => {
+                  setChannelStatus(newStatus);
+                  console.log(`Channel reconnection status: ${newStatus}`);
+                });
+            }, 2000);
+          }
         }
       });
     
     return () => {
-      supabase.removeChannel(channel);
+      channel.unsubscribe();
     };
   }, [id, user?.id, markAsRead]);
 
@@ -291,6 +374,7 @@ const Chat = () => {
         ));
         
         inputRef.current?.focus();
+        setTimeout(() => scrollToBottom('smooth'), 100);
       } else {
         console.error('Failed to send message');
         toast.error("Failed to send message. Please try again.");
@@ -306,6 +390,7 @@ const Chat = () => {
   };
   
   const handleRetryLoad = () => {
+    setRetryCount(0);
     if (contactError) {
       fetchProfile();
     }
@@ -371,7 +456,13 @@ const Chat = () => {
   const contactInitials = contact ? getInitials(contactDisplayName) : "?";
   
   return (
-    <div className="flex flex-col h-screen bg-background overflow-hidden">
+    <div 
+      className="flex flex-col h-[100vh] bg-background overflow-hidden"
+      style={{
+        height: `calc(var(--vh, 1vh) * 100)`, 
+        maxHeight: `calc(var(--vh, 1vh) * 100)`
+      }}
+    >
       <header className="border-b p-3 flex items-center justify-between bg-card z-30 shadow-sm shrink-0">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate('/community')}>
@@ -397,150 +488,159 @@ const Chat = () => {
             </div>
           </div>
         </div>
+        
+        {channelStatus && channelStatus !== 'SUBSCRIBED' && (
+          <div className="text-xs text-yellow-500 flex items-center">
+            <div className="w-2 h-2 bg-yellow-500 rounded-full mr-1 animate-pulse"></div>
+            Reconnecting...
+          </div>
+        )}
       </header>
       
       <div className="flex-1 overflow-hidden relative">
-        <ScrollArea className="h-full pb-safe">
-          <div className="flex flex-col min-h-full">
-            {currentMessages.length > 0 && (
-              <div className="flex-grow" />
+        <ScrollArea 
+          className="h-full pb-safe" 
+          ref={messagesContainerRef}
+          viewportRef={messagesContainerRef}
+        >
+          {currentMessages.length > 0 && (
+            <div className="flex-grow pt-4" />
+          )}
+          
+          <div className="p-4 space-y-4">
+            {contactError && (
+              <Alert variant="default" className="mb-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
+                <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
+                <AlertTitle>Contact Information Issue</AlertTitle>
+                <AlertDescription className="flex flex-col gap-2">
+                  <p>{contactError}</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="self-start mt-2" 
+                    onClick={handleRetryLoad}
+                    disabled={isRetrying}
+                  >
+                    {isRetrying ? (
+                      <>
+                        <div className="animate-spin h-3 w-3 mr-2 border-2 border-primary border-t-transparent rounded-full"></div>
+                        Retrying...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-3 w-3 mr-2" /> Retry
+                      </>
+                    )}
+                  </Button>
+                </AlertDescription>
+              </Alert>
             )}
             
-            <div className="p-4 space-y-4">
-              {contactError && (
-                <Alert variant="default" className="mb-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
-                  <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
-                  <AlertTitle>Contact Information Issue</AlertTitle>
-                  <AlertDescription className="flex flex-col gap-2">
-                    <p>{contactError}</p>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="self-start mt-2" 
-                      onClick={handleRetryLoad}
-                      disabled={isRetrying}
-                    >
-                      {isRetrying ? (
-                        <>
-                          <div className="animate-spin h-3 w-3 mr-2 border-2 border-primary border-t-transparent rounded-full"></div>
-                          Retrying...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="h-3 w-3 mr-2" /> Retry
-                        </>
-                      )}
-                    </Button>
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              {messageError && (
-                <Alert variant="destructive" className="mb-4">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Message Error</AlertTitle>
-                  <AlertDescription className="flex flex-col gap-2">
-                    <p>{messageError}</p>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="self-start mt-2 bg-background text-foreground hover:bg-muted" 
-                      onClick={handleRetryLoad}
-                      disabled={isRetrying}
-                    >
-                      {isRetrying ? (
-                        <>
-                          <div className="animate-spin h-3 w-3 mr-2 border-2 border-primary border-t-transparent rounded-full"></div>
-                          Retrying...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="h-3 w-3 mr-2" /> Retry
-                        </>
-                      )}
-                    </Button>
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              {currentMessages.length > 0 ? (
-                currentMessages.map((message) => {
-                  const isUnread = !message.is_read;
-                  const isCurrentUserSender = message.sender_id === user?.id;
-                  const messageTime = formatDistanceToNow(new Date(message.created_at), { addSuffix: true });
-                  
-                  return (
+            {messageError && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Message Error</AlertTitle>
+                <AlertDescription className="flex flex-col gap-2">
+                  <p>{messageError}</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="self-start mt-2 bg-background text-foreground hover:bg-muted" 
+                    onClick={handleRetryLoad}
+                    disabled={isRetrying}
+                  >
+                    {isRetrying ? (
+                      <>
+                        <div className="animate-spin h-3 w-3 mr-2 border-2 border-primary border-t-transparent rounded-full"></div>
+                        Retrying...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-3 w-3 mr-2" /> Retry
+                      </>
+                    )}
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {currentMessages.length > 0 ? (
+              currentMessages.map((message) => {
+                const isUnread = !message.is_read;
+                const isCurrentUserSender = message.sender_id === user?.id;
+                const messageTime = formatDistanceToNow(new Date(message.created_at), { addSuffix: true });
+                
+                return (
+                  <div 
+                    key={message.id} 
+                    className={`flex ${isCurrentUserSender ? 'justify-end' : 'justify-start'}`}
+                  >
+                    {!isCurrentUserSender && (
+                      <Avatar className="h-8 w-8 mr-2 mt-1 shrink-0">
+                        <AvatarImage src={contact?.avatar_url || ""} alt={contactDisplayName} />
+                        <AvatarFallback>{contactInitials}</AvatarFallback>
+                      </Avatar>
+                    )}
+                    
                     <div 
-                      key={message.id} 
-                      className={`flex ${isCurrentUserSender ? 'justify-end' : 'justify-start'}`}
+                      className={`max-w-[75%] p-3 rounded-lg ${
+                        isCurrentUserSender 
+                          ? 'bg-primary text-primary-foreground' 
+                          : isUnread ? 'bg-muted/80' : 'bg-muted'
+                      }`}
                     >
-                      {!isCurrentUserSender && (
-                        <Avatar className="h-8 w-8 mr-2 mt-1 shrink-0">
-                          <AvatarImage src={contact?.avatar_url || ""} alt={contactDisplayName} />
-                          <AvatarFallback>{contactInitials}</AvatarFallback>
-                        </Avatar>
-                      )}
-                      
-                      <div 
-                        className={`max-w-[75%] p-3 rounded-lg ${
-                          isCurrentUserSender 
-                            ? 'bg-primary text-primary-foreground' 
-                            : isUnread ? 'bg-muted/80' : 'bg-muted'
-                        }`}
-                      >
-                        <p className="text-sm break-words">{message.content}</p>
-                        <div className={`flex items-center justify-end gap-1 mt-1 text-xs ${
-                          isCurrentUserSender ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                        }`}>
-                          <span>{messageTime}</span>
-                          {isCurrentUserSender && (
-                            <span>{message.is_read ? '✓✓' : '✓'}</span>
-                          )}
-                        </div>
+                      <p className="text-sm break-words">{message.content}</p>
+                      <div className={`flex items-center justify-end gap-1 mt-1 text-xs ${
+                        isCurrentUserSender ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                      }`}>
+                        <span>{messageTime}</span>
+                        {isCurrentUserSender && (
+                          <span>{message.is_read ? '✓✓' : '✓'}</span>
+                        )}
                       </div>
-                      
-                      {isCurrentUserSender && (
-                        <Avatar className="h-8 w-8 ml-2 mt-1 shrink-0">
-                          <AvatarImage src={user?.avatarUrl || ""} />
-                          <AvatarFallback>{(user?.username || "?")[0]}</AvatarFallback>
-                        </Avatar>
-                      )}
                     </div>
-                  );
-                })
-              ) : (
-                <div className="flex flex-col items-center justify-center min-h-[70vh] text-center text-muted-foreground py-20">
-                  <p>No messages yet</p>
-                  <p className="text-sm mt-2">Send a message to start the conversation</p>
-                </div>
-              )}
-              
-              {isContactTyping && (
-                <div className="flex justify-start">
-                  <div className="bg-muted p-3 rounded-lg">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
-                      <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "100ms" }}></div>
-                      <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "200ms" }}></div>
-                    </div>
+                    
+                    {isCurrentUserSender && (
+                      <Avatar className="h-8 w-8 ml-2 mt-1 shrink-0">
+                        <AvatarImage src={user?.avatarUrl || ""} />
+                        <AvatarFallback>{(user?.username || "?")[0]}</AvatarFallback>
+                      </Avatar>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="flex flex-col items-center justify-center min-h-[50vh] text-center text-muted-foreground py-20">
+                <p>No messages yet</p>
+                <p className="text-sm mt-2">Send a message to start the conversation</p>
+              </div>
+            )}
+            
+            {isContactTyping && (
+              <div className="flex justify-start">
+                <div className="bg-muted p-3 rounded-lg">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
+                    <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "100ms" }}></div>
+                    <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: "200ms" }}></div>
                   </div>
                 </div>
-              )}
-              
-              <div className="h-16 md:h-4" />
-              <div ref={messageEndRef} className="h-1" />
-            </div>
+              </div>
+            )}
+            
+            <div className="pb-16" />
+            <div ref={messageEndRef} className="h-1" />
           </div>
         </ScrollArea>
       </div>
       
       <div 
         className={cn(
-          "p-2 bg-card border-t z-30 shrink-0",
+          "p-2 bg-card border-t z-30",
           isKeyboardVisible && isMobile ? "animate-slide-up" : ""
         )}
         style={{
-          position: isKeyboardVisible && isMobile ? 'fixed' : 'relative',
+          position: isKeyboardVisible && isMobile ? 'fixed' : 'sticky',
           bottom: isKeyboardVisible && isMobile ? `${keyboardHeight}px` : 0,
           left: 0,
           right: 0,
@@ -565,6 +665,7 @@ const Chat = () => {
             onChange={handleInputChange}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
+                e.preventDefault();
                 handleSendMessage();
               }
             }}

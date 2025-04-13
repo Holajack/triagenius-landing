@@ -53,6 +53,12 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
         const iosFactor = 0.95; // Better estimation for iOS
         estimatedKeyboardHeight = Math.round(estimatedKeyboardHeight * iosFactor);
       }
+      
+      // Add additional offset for safe area on newer devices
+      const safeAreaBottom = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sat-bottom') || '0', 10);
+      if (safeAreaBottom > 0) {
+        estimatedKeyboardHeight += safeAreaBottom;
+      }
     }
     
     // If keyboard visibility state changed, trigger appropriate callbacks
@@ -122,6 +128,14 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
     };
     
     document.addEventListener('focusin', handleFocus);
+    
+    // Setup safe area variables
+    if ('env' in CSS && CSS.supports('top', 'env(safe-area-inset-bottom)')) {
+      document.documentElement.style.setProperty(
+        '--sat-bottom',
+        'env(safe-area-inset-bottom)'
+      );
+    }
     
     // Initial check
     detectKeyboard();

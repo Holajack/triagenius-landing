@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -25,6 +26,10 @@
     --ring: 142.1 76.2% 36.3%;
     --radius: 0.5rem;
     --focus-primary: 142.1 76.2% 36.3%;
+    --sat-bottom: env(safe-area-inset-bottom, 0px);
+    --sat-top: env(safe-area-inset-top, 0px);
+    --sat-left: env(safe-area-inset-left, 0px);
+    --sat-right: env(safe-area-inset-right, 0px);
   }
  
   .dark {
@@ -282,6 +287,17 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: pan-x pan-y;
+    -webkit-overflow-scrolling: touch;
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+  }
+  
+  /* Fix for keyboard transitions on mobile */
+  html, body {
+    height: 100%;
+    overflow: hidden;
   }
 }
 
@@ -296,6 +312,20 @@
   to { transform: translateY(0); opacity: 1; }
 }
 
+@keyframes slide-down {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes bounce-once {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
 @layer utilities {
   .animate-fade-in {
     animation: fade-in 0.2s ease-out forwards;
@@ -304,8 +334,45 @@
   .animate-slide-up {
     animation: slide-up 0.3s ease-out forwards;
   }
+
+  .animate-slide-down {
+    animation: slide-down 0.3s ease-out forwards;
+  }
+  
+  .animate-bounce-once {
+    animation: bounce-once 0.5s ease-in-out;
+  }
   
   .pb-safe {
-    padding-bottom: env(safe-area-inset-bottom, 1rem);
+    padding-bottom: var(--sat-bottom, 0.5rem);
+  }
+  
+  .pt-safe {
+    padding-top: var(--sat-top, 0.5rem);
+  }
+  
+  .touch-callout-none {
+    -webkit-touch-callout: none;
+  }
+  
+  /* Fix for iOS keyboard slide */
+  .no-ios-slider {
+    position: fixed;
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+  }
+  
+  /* Scroll lock utilities */
+  .scroll-lock {
+    overflow: hidden;
+    height: 100%;
+    position: fixed;
+    width: 100%;
+  }
+  
+  /* Prevent elastic overscroll */
+  .no-overscroll {
+    overscroll-behavior: none;
   }
 }
