@@ -43,7 +43,7 @@ const Chat = () => {
   const [isSending, setIsSending] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
   const [hasLoadedMessages, setHasLoadedMessages] = useState(false);
-  const [isRetrying, setIsRetrying] = useState(isRetrying);
+  const [isRetrying, setIsRetrying] = useState(false);
   const [initialScrollComplete, setInitialScrollComplete] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [channelStatus, setChannelStatus] = useState<string | null>(null);
