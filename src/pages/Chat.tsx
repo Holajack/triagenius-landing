@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle, RefreshCw } from "lucide-react";
@@ -488,7 +489,7 @@ const Chat = () => {
           </div>
         </div>
         
-        {channelStatus && channelStatus !== 'SUBSCRIBED' && (
+        {channelStatus && channelStatus !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED && (
           <div className="text-xs text-yellow-500 flex items-center">
             <div className="w-2 h-2 bg-yellow-500 rounded-full mr-1 animate-pulse"></div>
             Reconnecting...
