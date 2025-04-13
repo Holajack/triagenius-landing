@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle, RefreshCw } from "lucide-react";
@@ -216,11 +215,16 @@ const Chat = () => {
       .subscribe((status) => {
         setChannelStatus(status);
         
-        // Fix: Using correct type checking for Supabase realtime statuses
-        if (status !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED && status !== REALTIME_SUBSCRIBE_STATES.TIMED_OUT) {
+        if (
+          status !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED && 
+          status !== REALTIME_SUBSCRIBE_STATES.TIMED_OUT
+        ) {
           console.error('Failed to subscribe to private messages channel:', status);
           
-          if (status === REALTIME_SUBSCRIBE_STATES.CLOSED || status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR) {
+          if (
+            status === REALTIME_SUBSCRIBE_STATES.CLOSED || 
+            status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR
+          ) {
             setTimeout(() => {
               console.log('Attempting to reconnect to message channel');
               const reconnectionChannel = supabase.channel(channelName);
