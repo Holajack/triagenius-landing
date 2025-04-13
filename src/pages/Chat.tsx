@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle, RefreshCw } from "lucide-react";
@@ -47,6 +46,7 @@ const Chat = () => {
   const { isKeyboardVisible, keyboardHeight } = useKeyboardVisibility({
     onKeyboardShow: () => {
       inputRef.current?.focus();
+      setTimeout(() => scrollToBottom('auto'), 100);
     },
     onKeyboardHide: () => {
     }
@@ -64,7 +64,6 @@ const Chat = () => {
     }
   }, []);
 
-  // Initial data fetch
   const fetchConversationMessages = useCallback(async () => {
     if (!id || !user?.id) return;
     
@@ -76,7 +75,6 @@ const Chat = () => {
       setMessageError(null);
       console.log(`Retrieved ${conversationMessages.length} messages`);
       setHasLoadedMessages(true);
-      // We'll scroll to bottom after the messages render
     } catch (err) {
       console.error('Error fetching conversation messages:', err);
       toast.error("Could not load messages. Please try again.");
@@ -86,15 +84,12 @@ const Chat = () => {
     }
   }, [id, user?.id, getConversation]);
 
-  // Fetch messages when the component mounts
   useEffect(() => {
     fetchConversationMessages();
   }, [fetchConversationMessages]);
 
-  // Scroll to bottom after messages have been loaded initially or after new messages
   useEffect(() => {
     if (hasLoadedMessages && currentMessages.length > 0) {
-      // Use a short timeout to ensure the DOM has updated with the messages
       const timeoutId = setTimeout(() => {
         scrollToBottom();
         setInitialScrollComplete(true);
@@ -104,7 +99,6 @@ const Chat = () => {
     }
   }, [hasLoadedMessages, currentMessages.length, scrollToBottom]);
 
-  // When a new message is added, scroll to bottom
   useEffect(() => {
     if (initialScrollComplete && currentMessages.length > 0) {
       scrollToBottom('smooth');
@@ -419,10 +413,9 @@ const Chat = () => {
         style={{ 
           overscrollBehavior: 'contain',
           WebkitOverflowScrolling: 'touch',
-          paddingBottom: isKeyboardVisible ? `${keyboardHeight * 0.2}px` : '0'
+          paddingBottom: isKeyboardVisible ? `${keyboardHeight * 0.05}px` : '0'
         }}
       >
-        {/* This spacer pushes content to the bottom initially */}
         {currentMessages.length > 0 && (
           <div className="flex-grow" />
         )}
@@ -555,14 +548,14 @@ const Chat = () => {
       <div 
         className={cn(
           "p-2 bg-card border-t z-20 absolute left-0 right-0",
-          isKeyboardVisible && isMobile ? "fixed bottom-0 shadow-lg" : "bottom-0"
+          isKeyboardVisible && isMobile ? "fixed bottom-0 shadow-lg animate-fade-in" : "bottom-0"
         )}
         style={{
           bottom: isKeyboardVisible && isMobile ? `${keyboardHeight > 0 ? 0 : 0}px` : 0,
           paddingBottom: isKeyboardVisible && isMobile ? 
-            `calc(${Math.min(4, keyboardHeight * 0.01)}px + env(safe-area-inset-bottom, 0px))` : 
+            `calc(0.5rem + env(safe-area-inset-bottom, 0px))` : 
             'env(safe-area-inset-bottom, 0.5rem)',
-          transition: 'bottom 0.3s ease-out'
+          transition: 'transform 0.3s ease-out'
         }}
       >
         <div className="flex items-center gap-2 bg-background rounded-full border px-2">

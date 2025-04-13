@@ -117,7 +117,7 @@ export function useKeyboardVisibility(options: KeyboardVisibilityOptions = {}) {
         e.target instanceof HTMLTextAreaElement
       ) {
         // Wait a moment for the keyboard to appear
-        setTimeout(detectKeyboard, 200);
+        setTimeout(detectKeyboard, 100);
       }
     };
     

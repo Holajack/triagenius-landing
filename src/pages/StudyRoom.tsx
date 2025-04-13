@@ -54,8 +54,17 @@ const StudyRoom = () => {
   const { theme } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   
-  const { isKeyboardVisible } = useKeyboardVisibility({
-    debounceTime: 150
+  const { isKeyboardVisible, keyboardHeight } = useKeyboardVisibility({
+    debounceTime: 150,
+    onKeyboardShow: () => {
+      // Ensure chat scrolls to show most recent messages when keyboard appears
+      const chatContainer = document.querySelector('.study-room-messages');
+      if (chatContainer) {
+        setTimeout(() => {
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        }, 100);
+      }
+    }
   });
 
   useEffect(() => {
