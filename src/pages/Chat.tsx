@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle, RefreshCw } from "lucide-react";
@@ -15,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useKeyboardVisibility } from "@/hooks/use-keyboard-visibility";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { RealtimeChannel } from "@supabase/supabase-js";
+import { RealtimeChannel, REALTIME_SUBSCRIBE_STATES } from "@supabase/supabase-js";
 
 const MAX_RETRY_ATTEMPTS = 3;
 
@@ -215,10 +216,11 @@ const Chat = () => {
       .subscribe((status) => {
         setChannelStatus(status);
         
-        if (status !== 'SUBSCRIBED' && status !== 'TIMED_OUT') {
+        // Fix: Using correct type checking for Supabase realtime statuses
+        if (status !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED && status !== REALTIME_SUBSCRIBE_STATES.TIMED_OUT) {
           console.error('Failed to subscribe to private messages channel:', status);
           
-          if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          if (status === REALTIME_SUBSCRIBE_STATES.CLOSED || status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR) {
             setTimeout(() => {
               console.log('Attempting to reconnect to message channel');
               const reconnectionChannel = supabase.channel(channelName);
