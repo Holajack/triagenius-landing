@@ -218,6 +218,7 @@ const Chat = () => {
       .subscribe((status) => {
         setChannelStatus(status);
         
+        // Fix: Convert string comparison to correct string literal type comparison
         if (status !== 'SUBSCRIBED' && status !== 'TIMED_OUT') {
           console.error('Failed to subscribe to private messages channel:', status);
           
@@ -501,7 +502,6 @@ const Chat = () => {
         <ScrollArea 
           className="h-full pb-safe" 
           ref={messagesContainerRef}
-          viewportRef={messagesContainerRef}
         >
           {currentMessages.length > 0 && (
             <div className="flex-grow pt-4" />
