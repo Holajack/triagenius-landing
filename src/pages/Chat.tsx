@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle, RefreshCw } from "lucide-react";
@@ -41,6 +42,7 @@ const Chat = () => {
   const [messageError, setMessageError] = useState<string | null>(null);
   const [hasLoadedMessages, setHasLoadedMessages] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [initialScrollComplete, setInitialScrollComplete] = useState(false);
   
   const { isKeyboardVisible, keyboardHeight } = useKeyboardVisibility({
     onKeyboardShow: () => {
@@ -53,6 +55,16 @@ const Chat = () => {
   const isContactTyping = id && isUserTyping(id);
   const isMobile = useIsMobile();
 
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    if (messageEndRef.current) {
+      messageEndRef.current.scrollIntoView({ 
+        behavior: behavior, 
+        block: 'start'
+      });
+    }
+  }, []);
+
+  // Initial data fetch
   const fetchConversationMessages = useCallback(async () => {
     if (!id || !user?.id) return;
     
@@ -64,6 +76,7 @@ const Chat = () => {
       setMessageError(null);
       console.log(`Retrieved ${conversationMessages.length} messages`);
       setHasLoadedMessages(true);
+      // We'll scroll to bottom after the messages render
     } catch (err) {
       console.error('Error fetching conversation messages:', err);
       toast.error("Could not load messages. Please try again.");
@@ -73,9 +86,30 @@ const Chat = () => {
     }
   }, [id, user?.id, getConversation]);
 
+  // Fetch messages when the component mounts
   useEffect(() => {
     fetchConversationMessages();
   }, [fetchConversationMessages]);
+
+  // Scroll to bottom after messages have been loaded initially or after new messages
+  useEffect(() => {
+    if (hasLoadedMessages && currentMessages.length > 0) {
+      // Use a short timeout to ensure the DOM has updated with the messages
+      const timeoutId = setTimeout(() => {
+        scrollToBottom();
+        setInitialScrollComplete(true);
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [hasLoadedMessages, currentMessages.length, scrollToBottom]);
+
+  // When a new message is added, scroll to bottom
+  useEffect(() => {
+    if (initialScrollComplete && currentMessages.length > 0) {
+      scrollToBottom('smooth');
+    }
+  }, [initialScrollComplete, currentMessages.length, scrollToBottom]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -381,13 +415,18 @@ const Chat = () => {
       
       <div 
         ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto"
+        className="flex-1 overflow-y-auto flex flex-col"
         style={{ 
           overscrollBehavior: 'contain',
           WebkitOverflowScrolling: 'touch',
           paddingBottom: isKeyboardVisible ? `${keyboardHeight * 0.2}px` : '0'
         }}
       >
+        {/* This spacer pushes content to the bottom initially */}
+        {currentMessages.length > 0 && (
+          <div className="flex-grow" />
+        )}
+        
         <div className="p-4 space-y-4">
           {contactError && (
             <Alert variant="default" className="mb-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
@@ -491,7 +530,7 @@ const Chat = () => {
               );
             })
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground py-20">
+            <div className="flex flex-col items-center justify-center min-h-[70vh] text-center text-muted-foreground py-20">
               <p>No messages yet</p>
               <p className="text-sm mt-2">Send a message to start the conversation</p>
             </div>
@@ -509,7 +548,7 @@ const Chat = () => {
             </div>
           )}
           
-          <div ref={messageEndRef} className="pt-16" />
+          <div ref={messageEndRef} className="h-1" />
         </div>
       </div>
       
