@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle, RefreshCw } from "lucide-react";
@@ -15,7 +16,10 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useKeyboardVisibility } from "@/hooks/use-keyboard-visibility";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { REALTIME_SUBSCRIBE_STATES, RealtimeChannel } from "@supabase/supabase-js";
+import { RealtimeChannel } from "@supabase/supabase-js";
+
+// Import the enum explicitly to avoid type issues
+import { REALTIME_SUBSCRIBE_STATES } from "@supabase/supabase-js";
 
 const MAX_RETRY_ATTEMPTS = 3;
 
@@ -166,8 +170,7 @@ const Chat = () => {
             online_at: new Date().toISOString(),
           });
         } else if (
-          status !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED && 
-          status !== REALTIME_SUBSCRIBE_STATES.TIMED_OUT
+          status !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED
         ) {
           console.error('Failed to subscribe to online users channel:', status);
         }

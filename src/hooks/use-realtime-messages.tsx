@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from './use-user';
 import { toast } from 'sonner';
+import { REALTIME_SUBSCRIBE_STATES } from "@supabase/supabase-js";
 
 interface Message {
   id: string;
@@ -115,7 +116,7 @@ export function useRealtimeMessages() {
       )
       .subscribe((status) => {
         console.log("Messages channel status:", status);
-        if (status !== 'SUBSCRIBED') {
+        if (status !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
           console.error('Failed to subscribe to messages channel:', status);
         }
       });
@@ -141,7 +142,7 @@ export function useRealtimeMessages() {
       })
       .subscribe((status) => {
         console.log("Typing indicators channel status:", status);
-        if (status !== 'SUBSCRIBED') {
+        if (status !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
           console.error('Failed to subscribe to typing channel:', status);
         }
       });
