@@ -512,12 +512,12 @@ const Chat = () => {
         )}
       </header>
       
-      <div className="flex-1 relative overflow-hidden">
+      <div className="flex-1 relative overflow-auto">
         <ScrollArea 
-          className="h-full w-full absolute inset-0"
+          className="h-full w-full absolute inset-0 overflow-auto"
           ref={messagesContainerRef}
         >
-          <div className="p-4 space-y-4 min-h-full">
+          <div className="p-4 space-y-4 min-h-full pb-20">
             {currentMessages.length > 0 && (
               <div className="flex-grow pt-4" />
             )}
@@ -642,7 +642,6 @@ const Chat = () => {
               </div>
             )}
             
-            <div className="pb-20" />
             <div ref={messageEndRef} />
           </div>
         </ScrollArea>
