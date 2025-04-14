@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle, RefreshCw } from "lucide-react";
@@ -47,7 +46,7 @@ const Chat = () => {
   const [isSending, setIsSending] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
   const [hasLoadedMessages, setHasLoadedMessages] = useState(false);
-  const [isRetrying, setIsRetrying] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(isRetrying);
   const [initialScrollComplete, setInitialScrollComplete] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [channelStatus, setChannelStatus] = useState<REALTIME_SUBSCRIBE_STATES | null>(null);
@@ -170,7 +169,9 @@ const Chat = () => {
             online_at: new Date().toISOString(),
           });
         } else if (
-          status !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED
+          status === REALTIME_SUBSCRIBE_STATES.CLOSED ||
+          status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR ||
+          status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT
         ) {
           console.error('Failed to subscribe to online users channel:', status);
         }
@@ -460,12 +461,17 @@ const Chat = () => {
   
   const contactInitials = contact ? getInitials(contactDisplayName) : "?";
   
+  const containerRef = useRef<HTMLDivElement>(null);
+
   return (
     <div 
-      className="flex flex-col h-[100vh] bg-gray-50 dark:bg-gray-900 overflow-hidden"
+      className={cn(
+        "min-h-screen bg-background text-foreground flex flex-col",
+        `theme-${state.environment || 'default'} ${theme}`
+      )}
       style={{
-        height: `calc(var(--vh, 1vh) * 100)`, 
-        maxHeight: `calc(var(--vh, 1vh) * 100)`
+        minHeight: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100vh',
+        height: isMobile ? 'calc(var(--vh, 1vh) * 100)',
       }}
     >
       <header className="border-b p-3 flex items-center justify-between bg-card z-30 shadow-sm shrink-0">
@@ -502,16 +508,16 @@ const Chat = () => {
         )}
       </header>
       
-      <div className="flex-1 overflow-hidden relative">
+      <div className="flex-1 relative overflow-hidden">
         <ScrollArea 
-          className="h-full pb-safe" 
+          className="h-full w-full absolute inset-0"
           ref={messagesContainerRef}
         >
-          {currentMessages.length > 0 && (
-            <div className="flex-grow pt-4" />
-          )}
-          
-          <div className="p-4 space-y-4">
+          <div className="p-4 space-y-4 min-h-full">
+            {currentMessages.length > 0 && (
+              <div className="flex-grow pt-4" />
+            )}
+            
             {contactError && (
               <Alert variant="default" className="mb-4 border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20">
                 <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
@@ -632,22 +638,18 @@ const Chat = () => {
               </div>
             )}
             
-            <div className="pb-16" />
-            <div ref={messageEndRef} className="h-1" />
+            <div className="pb-20" />
+            <div ref={messageEndRef} />
           </div>
         </ScrollArea>
       </div>
       
       <div 
         className={cn(
-          "p-2 bg-card border-t z-30",
+          "p-2 bg-card border-t z-30 relative",
           isKeyboardVisible && isMobile ? "animate-slide-up" : ""
         )}
         style={{
-          position: isKeyboardVisible && isMobile ? 'fixed' : 'sticky',
-          bottom: isKeyboardVisible && isMobile ? `${keyboardHeight}px` : 0,
-          left: 0,
-          right: 0,
           paddingBottom: `calc(0.5rem + env(safe-area-inset-bottom, 0.5rem))`,
         }}
       >
