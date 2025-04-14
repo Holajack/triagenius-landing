@@ -16,6 +16,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useKeyboardVisibility } from "@/hooks/use-keyboard-visibility";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RealtimeChannel } from "@supabase/supabase-js";
+import { useOnboarding } from "@/contexts/OnboardingContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 // Import the enum explicitly to avoid type issues
 import { REALTIME_SUBSCRIBE_STATES } from "@supabase/supabase-js";
@@ -25,6 +27,8 @@ const MAX_RETRY_ATTEMPTS = 3;
 const Chat = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { state } = useOnboarding();
+  const { theme } = useTheme();
   const messageEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -46,7 +50,7 @@ const Chat = () => {
   const [isSending, setIsSending] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
   const [hasLoadedMessages, setHasLoadedMessages] = useState(false);
-  const [isRetrying, setIsRetrying] = useState(isRetrying);
+  const [isRetrying, setIsRetrying] = useState(false);
   const [initialScrollComplete, setInitialScrollComplete] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [channelStatus, setChannelStatus] = useState<REALTIME_SUBSCRIBE_STATES | null>(null);
@@ -471,7 +475,7 @@ const Chat = () => {
       )}
       style={{
         minHeight: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100vh',
-        height: isMobile ? 'calc(var(--vh, 1vh) * 100)',
+        height: isMobile ? 'calc(var(--vh, 1vh) * 100)'
       }}
     >
       <header className="border-b p-3 flex items-center justify-between bg-card z-30 shadow-sm shrink-0">
