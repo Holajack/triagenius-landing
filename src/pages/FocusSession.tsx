@@ -171,6 +171,10 @@ const FocusSession = () => {
     document.body.style.overflow = 'hidden';
     isMountedRef.current = true;
     
+    if (state.soundPreference) {
+      localStorage.setItem('soundPreference', state.soundPreference);
+    }
+    
     return () => {
       isMountedRef.current = false;
       document.body.style.overflow = 'auto';

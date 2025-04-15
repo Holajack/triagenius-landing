@@ -3,12 +3,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { StudyEnvironment } from "@/types/onboarding";
-import { Pause, Play, StopCircle, CheckCircle2, ListChecks, BookOpen, ArrowRight, Flag } from "lucide-react";
+import { Pause, Play, StopCircle, CheckCircle2, ListChecks, BookOpen, ArrowRight, Flag, Music2 } from "lucide-react";
 import FocusTimer from "./FocusTimer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { motion, AnimatePresence } from "framer-motion";
 import { Task } from "@/types/tasks";
 import FocusMilestones from "./FocusMilestones";
+import MusicPlayer from "./MusicPlayer";
 
 interface FocusSessionContentProps {
   timerRef: React.MutableRefObject<{ 
@@ -60,6 +61,8 @@ const FocusSessionContent = ({
   const isMobile = useIsMobile();
   const contentRef = useRef<HTMLDivElement>(null);
   const [showTaskPlaceholder, setShowTaskPlaceholder] = useState(false);
+  const [showMusicPlayer, setShowMusicPlayer] = useState<boolean>(false);
+  const [isMusicPlaying, setIsMusicPlaying] = useState<boolean>(false);
   
   useEffect(() => {
     let timer: number;
@@ -76,6 +79,11 @@ const FocusSessionContent = ({
       if (timer) clearTimeout(timer);
     };
   }, [currentTask]);
+  
+  useEffect(() => {
+    const musicEnabled = localStorage.getItem('focusMusicEnabled') === 'true';
+    setShowMusicPlayer(musicEnabled || false);
+  }, []);
   
   const getTimerDuration = () => {
     try {
@@ -133,6 +141,16 @@ const FocusSessionContent = ({
     }
   };
 
+  const toggleMusicPlayer = () => {
+    const newState = !showMusicPlayer;
+    setShowMusicPlayer(newState);
+    localStorage.setItem('focusMusicEnabled', newState ? 'true' : 'false');
+  };
+
+  const handleMusicToggle = (isPlaying: boolean) => {
+    setIsMusicPlaying(isPlaying);
+  };
+
   return (
     <Card className={cn(
       "w-full transition-all duration-300",
@@ -157,6 +175,34 @@ const FocusSessionContent = ({
                   </span>
                 )}
               </div>
+            </div>
+          )}
+          
+          <div className="w-full mb-1 flex justify-between items-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs flex items-center"
+              onClick={toggleMusicPlayer}
+            >
+              <Music2 className="h-3 w-3 mr-1" />
+              {showMusicPlayer ? 'Hide Music' : 'Show Music'}
+            </Button>
+            
+            {showMusicPlayer && isMusicPlaying && (
+              <div className="text-xs text-muted-foreground animate-pulse">
+                ♪ Playing...
+              </div>
+            )}
+          </div>
+          
+          {showMusicPlayer && (
+            <div className="w-full mb-3">
+              <MusicPlayer 
+                compact={isMobile} 
+                lowPowerMode={lowPowerMode} 
+                onToggleMusic={handleMusicToggle}
+              />
             </div>
           )}
           
