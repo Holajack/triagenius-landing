@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -97,7 +96,6 @@ const Leaderboard = () => {
             });
           }
           
-          // Check if user has any friends
           const { data: friendsData, error: friendsError } = await supabase
             .from('friends')
             .select('friend_id')
@@ -472,38 +470,9 @@ const LeaderboardList = ({
   };
   
   if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-12 text-xs text-muted-foreground px-2 pb-2 border-b">
-          <div className="col-span-1">#</div>
-          <div className="col-span-5">User</div>
-          <div className="col-span-2 text-center">Points</div>
-          <div className="col-span-2 text-center">Hours</div>
-          <div className="col-span-2 text-center">Streak</div>
-        </div>
-        
-        <div className="animate-pulse space-y-3">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="grid grid-cols-12 items-center py-3 px-2">
-              <div className="col-span-1 h-5 bg-muted rounded"></div>
-              <div className="col-span-5 flex items-center gap-3">
-                <div className="h-8 w-8 bg-muted rounded-full"></div>
-                <div className="flex-1">
-                  <div className="h-4 bg-muted rounded w-20 mb-1"></div>
-                  <div className="h-3 bg-muted rounded w-16"></div>
-                </div>
-              </div>
-              <div className="col-span-2 h-4 bg-muted rounded mx-auto w-12"></div>
-              <div className="col-span-2 h-4 bg-muted rounded mx-auto w-10"></div>
-              <div className="col-span-2 h-4 bg-muted rounded mx-auto w-8"></div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+    return <LeaderboardSkeletonList count={5} />;
   }
   
-  // Show empty state if user has no friends and this is the friends tab
   if (type === "friends" && data.length === 0 && hasFriends === false && !isNewUser) {
     return (
       <div className="py-12 text-center">
@@ -524,7 +493,6 @@ const LeaderboardList = ({
     );
   }
   
-  // Special handling for when the user has friends but no data is available
   if (type === "friends" && data.length === 0 && hasFriends === true && !isNewUser) {
     return (
       <div className="py-8 text-center">
@@ -604,7 +572,7 @@ const LeaderboardList = ({
                 </div>
               </div>
             </HoverCardTrigger>
-            <HoverCardContent side="right" className="p-4 space-y-2 w-64 backdrop-blur-sm bg-popover/95">
+            <HoverCardContent align="start" side="right" className="p-4 space-y-2 w-64">
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10 border">
                   <AvatarImage src={user.avatar} alt={user.name} />
@@ -883,4 +851,3 @@ const GlobalRankingsTab = () => {
 };
 
 export default Leaderboard;
-
