@@ -549,8 +549,8 @@ const LeaderboardList = ({
       
       {data.length > 0 ? (
         data.map((user) => (
-          <Tooltip key={user.rank}>
-            <TooltipTrigger asChild>
+          <HoverCard key={user.rank}>
+            <HoverCardTrigger asChild>
               <div 
                 className={`grid grid-cols-12 items-center py-3 px-2 rounded-md cursor-pointer hover:bg-muted/30 transition-colors ${
                   user.isCurrentUser ? "bg-muted/50" : ""
@@ -603,8 +603,8 @@ const LeaderboardList = ({
                   </div>
                 </div>
               </div>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="p-4 space-y-2 w-64 backdrop-blur-sm bg-popover/95">
+            </HoverCardTrigger>
+            <HoverCardContent side="right" className="p-4 space-y-2 w-64 backdrop-blur-sm bg-popover/95">
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10 border">
                   <AvatarImage src={user.avatar} alt={user.name} />
@@ -645,8 +645,8 @@ const LeaderboardList = ({
                   </Badge>
                 </div>
               )}
-            </TooltipContent>
-          </Tooltip>
+            </HoverCardContent>
+          </HoverCard>
         ))
       ) : (
         <div className="py-8 text-center">
