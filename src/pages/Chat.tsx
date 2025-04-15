@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Paperclip, Smile, AlertTriangle, RefreshCw } from "lucide-react";
@@ -168,17 +169,105 @@ const Chat = () => {
       })
       .subscribe((status) => {
         if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
-          channel.track({\n            userId: user.id,\n            online_at: new Date().toISOString(),\n          });\n        } else if (\n          status === REALTIME_SUBSCRIBE_STATES.CLOSED ||\n          status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR ||\n          status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT\n        ) {\n          console.error('Failed to subscribe to online users channel:', status);\n        }\n      });\n      \n    return () => {\n      channel.unsubscribe();\n    };\n  }, [user?.id]);
+          channel.track({
+            userId: user.id,
+            online_at: new Date().toISOString(),
+          });
+        } else if (
+          status === REALTIME_SUBSCRIBE_STATES.CLOSED ||
+          status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR ||
+          status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT
+        ) {
+          console.error('Failed to subscribe to online users channel:', status);
+        }
+      });
+      
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     if (!id || !user?.id) return;
     
     const channelName = `private-messages-${id}-${user.id}`;
     
-    const channel = supabase.channel(channelName, {\n      config: {\n        broadcast: {\n          self: false\n        }\n      }\n    });
+    const channel = supabase.channel(channelName, {
+      config: {
+        broadcast: {
+          self: false
+        }
+      }
+    });
     
     channel
-      .on('postgres_changes', {\n        event: 'INSERT',\n        schema: 'public',\n        table: 'messages',\n        filter: `recipient_id=eq.${user.id}`\n      }, payload => {\n        console.log('New message received:', payload);\n        \n        if (payload.new.sender_id === id) {\n          setCurrentMessages(prev => {\n            if (prev.some(msg => msg.id === payload.new.id)) {\n              return prev;\n            }\n            \n            const updated = [...prev, payload.new];\n            return updated.sort((a, b) => \n              new Date(a.created_at).getTime() - new Date(b.created_at).getTime()\n            );\n          });\n          \n          markAsRead(payload.new.id);\n        }\n      })\n      .subscribe((status) => {\n        setChannelStatus(status);\n        \n        if (status !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {\n          console.error('Failed to subscribe to private messages channel:', status);\n          \n          if (\n            status === REALTIME_SUBSCRIBE_STATES.CLOSED || \n            status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR ||\n            status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT\n          ) {\n            setTimeout(() => {\n              console.log('Attempting to reconnect to message channel');\n              const reconnectionChannel = supabase.channel(channelName);\n              reconnectionChannel\n                .on('postgres_changes', {\n                  event: 'INSERT',\n                  schema: 'public',\n                  table: 'messages',\n                  filter: `recipient_id=eq.${user.id}`\n                }, payload => {\n                  if (payload.new.sender_id === id) {\n                    setCurrentMessages(prev => {\n                      if (prev.some(msg => msg.id === payload.new.id)) {\n                        return prev;\n                      }\n                      \n                      const updated = [...prev, payload.new];\n                      return updated.sort((a, b) => \n                        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()\n                      );\n                    });\n                    \n                    markAsRead(payload.new.id);\n                  }\n                })\n                .subscribe((newStatus) => {\n                  setChannelStatus(newStatus);\n                  console.log(`Channel reconnection status: ${newStatus}`);\n                });\n            }, 2000);\n          }\n        }\n      });
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `recipient_id=eq.${user.id}`
+      }, payload => {
+        console.log('New message received:', payload);
+        
+        if (payload.new.sender_id === id) {
+          setCurrentMessages(prev => {
+            if (prev.some(msg => msg.id === payload.new.id)) {
+              return prev;
+            }
+            
+            const updated = [...prev, payload.new];
+            return updated.sort((a, b) => 
+              new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            );
+          });
+          
+          markAsRead(payload.new.id);
+        }
+      })
+      .subscribe((status) => {
+        setChannelStatus(status);
+        
+        if (status !== REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
+          console.error('Failed to subscribe to private messages channel:', status);
+          
+          if (
+            status === REALTIME_SUBSCRIBE_STATES.CLOSED || 
+            status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR ||
+            status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT
+          ) {
+            setTimeout(() => {
+              console.log('Attempting to reconnect to message channel');
+              const reconnectionChannel = supabase.channel(channelName);
+              reconnectionChannel
+                .on('postgres_changes', {
+                  event: 'INSERT',
+                  schema: 'public',
+                  table: 'messages',
+                  filter: `recipient_id=eq.${user.id}`
+                }, payload => {
+                  if (payload.new.sender_id === id) {
+                    setCurrentMessages(prev => {
+                      if (prev.some(msg => msg.id === payload.new.id)) {
+                        return prev;
+                      }
+                      
+                      const updated = [...prev, payload.new];
+                      return updated.sort((a, b) => 
+                        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                      );
+                    });
+                    
+                    markAsRead(payload.new.id);
+                  }
+                })
+                .subscribe((newStatus) => {
+                  setChannelStatus(newStatus);
+                  console.log(`Channel reconnection status: ${newStatus}`);
+                });
+            }, 2000);
+          }
+        }
+      });
     
     return () => {
       channel.unsubscribe();
@@ -339,6 +428,45 @@ const Chat = () => {
   }, []);
   
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  if ((!id) || (!user?.id)) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+          <p className="text-lg font-medium">{!id ? "No user selected" : "You need to be logged in"}</p>
+          <p className="mt-2 text-muted-foreground">
+            {!id ? "Please select a conversation." : "Please log in to view and send messages."}
+          </p>
+          <Button 
+            className="mt-4" 
+            onClick={() => navigate('/community')}
+          >
+            Go to Community
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (contactLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p>Loading conversation...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  const contactDisplayName = contact ? getDisplayName({
+    username: contact.username || '',
+    full_name: contact.full_name || '',
+    display_name_preference: contact.display_name_preference
+  }) : "Unknown User";
+  
+  const contactInitials = contact ? getInitials(contactDisplayName) : "?";
 
   return (
     <div 
@@ -348,7 +476,7 @@ const Chat = () => {
       )}
       style={{
         minHeight: isMobile ? 'calc(var(--vh, 1vh) * 100)' : '100vh',
-        height: isMobile ? 'calc(var(--vh, 1vh) * 100)'
+        height: isMobile ? 'calc(var(--vh, 1vh) * 100)' : undefined
       }}
     >
       <header className="border-b p-3 flex items-center justify-between bg-card z-30 shadow-sm shrink-0">
@@ -411,7 +539,13 @@ const Chat = () => {
                     {isRetrying ? (
                       <>
                         <div className="animate-spin h-3 w-3 mr-2 border-2 border-primary border-t-transparent rounded-full"></div>
-                        Retrying...\n                      </>\n                    ) : (\n                      <>\n                        <RefreshCw className="h-3 w-3 mr-2" /> Retry\n                      </>\n                    )}
+                        Retrying...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-3 w-3 mr-2" /> Retry
+                      </>
+                    )}
                   </Button>
                 </AlertDescription>
               </Alert>
@@ -431,7 +565,15 @@ const Chat = () => {
                     disabled={isRetrying}
                   >
                     {isRetrying ? (
-                      <>\n                        <div className="animate-spin h-3 w-3 mr-2 border-2 border-primary border-t-transparent rounded-full"></div>\n                        Retrying...\n                      </>\n                    ) : (\n                      <>\n                        <RefreshCw className="h-3 w-3 mr-2" /> Retry\n                      </>\n                    )}
+                      <>
+                        <div className="animate-spin h-3 w-3 mr-2 border-2 border-primary border-t-transparent rounded-full"></div>
+                        Retrying...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-3 w-3 mr-2" /> Retry
+                      </>
+                    )}
                   </Button>
                 </AlertDescription>
               </Alert>
