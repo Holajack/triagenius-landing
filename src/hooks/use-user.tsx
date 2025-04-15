@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -16,6 +15,7 @@ interface UserData {
   avatarUrl: string | null;
   isLoading: boolean;
   profile: UserProfile | null;
+  is_onboarding_complete: boolean;
 }
 
 interface UserContextType {
@@ -44,7 +44,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     console.log('[useUser] Creating new profile for user:', authUser.id);
     
     try {
-      // Get environment from localStorage if available, otherwise default to 'office'
       const savedEnvironment = localStorage.getItem('environment') || 'office';
       if (DEBUG_ENV) console.log('[useUser] Using environment for new profile:', savedEnvironment);
       
@@ -69,7 +68,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       
       console.log('[useUser] Profile created successfully');
       
-      // Also create onboarding preferences
       const { error: onboardingError } = await supabase
         .from('onboarding_preferences')
         .insert({
@@ -77,18 +75,17 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           learning_environment: savedEnvironment
         });
         
-      if (onboardingError && onboardingError.code !== '23505') { // Ignore duplicate key errors
+      if (onboardingError && onboardingError.code !== '23505') {
         console.error("[useUser] Error creating onboarding preferences:", onboardingError);
       }
       
-      // Also create leaderboard stats
       const { error: leaderboardError } = await supabase
         .from('leaderboard_stats')
         .insert({
           user_id: authUser.id
         });
         
-      if (leaderboardError && leaderboardError.code !== '23505') { // Ignore duplicate key errors
+      if (leaderboardError && leaderboardError.code !== '23505') {
         console.error("[useUser] Error creating leaderboard stats:", leaderboardError);
       }
       
@@ -104,7 +101,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(true);
       clearError();
       
-      // First, check if we're actually authenticated
       const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
       
       if (authError) {
@@ -121,38 +117,33 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       
       console.log("[useUser] Auth user found:", authUser.id);
       
-      // Initial user state with loading indicator
       setUser({
         id: authUser.id,
         email: authUser.email,
         username: null,
         avatarUrl: null,
         isLoading: true,
-        profile: null
+        profile: null,
+        is_onboarding_complete: false
       });
       
-      // Fetch user profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*, last_selected_environment')
         .eq('id', authUser.id)
         .maybeSingle();
       
-      // Fix: this variable needs to be declared with 'let' so it can be reassigned
       let userProfileData = profileData;
       
-      // If profile doesn't exist, create it
       if (profileError || !userProfileData) {
         console.log("[useUser] Profile not found or error:", profileError);
         
-        // Create a new profile
         const profileCreated = await createUserProfile(authUser);
         
         if (!profileCreated) {
           throw new Error("Failed to create user profile");
         }
         
-        // Retry fetching the profile after creation
         const { data: newProfileData, error: newProfileError } = await supabase
           .from('profiles')
           .select('*, last_selected_environment')
@@ -167,7 +158,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         userProfileData = newProfileData;
       }
       
-      // Fetch onboarding preferences
       const { data: prefsData, error: prefsError } = await supabase
         .from('onboarding_preferences')
         .select('*')
@@ -178,23 +168,21 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         console.error("[useUser] Error fetching preferences:", prefsError);
       }
       
-      // Update user state with profile data
       setUser({
         id: authUser.id,
         email: userProfileData.email || authUser.email,
         username: userProfileData.username || authUser.email?.split('@')[0] || null,
         avatarUrl: userProfileData.avatar_url,
         isLoading: false,
-        profile: userProfileData as UserProfile
+        profile: userProfileData as UserProfile,
+        is_onboarding_complete: prefsData ? prefsData.is_onboarding_complete : false
       });
       
-      // Get environment from database - THIS IS OUR SOURCE OF TRUTH
       let environmentToApply = userProfileData.last_selected_environment;
       
       if (DEBUG_ENV) console.log('[useUser] Profile environment from DB:', environmentToApply);
       if (DEBUG_ENV && prefsData) console.log('[useUser] Onboarding preferences environment:', prefsData.learning_environment);
       
-      // Sync environments if needed - make sure both DB tables have the same value
       if (prefsData && prefsData.learning_environment !== environmentToApply) {
         if (DEBUG_ENV) console.log('[useUser] Syncing onboarding_preferences to match profile environment:', environmentToApply);
         
@@ -206,7 +194,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           .eq('user_id', authUser.id);
       }
       
-      // Check environment consistency across different media
       const currentLocalStorageEnv = localStorage.getItem('environment');
       const currentDomEnv = document.documentElement.getAttribute('data-environment');
       
@@ -218,16 +205,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         });
       }
       
-      // If the local environment is different from the database and more user-friendly,
-      // AND it's not the first login (where we should respect the DB),
-      // update the database to match the local environment
       if (currentLocalStorageEnv && 
           currentLocalStorageEnv !== environmentToApply && 
           retryCount > 0) {
         
         if (DEBUG_ENV) console.log(`[useUser] Visual environment (${currentLocalStorageEnv}) differs from DB (${environmentToApply}), updating DB`);
         
-        // Update profile - source of truth
         const { error: updateError } = await supabase
           .from('profiles')
           .update({
@@ -240,7 +223,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         } else {
           environmentToApply = currentLocalStorageEnv;
           
-          // Also update onboarding preferences for consistency
           await supabase
             .from('onboarding_preferences')
             .update({
@@ -252,14 +234,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         }
       }
       
-      // Apply environment theme
       if (environmentToApply) {
         if (DEBUG_ENV) console.log(`[useUser] Applying environment theme on login: ${environmentToApply}`);
         
-        // Set localStorage AFTER we've fetched from DB to ensure DB is source of truth
         localStorage.setItem('environment', environmentToApply);
         
-        // Apply theme to document
         document.documentElement.classList.remove(
           'theme-office', 
           'theme-park', 
@@ -271,22 +250,16 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         document.documentElement.classList.add(`theme-${environmentToApply}`);
         document.documentElement.setAttribute('data-environment', environmentToApply);
         
-        // Update theme context with DB value
         setEnvironmentTheme(environmentToApply);
       }
       
-      // Apply saved session preferences if available, but don't override the environment
-      // that we just set from the database - which is our source of truth
       try {
         const savedSession = await loadUserSession(authUser.id);
         if (savedSession) {
-          // Don't override the environment
           const savedEnvironment = environmentToApply;
           
-          // Apply other preferences from saved session
           applySessionPreferences(savedSession, setTheme, setEnvironmentTheme, savedEnvironment);
           
-          // Show toast for resuming session
           if (savedSession.lastRoute && savedSession.lastRoute !== window.location.pathname) {
             const safeRoutes = ['/dashboard', '/focus-session', '/bonuses', '/reports', '/profile', '/settings'];
             if (safeRoutes.some(route => savedSession.lastRoute.startsWith(route))) {
@@ -311,12 +284,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           }
         }
         
-        // Save user preferences to localStorage
         if (prefsData) {
           localStorage.setItem('userPreferences', JSON.stringify({
             userGoal: prefsData.user_goal,
             workStyle: prefsData.work_style,
-            environment: environmentToApply, // Use the DB value
+            environment: environmentToApply,
             soundPreference: prefsData.sound_preference,
             weeklyFocusGoal: prefsData.weekly_focus_goal || 10,
           }));
@@ -325,10 +297,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         console.error("[useUser] Error loading saved session:", err);
       }
       
-      // Reset retry count on success
       setRetryCount(0);
       
-      // After everything is loaded, verify environment consistency once more
       if (authUser.id) {
         setTimeout(() => {
           verifyEnvironmentWithDatabase(authUser.id);
@@ -340,15 +310,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setError(error);
       setUser(null);
       
-      // Increment retry count if we should retry
       if (retryCount < 3) {
         console.log(`[useUser] Retrying fetchUserData (attempt ${retryCount + 1}/3)`);
         setRetryCount(prev => prev + 1);
-        setTimeout(fetchUserData, 1000); // Retry after 1 second
+        setTimeout(fetchUserData, 1000);
       } else {
-        // After 3 retries, show error toast and redirect to auth
         toast.error("Unable to load your profile. Please try logging in again.");
-        // Don't redirect if already on auth page
         if (!window.location.pathname.includes('/auth')) {
           navigate('/auth');
         }
@@ -388,10 +355,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     try {
       if (user?.id) {
-        // Save the current environment before logout so it can be restored on next login
         const currentEnvironment = localStorage.getItem('environment');
         if (currentEnvironment && user.profile) {
-          // Update the database with the latest environment
           await supabase
             .from('profiles')
             .update({ 
@@ -402,7 +367,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           console.log("[useUser] Saved environment before logout:", currentEnvironment);
         }
         
-        // Save session data
         await saveUserSession(user.id);
       }
       
@@ -418,7 +382,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
   
   useEffect(() => {
-    // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (DEBUG_ENV) console.log('[useUser] Auth state change event:', event);
       
@@ -431,7 +394,6 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       }
     });
     
-    // Initial fetch
     fetchUserData();
     
     return () => {
