@@ -54,12 +54,21 @@ serve(async (req) => {
     const { data: userData, error: userError } = await supabaseClient.auth.getUser();
     if (userError) {
       console.error("Auth error:", userError.message);
+      // Continue with null user instead of failing
     }
     
     const authenticatedUserId = userData?.user?.id;
     
     // Use authenticated user ID if no userId provided in request
     const effectiveUserId = userId || authenticatedUserId;
+
+    // If no user is authenticated and no userId provided, return empty array
+    if (!effectiveUserId) {
+      return new Response(
+        JSON.stringify({ data: [] }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
     
     // Initialize query to get activities
     let activitiesQuery = supabaseClient
@@ -85,25 +94,31 @@ serve(async (req) => {
 
     // For friends feed, we need to filter by user's friends
     if (feedType === 'friends' && effectiveUserId) {
-      // Get the friends list
-      const { data: friendsData, error: friendsError } = await supabaseClient
-        .from('friends')
-        .select('friend_id')
-        .eq('user_id', effectiveUserId);
-      
-      if (friendsError) {
-        console.error('Error fetching friends:', friendsError);
-        // Continue with empty friends list instead of failing
-      }
+      try {
+        // Get the friends list
+        const { data: friendsData, error: friendsError } = await supabaseClient
+          .from('friends')
+          .select('friend_id')
+          .eq('user_id', effectiveUserId);
+        
+        if (friendsError) {
+          console.error('Error fetching friends:', friendsError);
+          // Continue with empty friends list instead of failing
+        }
 
-      // If there are friends, filter activities by friend IDs
-      if (friendsData && friendsData.length > 0) {
-        const friendIds = friendsData.map(f => f.friend_id);
-        // Include current user in friends feed
-        friendIds.push(effectiveUserId);
-        activitiesQuery = activitiesQuery.in('user_id', friendIds);
-      } else {
-        // If no friends, only show the current user's activities
+        // If there are friends, filter activities by friend IDs
+        if (friendsData && friendsData.length > 0) {
+          const friendIds = friendsData.map(f => f.friend_id);
+          // Include current user in friends feed
+          friendIds.push(effectiveUserId);
+          activitiesQuery = activitiesQuery.in('user_id', friendIds);
+        } else {
+          // If no friends, only show the current user's activities
+          activitiesQuery = activitiesQuery.eq('user_id', effectiveUserId);
+        }
+      } catch (friendsQueryError) {
+        console.error('Error querying friends:', friendsQueryError);
+        // Default to filtering by only the user's activities
         activitiesQuery = activitiesQuery.eq('user_id', effectiveUserId);
       }
     }

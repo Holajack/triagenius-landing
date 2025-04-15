@@ -66,6 +66,9 @@ const ENCOURAGEMENT_OPTIONS = [
   "Proud of you!"
 ];
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000;
+
 const ActivityFeed = () => {
   const { user } = useUser();
   const { toast } = useToast();
@@ -74,6 +77,7 @@ const ActivityFeed = () => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [encourageActivity, setEncourageActivity] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const { state } = useOnboarding();
   
   const getEnvClasses = () => {
@@ -142,12 +146,14 @@ const ActivityFeed = () => {
     }
   };
   
-  const fetchActivities = async () => {
+  const fetchActivities = async (attempt = 0) => {
     setIsLoading(true);
     setError(null);
     
     try {
       const userId = user?.id || null;
+      
+      console.log(`Fetching activities (attempt ${attempt+1}/${MAX_RETRIES+1}): userId=${userId}, feedType=${feedType}`);
       
       const response = await supabase.functions.invoke('get-community-activity', {
         body: {
@@ -159,6 +165,13 @@ const ActivityFeed = () => {
       
       if (response.error) {
         console.error('Error fetching activities:', response.error);
+        
+        if (attempt < MAX_RETRIES) {
+          console.log(`Retrying in ${RETRY_DELAY}ms...`);
+          setTimeout(() => fetchActivities(attempt + 1), RETRY_DELAY);
+          return;
+        }
+        
         setError(response.error.message || 'Failed to load activities');
         toast({
           title: "Error loading activities",
@@ -166,9 +179,18 @@ const ActivityFeed = () => {
           variant: "destructive"
         });
       } else if (response.data?.data) {
+        console.log(`Successfully fetched ${response.data.data.length} activities`);
         setActivities(response.data.data);
+        setRetryCount(0);
       } else if (response.data?.error) {
         console.error('Server error:', response.data.error);
+        
+        if (attempt < MAX_RETRIES) {
+          console.log(`Retrying in ${RETRY_DELAY}ms...`);
+          setTimeout(() => fetchActivities(attempt + 1), RETRY_DELAY);
+          return;
+        }
+        
         setError(response.data.error);
         toast({
           title: "Error loading activities",
@@ -177,6 +199,13 @@ const ActivityFeed = () => {
         });
       } else {
         console.error('Unexpected response format:', response);
+        
+        if (attempt < MAX_RETRIES) {
+          console.log(`Retrying in ${RETRY_DELAY}ms...`);
+          setTimeout(() => fetchActivities(attempt + 1), RETRY_DELAY);
+          return;
+        }
+        
         setError('Received an invalid response from the server');
         toast({
           title: "Error loading activities",
@@ -186,6 +215,13 @@ const ActivityFeed = () => {
       }
     } catch (error) {
       console.error('Error invoking function:', error);
+      
+      if (attempt < MAX_RETRIES) {
+        console.log(`Retrying in ${RETRY_DELAY}ms...`);
+        setTimeout(() => fetchActivities(attempt + 1), RETRY_DELAY);
+        return;
+      }
+      
       setError('Network error. Please check your connection and try again.');
       toast({
         title: "Couldn't load activities",
