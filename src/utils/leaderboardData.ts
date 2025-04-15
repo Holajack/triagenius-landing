@@ -55,11 +55,11 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
       .from('leaderboard_stats')
       .select('points, weekly_focus_time, current_streak')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle(); // Changed from single() to maybeSingle() to handle no rows gracefully
       
     if (currentUserError) {
       console.error('Error fetching current user stats:', currentUserError);
-      return [];
+      // Continue with default values instead of returning early
     }
     
     // Get friends list from the friends table
@@ -204,9 +204,9 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
         full_name: userProfile?.full_name || null,
         display_name_preference: userProfile?.display_name_preference as 'username' | 'full_name' | null,
         avatar: userProfile?.avatar_url || "/placeholder.svg",
-        points: currentUserStats.points || 0,
-        focusHours: (currentUserStats.weekly_focus_time || 0) / 60,
-        streak: currentUserStats.current_streak || 0,
+        points: currentUserStats?.points || 0,
+        focusHours: (currentUserStats?.weekly_focus_time || 0) / 60,
+        streak: currentUserStats?.current_streak || 0,
         isCurrentUser: true,
         badge: "You"
       });
