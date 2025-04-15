@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { useUser } from "@/hooks/use-user";
 import { useOnboarding } from "@/contexts/OnboardingContext";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ActivityUser {
   displayName: string;
@@ -232,7 +233,7 @@ const ActivityFeed = () => {
       setIsLoading(false);
     }
   };
-  
+
   const reactToActivity = async (activityId: string, reactionType: "like" | "encouragement", message?: string) => {
     if (!user?.id) {
       toast({
@@ -335,7 +336,11 @@ const ActivityFeed = () => {
       setEncourageActivity(null);
     }
   };
-  
+
+  const handleFetchActivities = () => {
+    fetchActivities(0);
+  };
+
   useEffect(() => {
     fetchActivities();
     
@@ -407,7 +412,7 @@ const ActivityFeed = () => {
           variant="outline" 
           size="sm" 
           className="mt-4"
-          onClick={fetchActivities}
+          onClick={handleFetchActivities}
         >
           Try Again
         </Button>
@@ -429,7 +434,7 @@ const ActivityFeed = () => {
           variant="outline" 
           size="sm" 
           className="mt-4"
-          onClick={() => feedType === "friends" ? setFeedType("global") : {}}
+          onClick={() => feedType === "friends" ? setFeedType("global") : handleFetchActivities()}
         >
           {feedType === "friends" ? "View Global Activity" : "Try Again Later"}
         </Button>
@@ -498,7 +503,7 @@ const ActivityFeed = () => {
           </div>
           
           <div className="flex justify-center mt-4">
-            <Button variant="outline" size="sm" onClick={fetchActivities}>
+            <Button variant="outline" size="sm" onClick={handleFetchActivities}>
               Refresh Activities
             </Button>
           </div>
