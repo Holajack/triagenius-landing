@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -45,6 +46,7 @@ import {
   LeaderboardUser
 } from "@/utils/leaderboardData";
 import { useUser } from "@/hooks/use-user";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import LeaderboardSkeletonList from "@/components/leaderboard/LeaderboardSkeletonList";
 import ActivityFeed from "@/components/leaderboard/ActivityFeed";
@@ -421,6 +423,7 @@ const LeaderboardList = ({
   const accentColor = getAccentColor();
   const [celebratedUsers, setCelebratedUsers] = useState<Set<string>>(new Set());
   const currentUserId = useRef<string | null>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const fetchCurrentUser = async () => {
@@ -572,7 +575,11 @@ const LeaderboardList = ({
                 </div>
               </div>
             </HoverCardTrigger>
-            <HoverCardContent align="start" side="right" className="p-4 space-y-2 w-64">
+            <HoverCardContent 
+              align={isMobile ? "center" : "start"} 
+              side={isMobile ? "bottom" : "right"} 
+              className="p-4 space-y-2 w-64"
+            >
               <div className="flex items-center gap-3">
                 <Avatar className="h-10 w-10 border">
                   <AvatarImage src={user.avatar} alt={user.name} />
@@ -642,6 +649,7 @@ const GlobalRankingsTab = () => {
   const [userRankMessage, setUserRankMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [celebratedUsers, setCelebratedUsers] = useState<Set<string>>(new Set());
+  const isMobile = useIsMobile();
   
   useEffect(() => {
     const fetchGlobalData = async () => {
