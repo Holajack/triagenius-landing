@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
@@ -29,7 +30,8 @@ function App() {
     });
     
     // Redirect to onboarding if the user is new
-    if (user && user.new_user === true && pathname !== '/onboarding') {
+    // Check for is_onboarding_complete instead of new_user
+    if (user && user.is_onboarding_complete === false && pathname !== '/onboarding') {
       navigate('/onboarding', { replace: true });
     }
   }, [user, navigate, pathname]);

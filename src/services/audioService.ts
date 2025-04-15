@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -169,14 +168,14 @@ class AudioPlayerService {
         return;
       }
       
-      // Create playlist from the files
+      // Create playlist from the files - Fix publicUrl access
       this.playlist = audioFiles.map(file => {
-        const { publicUrl } = supabase.storage
+        const publicUrlData = supabase.storage
           .from('music_files')
           .getPublicUrl(`${folderName}/${file.name}`);
           
         return {
-          url: publicUrl,
+          url: publicUrlData.data.publicUrl,
           name: file.name
         };
       });
