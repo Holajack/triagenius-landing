@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import AudioPlayerService from '@/services/audioService';
 
@@ -81,6 +80,11 @@ export const useAudioPlayer = (initialPreference?: string) => {
     await audioService.loadPlaylistBySoundPreference(preference);
   };
 
+  const play = () => {
+    const audioService = AudioPlayerService.getInstance();
+    audioService.play();
+  };
+
   return {
     ...audioState,
     playPause,
@@ -88,6 +92,7 @@ export const useAudioPlayer = (initialPreference?: string) => {
     previousTrack,
     setVolume,
     toggleMute,
-    loadPlaylist
+    loadPlaylist,
+    play
   };
 };
