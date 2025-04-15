@@ -1,3 +1,4 @@
+
 // First part of the file with imports and existing type definitions
 import { supabase } from "@/integrations/supabase/client";
 import { getDisplayName } from "@/hooks/use-display-name";
@@ -70,8 +71,10 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
         .eq('user_id', user.id);
         
       if (!friendsError && friendsData && friendsData.length > 0) {
+        console.log('Found friends in friends table:', friendsData.length);
         friendIds = friendsData.map(f => f.friend_id);
       } else {
+        console.log('No friends found in friends table, trying follows');
         // Fall back to follows if not found in friends table
         const { data: followingData, error: followingError } = await supabase.rpc(
           'get_user_follows',
@@ -80,12 +83,43 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
         
         if (!followingError && followingData) {
           const typedFollowingData = followingData as UserFollow[];
+          console.log('Found follows:', typedFollowingData.length);
           friendIds = typedFollowingData.map(connection => connection.following_id);
         }
       }
     } catch (error) {
       console.error('Error fetching friend IDs:', error);
       // Continue with empty friend list if there's an error
+    }
+    
+    // Log the number of friend IDs found
+    console.log('Total friend IDs found:', friendIds.length);
+    
+    // If no friends found, just return the current user
+    if (friendIds.length === 0) {
+      console.log('No friends found, returning only current user');
+      
+      // Get current user profile
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('username, full_name, display_name_preference, avatar_url')
+        .eq('id', user.id)
+        .single();
+      
+      return [{
+        rank: 1,
+        id: user.id,
+        name: "You",
+        username: userProfile?.username || user.email?.split('@')[0] || null,
+        full_name: userProfile?.full_name || null,
+        display_name_preference: userProfile?.display_name_preference as 'username' | 'full_name' | null,
+        avatar: userProfile?.avatar_url || "/placeholder.svg",
+        points: currentUserStats?.points || 0,
+        focusHours: (currentUserStats?.weekly_focus_time || 0) / 60,
+        streak: currentUserStats?.current_streak || 0,
+        isCurrentUser: true,
+        badge: "Solo"
+      }];
     }
     
     // Include current user's ID
@@ -109,8 +143,10 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
       return [];
     }
     
+    console.log('Friends stats fetched:', friendsStats?.length || 0);
+    
     // Format data for the leaderboard
-    let result = friendsStats.map((stat, index) => {
+    let result = (friendsStats || []).map((stat, index) => {
       const profileData = stat.profiles as any;
       const username = profileData?.username || 'Unknown';
       const full_name = profileData?.full_name || null;
@@ -152,6 +188,7 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
     
     // If somehow the current user is not in the list, add them
     if (!result.some(user => user.isCurrentUser)) {
+      console.log('Adding current user to results');
       // Get current user profile
       const { data: userProfile } = await supabase
         .from('profiles')
@@ -171,10 +208,11 @@ export const getFriendsLeaderboardData = async (isEmpty = false): Promise<Leader
         focusHours: (currentUserStats.weekly_focus_time || 0) / 60,
         streak: currentUserStats.current_streak || 0,
         isCurrentUser: true,
-        badge: "New"
+        badge: "You"
       });
     }
     
+    console.log('Returning friend leaderboard data:', result.length);
     return result;
   } catch (error) {
     console.error('Error in getFriendsLeaderboardData:', error);

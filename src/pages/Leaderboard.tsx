@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import PageHeader from "@/components/common/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -49,6 +50,7 @@ import { supabase } from "@/integrations/supabase/client";
 import LeaderboardSkeletonList from "@/components/leaderboard/LeaderboardSkeletonList";
 import ActivityFeed from "@/components/leaderboard/ActivityFeed";
 import confetti from 'canvas-confetti';
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const Leaderboard = () => {
   const { state } = useOnboarding();
@@ -65,6 +67,7 @@ const Leaderboard = () => {
   const [activityData, setActivityData] = useState<any[]>([]);
   const [friendsRankingMessage, setFriendsRankingMessage] = useState("");
   const [globalRankingMessage, setGlobalRankingMessage] = useState("");
+  const [hasFriends, setHasFriends] = useState(false);
   
   const isNewUser = !user || (user && user.isLoading) || !user.username;
   
@@ -93,6 +96,14 @@ const Leaderboard = () => {
               tasksCompleted: completedTasksCount || 0
             });
           }
+          
+          // Check if user has any friends
+          const { data: friendsData, error: friendsError } = await supabase
+            .from('friends')
+            .select('friend_id')
+            .eq('user_id', user.id);
+            
+          setHasFriends(Boolean(friendsData && friendsData.length > 0));
         }
         
         const friends = await getFriendsLeaderboardData(isNewUser);
@@ -198,25 +209,30 @@ const Leaderboard = () => {
                 </TabsList>
                 
                 <TabsContent value="friends" className="mt-0">
-                  <LeaderboardList 
-                    type="friends" 
-                    getAccentColor={getAccentColor} 
-                    isNewUser={isNewUser} 
-                    isLoading={isLoading}
-                    data={friendsData}
-                    rankingMessage={friendsRankingMessage}
-                  />
+                  <ScrollArea className="h-[500px]">
+                    <LeaderboardList 
+                      type="friends" 
+                      getAccentColor={getAccentColor} 
+                      isNewUser={isNewUser} 
+                      isLoading={isLoading}
+                      data={friendsData}
+                      hasFriends={hasFriends}
+                      rankingMessage={friendsRankingMessage}
+                    />
+                  </ScrollArea>
                   
                   <div className="flex justify-center mt-4">
                     <Button variant="outline" className="flex items-center gap-2" onClick={() => window.location.href = "/community"}>
                       <Users className="h-4 w-4" />
-                      Add Friends
+                      {hasFriends ? "Find More Friends" : "Add Friends"}
                     </Button>
                   </div>
                 </TabsContent>
                 
                 <TabsContent value="global" className="mt-0">
-                  <GlobalRankingsTab />
+                  <ScrollArea className="h-[500px]">
+                    <GlobalRankingsTab />
+                  </ScrollArea>
                 </TabsContent>
               </Tabs>
             </CardContent>
@@ -393,6 +409,7 @@ const LeaderboardList = ({
   isNewUser,
   isLoading,
   data,
+  hasFriends,
   rankingMessage
 }: { 
   type: "friends" | "global", 
@@ -400,6 +417,7 @@ const LeaderboardList = ({
   isNewUser: boolean,
   isLoading: boolean,
   data: LeaderboardUser[],
+  hasFriends?: boolean,
   rankingMessage: string
 }) => {
   const accentColor = getAccentColor();
@@ -481,6 +499,40 @@ const LeaderboardList = ({
             </div>
           ))}
         </div>
+      </div>
+    );
+  }
+  
+  // Show empty state if user has no friends and this is the friends tab
+  if (type === "friends" && data.length === 0 && hasFriends === false && !isNewUser) {
+    return (
+      <div className="py-12 text-center">
+        <Users className="mx-auto h-16 w-16 text-muted-foreground/50 mb-4" />
+        <h3 className="text-lg font-medium mb-2">No Friends Yet</h3>
+        <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-6">
+          Add friends to see how your focus time compares and motivate each other!
+        </p>
+        <Button 
+          variant="default" 
+          onClick={() => window.location.href = "/community"}
+          className="flex items-center gap-2"
+        >
+          <Users className="h-4 w-4" />
+          Find Friends
+        </Button>
+      </div>
+    );
+  }
+  
+  // Special handling for when the user has friends but no data is available
+  if (type === "friends" && data.length === 0 && hasFriends === true && !isNewUser) {
+    return (
+      <div className="py-8 text-center">
+        <Clock className="mx-auto h-12 w-12 text-muted-foreground/50 mb-3" />
+        <h3 className="font-medium mb-2">No Focus Data Yet</h3>
+        <p className="text-sm text-muted-foreground">
+          Your friends haven't logged any focus sessions this week. Check back later!
+        </p>
       </div>
     );
   }
