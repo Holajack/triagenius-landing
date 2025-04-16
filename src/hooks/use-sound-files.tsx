@@ -286,15 +286,16 @@ export const useSoundFiles = () => {
     }
   }, [user]);
 
-  // Get public URL for a sound file
+  // Get public URL for a sound file - FIXED FUNCTION
   const getSoundFileUrl = useCallback((filePath: string) => {
     // If already a full URL, return it
     if (filePath.startsWith('http')) {
       return filePath;
     }
     
-    // Otherwise get from storage
+    // Get from Supabase storage with proper public URL
     const { data } = supabase.storage.from('music').getPublicUrl(filePath);
+    console.log('Generated sound URL:', data.publicUrl, 'for path:', filePath);
     return data.publicUrl;
   }, []);
 

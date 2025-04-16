@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -63,7 +62,6 @@ const ProfilePreferences = () => {
     const player = new Audio();
     
     player.addEventListener('ended', () => {
-      // Handle end of current track by playing next track in playlist
       if (audioPlaylist.length > 1) {
         playNextTrack();
       } else {
@@ -74,6 +72,7 @@ const ProfilePreferences = () => {
     
     player.addEventListener('error', (e) => {
       console.error("Audio playback error:", e);
+      console.error("Audio error details:", player.error);
       setAudioPlaybackAttempts(prev => prev + 1);
       setAudioLoadFailed(true);
       
@@ -86,6 +85,7 @@ const ProfilePreferences = () => {
     });
     
     player.addEventListener('loadeddata', () => {
+      console.log("Audio loaded successfully, ready to play");
       setAudioLoadFailed(false);
       
       player.play().catch(err => {
@@ -94,6 +94,10 @@ const ProfilePreferences = () => {
         setPreviewSound(null);
         setIsPlayingSound(false);
       });
+    });
+    
+    player.addEventListener('canplay', () => {
+      console.log("Audio can play now");
     });
     
     setAudioPlayer(player);
@@ -107,7 +111,6 @@ const ProfilePreferences = () => {
     };
   }, []);
 
-  // Play next track in playlist with crossfade
   const playNextTrack = useCallback(() => {
     if (!audioPlayer || audioPlaylist.length === 0) return;
     
@@ -121,19 +124,16 @@ const ProfilePreferences = () => {
     
     const nextTrackUrl = getSoundFileUrl(nextTrack.file_path);
     
-    // Create crossfade effect
     const currentVolume = audioPlayer.volume;
-    const fadePoints = 10; // Number of volume steps for fade
-    const fadeInterval = 400 / fadePoints; // 400ms fade duration
+    const fadePoints = 10;
+    const fadeInterval = 400 / fadePoints;
     
-    // Gradually reduce volume of current track
     const fadeOut = setInterval(() => {
       if (audioPlayer.volume > 0.1) {
         audioPlayer.volume -= currentVolume / fadePoints;
       } else {
         clearInterval(fadeOut);
         
-        // Switch to new track and fade in
         audioPlayer.src = nextTrackUrl;
         audioPlayer.volume = 0;
         audioPlayer.load();
@@ -141,7 +141,6 @@ const ProfilePreferences = () => {
         setCurrentAudioIndex(nextIndex);
         setPreviewSound(nextTrackUrl);
         
-        // Fade in the new track
         const fadeIn = setInterval(() => {
           if (audioPlayer.volume < currentVolume) {
             audioPlayer.volume += currentVolume / fadePoints;
@@ -152,17 +151,15 @@ const ProfilePreferences = () => {
         }, fadeInterval);
       }
     }, fadeInterval);
-    
   }, [audioPlayer, audioPlaylist, currentAudioIndex, getSoundFileUrl]);
 
   useEffect(() => {
     if (audioPlayer && previewSound) {
+      console.log("Setting audio source to:", previewSound);
       audioPlayer.pause();
       audioPlayer.src = previewSound;
       audioPlayer.load();
       
-      // Auto-stop preview after 10 seconds if it's from preview button only
-      // If it's part of a playlist loop, don't set a timer
       if (!audioPlaylist || audioPlaylist.length <= 1) {
         const timer = setTimeout(() => {
           audioPlayer.pause();
@@ -353,7 +350,6 @@ const ProfilePreferences = () => {
     
     handleChange('soundPreference', value as SoundPreference);
     
-    // Fetch all sounds in the category to prepare for playlist
     const filesToPlay = await fetchSoundFilesByPreference(value as SoundPreference);
     setAudioPlaylist(filesToPlay);
   };
@@ -371,7 +367,6 @@ const ProfilePreferences = () => {
       try {
         setIsPlayingSound(true);
         
-        // Use existing playlist or fetch new one if needed
         let tracksToPlay = audioPlaylist;
         if (!tracksToPlay || tracksToPlay.length === 0) {
           tracksToPlay = await fetchSoundFilesByPreference(editedState.soundPreference);
@@ -379,12 +374,11 @@ const ProfilePreferences = () => {
         }
         
         if (tracksToPlay && tracksToPlay.length > 0) {
-          // Start from the first track
           setCurrentAudioIndex(0);
           const soundUrl = getSoundFileUrl(tracksToPlay[0].file_path);
+          console.log("Playing sound URL:", soundUrl);
           setPreviewSound(soundUrl);
           
-          // If there are multiple tracks, we're in continuous play mode
           if (tracksToPlay.length > 1) {
             toast.info(`Playing ${tracksToPlay.length} tracks from ${editedState.soundPreference} category`);
           }
@@ -404,7 +398,12 @@ const ProfilePreferences = () => {
   const playSoundTrack = (filePath: string) => {
     if (!isEditing) return;
     
-    if (previewSound === getSoundFileUrl(filePath)) {
+    console.log("Play sound track requested for path:", filePath);
+    const fullUrl = getSoundFileUrl(filePath);
+    console.log("Full URL to play:", fullUrl);
+    
+    if (previewSound === fullUrl) {
+      console.log("Already playing this track, stopping");
       setPreviewSound(null);
       setIsPlayingSound(false);
       return;
@@ -416,11 +415,8 @@ const ProfilePreferences = () => {
       }
       
       setIsPlayingSound(true);
+      setPreviewSound(fullUrl);
       
-      const soundUrl = getSoundFileUrl(filePath);
-      setPreviewSound(soundUrl);
-      
-      // Find the track index in the playlist for continuous play
       const trackIndex = audioPlaylist.findIndex(track => track.file_path === filePath);
       if (trackIndex >= 0) {
         setCurrentAudioIndex(trackIndex);
@@ -487,7 +483,6 @@ const ProfilePreferences = () => {
     try {
       setIsLoading(true);
       
-      // Save sound preference to user profile
       if (editedState.soundPreference) {
         await savePreferredSound(editedState.soundPreference);
       }

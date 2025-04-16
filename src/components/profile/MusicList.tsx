@@ -24,6 +24,17 @@ const MusicList = ({
   soundLoading
 }: MusicListProps) => {
   
+  // Debugging logs
+  console.log('MusicList rendering with:', {
+    filesCount: soundFiles.length,
+    currentlyPlaying,
+    soundLoading
+  });
+  
+  if (soundFiles.length > 0) {
+    console.log('First sound file:', soundFiles[0]);
+  }
+  
   // Simplified component to just show category preview
   if (isLoading) {
     return (
@@ -75,7 +86,10 @@ const MusicList = ({
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              onClick={() => onPlayPause(representativeTrack.file_path)}
+              onClick={() => {
+                console.log('Play button clicked for:', representativeTrack.file_path);
+                onPlayPause(representativeTrack.file_path);
+              }}
               disabled={soundLoading}
             >
               {soundLoading ? (
