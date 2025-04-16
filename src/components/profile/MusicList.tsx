@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -71,8 +70,8 @@ const MusicList = ({
     
     console.log("Checking if playing:", currentlyPlaying, representativeTrack.file_path);
     
-    // Direct URL comparison for ambient tracks
-    if (representativeTrack.sound_preference === 'ambient') {
+    // Direct URL comparison - handles both ambient and classical direct URLs
+    if (representativeTrack.sound_preference === 'ambient' || representativeTrack.sound_preference === 'classical') {
       return currentlyPlaying === representativeTrack.file_path;
     }
     

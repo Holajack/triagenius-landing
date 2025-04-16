@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, handleSupabaseError } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -224,6 +225,47 @@ export const useSoundFiles = () => {
         return ambientTracks;
       }
       
+      if (preference === 'classical') {
+        console.log("Using direct classical music URLs");
+        
+        const classicalTracks = [
+          {
+            id: 'classical-1',
+            title: 'Mozart - Eine Kleine Nachtmusik',
+            description: 'Classical track for focus',
+            file_path: 'https://ucculvnodabrfwbkzsnx.supabase.co/storage/v1/object/public/music/Classic/Mozart_-_Eine_Kleine_Nachtmusik.mp3',
+            file_type: 'audio/mp3',
+            sound_preference: 'classical',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          {
+            id: 'classical-2',
+            title: 'Bach - Air on the G String',
+            description: 'Classical track for focus',
+            file_path: 'https://ucculvnodabrfwbkzsnx.supabase.co/storage/v1/object/public/music/Classic/Bach_-_Air_on_G_String.mp3',
+            file_type: 'audio/mp3',
+            sound_preference: 'classical',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          {
+            id: 'classical-3',
+            title: 'Beethoven - Moonlight Sonata',
+            description: 'Classical track for focus',
+            file_path: 'https://ucculvnodabrfwbkzsnx.supabase.co/storage/v1/object/public/music/Classic/Beethoven_-_Moonlight_Sonata.mp3',
+            file_type: 'audio/mp3',
+            sound_preference: 'classical',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        ];
+        
+        setSoundFiles(classicalTracks);
+        setSoundLoading(false);
+        return classicalTracks;
+      }
+      
       await ensureMusicFolders();
       
       const { data: dbSoundFiles, error: dbError } = await supabase
@@ -360,8 +402,8 @@ export const useSoundFiles = () => {
   }, [user, ensureMusicFolders]);
 
   const getSoundFileUrl = useCallback((filePath: string) => {
-    if (filePath.includes('ucculvnodabrfwbkzsnx.supabase.co/storage/v1/object/public/music/Ambient/')) {
-      console.log('Using direct ambient URL:', filePath);
+    if (filePath.includes('ucculvnodabrfwbkzsnx.supabase.co/storage/v1/object/public/music/')) {
+      console.log('Using direct URL:', filePath);
       return filePath;
     }
     
