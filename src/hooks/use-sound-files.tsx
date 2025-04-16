@@ -21,20 +21,32 @@ export const useSoundFiles = () => {
   const [error, setError] = useState<string | null>(null);
   const { user } = useUser();
 
-  // Fetch all sound files
+  // Fetch all sound files from Supabase storage
   const fetchSoundFiles = async () => {
     try {
       setIsLoading(true);
       setError(null);
       
-      const { data, error } = await supabase
-        .from('sound_files')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.storage.from('music').list('', {
+        limit: 100,
+        offset: 0
+      });
       
       if (error) throw handleSupabaseError(error);
       
-      setSoundFiles(data || []);
+      // Transform storage files into sound files
+      const soundFilesList = data.map(file => ({
+        id: file.name,
+        title: file.name.split('.')[0],
+        description: null,
+        file_path: file.name,
+        file_type: file.metadata?.mimetype || '',
+        sound_preference: 'default', // You might want to extract this from file metadata or filename
+        created_at: file.updated_at || new Date().toISOString(),
+        updated_at: file.updated_at || new Date().toISOString()
+      }));
+      
+      setSoundFiles(soundFilesList);
     } catch (err: any) {
       console.error('Error fetching sound files:', err);
       setError(err.message);
@@ -44,28 +56,10 @@ export const useSoundFiles = () => {
     }
   };
 
-  // Fetch sound files by preference
-  const fetchSoundFilesByPreference = async (preference: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const { data, error } = await supabase
-        .from('sound_files')
-        .select('*')
-        .eq('sound_preference', preference)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw handleSupabaseError(error);
-      
-      setSoundFiles(data || []);
-    } catch (err: any) {
-      console.error('Error fetching sound files by preference:', err);
-      setError(err.message);
-      toast.error('Failed to load sound files');
-    } finally {
-      setIsLoading(false);
-    }
+  // Get public URL for a sound file
+  const getSoundFileUrl = (filePath: string) => {
+    const { data } = supabase.storage.from('music').getPublicUrl(filePath);
+    return data.publicUrl;
   };
 
   // Upload a sound file
@@ -84,27 +78,20 @@ export const useSoundFiles = () => {
       setIsLoading(true);
       setError(null);
 
-      // First upload the file to storage
-      const filePath = `${soundPreference}/${Date.now()}_${file.name}`;
-      const { error: uploadError, data } = await supabase.storage
-        .from('music_files')
-        .upload(filePath, file);
-
-      if (uploadError) throw handleSupabaseError(uploadError);
-
-      // Then create a record in the sound_files table
-      const { error: insertError } = await supabase
-        .from('sound_files')
-        .insert({
-          title,
-          description,
-          file_path: filePath,
-          file_type: file.type,
-          sound_preference: soundPreference,
-          user_id: user.id // Add the user_id field which was missing
+      const filePath = `${soundPreference}/${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from('music')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+          metadata: {
+            description: description,
+            soundPreference: soundPreference,
+            uploadedBy: user.id
+          }
         });
 
-      if (insertError) throw handleSupabaseError(insertError);
+      if (uploadError) throw handleSupabaseError(uploadError);
 
       toast.success('Sound file uploaded successfully');
       await fetchSoundFiles(); // Refresh the list
@@ -117,35 +104,17 @@ export const useSoundFiles = () => {
     }
   };
 
-  // Get public URL for a sound file
-  const getSoundFileUrl = (filePath: string) => {
-    const { data } = supabase.storage
-      .from('music_files')
-      .getPublicUrl(filePath);
-    
-    return data.publicUrl;
-  };
-
   // Delete a sound file
-  const deleteSoundFile = async (id: string, filePath: string) => {
+  const deleteSoundFile = async (filePath: string) => {
     try {
       setIsLoading(true);
       setError(null);
 
-      // Delete the record from the database
-      const { error: deleteRecordError } = await supabase
-        .from('sound_files')
-        .delete()
-        .eq('id', id);
-
-      if (deleteRecordError) throw handleSupabaseError(deleteRecordError);
-
-      // Delete the file from storage
-      const { error: deleteFileError } = await supabase.storage
-        .from('music_files')
+      const { error } = await supabase.storage
+        .from('music')
         .remove([filePath]);
 
-      if (deleteFileError) throw handleSupabaseError(deleteFileError);
+      if (error) throw handleSupabaseError(error);
 
       toast.success('Sound file deleted successfully');
       await fetchSoundFiles(); // Refresh the list
@@ -168,7 +137,6 @@ export const useSoundFiles = () => {
     isLoading,
     error,
     fetchSoundFiles,
-    fetchSoundFilesByPreference,
     uploadSoundFile,
     getSoundFileUrl,
     deleteSoundFile

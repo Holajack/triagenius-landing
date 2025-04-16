@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import NavigationBar from "@/components/dashboard/NavigationBar";
@@ -25,9 +25,18 @@ import CognitiveMetrics from "@/components/reports/CognitiveMetrics";
 import FocusBreakdown from "@/components/reports/FocusBreakdown";
 import RecommendationsCard from "@/components/reports/RecommendationsCard";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import TerrainMapping from "@/components/reports/terrain/TerrainMapping";
 import SessionReportsList from "@/components/reports/SessionReportsList";
 import ReportsWalkthrough from '@/components/walkthrough/ReportsWalkthrough';
+
+const ComingSoonPlaceholder = () => (
+  <div className="flex flex-col items-center justify-center h-[400px] border rounded-md bg-gray-50">
+    <Brain className="w-16 h-16 text-gray-400 mb-4" />
+    <h2 className="text-xl font-semibold text-gray-600 mb-2">Learning Progress</h2>
+    <p className="text-gray-500 text-center px-4">
+      Exciting visualization coming soon! We're working on a detailed learning progress tracker.
+    </p>
+  </div>
+);
 
 const Reports = () => {
   const { state } = useOnboarding();
@@ -35,7 +44,6 @@ const Reports = () => {
   const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState("cognitive");
 
-  // Get environment-specific classes for card styling
   const getEnvCardClass = () => {
     switch (state.environment) {
       case 'office': return "border-blue-300 bg-gradient-to-br from-blue-50/50 to-white shadow-blue-100/30 shadow-md";
@@ -84,7 +92,7 @@ const Reports = () => {
                 <div className="flex flex-col">
                   <div className="relative h-[400px] rounded-md overflow-hidden border">
                     <ErrorBoundary fallback={<div className="flex items-center justify-center h-full">Error loading visualization</div>}>
-                      <TerrainMapping />
+                      <ComingSoonPlaceholder />
                     </ErrorBoundary>
                   </div>
                 </div>
