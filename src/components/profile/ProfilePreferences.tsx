@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { toast } from "sonner";
 import { UserGoal, WorkStyle, StudyEnvironment, SoundPreference } from "@/types/onboarding";
-import { PencilIcon, SaveIcon, Loader2Icon, Volume2, VolumeX } from "lucide-react";
+import { PencilIcon, SaveIcon, Loader2Icon, Volume2, VolumeX } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useUser } from "@/hooks/use-user";
