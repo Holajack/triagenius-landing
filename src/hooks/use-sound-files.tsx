@@ -85,37 +85,37 @@ export const useSoundFiles = () => {
     
     console.log('Adding default sound files');
     
-    // Using real, public domain audio files that actually work
+    // Using real, playable audio files from free sources
     const defaultSounds = [
       {
         title: 'Lofi Study Beat',
         description: 'Relaxing lofi beat for studying',
-        file_path: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-        file_type: 'audio/ogg',
+        file_path: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Nul_Tiel_Records/Blank_Slate/Nul_Tiel_Records_-_Blank_Slate_-_01_Alone.mp3',
+        file_type: 'audio/mp3',
         sound_preference: 'lo-fi',
         user_id: user.id
       },
       {
         title: 'Ambient Space',
         description: 'Ambient space sounds for focus',
-        file_path: 'https://actions.google.com/sounds/v1/ambiences/ambient_hum.ogg',
-        file_type: 'audio/ogg',
+        file_path: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/WFMU/Broke_For_Free/Directionless_EP/Broke_For_Free_-_01_-_Night_Owl.mp3',
+        file_type: 'audio/mp3',
         sound_preference: 'ambient',
         user_id: user.id
       },
       {
         title: 'Forest Rain',
         description: 'Natural forest rain sounds',
-        file_path: 'https://actions.google.com/sounds/v1/nature/forest_ambience.ogg',
-        file_type: 'audio/ogg',
+        file_path: 'https://cdn.pixabay.com/download/audio/2022/03/10/audio_2dad9977f2.mp3',
+        file_type: 'audio/mp3',
         sound_preference: 'nature',
         user_id: user.id
       },
       {
         title: 'Piano Sonata',
         description: 'Classical piano sonata',
-        file_path: 'https://actions.google.com/sounds/v1/musical_instruments/piano_resonance_notes.ogg',
-        file_type: 'audio/ogg',
+        file_path: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0387cd084.mp3',
+        file_type: 'audio/mp3',
         sound_preference: 'classical',
         user_id: user.id
       }
@@ -160,21 +160,35 @@ export const useSoundFiles = () => {
         
         // Add default sound file for this preference if user is logged in
         if (user && user.id) {
-          // Map each preference to a specific Google Sound Library file that actually works
-          const defaultSoundMap: Record<string, string> = {
-            'lo-fi': 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-            'ambient': 'https://actions.google.com/sounds/v1/ambiences/ambient_hum.ogg',
-            'nature': 'https://actions.google.com/sounds/v1/water/forest_stream.ogg',
-            'classical': 'https://actions.google.com/sounds/v1/musical_instruments/piano_resonance_notes.ogg'
+          // Map each preference to a working audio file
+          const defaultSoundMap: Record<string, {url: string, title: string}> = {
+            'lo-fi': {
+              url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Nul_Tiel_Records/Blank_Slate/Nul_Tiel_Records_-_Blank_Slate_-_01_Alone.mp3',
+              title: 'Lofi Study Beat'
+            },
+            'ambient': {
+              url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/WFMU/Broke_For_Free/Directionless_EP/Broke_For_Free_-_01_-_Night_Owl.mp3',
+              title: 'Ambient Space'
+            },
+            'nature': {
+              url: 'https://cdn.pixabay.com/download/audio/2022/03/10/audio_2dad9977f2.mp3',
+              title: 'Forest Rain'
+            },
+            'classical': {
+              url: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0387cd084.mp3',
+              title: 'Piano Sonata'
+            }
           };
           
-          const soundUrl = defaultSoundMap[preference] || 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg';
+          const soundInfo = defaultSoundMap[preference];
+          const soundUrl = soundInfo?.url || defaultSoundMap['lo-fi'].url;
+          const soundTitle = soundInfo?.title || `Default ${preference}`;
           
           const defaultFile = {
-            title: `Default ${preference} sound`,
+            title: soundTitle,
             description: `Default sound for ${preference} category`,
             file_path: soundUrl,
-            file_type: 'audio/ogg',
+            file_type: 'audio/mp3',
             sound_preference: preference,
             user_id: user.id
           };
@@ -193,19 +207,32 @@ export const useSoundFiles = () => {
         }
         
         // Fallback to public domain sounds
-        const fallbackSoundMap: Record<string, string> = {
-          'lo-fi': 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-          'ambient': 'https://actions.google.com/sounds/v1/ambiences/ambient_hum.ogg',
-          'nature': 'https://actions.google.com/sounds/v1/water/forest_stream.ogg',
-          'classical': 'https://actions.google.com/sounds/v1/musical_instruments/piano_resonance_notes.ogg'
+        const fallbackSoundMap: Record<string, {url: string, title: string}> = {
+          'lo-fi': {
+            url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Nul_Tiel_Records/Blank_Slate/Nul_Tiel_Records_-_Blank_Slate_-_01_Alone.mp3',
+            title: 'Lofi Study Beat'
+          },
+          'ambient': {
+            url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/WFMU/Broke_For_Free/Directionless_EP/Broke_For_Free_-_01_-_Night_Owl.mp3',
+            title: 'Ambient Space'
+          },
+          'nature': {
+            url: 'https://cdn.pixabay.com/download/audio/2022/03/10/audio_2dad9977f2.mp3',
+            title: 'Forest Rain'
+          },
+          'classical': {
+            url: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0387cd084.mp3',
+            title: 'Piano Sonata'
+          }
         };
         
+        const soundInfo = fallbackSoundMap[preference];
         const fallbackSound = {
           id: `default-${preference}`,
-          title: `Default ${preference}`,
+          title: soundInfo?.title || `Default ${preference}`,
           description: `Default ${preference} sound`,
-          file_path: fallbackSoundMap[preference] || 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
-          file_type: 'audio/ogg',
+          file_path: soundInfo?.url || fallbackSoundMap['lo-fi'].url,
+          file_type: 'audio/mp3',
           sound_preference: preference,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -14,8 +13,8 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useUser } from "@/hooks/use-user";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useSoundFiles } from "@/hooks/use-sound-files";
+import MusicList from "./MusicList";
 
-// Enable this for debugging environment issues
 const DEBUG_ENV = true;
 
 const ProfilePreferences = () => {
@@ -51,7 +50,6 @@ const ProfilePreferences = () => {
   const [audioPlaybackAttempts, setAudioPlaybackAttempts] = useState(0);
   const [audioLoadFailed, setAudioLoadFailed] = useState(false);
 
-  // Set up audio player
   useEffect(() => {
     const player = new Audio();
     
@@ -65,7 +63,6 @@ const ProfilePreferences = () => {
       setAudioPlaybackAttempts(prev => prev + 1);
       setAudioLoadFailed(true);
       
-      // If we've tried 3 times without success, show error message
       if (audioPlaybackAttempts >= 2) {
         toast.error("Failed to play sound preview");
       }
@@ -99,37 +96,23 @@ const ProfilePreferences = () => {
     };
   }, []);
 
-  // Handle sound preview
   useEffect(() => {
-    if (audioPlayer) {
-      if (previewSound) {
-        // Only try to play if we're in edit mode
-        if (isEditing) {
-          audioPlayer.pause();
-          setSoundLoading(true);
-          audioPlayer.src = previewSound;
-          
-          // Set a timer to stop after 10 seconds
-          const timer = setTimeout(() => {
-            audioPlayer.pause();
-            setPreviewSound(null);
-            setIsPlayingSound(false);
-          }, 10000);
-          
-          setPreviewTimer(timer);
-        } else {
-          // Not in edit mode, don't play
-          setPreviewSound(null);
-          setIsPlayingSound(false);
-          if (previewTimer) {
-            clearTimeout(previewTimer);
-          }
-        }
-      } else {
+    if (audioPlayer && previewSound) {
+      audioPlayer.pause();
+      setSoundLoading(true);
+      audioPlayer.src = previewSound;
+      
+      const timer = setTimeout(() => {
         audioPlayer.pause();
-        if (previewTimer) {
-          clearTimeout(previewTimer);
-        }
+        setPreviewSound(null);
+        setIsPlayingSound(false);
+      }, 10000);
+      
+      setPreviewTimer(timer);
+    } else if (audioPlayer) {
+      audioPlayer.pause();
+      if (previewTimer) {
+        clearTimeout(previewTimer);
       }
     }
     
@@ -138,15 +121,15 @@ const ProfilePreferences = () => {
         clearTimeout(previewTimer);
       }
     };
-  }, [previewSound, audioPlayer, isEditing]);
-  
+  }, [previewSound, audioPlayer]);
+
   useEffect(() => {
     if (user?.profile?.last_selected_environment) {
       setLastSavedEnvironment(user.profile.last_selected_environment);
       if (DEBUG_ENV) console.log(`[ProfilePreferences] Initial database environment: ${user.profile.last_selected_environment}`);
     }
   }, [user?.profile?.last_selected_environment]);
-  
+
   const saveEnvironmentToDatabase = async (envValue: string): Promise<boolean> => {
     if (!user || !user.id) {
       console.error("[ProfilePreferences] Cannot save environment - no user");
@@ -212,26 +195,23 @@ const ProfilePreferences = () => {
       setIsSavingEnvironment(false);
     }
   };
-  
+
   const handleEditStart = () => {
     setIsEditing(true);
     setEditedState({
       ...state
     });
     
-    // Reset any ongoing sound preview when editing starts
     if (previewSound) {
       setPreviewSound(null);
       setIsPlayingSound(false);
     }
     
-    // Reset audio playback attempt counter
     setAudioPlaybackAttempts(0);
     setAudioLoadFailed(false);
   };
-  
+
   const handleCancel = () => {
-    // Stop any sound preview
     if (previewSound) {
       setPreviewSound(null);
       setIsPlayingSound(false);
@@ -250,7 +230,7 @@ const ProfilePreferences = () => {
       previewEnvironmentVisually(envToRestore);
     }
   };
-  
+
   const previewEnvironmentVisually = (value: string) => {
     document.documentElement.classList.remove(
       'theme-office', 
@@ -262,7 +242,7 @@ const ProfilePreferences = () => {
     document.documentElement.classList.add(`theme-${value}`);
     document.documentElement.setAttribute('data-environment', value);
   };
-  
+
   const applyEnvironmentFully = (value: string) => {
     setEnvironmentTheme(value as StudyEnvironment);
     
@@ -279,7 +259,7 @@ const ProfilePreferences = () => {
     const event = new Event('environmentChanged');
     document.dispatchEvent(event);
   };
-  
+
   const handleChange = async (key: string, value: any) => {
     setEditedState(prev => ({
       ...prev,
@@ -296,43 +276,36 @@ const ProfilePreferences = () => {
     }
   };
 
-  // Handle sound preference change
   const handleSoundPreferenceChange = async (value: string) => {
-    // Stop any current preview
     if (previewSound) {
       setPreviewSound(null);
       setIsPlayingSound(false);
     }
     
-    // Reset audio attempt counter
     setAudioPlaybackAttempts(0);
     setAudioLoadFailed(false);
     
-    // Just update the state, don't play sound yet
     handleChange('soundPreference', value as SoundPreference);
+    
+    await fetchSoundFilesByPreference(value as SoundPreference);
   };
-  
+
   const toggleSoundPreview = async () => {
-    // If not in editing mode, don't allow sound preview
     if (!isEditing) return;
     
-    // If currently playing, stop
     if (isPlayingSound) {
       setPreviewSound(null);
       setIsPlayingSound(false);
       return;
     }
     
-    // Otherwise start preview
     if (editedState.soundPreference && editedState.soundPreference !== 'silence') {
       try {
         setSoundLoading(true);
         setIsPlayingSound(true);
         
-        // Fetch sounds for the selected category
         const resultFiles = await fetchSoundFilesByPreference(editedState.soundPreference);
         
-        // If we have sounds in this category, play the first one
         if (resultFiles && resultFiles.length > 0) {
           const soundUrl = getSoundFileUrl(resultFiles[0].file_path);
           setPreviewSound(soundUrl);
@@ -350,7 +323,34 @@ const ProfilePreferences = () => {
       }
     }
   };
-  
+
+  const playSoundTrack = (filePath: string) => {
+    if (!isEditing) return;
+    
+    if (previewSound === getSoundFileUrl(filePath)) {
+      setPreviewSound(null);
+      setIsPlayingSound(false);
+      return;
+    }
+    
+    try {
+      if (previewSound) {
+        setPreviewSound(null);
+      }
+      
+      setSoundLoading(true);
+      setIsPlayingSound(true);
+      
+      const soundUrl = getSoundFileUrl(filePath);
+      setPreviewSound(soundUrl);
+    } catch (error) {
+      console.error("Error playing sound track:", error);
+      setSoundLoading(false);
+      setIsPlayingSound(false);
+      toast.error("Failed to play sound track");
+    }
+  };
+
   const savePreferencesOnExit = useCallback(async () => {
     if (hasUnsavedChanges && isEditing && autoSaveEnabled) {
       if (DEBUG_ENV) console.log("[ProfilePreferences] Auto-saving preferences before exit");
@@ -360,7 +360,7 @@ const ProfilePreferences = () => {
     
     return false;
   }, [hasUnsavedChanges, isEditing, autoSaveEnabled]);
-  
+
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (hasUnsavedChanges) {
@@ -382,7 +382,7 @@ const ProfilePreferences = () => {
       savePreferencesOnExit();
     };
   }, [hasUnsavedChanges, savePreferencesOnExit]);
-  
+
   useEffect(() => {
     const handleHashChange = async () => {
       if (location.hash !== "#preferences" && hasUnsavedChanges && isEditing) {
@@ -396,9 +396,8 @@ const ProfilePreferences = () => {
       window.removeEventListener('hashchange', handleHashChange);
     };
   }, [location.hash, hasUnsavedChanges, isEditing, savePreferencesOnExit]);
-  
+
   const handleSave = async () => {
-    // First stop any sound preview that might be playing
     if (previewSound) {
       setPreviewSound(null);
       setIsPlayingSound(false);
@@ -507,7 +506,7 @@ const ProfilePreferences = () => {
       setIsLoading(false);
     }
   };
-  
+
   const getEnvironmentPreviewStyles = (envValue: string) => {
     switch(envValue) {
       case 'office': 
@@ -542,194 +541,205 @@ const ProfilePreferences = () => {
         };
     }
   };
-  
+
   return <Card className="my-0 py-0">
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <CardTitle>Preferences</CardTitle>
-          {!isEditing ? (
-            <Button onClick={handleEditStart} variant="outline" size="sm" disabled={isLoading || contextLoading || isSavingEnvironment}>
-              <PencilIcon className="h-4 w-4 mr-2" />
-              Edit
+    <CardHeader>
+      <div className="flex justify-between items-center">
+        <CardTitle>Preferences</CardTitle>
+        {!isEditing ? (
+          <Button onClick={handleEditStart} variant="outline" size="sm" disabled={isLoading || contextLoading || isSavingEnvironment}>
+            <PencilIcon className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+        ) : (
+          <div className="flex space-x-2">
+            <Button onClick={handleCancel} variant="outline" size="sm" disabled={isLoading || contextLoading || isSavingEnvironment}>
+              Cancel
             </Button>
-          ) : (
-            <div className="flex space-x-2">
-              <Button onClick={handleCancel} variant="outline" size="sm" disabled={isLoading || contextLoading || isSavingEnvironment}>
-                Cancel
-              </Button>
+          </div>
+        )}
+      </div>
+    </CardHeader>
+
+    <CardContent className="space-y-6 my-0 pb-8">
+      {(contextLoading || isSavingEnvironment) && <div className="w-full flex justify-center py-4">
+          <Loader2Icon className="h-6 w-6 animate-spin text-primary" />
+        </div>}
+      
+      {!contextLoading && <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="weekly-focus-goal">Weekly Focus Goal</Label>
+          <div className="flex items-center space-x-2">
+            <Slider 
+              id="weekly-focus-goal" 
+              disabled={!isEditing || isLoading || isSavingEnvironment} 
+              value={[editedState.weeklyFocusGoal || state.weeklyFocusGoal || 10]} 
+              min={1} 
+              max={40} 
+              step={1} 
+              onValueChange={value => handleChange('weeklyFocusGoal', value[0])}
+              className="flex-1" 
+            />
+            <span className="text-sm font-medium w-12 text-right">
+              {editedState.weeklyFocusGoal || state.weeklyFocusGoal || 10} hrs
+            </span>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="user-goal">Main Goal</Label>
+          <Select 
+            disabled={!isEditing || isLoading || isSavingEnvironment} 
+            value={editedState.userGoal || state.userGoal || ""} 
+            onValueChange={value => handleChange('userGoal', value as UserGoal)}
+          >
+            <SelectTrigger id="user-goal">
+              <SelectValue placeholder="Select your main goal" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="deep-work">Deep Work</SelectItem>
+              <SelectItem value="study">Study</SelectItem>
+              <SelectItem value="accountability">Accountability</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="work-style">Work Style</Label>
+          <Select 
+            disabled={!isEditing || isLoading || isSavingEnvironment} 
+            value={editedState.workStyle || state.workStyle || ""} 
+            onValueChange={value => handleChange('workStyle', value as WorkStyle)}
+          >
+            <SelectTrigger id="work-style">
+              <SelectValue placeholder="Select your work style" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="deep-work">Deep Work</SelectItem>
+              <SelectItem value="balanced">Balanced</SelectItem>
+              <SelectItem value="pomodoro">Sprints</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="environment">Environment</Label>
+          <Select 
+            disabled={!isEditing || isLoading || isSavingEnvironment} 
+            value={editedState.environment || state.environment || ""} 
+            onValueChange={value => handleChange('environment', value as StudyEnvironment)}
+          >
+            <SelectTrigger id="environment">
+              <SelectValue placeholder="Select your preferred environment" />
+            </SelectTrigger>
+            <SelectContent position="popper" className="w-full z-50">
+              <SelectItem value="home">Home</SelectItem>
+              <SelectItem value="office">Office</SelectItem>
+              <SelectItem value="library">Library</SelectItem>
+              <SelectItem value="coffee-shop">Coffee Shop</SelectItem>
+              <SelectItem value="park">Park/Outdoors</SelectItem>
+            </SelectContent>
+          </Select>
+          {(DEBUG_ENV || pendingEnvironment) && (
+            <p className="text-xs text-muted-foreground">
+              {isSavingEnvironment ? 'Saving environment...' : 
+                pendingEnvironment ? `Preview: ${pendingEnvironment} (click Save to apply)` : 
+                `Current: ${lastSavedEnvironment || state.environment}`}
+            </p>
+          )}
+          {isEditing && pendingEnvironment && (
+            <div className={`mt-2 p-2 rounded-lg border ${getEnvironmentPreviewStyles(pendingEnvironment).border}`}>
+              <span className={`inline-block px-2 py-1 text-xs rounded-full ${getEnvironmentPreviewStyles(pendingEnvironment).badge}`}>
+                Preview: {pendingEnvironment} theme
+              </span>
             </div>
           )}
         </div>
-      </CardHeader>
 
-      <CardContent className="space-y-6 my-0 pb-8">
-        {(contextLoading || isSavingEnvironment) && <div className="w-full flex justify-center py-4">
-            <Loader2Icon className="h-6 w-6 animate-spin text-primary" />
-          </div>}
-        
-        {!contextLoading && <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="weekly-focus-goal">Weekly Focus Goal</Label>
-              <div className="flex items-center space-x-2">
-                <Slider 
-                  id="weekly-focus-goal" 
-                  disabled={!isEditing || isLoading || isSavingEnvironment} 
-                  value={[editedState.weeklyFocusGoal || state.weeklyFocusGoal || 10]} 
-                  min={1} 
-                  max={40} 
-                  step={1} 
-                  onValueChange={value => handleChange('weeklyFocusGoal', value[0])}
-                  className="flex-1" 
-                />
-                <span className="text-sm font-medium w-12 text-right">
-                  {editedState.weeklyFocusGoal || state.weeklyFocusGoal || 10} hrs
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="user-goal">Main Goal</Label>
-              <Select 
-                disabled={!isEditing || isLoading || isSavingEnvironment} 
-                value={editedState.userGoal || state.userGoal || ""} 
-                onValueChange={value => handleChange('userGoal', value as UserGoal)}
+        <div className="space-y-2">
+          <Label htmlFor="sound-preference">Sound Preference</Label>
+          <div className="flex items-center gap-2">
+            <Select 
+              disabled={!isEditing || isLoading || isSavingEnvironment} 
+              value={editedState.soundPreference || state.soundPreference || ""} 
+              onValueChange={handleSoundPreferenceChange}
+            >
+              <SelectTrigger id="sound-preference" className="flex-1">
+                <SelectValue placeholder="Select your sound preference" />
+              </SelectTrigger>
+              <SelectContent position="popper" className="w-full z-50">
+                <SelectItem value="lo-fi">Lo-fi</SelectItem>
+                <SelectItem value="ambient">Ambient</SelectItem>
+                <SelectItem value="nature">Nature</SelectItem>
+                <SelectItem value="classical">Classical</SelectItem>
+                <SelectItem value="silence">Silence</SelectItem>
+              </SelectContent>
+            </Select>
+            {editedState.soundPreference && editedState.soundPreference !== 'silence' && isEditing && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleSoundPreview}
+                disabled={!isEditing || isLoading || isSavingEnvironment || soundFilesLoading || audioLoadFailed}
+                title={isPlayingSound ? "Stop Preview" : "Preview Sound"}
               >
-                <SelectTrigger id="user-goal">
-                  <SelectValue placeholder="Select your main goal" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="deep-work">Deep Work</SelectItem>
-                  <SelectItem value="study">Study</SelectItem>
-                  <SelectItem value="accountability">Accountability</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="work-style">Work Style</Label>
-              <Select 
-                disabled={!isEditing || isLoading || isSavingEnvironment} 
-                value={editedState.workStyle || state.workStyle || ""} 
-                onValueChange={value => handleChange('workStyle', value as WorkStyle)}
-              >
-                <SelectTrigger id="work-style">
-                  <SelectValue placeholder="Select your work style" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="deep-work">Deep Work</SelectItem>
-                  <SelectItem value="balanced">Balanced</SelectItem>
-                  <SelectItem value="pomodoro">Sprints</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="environment">Environment</Label>
-              <Select 
-                disabled={!isEditing || isLoading || isSavingEnvironment} 
-                value={editedState.environment || state.environment || ""} 
-                onValueChange={value => handleChange('environment', value as StudyEnvironment)}
-              >
-                <SelectTrigger id="environment">
-                  <SelectValue placeholder="Select your preferred environment" />
-                </SelectTrigger>
-                <SelectContent position="popper" className="w-full z-50">
-                  <SelectItem value="home">Home</SelectItem>
-                  <SelectItem value="office">Office</SelectItem>
-                  <SelectItem value="library">Library</SelectItem>
-                  <SelectItem value="coffee-shop">Coffee Shop</SelectItem>
-                  <SelectItem value="park">Park/Outdoors</SelectItem>
-                </SelectContent>
-              </Select>
-              {(DEBUG_ENV || pendingEnvironment) && (
-                <p className="text-xs text-muted-foreground">
-                  {isSavingEnvironment ? 'Saving environment...' : 
-                    pendingEnvironment ? `Preview: ${pendingEnvironment} (click Save to apply)` : 
-                    `Current: ${lastSavedEnvironment || state.environment}`}
-                </p>
-              )}
-              {isEditing && pendingEnvironment && (
-                <div className={`mt-2 p-2 rounded-lg border ${getEnvironmentPreviewStyles(pendingEnvironment).border}`}>
-                  <span className={`inline-block px-2 py-1 text-xs rounded-full ${getEnvironmentPreviewStyles(pendingEnvironment).badge}`}>
-                    Preview: {pendingEnvironment} theme
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="sound-preference">Sound Preference</Label>
-              <div className="flex items-center gap-2">
-                <Select 
-                  disabled={!isEditing || isLoading || isSavingEnvironment} 
-                  value={editedState.soundPreference || state.soundPreference || ""} 
-                  onValueChange={handleSoundPreferenceChange}
-                >
-                  <SelectTrigger id="sound-preference" className="flex-1">
-                    <SelectValue placeholder="Select your sound preference" />
-                  </SelectTrigger>
-                  <SelectContent position="popper" className="w-full z-50">
-                    <SelectItem value="lo-fi">Lo-fi</SelectItem>
-                    <SelectItem value="ambient">Ambient</SelectItem>
-                    <SelectItem value="nature">Nature</SelectItem>
-                    <SelectItem value="classical">Classical</SelectItem>
-                    <SelectItem value="silence">Silence</SelectItem>
-                  </SelectContent>
-                </Select>
-                {editedState.soundPreference && editedState.soundPreference !== 'silence' && isEditing && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={toggleSoundPreview}
-                    disabled={!isEditing || isLoading || isSavingEnvironment || soundFilesLoading || audioLoadFailed}
-                    title={isPlayingSound ? "Stop Preview" : "Preview Sound"}
-                  >
-                    {soundLoading ? (
-                      <Loader2Icon className="h-4 w-4 animate-spin" />
-                    ) : isPlayingSound ? (
-                      <VolumeX className="h-4 w-4" />
-                    ) : (
-                      <Volume2 className="h-4 w-4" />
-                    )}
-                  </Button>
+                {soundLoading ? (
+                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                ) : isPlayingSound ? (
+                  <VolumeX className="h-4 w-4" />
+                ) : (
+                  <Volume2 className="h-4 w-4" />
                 )}
-              </div>
-              {soundFilesLoading && (
-                <p className="text-xs text-muted-foreground">Loading sounds...</p>
-              )}
-              {editedState.soundPreference && isEditing && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {editedState.soundPreference === 'silence' 
-                    ? 'Silence mode has no sounds to preview'
-                    : 'Select a sound preference, then click the sound icon to preview'}
-                </p>
-              )}
-            </div>
-          </div>}
-      </CardContent>
-      
-      {isEditing && (
-        <CardFooter className="pt-2 pb-4 px-6 flex justify-end">
-          <Button 
-            onClick={handleSave} 
-            disabled={isLoading || contextLoading || isSavingEnvironment || !hasUnsavedChanges}
-            className="w-full md:w-auto"
-          >
-            {isLoading || contextLoading || isSavingEnvironment ? (
-              <>
-                <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <SaveIcon className="h-4 w-4 mr-2" />
-                Save Changes
-              </>
+              </Button>
             )}
-          </Button>
-        </CardFooter>
-      )}
-    </Card>;
+          </div>
+          {soundFilesLoading && (
+            <p className="text-xs text-muted-foreground">Loading sounds...</p>
+          )}
+          {editedState.soundPreference && isEditing && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {editedState.soundPreference === 'silence' 
+                ? 'Silence mode has no sounds to preview'
+                : 'Select a sound preference, then click the sound icon to preview'}
+            </p>
+          )}
+        </div>
+
+        {(editedState.soundPreference || state.soundPreference) && 
+         (editedState.soundPreference || state.soundPreference) !== 'silence' && (
+          <MusicList
+            title={`Available ${editedState.soundPreference || state.soundPreference} Tracks`}
+            soundFiles={soundFiles}
+            isLoading={soundFilesLoading}
+            currentlyPlaying={previewSound}
+            onPlayPause={playSoundTrack}
+          />
+        )}
+      </div>}
+    </CardContent>
+    
+    {isEditing && (
+      <CardFooter className="pt-2 pb-4 px-6 flex justify-end">
+        <Button 
+          onClick={handleSave} 
+          disabled={isLoading || contextLoading || isSavingEnvironment || !hasUnsavedChanges}
+          className="w-full md:w-auto"
+        >
+          {isLoading || contextLoading || isSavingEnvironment ? (
+            <>
+              <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <SaveIcon className="h-4 w-4 mr-2" />
+              Save Changes
+            </>
+          )}
+        </Button>
+      </CardFooter>
+    )}
+  </Card>;
 };
 
 export default ProfilePreferences;
