@@ -12,6 +12,7 @@ interface MusicListProps {
   isLoading: boolean;
   currentlyPlaying: string | null;
   onPlayPause: (filePath: string) => void;
+  soundLoading: boolean;
 }
 
 const MusicList = ({ 
@@ -19,17 +20,11 @@ const MusicList = ({
   soundFiles, 
   isLoading, 
   currentlyPlaying, 
-  onPlayPause 
+  onPlayPause,
+  soundLoading
 }: MusicListProps) => {
   
-  const getFileName = (path: string) => {
-    if (path.startsWith('http')) {
-      const parts = path.split('/');
-      return parts[parts.length - 1].split('?')[0];
-    }
-    return path;
-  };
-
+  // Simplified component to just show category preview
   if (isLoading) {
     return (
       <Card className="mt-4">
@@ -56,41 +51,46 @@ const MusicList = ({
     );
   }
 
+  // Just show the first track as representative of the category
+  const representativeTrack = soundFiles[0];
+
   return (
     <Card className="mt-4">
       <CardHeader className="pb-2">
         <CardTitle className="text-md">{title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <ul className="space-y-2">
-          {soundFiles.map((file) => (
-            <li key={file.id} className="flex items-center justify-between border-b pb-2">
-              <div className="flex-1 mr-2">
-                <div className="font-medium">{file.title}</div>
-                {file.description && (
-                  <p className="text-xs text-muted-foreground">{file.description}</p>
-                )}
-              </div>
-              <div className="flex items-center space-x-2">
-                <Badge variant="secondary" className="text-xs whitespace-nowrap">
-                  {file.sound_preference}
-                </Badge>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => onPlayPause(file.file_path)}
-                >
-                  {currentlyPlaying === file.file_path ? (
-                    <PauseIcon className="h-4 w-4" />
-                  ) : (
-                    <PlayIcon className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <div className="flex items-center justify-between border-b pb-2">
+          <div className="flex-1 mr-2">
+            <div className="font-medium">{representativeTrack.title}</div>
+            <p className="text-xs text-muted-foreground">
+              {currentlyPlaying ? "Playing preview..." : "Click to preview sound category"}
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Badge variant="secondary" className="text-xs whitespace-nowrap">
+              {representativeTrack.sound_preference}
+            </Badge>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => onPlayPause(representativeTrack.file_path)}
+              disabled={soundLoading}
+            >
+              {soundLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : currentlyPlaying === representativeTrack.file_path ? (
+                <PauseIcon className="h-4 w-4" />
+              ) : (
+                <PlayIcon className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          When selected, this category will play continuously during focus sessions.
+        </p>
       </CardContent>
     </Card>
   );

@@ -20,6 +20,7 @@ export const useSoundFiles = () => {
   const [soundFiles, setSoundFiles] = useState<SoundFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [soundLoading, setSoundLoading] = useState(false);
   const { user } = useUser();
 
   // Fetch all sound files from Supabase storage
@@ -139,10 +140,56 @@ export const useSoundFiles = () => {
     try {
       setIsLoading(true);
       setError(null);
+      setSoundLoading(true);
       
       console.log(`Fetching sound files for preference: ${preference}`);
       
-      // First try to get from database by preference
+      // First, check if we should fetch from storage
+      const storageMapping: Record<string, string> = {
+        'lo-fi': 'Lo-Fi',
+        'ambient': 'Ambient', 
+        'nature': 'Nature',
+        'classical': 'Classic'
+      };
+      
+      const storageFolder = storageMapping[preference];
+      
+      if (storageFolder) {
+        try {
+          // Try to fetch from storage first
+          const { data: storageFiles, error: storageError } = await supabase.storage
+            .from('music')
+            .list(storageFolder, { sortBy: { column: 'name', order: 'asc' } });
+            
+          if (!storageError && storageFiles && storageFiles.length > 0) {
+            console.log(`Found ${storageFiles.length} files in storage for ${preference}`);
+            
+            // Format files from storage
+            const soundFilesFromStorage = storageFiles
+              .filter(file => file.name.endsWith('.mp3') || file.name.endsWith('.wav'))
+              .map(file => ({
+                id: `${storageFolder}/${file.name}`,
+                title: file.name.replace(/\.(mp3|wav)$/i, '').replace(/_/g, ' '),
+                description: `${preference} track`,
+                file_path: `${storageFolder}/${file.name}`,
+                file_type: file.name.endsWith('.mp3') ? 'audio/mp3' : 'audio/wav',
+                sound_preference: preference,
+                created_at: file.created_at || new Date().toISOString(),
+                updated_at: file.updated_at || new Date().toISOString()
+              }));
+              
+            if (soundFilesFromStorage.length > 0) {
+              setSoundFiles(soundFilesFromStorage);
+              setSoundLoading(false);
+              return soundFilesFromStorage;
+            }
+          }
+        } catch (err) {
+          console.error(`Error fetching from storage for ${preference}:`, err);
+        }
+      }
+      
+      // If storage fetch fails or returns no results, try database
       const { data: dbSoundFiles, error: dbError } = await supabase
         .from('sound_files')
         .select('*')
@@ -151,63 +198,16 @@ export const useSoundFiles = () => {
       if (!dbError && dbSoundFiles && dbSoundFiles.length > 0) {
         console.log(`Found ${dbSoundFiles.length} files in database for ${preference}`);
         setSoundFiles(dbSoundFiles);
+        setSoundLoading(false);
         return dbSoundFiles;
       }
       
-      // If none found in database, create a default one
+      // If none found in storage or database, create a default one
       if (preference !== 'silence') {
         console.log(`No sound files found for ${preference}, adding a default`);
         
-        // Add default sound file for this preference if user is logged in
-        if (user && user.id) {
-          // Map each preference to a working audio file
-          const defaultSoundMap: Record<string, {url: string, title: string}> = {
-            'lo-fi': {
-              url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Nul_Tiel_Records/Blank_Slate/Nul_Tiel_Records_-_Blank_Slate_-_01_Alone.mp3',
-              title: 'Lofi Study Beat'
-            },
-            'ambient': {
-              url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/WFMU/Broke_For_Free/Directionless_EP/Broke_For_Free_-_01_-_Night_Owl.mp3',
-              title: 'Ambient Space'
-            },
-            'nature': {
-              url: 'https://cdn.pixabay.com/download/audio/2022/03/10/audio_2dad9977f2.mp3',
-              title: 'Forest Rain'
-            },
-            'classical': {
-              url: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0387cd084.mp3',
-              title: 'Piano Sonata'
-            }
-          };
-          
-          const soundInfo = defaultSoundMap[preference];
-          const soundUrl = soundInfo?.url || defaultSoundMap['lo-fi'].url;
-          const soundTitle = soundInfo?.title || `Default ${preference}`;
-          
-          const defaultFile = {
-            title: soundTitle,
-            description: `Default sound for ${preference} category`,
-            file_path: soundUrl,
-            file_type: 'audio/mp3',
-            sound_preference: preference,
-            user_id: user.id
-          };
-          
-          const { data: newSound, error: insertError } = await supabase
-            .from('sound_files')
-            .insert(defaultFile)
-            .select()
-            .single();
-            
-          if (!insertError && newSound) {
-            setSoundFiles([newSound]);
-            console.log('Created default sound file:', newSound);
-            return [newSound];
-          }
-        }
-        
-        // Fallback to public domain sounds
-        const fallbackSoundMap: Record<string, {url: string, title: string}> = {
+        // Map each preference to a working audio file
+        const defaultSoundMap: Record<string, {url: string, title: string}> = {
           'lo-fi': {
             url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Nul_Tiel_Records/Blank_Slate/Nul_Tiel_Records_-_Blank_Slate_-_01_Alone.mp3',
             title: 'Lofi Study Beat'
@@ -226,12 +226,40 @@ export const useSoundFiles = () => {
           }
         };
         
-        const soundInfo = fallbackSoundMap[preference];
+        const soundInfo = defaultSoundMap[preference];
+        const soundUrl = soundInfo?.url || defaultSoundMap['lo-fi'].url;
+        const soundTitle = soundInfo?.title || `Default ${preference}`;
+        
+        const defaultFile = {
+          title: soundTitle,
+          description: `Default sound for ${preference} category`,
+          file_path: soundUrl,
+          file_type: 'audio/mp3',
+          sound_preference: preference,
+          user_id: user?.id
+        };
+        
+        if (user && user.id) {
+          const { data: newSound, error: insertError } = await supabase
+            .from('sound_files')
+            .insert(defaultFile)
+            .select()
+            .single();
+            
+          if (!insertError && newSound) {
+            setSoundFiles([newSound]);
+            console.log('Created default sound file:', newSound);
+            setSoundLoading(false);
+            return [newSound];
+          }
+        }
+        
+        // Fallback to public domain sounds without inserting to DB
         const fallbackSound = {
           id: `default-${preference}`,
           title: soundInfo?.title || `Default ${preference}`,
           description: `Default ${preference} sound`,
-          file_path: soundInfo?.url || fallbackSoundMap['lo-fi'].url,
+          file_path: soundInfo?.url || defaultSoundMap['lo-fi'].url,
           file_type: 'audio/mp3',
           sound_preference: preference,
           created_at: new Date().toISOString(),
@@ -239,16 +267,19 @@ export const useSoundFiles = () => {
         };
         
         setSoundFiles([fallbackSound]);
+        setSoundLoading(false);
         return [fallbackSound];
       } else {
         // For silence, return empty array
         setSoundFiles([]);
+        setSoundLoading(false);
         return [];
       }
     } catch (err: any) {
       console.error('Error fetching sound files by preference:', err);
       setError(err.message);
       toast.error('Failed to load sound files');
+      setSoundLoading(false);
       return [];
     } finally {
       setIsLoading(false);
@@ -257,19 +288,45 @@ export const useSoundFiles = () => {
 
   // Get public URL for a sound file
   const getSoundFileUrl = useCallback((filePath: string) => {
-    console.log(`Getting URL for file path: ${filePath}`);
-    
     // If already a full URL, return it
     if (filePath.startsWith('http')) {
-      console.log(`File is already a URL: ${filePath}`);
       return filePath;
     }
     
     // Otherwise get from storage
     const { data } = supabase.storage.from('music').getPublicUrl(filePath);
-    console.log(`Generated URL: ${data.publicUrl}`);
     return data.publicUrl;
   }, []);
+
+  // Save user's preferred sound to profile
+  const savePreferredSound = async (preference: SoundPreference) => {
+    if (!user || !user.id) return false;
+    
+    try {
+      setSoundLoading(true);
+      
+      // Update profile with preferred sound
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          preferences: { sound_preference: preference }
+        })
+        .eq('id', user.id);
+      
+      if (error) {
+        throw handleSupabaseError(error);
+      }
+      
+      toast.success(`${preference} sounds will now play during focus sessions`);
+      return true;
+    } catch (err: any) {
+      console.error('Error saving sound preference:', err);
+      toast.error('Failed to save sound preference');
+      return false;
+    } finally {
+      setSoundLoading(false);
+    }
+  };
 
   // Upload a sound file
   const uploadSoundFile = async (
@@ -376,11 +433,13 @@ export const useSoundFiles = () => {
   return {
     soundFiles,
     isLoading,
+    soundLoading,
     error,
     fetchSoundFiles,
     fetchSoundFilesByPreference,
     uploadSoundFile,
     getSoundFileUrl,
-    deleteSoundFile
+    deleteSoundFile,
+    savePreferredSound
   };
 };

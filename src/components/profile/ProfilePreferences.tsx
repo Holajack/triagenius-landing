@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -41,21 +42,34 @@ const ProfilePreferences = () => {
   const [lastSavedEnvironment, setLastSavedEnvironment] = useState<string | null>(null);
   const [pendingEnvironment, setPendingEnvironment] = useState<string | null>(null);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
-  const { soundFiles, isLoading: soundFilesLoading, fetchSoundFilesByPreference, getSoundFileUrl } = useSoundFiles();
+  const { 
+    soundFiles, 
+    isLoading: soundFilesLoading, 
+    soundLoading, 
+    fetchSoundFilesByPreference, 
+    getSoundFileUrl,
+    savePreferredSound
+  } = useSoundFiles();
   const [previewSound, setPreviewSound] = useState<string | null>(null);
   const [audioPlayer, setAudioPlayer] = useState<HTMLAudioElement | null>(null);
   const [previewTimer, setPreviewTimer] = useState<NodeJS.Timeout | null>(null);
   const [isPlayingSound, setIsPlayingSound] = useState(false);
-  const [soundLoading, setSoundLoading] = useState(false);
   const [audioPlaybackAttempts, setAudioPlaybackAttempts] = useState(0);
   const [audioLoadFailed, setAudioLoadFailed] = useState(false);
+  const [currentAudioIndex, setCurrentAudioIndex] = useState(0);
+  const [audioPlaylist, setAudioPlaylist] = useState<SoundFile[]>([]);
 
   useEffect(() => {
     const player = new Audio();
     
     player.addEventListener('ended', () => {
-      setPreviewSound(null);
-      setIsPlayingSound(false);
+      // Handle end of current track by playing next track in playlist
+      if (audioPlaylist.length > 1) {
+        playNextTrack();
+      } else {
+        setPreviewSound(null);
+        setIsPlayingSound(false);
+      }
     });
     
     player.addEventListener('error', (e) => {
@@ -69,11 +83,9 @@ const ProfilePreferences = () => {
       
       setPreviewSound(null);
       setIsPlayingSound(false);
-      setSoundLoading(false);
     });
     
     player.addEventListener('loadeddata', () => {
-      setSoundLoading(false);
       setAudioLoadFailed(false);
       
       player.play().catch(err => {
@@ -81,7 +93,6 @@ const ProfilePreferences = () => {
         toast.error("Failed to play sound preview");
         setPreviewSound(null);
         setIsPlayingSound(false);
-        setSoundLoading(false);
       });
     });
     
@@ -96,19 +107,71 @@ const ProfilePreferences = () => {
     };
   }, []);
 
+  // Play next track in playlist with crossfade
+  const playNextTrack = useCallback(() => {
+    if (!audioPlayer || audioPlaylist.length === 0) return;
+    
+    let nextIndex = currentAudioIndex + 1;
+    if (nextIndex >= audioPlaylist.length) {
+      nextIndex = 0; // Loop back to first track
+    }
+    
+    const nextTrack = audioPlaylist[nextIndex];
+    if (!nextTrack) return;
+    
+    const nextTrackUrl = getSoundFileUrl(nextTrack.file_path);
+    
+    // Create crossfade effect
+    const currentVolume = audioPlayer.volume;
+    const fadePoints = 10; // Number of volume steps for fade
+    const fadeInterval = 400 / fadePoints; // 400ms fade duration
+    
+    // Gradually reduce volume of current track
+    const fadeOut = setInterval(() => {
+      if (audioPlayer.volume > 0.1) {
+        audioPlayer.volume -= currentVolume / fadePoints;
+      } else {
+        clearInterval(fadeOut);
+        
+        // Switch to new track and fade in
+        audioPlayer.src = nextTrackUrl;
+        audioPlayer.volume = 0;
+        audioPlayer.load();
+        
+        setCurrentAudioIndex(nextIndex);
+        setPreviewSound(nextTrackUrl);
+        
+        // Fade in the new track
+        const fadeIn = setInterval(() => {
+          if (audioPlayer.volume < currentVolume) {
+            audioPlayer.volume += currentVolume / fadePoints;
+          } else {
+            audioPlayer.volume = currentVolume;
+            clearInterval(fadeIn);
+          }
+        }, fadeInterval);
+      }
+    }, fadeInterval);
+    
+  }, [audioPlayer, audioPlaylist, currentAudioIndex, getSoundFileUrl]);
+
   useEffect(() => {
     if (audioPlayer && previewSound) {
       audioPlayer.pause();
-      setSoundLoading(true);
       audioPlayer.src = previewSound;
+      audioPlayer.load();
       
-      const timer = setTimeout(() => {
-        audioPlayer.pause();
-        setPreviewSound(null);
-        setIsPlayingSound(false);
-      }, 10000);
-      
-      setPreviewTimer(timer);
+      // Auto-stop preview after 10 seconds if it's from preview button only
+      // If it's part of a playlist loop, don't set a timer
+      if (!audioPlaylist || audioPlaylist.length <= 1) {
+        const timer = setTimeout(() => {
+          audioPlayer.pause();
+          setPreviewSound(null);
+          setIsPlayingSound(false);
+        }, 10000);
+        
+        setPreviewTimer(timer);
+      }
     } else if (audioPlayer) {
       audioPlayer.pause();
       if (previewTimer) {
@@ -121,7 +184,7 @@ const ProfilePreferences = () => {
         clearTimeout(previewTimer);
       }
     };
-  }, [previewSound, audioPlayer]);
+  }, [previewSound, audioPlayer, audioPlaylist]);
 
   useEffect(() => {
     if (user?.profile?.last_selected_environment) {
@@ -205,6 +268,7 @@ const ProfilePreferences = () => {
     if (previewSound) {
       setPreviewSound(null);
       setIsPlayingSound(false);
+      setAudioPlaylist([]);
     }
     
     setAudioPlaybackAttempts(0);
@@ -215,6 +279,7 @@ const ProfilePreferences = () => {
     if (previewSound) {
       setPreviewSound(null);
       setIsPlayingSound(false);
+      setAudioPlaylist([]);
     }
     
     setIsEditing(false);
@@ -280,6 +345,7 @@ const ProfilePreferences = () => {
     if (previewSound) {
       setPreviewSound(null);
       setIsPlayingSound(false);
+      setAudioPlaylist([]);
     }
     
     setAudioPlaybackAttempts(0);
@@ -287,7 +353,9 @@ const ProfilePreferences = () => {
     
     handleChange('soundPreference', value as SoundPreference);
     
-    await fetchSoundFilesByPreference(value as SoundPreference);
+    // Fetch all sounds in the category to prepare for playlist
+    const filesToPlay = await fetchSoundFilesByPreference(value as SoundPreference);
+    setAudioPlaylist(filesToPlay);
   };
 
   const toggleSoundPreview = async () => {
@@ -301,23 +369,32 @@ const ProfilePreferences = () => {
     
     if (editedState.soundPreference && editedState.soundPreference !== 'silence') {
       try {
-        setSoundLoading(true);
         setIsPlayingSound(true);
         
-        const resultFiles = await fetchSoundFilesByPreference(editedState.soundPreference);
+        // Use existing playlist or fetch new one if needed
+        let tracksToPlay = audioPlaylist;
+        if (!tracksToPlay || tracksToPlay.length === 0) {
+          tracksToPlay = await fetchSoundFilesByPreference(editedState.soundPreference);
+          setAudioPlaylist(tracksToPlay);
+        }
         
-        if (resultFiles && resultFiles.length > 0) {
-          const soundUrl = getSoundFileUrl(resultFiles[0].file_path);
+        if (tracksToPlay && tracksToPlay.length > 0) {
+          // Start from the first track
+          setCurrentAudioIndex(0);
+          const soundUrl = getSoundFileUrl(tracksToPlay[0].file_path);
           setPreviewSound(soundUrl);
+          
+          // If there are multiple tracks, we're in continuous play mode
+          if (tracksToPlay.length > 1) {
+            toast.info(`Playing ${tracksToPlay.length} tracks from ${editedState.soundPreference} category`);
+          }
         } else {
           console.log("No sound files found for category:", editedState.soundPreference);
-          setSoundLoading(false);
           setIsPlayingSound(false);
           toast.error(`No sound files found for ${editedState.soundPreference}`);
         }
       } catch (error) {
         console.error("Error loading sound preview:", error);
-        setSoundLoading(false);
         setIsPlayingSound(false);
         toast.error("Failed to load sound preview");
       }
@@ -338,14 +415,18 @@ const ProfilePreferences = () => {
         setPreviewSound(null);
       }
       
-      setSoundLoading(true);
       setIsPlayingSound(true);
       
       const soundUrl = getSoundFileUrl(filePath);
       setPreviewSound(soundUrl);
+      
+      // Find the track index in the playlist for continuous play
+      const trackIndex = audioPlaylist.findIndex(track => track.file_path === filePath);
+      if (trackIndex >= 0) {
+        setCurrentAudioIndex(trackIndex);
+      }
     } catch (error) {
       console.error("Error playing sound track:", error);
-      setSoundLoading(false);
       setIsPlayingSound(false);
       toast.error("Failed to play sound track");
     }
@@ -405,6 +486,11 @@ const ProfilePreferences = () => {
     
     try {
       setIsLoading(true);
+      
+      // Save sound preference to user profile
+      if (editedState.soundPreference) {
+        await savePreferredSound(editedState.soundPreference);
+      }
       
       if (pendingEnvironment) {
         const saveSuccess = await saveEnvironmentToDatabase(pendingEnvironment);
@@ -708,11 +794,12 @@ const ProfilePreferences = () => {
         {(editedState.soundPreference || state.soundPreference) && 
          (editedState.soundPreference || state.soundPreference) !== 'silence' && (
           <MusicList
-            title={`Available ${editedState.soundPreference || state.soundPreference} Tracks`}
+            title={`${editedState.soundPreference || state.soundPreference} Sounds Preview`}
             soundFiles={soundFiles}
             isLoading={soundFilesLoading}
             currentlyPlaying={previewSound}
             onPlayPause={playSoundTrack}
+            soundLoading={soundLoading}
           />
         )}
       </div>}
