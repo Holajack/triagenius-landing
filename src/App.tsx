@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Routes, Route, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
