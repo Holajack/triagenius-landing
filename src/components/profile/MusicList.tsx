@@ -64,6 +64,29 @@ const MusicList = ({
 
   // Just show the first track as representative of the category
   const representativeTrack = soundFiles[0];
+  
+  // Check if the URL needs to be parsed
+  const getIsPlaying = () => {
+    if (!currentlyPlaying || !representativeTrack.file_path) return false;
+    
+    // Handle both direct URLs and storage paths
+    if (currentlyPlaying.includes(representativeTrack.file_path)) {
+      return true;
+    }
+    
+    // For storage paths, check if the end of the URL contains the file path
+    const urlParts = currentlyPlaying.split('/');
+    const fileParts = representativeTrack.file_path.split('/');
+    
+    if (urlParts.length >= 2 && fileParts.length >= 2) {
+      return urlParts[urlParts.length - 2] === fileParts[fileParts.length - 2] && 
+             urlParts[urlParts.length - 1] === fileParts[fileParts.length - 1];
+    }
+    
+    return false;
+  };
+
+  const isPlaying = getIsPlaying();
 
   return (
     <Card className="mt-4">
@@ -75,7 +98,7 @@ const MusicList = ({
           <div className="flex-1 mr-2">
             <div className="font-medium">{representativeTrack.title}</div>
             <p className="text-xs text-muted-foreground">
-              {currentlyPlaying === representativeTrack.file_path ? "Playing preview..." : "Click to preview sound category"}
+              {isPlaying ? "Playing preview..." : "Click to preview sound category"}
             </p>
           </div>
           <div className="flex items-center space-x-2">
@@ -94,7 +117,7 @@ const MusicList = ({
             >
               {soundLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
-              ) : currentlyPlaying === representativeTrack.file_path ? (
+              ) : isPlaying ? (
                 <PauseIcon className="h-4 w-4" />
               ) : (
                 <PlayIcon className="h-4 w-4" />
