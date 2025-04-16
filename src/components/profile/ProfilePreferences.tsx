@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { toast } from "sonner";
 import { UserGoal, WorkStyle, StudyEnvironment, SoundPreference } from "@/types/onboarding";
-import { PencilIcon, SaveIcon, Loader2Icon } from "lucide-react";
+import { PencilIcon, SaveIcon, Loader2Icon, Volume2, VolumeX } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useUser } from "@/hooks/use-user";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useSoundFiles } from "@/hooks/use-sound-files";
 
 // Enable this for debugging environment issues
 const DEBUG_ENV = true;
@@ -40,6 +41,53 @@ const ProfilePreferences = () => {
   const [lastSavedEnvironment, setLastSavedEnvironment] = useState<string | null>(null);
   const [pendingEnvironment, setPendingEnvironment] = useState<string | null>(null);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const { soundFiles, isLoading: soundFilesLoading, fetchSoundFilesByPreference, getSoundFileUrl } = useSoundFiles();
+  const [previewSound, setPreviewSound] = useState<string | null>(null);
+  const [audioPlayer, setAudioPlayer] = useState<HTMLAudioElement | null>(null);
+  const [previewTimer, setPreviewTimer] = useState<NodeJS.Timeout | null>(null);
+
+  // Set up audio player
+  useEffect(() => {
+    const player = new Audio();
+    player.addEventListener('ended', () => setPreviewSound(null));
+    setAudioPlayer(player);
+    return () => {
+      player.pause();
+      player.src = '';
+      if (previewTimer) {
+        clearTimeout(previewTimer);
+      }
+    };
+  }, []);
+
+  // Handle sound preview
+  useEffect(() => {
+    if (audioPlayer) {
+      if (previewSound) {
+        audioPlayer.src = previewSound;
+        audioPlayer.play().catch(err => console.error("Error playing audio:", err));
+        
+        // Set a timer to stop after 10 seconds
+        const timer = setTimeout(() => {
+          audioPlayer.pause();
+          setPreviewSound(null);
+        }, 10000);
+        
+        setPreviewTimer(timer);
+      } else {
+        audioPlayer.pause();
+        if (previewTimer) {
+          clearTimeout(previewTimer);
+        }
+      }
+    }
+    
+    return () => {
+      if (previewTimer) {
+        clearTimeout(previewTimer);
+      }
+    };
+  }, [previewSound, audioPlayer]);
   
   useEffect(() => {
     if (user?.profile?.last_selected_environment) {
@@ -178,6 +226,32 @@ const ProfilePreferences = () => {
       setPendingEnvironment(value as string);
       
       previewEnvironmentVisually(value);
+    }
+  };
+
+  // Handle sound preference change
+  const handleSoundPreferenceChange = async (value: string) => {
+    // Stop any current preview
+    if (previewSound) {
+      setPreviewSound(null);
+    }
+    
+    handleChange('soundPreference', value as SoundPreference);
+    
+    // If not silence, try to play a preview
+    if (value !== 'silence') {
+      try {
+        // Fetch sounds for the selected category
+        await fetchSoundFilesByPreference(value as SoundPreference);
+        
+        // If we have sounds in this category, play the first one
+        if (soundFiles.length > 0) {
+          const soundUrl = getSoundFileUrl(soundFiles[0].file_path);
+          setPreviewSound(soundUrl);
+        }
+      } catch (error) {
+        console.error("Error loading sound preview:", error);
+      }
     }
   };
   
@@ -483,22 +557,42 @@ const ProfilePreferences = () => {
 
             <div className="space-y-2">
               <Label htmlFor="sound-preference">Sound Preference</Label>
-              <Select 
-                disabled={!isEditing || isLoading || isSavingEnvironment} 
-                value={editedState.soundPreference || state.soundPreference || ""} 
-                onValueChange={value => handleChange('soundPreference', value as SoundPreference)}
-              >
-                <SelectTrigger id="sound-preference">
-                  <SelectValue placeholder="Select your sound preference" />
-                </SelectTrigger>
-                <SelectContent position="popper" className="w-full z-50">
-                  <SelectItem value="lo-fi">Lo-fi</SelectItem>
-                  <SelectItem value="ambient">Ambient</SelectItem>
-                  <SelectItem value="nature">Nature</SelectItem>
-                  <SelectItem value="classical">Classical</SelectItem>
-                  <SelectItem value="silence">Silence</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <Select 
+                  disabled={!isEditing || isLoading || isSavingEnvironment} 
+                  value={editedState.soundPreference || state.soundPreference || ""} 
+                  onValueChange={handleSoundPreferenceChange}
+                >
+                  <SelectTrigger id="sound-preference" className="flex-1">
+                    <SelectValue placeholder="Select your sound preference" />
+                  </SelectTrigger>
+                  <SelectContent position="popper" className="w-full z-50">
+                    <SelectItem value="lo-fi">Lo-fi</SelectItem>
+                    <SelectItem value="ambient">Ambient</SelectItem>
+                    <SelectItem value="nature">Nature</SelectItem>
+                    <SelectItem value="classical">Classical</SelectItem>
+                    <SelectItem value="silence">Silence</SelectItem>
+                  </SelectContent>
+                </Select>
+                {editedState.soundPreference && editedState.soundPreference !== 'silence' && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => previewSound ? setPreviewSound(null) : handleSoundPreferenceChange(editedState.soundPreference)}
+                    disabled={!isEditing || isLoading || isSavingEnvironment || soundFilesLoading}
+                    title={previewSound ? "Stop Preview" : "Preview Sound"}
+                  >
+                    {previewSound ? (
+                      <VolumeX className="h-4 w-4" />
+                    ) : (
+                      <Volume2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
+              </div>
+              {soundFilesLoading && (
+                <p className="text-xs text-muted-foreground">Loading sounds...</p>
+              )}
             </div>
           </div>}
       </CardContent>
