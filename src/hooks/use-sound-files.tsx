@@ -351,10 +351,12 @@ export const useSoundFiles = () => {
       return filePath;
     }
     
-    // Get from Supabase storage with proper public URL
+    // Generate the proper Supabase URL for storage files
     const { data } = supabase.storage.from('music').getPublicUrl(filePath);
-    console.log('Generated sound URL:', data.publicUrl, 'for path:', filePath);
-    return data.publicUrl;
+    const publicUrl = data.publicUrl;
+    
+    console.log('Generated sound URL:', publicUrl, 'for path:', filePath);
+    return publicUrl;
   }, []);
 
   // Save user's preferred sound to profile

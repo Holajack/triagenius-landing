@@ -69,18 +69,29 @@ const MusicList = ({
   const getIsPlaying = () => {
     if (!currentlyPlaying || !representativeTrack.file_path) return false;
     
-    // Handle both direct URLs and storage paths
-    if (currentlyPlaying.includes(representativeTrack.file_path)) {
+    console.log("Checking if playing:", currentlyPlaying, representativeTrack.file_path);
+    
+    // Direct match
+    if (currentlyPlaying === representativeTrack.file_path) {
       return true;
     }
     
-    // For storage paths, check if the end of the URL contains the file path
-    const urlParts = currentlyPlaying.split('/');
-    const fileParts = representativeTrack.file_path.split('/');
+    // Check for URL match (Supabase storage URLs will contain the file_path)
+    if (currentlyPlaying.includes(encodeURIComponent(representativeTrack.file_path)) ||
+        currentlyPlaying.includes(representativeTrack.file_path)) {
+      return true;
+    }
     
-    if (urlParts.length >= 2 && fileParts.length >= 2) {
-      return urlParts[urlParts.length - 2] === fileParts[fileParts.length - 2] && 
-             urlParts[urlParts.length - 1] === fileParts[fileParts.length - 1];
+    // For folder/file structure match
+    const fileParts = representativeTrack.file_path.split('/');
+    if (fileParts.length >= 2) {
+      const folderName = fileParts[0];
+      const fileName = fileParts[fileParts.length - 1];
+      
+      if (currentlyPlaying.includes(encodeURIComponent(folderName)) && 
+          currentlyPlaying.includes(encodeURIComponent(fileName))) {
+        return true;
+      }
     }
     
     return false;
