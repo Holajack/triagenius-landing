@@ -45,7 +45,7 @@ const defaultSounds: Array<{ id: SoundPreference; title: string; description: st
 
 export const SoundStep = () => {
   const { state, dispatch } = useOnboarding();
-  const { soundFiles, isLoading, fetchSoundFilesByPreference } = useSoundFiles();
+  const { soundFiles, isLoading, fetchSoundFiles } = useSoundFiles();
   const [availableSounds, setAvailableSounds] = useState(defaultSounds);
   const [previewSound, setPreviewSound] = useState<string | null>(null);
   const [audioPlayer, setAudioPlayer] = useState<HTMLAudioElement | null>(null);

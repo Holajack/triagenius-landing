@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -120,7 +119,7 @@ export const SoundFilesManager = () => {
   };
 
   // Handle file deletion
-  const handleDeleteFile = async (id: string, filePath: string) => {
+  const handleDeleteFile = async (filePath: string) => {
     if (window.confirm('Are you sure you want to delete this sound file?')) {
       // If file is currently playing, stop it
       if (currentlyPlaying === id) {
@@ -128,7 +127,7 @@ export const SoundFilesManager = () => {
         setCurrentlyPlaying(null);
       }
       
-      await deleteSoundFile(id, filePath);
+      await deleteSoundFile(filePath);
     }
   };
 
@@ -289,7 +288,7 @@ export const SoundFilesManager = () => {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleDeleteFile(soundFile.id, soundFile.file_path)}
+                      onClick={() => handleDeleteFile(soundFile.file_path)}
                       title="Delete"
                     >
                       <Trash2 className="h-5 w-5 text-destructive" />
