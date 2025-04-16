@@ -45,12 +45,37 @@ const ProfilePreferences = () => {
   const [previewSound, setPreviewSound] = useState<string | null>(null);
   const [audioPlayer, setAudioPlayer] = useState<HTMLAudioElement | null>(null);
   const [previewTimer, setPreviewTimer] = useState<NodeJS.Timeout | null>(null);
+  const [isPlayingSound, setIsPlayingSound] = useState(false);
+  const [soundLoading, setSoundLoading] = useState(false);
 
   // Set up audio player
   useEffect(() => {
     const player = new Audio();
-    player.addEventListener('ended', () => setPreviewSound(null));
+    player.addEventListener('ended', () => {
+      setPreviewSound(null);
+      setIsPlayingSound(false);
+    });
+    
+    player.addEventListener('error', (e) => {
+      console.error("Audio playback error:", e);
+      toast.error("Failed to play sound preview");
+      setPreviewSound(null);
+      setIsPlayingSound(false);
+      setSoundLoading(false);
+    });
+    
+    player.addEventListener('loadeddata', () => {
+      setSoundLoading(false);
+      player.play().catch(err => {
+        console.error("Error playing audio:", err);
+        setPreviewSound(null);
+        setIsPlayingSound(false);
+        setSoundLoading(false);
+      });
+    });
+    
     setAudioPlayer(player);
+    
     return () => {
       player.pause();
       player.src = '';
@@ -64,13 +89,15 @@ const ProfilePreferences = () => {
   useEffect(() => {
     if (audioPlayer) {
       if (previewSound) {
+        audioPlayer.pause();
+        setSoundLoading(true);
         audioPlayer.src = previewSound;
-        audioPlayer.play().catch(err => console.error("Error playing audio:", err));
         
         // Set a timer to stop after 10 seconds
         const timer = setTimeout(() => {
           audioPlayer.pause();
           setPreviewSound(null);
+          setIsPlayingSound(false);
         }, 10000);
         
         setPreviewTimer(timer);
@@ -234,6 +261,7 @@ const ProfilePreferences = () => {
     // Stop any current preview
     if (previewSound) {
       setPreviewSound(null);
+      setIsPlayingSound(false);
     }
     
     handleChange('soundPreference', value as SoundPreference);
@@ -241,16 +269,63 @@ const ProfilePreferences = () => {
     // If not silence, try to play a preview
     if (value !== 'silence') {
       try {
+        setSoundLoading(true);
+        setIsPlayingSound(true);
+        
         // Fetch sounds for the selected category
         await fetchSoundFilesByPreference(value as SoundPreference);
         
         // If we have sounds in this category, play the first one
-        if (soundFiles.length > 0) {
+        if (soundFiles && soundFiles.length > 0) {
           const soundUrl = getSoundFileUrl(soundFiles[0].file_path);
           setPreviewSound(soundUrl);
+        } else {
+          console.log("No sound files found for category:", value);
+          setSoundLoading(false);
+          setIsPlayingSound(false);
+          toast.error(`No sound files found for ${value}`);
         }
       } catch (error) {
         console.error("Error loading sound preview:", error);
+        setSoundLoading(false);
+        setIsPlayingSound(false);
+        toast.error("Failed to load sound preview");
+      }
+    }
+  };
+  
+  const toggleSoundPreview = async () => {
+    // If currently playing, stop
+    if (isPlayingSound) {
+      setPreviewSound(null);
+      setIsPlayingSound(false);
+      return;
+    }
+    
+    // Otherwise start preview
+    if (editedState.soundPreference && editedState.soundPreference !== 'silence') {
+      try {
+        setSoundLoading(true);
+        setIsPlayingSound(true);
+        
+        // Fetch sounds for the selected category
+        await fetchSoundFilesByPreference(editedState.soundPreference);
+        
+        // If we have sounds in this category, play the first one
+        if (soundFiles && soundFiles.length > 0) {
+          const soundUrl = getSoundFileUrl(soundFiles[0].file_path);
+          setPreviewSound(soundUrl);
+        } else {
+          console.log("No sound files found for category:", editedState.soundPreference);
+          setSoundLoading(false);
+          setIsPlayingSound(false);
+          toast.error(`No sound files found for ${editedState.soundPreference}`);
+        }
+      } catch (error) {
+        console.error("Error loading sound preview:", error);
+        setSoundLoading(false);
+        setIsPlayingSound(false);
+        toast.error("Failed to load sound preview");
       }
     }
   };
@@ -578,11 +653,13 @@ const ProfilePreferences = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => previewSound ? setPreviewSound(null) : handleSoundPreferenceChange(editedState.soundPreference)}
+                    onClick={toggleSoundPreview}
                     disabled={!isEditing || isLoading || isSavingEnvironment || soundFilesLoading}
-                    title={previewSound ? "Stop Preview" : "Preview Sound"}
+                    title={isPlayingSound ? "Stop Preview" : "Preview Sound"}
                   >
-                    {previewSound ? (
+                    {soundLoading ? (
+                      <Loader2Icon className="h-4 w-4 animate-spin" />
+                    ) : isPlayingSound ? (
                       <VolumeX className="h-4 w-4" />
                     ) : (
                       <Volume2 className="h-4 w-4" />
