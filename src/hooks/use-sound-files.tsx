@@ -184,6 +184,67 @@ export const useSoundFiles = () => {
         return [];
       }
       
+      if (preference === 'lo-fi') {
+        console.log("Using direct lo-fi music URLs");
+        
+        const lofiTracks = [
+          {
+            id: 'lo-fi-1',
+            title: 'massobeats - honey jam',
+            description: 'Lo-fi track for focus',
+            file_path: 'https://ucculvnodabrfwbkzsnx.supabase.co/storage/v1/object/public/music/Lo-Fi/massobeats%20-%20honey%20jam%20(freetouse.com).mp3',
+            file_type: 'audio/mp3',
+            sound_preference: 'lo-fi',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          {
+            id: 'lo-fi-2',
+            title: 'Lukrembo - Sunset',
+            description: 'Lo-fi track for focus',
+            file_path: 'https://ucculvnodabrfwbkzsnx.supabase.co/storage/v1/object/public/music/Lo-Fi/Lukrembo%20-%20Sunset%20(freetouse.com).mp3',
+            file_type: 'audio/mp3',
+            sound_preference: 'lo-fi',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          {
+            id: 'lo-fi-3',
+            title: 'Lukrembo - Marshmallow',
+            description: 'Lo-fi track for focus',
+            file_path: 'https://ucculvnodabrfwbkzsnx.supabase.co/storage/v1/object/public/music/Lo-Fi/Lukrembo%20-%20Marshmallow%20(freetouse.com).mp3',
+            file_type: 'audio/mp3',
+            sound_preference: 'lo-fi',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          {
+            id: 'lo-fi-4',
+            title: 'Lukrembo - Donut',
+            description: 'Lo-fi track for focus',
+            file_path: 'https://ucculvnodabrfwbkzsnx.supabase.co/storage/v1/object/public/music/Lo-Fi/Lukrembo%20-%20Donut%20(freetouse.com).mp3',
+            file_type: 'audio/mp3',
+            sound_preference: 'lo-fi',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          {
+            id: 'lo-fi-5',
+            title: 'Lukrembo - Biscuit',
+            description: 'Lo-fi track for focus',
+            file_path: 'https://ucculvnodabrfwbkzsnx.supabase.co/storage/v1/object/public/music/Lo-Fi/Lukrembo%20-%20Biscuit%20(freetouse.com).mp3',
+            file_type: 'audio/mp3',
+            sound_preference: 'lo-fi',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        ];
+        
+        setSoundFiles(lofiTracks);
+        setSoundLoading(false);
+        return lofiTracks;
+      }
+      
       if (preference === 'ambient') {
         console.log("Using direct ambient music URLs");
         
