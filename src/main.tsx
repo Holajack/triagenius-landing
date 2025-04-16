@@ -1,12 +1,9 @@
 
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import './index.css'
 import { Toaster } from "./components/ui/toaster"
-import { ThemeProvider } from '@/contexts/ThemeContext'
-import { UserProvider } from '@/hooks/use-user'
 
 // Detect if the app is being launched in standalone mode with multi-domain support
 const detectPWA = () => {
@@ -170,16 +167,10 @@ const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('Root element not found');
 const root = ReactDOM.createRoot(rootElement);
 
-// Render with React.StrictMode and wrap with BrowserRouter, UserProvider, and ThemeProvider
+// Render with React.StrictMode
 root.render(
   <React.StrictMode>
-    <BrowserRouter>
-      <UserProvider>
-        <ThemeProvider>
-          <App />
-          <Toaster />
-        </ThemeProvider>
-      </UserProvider>
-    </BrowserRouter>
+    <App />
+    <Toaster />
   </React.StrictMode>
 );

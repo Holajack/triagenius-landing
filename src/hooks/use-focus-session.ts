@@ -9,7 +9,6 @@ import {
   clearFocusSessionState,
   SavedFocusSession
 } from "@/services/sessionPersistence";
-import AudioPlayerService from "@/services/audioService";
 
 export const useFocusSession = () => {
   const navigate = useNavigate();
@@ -373,8 +372,6 @@ export const useFocusSession = () => {
     setIsPaused(true);
     setShowMotivation(true);
     saveCurrentFocusState();
-    
-    // Don't pause the music when pausing the timer
   };
   
   const handleResume = () => {
@@ -399,14 +396,6 @@ export const useFocusSession = () => {
     
     if (timerRef.current) {
       timerRef.current.stopTimer();
-    }
-    
-    // Pause audio playback
-    try {
-      const audioService = AudioPlayerService.getInstance();
-      audioService.pause();
-    } catch (error) {
-      console.error("Error pausing audio:", error);
     }
     
     const sessionData = await saveSessionData(false);
