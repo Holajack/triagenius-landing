@@ -45,10 +45,11 @@ const defaultSounds: Array<{ id: SoundPreference; title: string; description: st
 
 export const SoundStep = () => {
   const { state, dispatch } = useOnboarding();
-  const { soundFiles, isLoading, fetchSoundFiles } = useSoundFiles();
+  const { soundFiles, isLoading, fetchSoundFilesByPreference, getSoundFileUrl } = useSoundFiles();
   const [availableSounds, setAvailableSounds] = useState(defaultSounds);
   const [previewSound, setPreviewSound] = useState<string | null>(null);
   const [audioPlayer, setAudioPlayer] = useState<HTMLAudioElement | null>(null);
+  const [previewTimer, setPreviewTimer] = useState<NodeJS.Timeout | null>(null);
 
   // Set up audio player
   useEffect(() => {
@@ -58,6 +59,9 @@ export const SoundStep = () => {
     return () => {
       player.pause();
       player.src = '';
+      if (previewTimer) {
+        clearTimeout(previewTimer);
+      }
     };
   }, []);
 
@@ -67,32 +71,53 @@ export const SoundStep = () => {
       if (previewSound) {
         audioPlayer.src = previewSound;
         audioPlayer.play().catch(err => console.error("Error playing audio:", err));
+        
+        // Set a timer to stop after 10 seconds
+        const timer = setTimeout(() => {
+          audioPlayer.pause();
+          setPreviewSound(null);
+        }, 10000);
+        
+        setPreviewTimer(timer);
       } else {
         audioPlayer.pause();
+        if (previewTimer) {
+          clearTimeout(previewTimer);
+        }
       }
     }
     
     return () => {
-      if (audioPlayer) {
-        audioPlayer.pause();
+      if (previewTimer) {
+        clearTimeout(previewTimer);
       }
     };
   }, [previewSound, audioPlayer]);
 
   // Handle sound category selection
-  const handleSoundSelection = (soundId: SoundPreference) => {
-    dispatch({ type: 'SET_SOUND_PREFERENCE', payload: soundId });
+  const handleSoundSelection = async (soundId: SoundPreference) => {
+    // Stop any current preview
     if (previewSound) {
       setPreviewSound(null);
     }
-  };
-
-  // Preview sound when available
-  const handlePreviewToggle = (url: string | null) => {
-    if (previewSound === url) {
-      setPreviewSound(null);
-    } else {
-      setPreviewSound(url);
+    
+    // Set the sound preference
+    dispatch({ type: 'SET_SOUND_PREFERENCE', payload: soundId });
+    
+    // If not silence, try to play a preview
+    if (soundId !== 'silence') {
+      try {
+        // Fetch sounds for the selected category
+        await fetchSoundFilesByPreference(soundId);
+        
+        // If we have sounds in this category, play the first one
+        if (soundFiles.length > 0) {
+          const soundUrl = getSoundFileUrl(soundFiles[0].file_path);
+          setPreviewSound(soundUrl);
+        }
+      } catch (error) {
+        console.error("Error loading sound preview:", error);
+      }
     }
   };
 
@@ -112,7 +137,6 @@ export const SoundStep = () => {
           </Card>
         ))
       ) : (
-        // Sound categories
         defaultSounds.map((sound) => (
           <Card
             key={sound.id}
@@ -134,11 +158,14 @@ export const SoundStep = () => {
                   className="ml-auto p-2 rounded-full hover:bg-gray-100"
                   onClick={(e) => {
                     e.stopPropagation();
-                    // Logic to preview sound would go here
-                    // This is a placeholder for future functionality
+                    if (previewSound) {
+                      setPreviewSound(null);
+                    } else {
+                      handleSoundSelection(sound.id);
+                    }
                   }}
                 >
-                  {previewSound ? (
+                  {previewSound && state.soundPreference === sound.id ? (
                     <VolumeX className="w-5 h-5 text-gray-600" />
                   ) : (
                     <Volume2 className="w-5 h-5 text-gray-600" />

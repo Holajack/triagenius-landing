@@ -122,7 +122,8 @@ export const SoundFilesManager = () => {
   const handleDeleteFile = async (filePath: string) => {
     if (window.confirm('Are you sure you want to delete this sound file?')) {
       // If file is currently playing, stop it
-      if (currentlyPlaying === id) {
+      const soundFile = soundFiles.find(file => file.file_path === filePath);
+      if (soundFile && currentlyPlaying === soundFile.id) {
         audioPlayer.pause();
         setCurrentlyPlaying(null);
       }
