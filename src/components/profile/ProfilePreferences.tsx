@@ -194,9 +194,21 @@ const ProfilePreferences = () => {
     setEditedState({
       ...state
     });
+    
+    // Reset any ongoing sound preview when editing starts
+    if (previewSound) {
+      setPreviewSound(null);
+      setIsPlayingSound(false);
+    }
   };
   
   const handleCancel = () => {
+    // Stop any sound preview
+    if (previewSound) {
+      setPreviewSound(null);
+      setIsPlayingSound(false);
+    }
+    
     setIsEditing(false);
     setHasUnsavedChanges(false);
     setEditedState({
@@ -264,37 +276,14 @@ const ProfilePreferences = () => {
       setIsPlayingSound(false);
     }
     
+    // Just update the state, don't play sound yet
     handleChange('soundPreference', value as SoundPreference);
-    
-    // If not silence, try to play a preview
-    if (value !== 'silence') {
-      try {
-        setSoundLoading(true);
-        setIsPlayingSound(true);
-        
-        // Fetch sounds for the selected category
-        await fetchSoundFilesByPreference(value as SoundPreference);
-        
-        // If we have sounds in this category, play the first one
-        if (soundFiles && soundFiles.length > 0) {
-          const soundUrl = getSoundFileUrl(soundFiles[0].file_path);
-          setPreviewSound(soundUrl);
-        } else {
-          console.log("No sound files found for category:", value);
-          setSoundLoading(false);
-          setIsPlayingSound(false);
-          toast.error(`No sound files found for ${value}`);
-        }
-      } catch (error) {
-        console.error("Error loading sound preview:", error);
-        setSoundLoading(false);
-        setIsPlayingSound(false);
-        toast.error("Failed to load sound preview");
-      }
-    }
   };
   
   const toggleSoundPreview = async () => {
+    // If not in editing mode, don't allow sound preview
+    if (!isEditing) return;
+    
     // If currently playing, stop
     if (isPlayingSound) {
       setPreviewSound(null);
@@ -309,11 +298,11 @@ const ProfilePreferences = () => {
         setIsPlayingSound(true);
         
         // Fetch sounds for the selected category
-        await fetchSoundFilesByPreference(editedState.soundPreference);
+        const resultFiles = await fetchSoundFilesByPreference(editedState.soundPreference);
         
         // If we have sounds in this category, play the first one
-        if (soundFiles && soundFiles.length > 0) {
-          const soundUrl = getSoundFileUrl(soundFiles[0].file_path);
+        if (resultFiles && resultFiles.length > 0) {
+          const soundUrl = getSoundFileUrl(resultFiles[0].file_path);
           setPreviewSound(soundUrl);
         } else {
           console.log("No sound files found for category:", editedState.soundPreference);
@@ -377,6 +366,12 @@ const ProfilePreferences = () => {
   }, [location.hash, hasUnsavedChanges, isEditing, savePreferencesOnExit]);
   
   const handleSave = async () => {
+    // First stop any sound preview that might be playing
+    if (previewSound) {
+      setPreviewSound(null);
+      setIsPlayingSound(false);
+    }
+    
     try {
       setIsLoading(true);
       
@@ -649,7 +644,7 @@ const ProfilePreferences = () => {
                     <SelectItem value="silence">Silence</SelectItem>
                   </SelectContent>
                 </Select>
-                {editedState.soundPreference && editedState.soundPreference !== 'silence' && (
+                {editedState.soundPreference && editedState.soundPreference !== 'silence' && isEditing && (
                   <Button
                     variant="ghost"
                     size="icon"
@@ -669,6 +664,11 @@ const ProfilePreferences = () => {
               </div>
               {soundFilesLoading && (
                 <p className="text-xs text-muted-foreground">Loading sounds...</p>
+              )}
+              {editedState.soundPreference && isEditing && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Click the sound icon to preview {editedState.soundPreference === 'silence' ? 'no sound' : editedState.soundPreference} sounds
+                </p>
               )}
             </div>
           </div>}

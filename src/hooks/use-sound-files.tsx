@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, handleSupabaseError } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -28,21 +27,41 @@ export const useSoundFiles = () => {
       setIsLoading(true);
       setError(null);
       
-      const { data, error } = await supabase.storage.from('music').list('', {
+      // First try to fetch from the sound_files database table
+      const { data: dbSoundFiles, error: dbError } = await supabase
+        .from('sound_files')
+        .select('*');
+      
+      if (!dbError && dbSoundFiles && dbSoundFiles.length > 0) {
+        console.log('Found sound files in database:', dbSoundFiles);
+        setSoundFiles(dbSoundFiles);
+        return dbSoundFiles;
+      }
+      
+      // If no records in database, try storage
+      console.log('No sound files found in database, checking storage');
+      const { data: storageFiles, error: storageError } = await supabase.storage.from('music').list('', {
         limit: 100,
         offset: 0
       });
       
-      if (error) throw handleSupabaseError(error);
+      if (storageError) throw handleSupabaseError(storageError);
+      
+      if (!storageFiles || storageFiles.length === 0) {
+        console.log('No sound files found in storage');
+        // Add default sound files if none exist
+        await addDefaultSoundFiles();
+        return [];
+      }
       
       // Transform storage files into sound files
-      const soundFilesList = data.map(file => ({
+      const soundFilesList = storageFiles.map(file => ({
         id: file.name,
         title: file.name.split('.')[0],
         description: null,
         file_path: file.name,
         file_type: file.metadata?.mimetype || '',
-        sound_preference: 'default', // You might want to extract this from file metadata or filename
+        sound_preference: 'default',
         created_at: file.updated_at || new Date().toISOString(),
         updated_at: file.updated_at || new Date().toISOString()
       }));
@@ -59,6 +78,60 @@ export const useSoundFiles = () => {
     }
   }, []);
 
+  // Add default sound files to database if none exist
+  const addDefaultSoundFiles = async () => {
+    if (!user) return;
+    
+    console.log('Adding default sound files');
+    
+    const defaultSounds = [
+      {
+        title: 'Lofi Study Beat',
+        description: 'Relaxing lofi beat for studying',
+        file_path: 'https://cdn.example.com/sounds/lofi-study-beat.mp3',
+        file_type: 'audio/mp3',
+        sound_preference: 'lo-fi',
+        user_id: user.id
+      },
+      {
+        title: 'Ambient Space',
+        description: 'Ambient space sounds for focus',
+        file_path: 'https://cdn.example.com/sounds/ambient-space.mp3',
+        file_type: 'audio/mp3',
+        sound_preference: 'ambient',
+        user_id: user.id
+      },
+      {
+        title: 'Forest Rain',
+        description: 'Natural forest rain sounds',
+        file_path: 'https://cdn.example.com/sounds/forest-rain.mp3',
+        file_type: 'audio/mp3',
+        sound_preference: 'nature',
+        user_id: user.id
+      },
+      {
+        title: 'Piano Sonata',
+        description: 'Classical piano sonata',
+        file_path: 'https://cdn.example.com/sounds/piano-sonata.mp3',
+        file_type: 'audio/mp3',
+        sound_preference: 'classical',
+        user_id: user.id
+      }
+    ];
+    
+    try {
+      const { error } = await supabase
+        .from('sound_files')
+        .insert(defaultSounds);
+      
+      if (error) throw handleSupabaseError(error);
+      
+      console.log('Default sound files added successfully');
+    } catch (err) {
+      console.error('Error adding default sound files:', err);
+    }
+  };
+
   // Fetch sound files by preference category
   const fetchSoundFilesByPreference = useCallback(async (preference: SoundPreference) => {
     try {
@@ -67,62 +140,65 @@ export const useSoundFiles = () => {
       
       console.log(`Fetching sound files for preference: ${preference}`);
       
-      // First try to list files in the specific folder
-      const { data, error } = await supabase.storage.from('music').list(preference, {
-        limit: 100,
-        offset: 0
-      });
-      
-      if (error) {
-        console.log(`Error listing files in ${preference} folder:`, error);
+      // First try to get from database by preference
+      const { data: dbSoundFiles, error: dbError } = await supabase
+        .from('sound_files')
+        .select('*')
+        .eq('sound_preference', preference);
         
-        // If directory doesn't exist or other error, try fetching from root with filter
-        const { data: rootData, error: rootError } = await supabase.storage.from('music').list('', {
-          limit: 100,
-          offset: 0
-        });
-        
-        if (rootError) throw handleSupabaseError(rootError);
-        
-        // Filter files that might be related to the preference
-        const filteredFiles = rootData.filter(file => 
-          file.name.toLowerCase().includes(preference.toLowerCase())
-        );
-        
-        console.log(`Found ${filteredFiles.length} files in root matching ${preference}`);
-        
-        const soundFilesList = filteredFiles.map(file => ({
-          id: file.name,
-          title: file.name.split('.')[0],
-          description: null,
-          file_path: file.name, // Root path
-          file_type: file.metadata?.mimetype || '',
-          sound_preference: preference,
-          created_at: file.updated_at || new Date().toISOString(),
-          updated_at: file.updated_at || new Date().toISOString()
-        }));
-        
-        setSoundFiles(soundFilesList);
-        return soundFilesList;
+      if (!dbError && dbSoundFiles && dbSoundFiles.length > 0) {
+        console.log(`Found ${dbSoundFiles.length} files in database for ${preference}`);
+        setSoundFiles(dbSoundFiles);
+        return dbSoundFiles;
       }
       
-      // If the specific folder exists, use those files
-      console.log(`Found ${data.length} files in ${preference} folder`);
-      
-      // Transform storage files into sound files
-      const soundFilesList = data.map(file => ({
-        id: file.name,
-        title: file.name.split('.')[0],
-        description: null,
-        file_path: `${preference}/${file.name}`,
-        file_type: file.metadata?.mimetype || '',
-        sound_preference: preference,
-        created_at: file.updated_at || new Date().toISOString(),
-        updated_at: file.updated_at || new Date().toISOString()
-      }));
-      
-      setSoundFiles(soundFilesList);
-      return soundFilesList;
+      // If none found in database, create a default one
+      if (preference !== 'silence') {
+        console.log(`No sound files found for ${preference}, adding a default`);
+        
+        // Add default sound file for this preference if user is logged in
+        if (user && user.id) {
+          const defaultFile = {
+            title: `Default ${preference} sound`,
+            description: `Default sound for ${preference} category`,
+            file_path: `https://cdn.example.com/sounds/${preference}-default.mp3`,
+            file_type: 'audio/mp3',
+            sound_preference: preference,
+            user_id: user.id
+          };
+          
+          const { data: newSound, error: insertError } = await supabase
+            .from('sound_files')
+            .insert(defaultFile)
+            .select()
+            .single();
+            
+          if (!insertError && newSound) {
+            setSoundFiles([newSound]);
+            console.log('Created default sound file:', newSound);
+            return [newSound];
+          }
+        }
+        
+        // Fallback to public domain sounds
+        const fallbackSound = {
+          id: `default-${preference}`,
+          title: `Default ${preference}`,
+          description: `Default ${preference} sound`,
+          file_path: `https://actions.google.com/sounds/v1/ambiences/forest_ambience.ogg`,
+          file_type: 'audio/ogg',
+          sound_preference: preference,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        setSoundFiles([fallbackSound]);
+        return [fallbackSound];
+      } else {
+        // For silence, return empty array
+        setSoundFiles([]);
+        return [];
+      }
     } catch (err: any) {
       console.error('Error fetching sound files by preference:', err);
       setError(err.message);
@@ -131,11 +207,19 @@ export const useSoundFiles = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user]);
 
   // Get public URL for a sound file
   const getSoundFileUrl = useCallback((filePath: string) => {
     console.log(`Getting URL for file path: ${filePath}`);
+    
+    // If already a full URL, return it
+    if (filePath.startsWith('http')) {
+      console.log(`File is already a URL: ${filePath}`);
+      return filePath;
+    }
+    
+    // Otherwise get from storage
     const { data } = supabase.storage.from('music').getPublicUrl(filePath);
     console.log(`Generated URL: ${data.publicUrl}`);
     return data.publicUrl;
@@ -171,6 +255,20 @@ export const useSoundFiles = () => {
         });
 
       if (uploadError) throw handleSupabaseError(uploadError);
+      
+      // Also add to database
+      const { error: dbError } = await supabase
+        .from('sound_files')
+        .insert({
+          title: title,
+          description: description,
+          file_path: filePath,
+          file_type: file.type,
+          sound_preference: soundPreference,
+          user_id: user.id
+        });
+      
+      if (dbError) throw handleSupabaseError(dbError);
 
       toast.success('Sound file uploaded successfully');
       await fetchSoundFiles(); // Refresh the list
@@ -189,11 +287,29 @@ export const useSoundFiles = () => {
       setIsLoading(true);
       setError(null);
 
-      const { error } = await supabase.storage
-        .from('music')
-        .remove([filePath]);
+      // If it's a URL, it's a default sound
+      if (filePath.startsWith('http')) {
+        // Just remove from database if it exists
+        const { error } = await supabase
+          .from('sound_files')
+          .delete()
+          .eq('file_path', filePath);
+          
+        if (error) throw handleSupabaseError(error);
+      } else {
+        // Delete from storage
+        const { error } = await supabase.storage
+          .from('music')
+          .remove([filePath]);
 
-      if (error) throw handleSupabaseError(error);
+        if (error) throw handleSupabaseError(error);
+        
+        // Also delete from database
+        await supabase
+          .from('sound_files')
+          .delete()
+          .eq('file_path', filePath);
+      }
 
       toast.success('Sound file deleted successfully');
       await fetchSoundFiles(); // Refresh the list
