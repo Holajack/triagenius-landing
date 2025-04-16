@@ -231,9 +231,9 @@ export const useSoundFiles = () => {
         const classicalTracks = [
           {
             id: 'classical-1',
-            title: 'Mozart - Eine Kleine Nachtmusik',
+            title: 'Walen - Dragon Kingdom',
             description: 'Classical track for focus',
-            file_path: 'https://ucculvnodabrfwbkzsnx.supabase.co/storage/v1/object/public/music/Classic/Mozart_-_Eine_Kleine_Nachtmusik.mp3',
+            file_path: 'https://ucculvnodabrfwbkzsnx.supabase.co/storage/v1/object/public/music/Classic/Walen%20-%20Dragon%20Kingdom%20(freetouse.com).mp3',
             file_type: 'audio/mp3',
             sound_preference: 'classical',
             created_at: new Date().toISOString(),
@@ -241,9 +241,9 @@ export const useSoundFiles = () => {
           },
           {
             id: 'classical-2',
-            title: 'Bach - Air on the G String',
+            title: 'Guillermo Guareschi - Farewell',
             description: 'Classical track for focus',
-            file_path: 'https://ucculvnodabrfwbkzsnx.supabase.co/storage/v1/object/public/music/Classic/Bach_-_Air_on_G_String.mp3',
+            file_path: 'https://ucculvnodabrfwbkzsnx.supabase.co/storage/v1/object/public/music/Classic/Guillermo%20Guareschi%20-%20Farewell%20(freetouse.com).mp3',
             file_type: 'audio/mp3',
             sound_preference: 'classical',
             created_at: new Date().toISOString(),
@@ -251,9 +251,29 @@ export const useSoundFiles = () => {
           },
           {
             id: 'classical-3',
-            title: 'Beethoven - Moonlight Sonata',
+            title: 'Epic Spectrum - Sky Clearing',
             description: 'Classical track for focus',
-            file_path: 'https://ucculvnodabrfwbkzsnx.supabase.co/storage/v1/object/public/music/Classic/Beethoven_-_Moonlight_Sonata.mp3',
+            file_path: 'https://ucculvnodabrfwbkzsnx.supabase.co/storage/v1/object/public/music/Classic/Epic%20Spectrum%20-%20Sky%20Clearing%20(freetouse.com).mp3',
+            file_type: 'audio/mp3',
+            sound_preference: 'classical',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          {
+            id: 'classical-4',
+            title: 'Aeris - Sky With Yellow Spots',
+            description: 'Classical track for focus',
+            file_path: 'https://ucculvnodabrfwbkzsnx.supabase.co/storage/v1/object/public/music/Classic/Aeris%20-%20Sky%20With%20Yellow%20Spots%20(freetouse.com).mp3',
+            file_type: 'audio/mp3',
+            sound_preference: 'classical',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          },
+          {
+            id: 'classical-5',
+            title: 'Alegend - Wings of Freedom',
+            description: 'Classical track for focus',
+            file_path: 'https://ucculvnodabrfwbkzsnx.supabase.co/storage/v1/object/public/music/Classic/Alegend%20-%20Wings%20of%20Freedom%20(freetouse.com).mp3',
             file_type: 'audio/mp3',
             sound_preference: 'classical',
             created_at: new Date().toISOString(),
