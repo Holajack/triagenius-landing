@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -12,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useUser } from "@/hooks/use-user";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useSoundFiles, SoundFile } from "@/hooks/use-sound-files";
+import { useSoundFiles } from "@/hooks/use-sound-files";
 import MusicList from "./MusicList";
 
 const DEBUG_ENV = true;
@@ -56,7 +57,7 @@ const ProfilePreferences = () => {
   const [audioPlaybackAttempts, setAudioPlaybackAttempts] = useState(0);
   const [audioLoadFailed, setAudioLoadFailed] = useState(false);
   const [currentAudioIndex, setCurrentAudioIndex] = useState(0);
-  const [audioPlaylist, setAudioPlaylist] = useState<SoundFile[]>([]);
+  const [audioPlaylist, setAudioPlaylist] = useState<any[]>([]);
 
   useEffect(() => {
     const player = new Audio();
@@ -165,7 +166,7 @@ const ProfilePreferences = () => {
           audioPlayer.pause();
           setPreviewSound(null);
           setIsPlayingSound(false);
-        }, 10000);
+        }, 30000); // 30 seconds preview
         
         setPreviewTimer(timer);
       }
@@ -350,8 +351,14 @@ const ProfilePreferences = () => {
     
     handleChange('soundPreference', value as SoundPreference);
     
-    const filesToPlay = await fetchSoundFilesByPreference(value as SoundPreference);
-    setAudioPlaylist(filesToPlay);
+    // Immediately fetch sound files for this preference
+    try {
+      const filesToPlay = await fetchSoundFilesByPreference(value as SoundPreference);
+      console.log("Fetched sound files for preference:", value, filesToPlay);
+      setAudioPlaylist(filesToPlay);
+    } catch (err) {
+      console.error("Error fetching sound files for preference:", value, err);
+    }
   };
 
   const toggleSoundPreview = async () => {
@@ -370,6 +377,7 @@ const ProfilePreferences = () => {
         let tracksToPlay = audioPlaylist;
         if (!tracksToPlay || tracksToPlay.length === 0) {
           tracksToPlay = await fetchSoundFilesByPreference(editedState.soundPreference);
+          console.log("Fetched sound files for preview:", tracksToPlay);
           setAudioPlaylist(tracksToPlay);
         }
         
@@ -447,15 +455,10 @@ const ProfilePreferences = () => {
       }
     };
     
-    const handleRouteChange = async () => {
-      await savePreferencesOnExit();
-    };
-    
     window.addEventListener('beforeunload', handleBeforeUnload);
     
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      
       savePreferencesOnExit();
     };
   }, [hasUnsavedChanges, savePreferencesOnExit]);

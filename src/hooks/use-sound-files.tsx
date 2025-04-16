@@ -201,43 +201,7 @@ export const useSoundFiles = () => {
       // Ensure folder structure exists
       await ensureMusicFolders();
       
-      // Get the storage folder name for this preference
-      const storageFolder = getStorageFolderForPreference(preference);
-      
-      // Try to fetch from storage first
-      try {
-        const { data: storageFiles, error: storageError } = await supabase.storage
-          .from('music')
-          .list(storageFolder, { sortBy: { column: 'name', order: 'asc' } });
-          
-        if (!storageError && storageFiles && storageFiles.length > 0) {
-          console.log(`Found ${storageFiles.length} files in storage for ${preference} in folder ${storageFolder}`);
-          
-          // Filter to just get audio files and format them
-          const soundFilesFromStorage = storageFiles
-            .filter(file => file.name.endsWith('.mp3') || file.name.endsWith('.wav'))
-            .map(file => ({
-              id: `${storageFolder}/${file.name}`,
-              title: file.name.replace(/\.(mp3|wav)$/i, '').replace(/_/g, ' '),
-              description: `${preference} track`,
-              file_path: `${storageFolder}/${file.name}`,
-              file_type: file.name.endsWith('.mp3') ? 'audio/mp3' : 'audio/wav',
-              sound_preference: preference,
-              created_at: file.created_at || new Date().toISOString(),
-              updated_at: file.updated_at || new Date().toISOString()
-            }));
-            
-          if (soundFilesFromStorage.length > 0) {
-            setSoundFiles(soundFilesFromStorage);
-            setSoundLoading(false);
-            return soundFilesFromStorage;
-          }
-        }
-      } catch (err) {
-        console.error(`Error fetching from storage for ${preference}:`, err);
-      }
-      
-      // If storage fetch fails or returns no results, try database
+      // First, try to fetch from the database specifically for this preference
       const { data: dbSoundFiles, error: dbError } = await supabase
         .from('sound_files')
         .select('*')
@@ -250,7 +214,40 @@ export const useSoundFiles = () => {
         return dbSoundFiles;
       }
       
-      // If none found in storage or database, create a default one
+      // If not found in database, try from storage
+      // Get the storage folder name for this preference
+      const storageFolder = getStorageFolderForPreference(preference);
+      
+      // Try to fetch from storage
+      const { data: storageFiles, error: storageError } = await supabase.storage
+        .from('music')
+        .list(storageFolder, { sortBy: { column: 'name', order: 'asc' } });
+        
+      if (!storageError && storageFiles && storageFiles.length > 0) {
+        console.log(`Found ${storageFiles.length} files in storage for ${preference} in folder ${storageFolder}`);
+        
+        // Filter to just get audio files and format them
+        const soundFilesFromStorage = storageFiles
+          .filter(file => file.name.endsWith('.mp3') || file.name.endsWith('.wav'))
+          .map(file => ({
+            id: `${storageFolder}/${file.name}`,
+            title: file.name.replace(/\.(mp3|wav)$/i, '').replace(/_/g, ' '),
+            description: `${preference} track`,
+            file_path: `${storageFolder}/${file.name}`,
+            file_type: file.name.endsWith('.mp3') ? 'audio/mp3' : 'audio/wav',
+            sound_preference: preference,
+            created_at: file.created_at || new Date().toISOString(),
+            updated_at: file.updated_at || new Date().toISOString()
+          }));
+          
+        if (soundFilesFromStorage.length > 0) {
+          setSoundFiles(soundFilesFromStorage);
+          setSoundLoading(false);
+          return soundFilesFromStorage;
+        }
+      }
+      
+      // If no sound files found for this preference, use the default fallback
       console.log(`No sound files found for ${preference}, adding a default`);
       
       // Map each preference to a working audio file
