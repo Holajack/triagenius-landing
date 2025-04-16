@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -47,10 +48,13 @@ const ProfilePreferences = () => {
   const [previewTimer, setPreviewTimer] = useState<NodeJS.Timeout | null>(null);
   const [isPlayingSound, setIsPlayingSound] = useState(false);
   const [soundLoading, setSoundLoading] = useState(false);
+  const [audioPlaybackAttempts, setAudioPlaybackAttempts] = useState(0);
+  const [audioLoadFailed, setAudioLoadFailed] = useState(false);
 
   // Set up audio player
   useEffect(() => {
     const player = new Audio();
+    
     player.addEventListener('ended', () => {
       setPreviewSound(null);
       setIsPlayingSound(false);
@@ -58,7 +62,14 @@ const ProfilePreferences = () => {
     
     player.addEventListener('error', (e) => {
       console.error("Audio playback error:", e);
-      toast.error("Failed to play sound preview");
+      setAudioPlaybackAttempts(prev => prev + 1);
+      setAudioLoadFailed(true);
+      
+      // If we've tried 3 times without success, show error message
+      if (audioPlaybackAttempts >= 2) {
+        toast.error("Failed to play sound preview");
+      }
+      
       setPreviewSound(null);
       setIsPlayingSound(false);
       setSoundLoading(false);
@@ -66,8 +77,11 @@ const ProfilePreferences = () => {
     
     player.addEventListener('loadeddata', () => {
       setSoundLoading(false);
+      setAudioLoadFailed(false);
+      
       player.play().catch(err => {
         console.error("Error playing audio:", err);
+        toast.error("Failed to play sound preview");
         setPreviewSound(null);
         setIsPlayingSound(false);
         setSoundLoading(false);
@@ -89,18 +103,28 @@ const ProfilePreferences = () => {
   useEffect(() => {
     if (audioPlayer) {
       if (previewSound) {
-        audioPlayer.pause();
-        setSoundLoading(true);
-        audioPlayer.src = previewSound;
-        
-        // Set a timer to stop after 10 seconds
-        const timer = setTimeout(() => {
+        // Only try to play if we're in edit mode
+        if (isEditing) {
           audioPlayer.pause();
+          setSoundLoading(true);
+          audioPlayer.src = previewSound;
+          
+          // Set a timer to stop after 10 seconds
+          const timer = setTimeout(() => {
+            audioPlayer.pause();
+            setPreviewSound(null);
+            setIsPlayingSound(false);
+          }, 10000);
+          
+          setPreviewTimer(timer);
+        } else {
+          // Not in edit mode, don't play
           setPreviewSound(null);
           setIsPlayingSound(false);
-        }, 10000);
-        
-        setPreviewTimer(timer);
+          if (previewTimer) {
+            clearTimeout(previewTimer);
+          }
+        }
       } else {
         audioPlayer.pause();
         if (previewTimer) {
@@ -114,7 +138,7 @@ const ProfilePreferences = () => {
         clearTimeout(previewTimer);
       }
     };
-  }, [previewSound, audioPlayer]);
+  }, [previewSound, audioPlayer, isEditing]);
   
   useEffect(() => {
     if (user?.profile?.last_selected_environment) {
@@ -200,6 +224,10 @@ const ProfilePreferences = () => {
       setPreviewSound(null);
       setIsPlayingSound(false);
     }
+    
+    // Reset audio playback attempt counter
+    setAudioPlaybackAttempts(0);
+    setAudioLoadFailed(false);
   };
   
   const handleCancel = () => {
@@ -275,6 +303,10 @@ const ProfilePreferences = () => {
       setPreviewSound(null);
       setIsPlayingSound(false);
     }
+    
+    // Reset audio attempt counter
+    setAudioPlaybackAttempts(0);
+    setAudioLoadFailed(false);
     
     // Just update the state, don't play sound yet
     handleChange('soundPreference', value as SoundPreference);
@@ -649,7 +681,7 @@ const ProfilePreferences = () => {
                     variant="ghost"
                     size="icon"
                     onClick={toggleSoundPreview}
-                    disabled={!isEditing || isLoading || isSavingEnvironment || soundFilesLoading}
+                    disabled={!isEditing || isLoading || isSavingEnvironment || soundFilesLoading || audioLoadFailed}
                     title={isPlayingSound ? "Stop Preview" : "Preview Sound"}
                   >
                     {soundLoading ? (
@@ -667,7 +699,9 @@ const ProfilePreferences = () => {
               )}
               {editedState.soundPreference && isEditing && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  Click the sound icon to preview {editedState.soundPreference === 'silence' ? 'no sound' : editedState.soundPreference} sounds
+                  {editedState.soundPreference === 'silence' 
+                    ? 'Silence mode has no sounds to preview'
+                    : 'Select a sound preference, then click the sound icon to preview'}
                 </p>
               )}
             </div>

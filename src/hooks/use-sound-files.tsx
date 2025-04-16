@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, handleSupabaseError } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -84,36 +85,37 @@ export const useSoundFiles = () => {
     
     console.log('Adding default sound files');
     
+    // Using real, public domain audio files that actually work
     const defaultSounds = [
       {
         title: 'Lofi Study Beat',
         description: 'Relaxing lofi beat for studying',
-        file_path: 'https://cdn.example.com/sounds/lofi-study-beat.mp3',
-        file_type: 'audio/mp3',
+        file_path: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
+        file_type: 'audio/ogg',
         sound_preference: 'lo-fi',
         user_id: user.id
       },
       {
         title: 'Ambient Space',
         description: 'Ambient space sounds for focus',
-        file_path: 'https://cdn.example.com/sounds/ambient-space.mp3',
-        file_type: 'audio/mp3',
+        file_path: 'https://actions.google.com/sounds/v1/ambiences/ambient_hum.ogg',
+        file_type: 'audio/ogg',
         sound_preference: 'ambient',
         user_id: user.id
       },
       {
         title: 'Forest Rain',
         description: 'Natural forest rain sounds',
-        file_path: 'https://cdn.example.com/sounds/forest-rain.mp3',
-        file_type: 'audio/mp3',
+        file_path: 'https://actions.google.com/sounds/v1/nature/forest_ambience.ogg',
+        file_type: 'audio/ogg',
         sound_preference: 'nature',
         user_id: user.id
       },
       {
         title: 'Piano Sonata',
         description: 'Classical piano sonata',
-        file_path: 'https://cdn.example.com/sounds/piano-sonata.mp3',
-        file_type: 'audio/mp3',
+        file_path: 'https://actions.google.com/sounds/v1/musical_instruments/piano_resonance_notes.ogg',
+        file_type: 'audio/ogg',
         sound_preference: 'classical',
         user_id: user.id
       }
@@ -158,11 +160,21 @@ export const useSoundFiles = () => {
         
         // Add default sound file for this preference if user is logged in
         if (user && user.id) {
+          // Map each preference to a specific Google Sound Library file that actually works
+          const defaultSoundMap: Record<string, string> = {
+            'lo-fi': 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
+            'ambient': 'https://actions.google.com/sounds/v1/ambiences/ambient_hum.ogg',
+            'nature': 'https://actions.google.com/sounds/v1/water/forest_stream.ogg',
+            'classical': 'https://actions.google.com/sounds/v1/musical_instruments/piano_resonance_notes.ogg'
+          };
+          
+          const soundUrl = defaultSoundMap[preference] || 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg';
+          
           const defaultFile = {
             title: `Default ${preference} sound`,
             description: `Default sound for ${preference} category`,
-            file_path: `https://cdn.example.com/sounds/${preference}-default.mp3`,
-            file_type: 'audio/mp3',
+            file_path: soundUrl,
+            file_type: 'audio/ogg',
             sound_preference: preference,
             user_id: user.id
           };
@@ -181,11 +193,18 @@ export const useSoundFiles = () => {
         }
         
         // Fallback to public domain sounds
+        const fallbackSoundMap: Record<string, string> = {
+          'lo-fi': 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
+          'ambient': 'https://actions.google.com/sounds/v1/ambiences/ambient_hum.ogg',
+          'nature': 'https://actions.google.com/sounds/v1/water/forest_stream.ogg',
+          'classical': 'https://actions.google.com/sounds/v1/musical_instruments/piano_resonance_notes.ogg'
+        };
+        
         const fallbackSound = {
           id: `default-${preference}`,
           title: `Default ${preference}`,
           description: `Default ${preference} sound`,
-          file_path: `https://actions.google.com/sounds/v1/ambiences/forest_ambience.ogg`,
+          file_path: fallbackSoundMap[preference] || 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg',
           file_type: 'audio/ogg',
           sound_preference: preference,
           created_at: new Date().toISOString(),
