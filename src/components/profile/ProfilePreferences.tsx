@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useUser } from "@/hooks/use-user";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useSoundFiles } from "@/hooks/use-sound-files";
+import { useSoundFiles, SoundFile } from "@/hooks/use-sound-files";
 import MusicList from "./MusicList";
 
 const DEBUG_ENV = true;
