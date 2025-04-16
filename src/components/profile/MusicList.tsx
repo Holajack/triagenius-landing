@@ -65,11 +65,16 @@ const MusicList = ({
   // Just show the first track as representative of the category
   const representativeTrack = soundFiles[0];
   
-  // Check if the URL needs to be parsed
+  // Simplified check for if the track is playing
   const getIsPlaying = () => {
     if (!currentlyPlaying || !representativeTrack.file_path) return false;
     
     console.log("Checking if playing:", currentlyPlaying, representativeTrack.file_path);
+    
+    // Direct URL comparison for ambient tracks
+    if (representativeTrack.sound_preference === 'ambient') {
+      return currentlyPlaying === representativeTrack.file_path;
+    }
     
     // Direct match
     if (currentlyPlaying === representativeTrack.file_path) {
