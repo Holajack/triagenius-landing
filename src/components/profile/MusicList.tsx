@@ -75,7 +75,7 @@ const MusicList = ({
           <div className="flex-1 mr-2">
             <div className="font-medium">{representativeTrack.title}</div>
             <p className="text-xs text-muted-foreground">
-              {currentlyPlaying ? "Playing preview..." : "Click to preview sound category"}
+              {currentlyPlaying === representativeTrack.file_path ? "Playing preview..." : "Click to preview sound category"}
             </p>
           </div>
           <div className="flex items-center space-x-2">
