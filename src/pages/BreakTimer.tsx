@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Timer, AlertCircle, Coffee, Brain, Music, Volume2, VolumeX, Play, Pause } from "lucide-react";
+import { Timer, AlertCircle, Coffee, Brain, Music, Volume2, VolumeX, Play, Pause, SkipForward, SkipBack } from "lucide-react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -38,17 +38,22 @@ const BreakTimer = () => {
   
   const timerRef = useRef<number>();
   
-  // Initialize sound playback
+  // Initialize sound playback with saved volume from localStorage
+  const savedVolume = parseFloat(localStorage.getItem('soundVolume') || '0.3');
+  
+  // Initialize sound playback with sound preference from onboarding state
   const { 
     isPlaying,
     currentTrack, 
     volume,
     setVolume,
     togglePlay,
-    stopPlayback
+    stopPlayback,
+    playNextTrack,
+    playPrevTrack
   } = useSoundPlayback({
     autoPlay: true,
-    volume: 0.3,
+    volume: savedVolume,
     enabled: state.soundPreference !== 'silence'
   });
   
@@ -135,7 +140,16 @@ const BreakTimer = () => {
           <Card className="mb-4">
             <CardContent className="py-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center">
+                <div className="flex items-center space-x-2">
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={playPrevTrack}
+                    disabled={!currentTrack}
+                  >
+                    <SkipBack className="h-4 w-4" />
+                  </Button>
+                  
                   <Button 
                     variant="ghost" 
                     size="icon"
@@ -145,6 +159,15 @@ const BreakTimer = () => {
                       <Pause className="h-4 w-4" /> : 
                       <Play className="h-4 w-4" />
                     }
+                  </Button>
+                  
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={playNextTrack}
+                    disabled={!currentTrack}
+                  >
+                    <SkipForward className="h-4 w-4" />
                   </Button>
                   
                   <div className="ml-2">

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, handleSupabaseError } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -180,9 +181,11 @@ export const useSoundFiles = () => {
       if (preference === 'silence') {
         setSoundFiles([]);
         setSoundLoading(false);
+        console.log('Sound preference is silence, returning empty array');
         return [];
       }
       
+      // Lo-fi tracks with direct URLs
       if (preference === 'lo-fi') {
         console.log("Using direct lo-fi music URLs");
         
@@ -241,9 +244,11 @@ export const useSoundFiles = () => {
         
         setSoundFiles(lofiTracks);
         setSoundLoading(false);
+        console.log(`Returning ${lofiTracks.length} lo-fi tracks`);
         return lofiTracks;
       }
       
+      // Ambient tracks with direct URLs
       if (preference === 'ambient') {
         console.log("Using direct ambient music URLs");
         
@@ -282,9 +287,11 @@ export const useSoundFiles = () => {
         
         setSoundFiles(ambientTracks);
         setSoundLoading(false);
+        console.log(`Returning ${ambientTracks.length} ambient tracks`);
         return ambientTracks;
       }
       
+      // Classical tracks with direct URLs
       if (preference === 'classical') {
         console.log("Using direct classical music URLs");
         
@@ -343,9 +350,11 @@ export const useSoundFiles = () => {
         
         setSoundFiles(classicalTracks);
         setSoundLoading(false);
+        console.log(`Returning ${classicalTracks.length} classical tracks`);
         return classicalTracks;
       }
       
+      // Nature tracks with direct URLs
       if (preference === 'nature') {
         console.log("Using direct nature music URL");
         
@@ -364,9 +373,11 @@ export const useSoundFiles = () => {
         
         setSoundFiles(natureTracks);
         setSoundLoading(false);
+        console.log(`Returning ${natureTracks.length} nature tracks`);
         return natureTracks;
       }
       
+      // If no direct URLs are available, try to fetch from database or storage
       await ensureMusicFolders();
       
       const { data: dbSoundFiles, error: dbError } = await supabase
@@ -487,6 +498,7 @@ export const useSoundFiles = () => {
         updated_at: new Date().toISOString()
       };
       
+      console.log('Using fallback sound:', fallbackSound);
       setSoundFiles([fallbackSound]);
       setSoundLoading(false);
       return [fallbackSound];
@@ -496,7 +508,22 @@ export const useSoundFiles = () => {
       setError(err.message);
       toast.error('Failed to load sound files');
       setSoundLoading(false);
-      return [];
+      
+      // Return fallback sound even on error
+      const fallbackSound = {
+        id: `fallback-${preference}`,
+        title: `Fallback ${preference} Sound`,
+        description: `Fallback sound for ${preference}`,
+        file_path: preference === 'lo-fi' ? 
+          'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Nul_Tiel_Records/Blank_Slate/Nul_Tiel_Records_-_Blank_Slate_-_01_Alone.mp3' :
+          'https://cdn.pixabay.com/download/audio/2022/03/10/audio_2dad9977f2.mp3',
+        file_type: 'audio/mp3',
+        sound_preference: preference,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      return [fallbackSound];
     } finally {
       setIsLoading(false);
     }
