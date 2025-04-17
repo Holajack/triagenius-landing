@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, handleSupabaseError } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -345,6 +344,27 @@ export const useSoundFiles = () => {
         setSoundFiles(classicalTracks);
         setSoundLoading(false);
         return classicalTracks;
+      }
+      
+      if (preference === 'nature') {
+        console.log("Using direct nature music URL");
+        
+        const natureTracks = [
+          {
+            id: 'nature-1',
+            title: 'Windy Trees in Mountain Forest',
+            description: 'Nature sound for focus',
+            file_path: 'https://ucculvnodabrfwbkzsnx.supabase.co/storage/v1/object/public/music/Nature/Windy%20trees%20in%20mountain%20forest.mp3',
+            file_type: 'audio/mp3',
+            sound_preference: 'nature',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        ];
+        
+        setSoundFiles(natureTracks);
+        setSoundLoading(false);
+        return natureTracks;
       }
       
       await ensureMusicFolders();
