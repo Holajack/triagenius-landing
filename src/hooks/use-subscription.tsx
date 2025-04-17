@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from './use-user';
 import { toast } from 'sonner';
+import { useAdmin } from './use-admin';
 
 export type SubscriptionTier = 'free' | 'premium';
 
@@ -29,12 +29,26 @@ export function useSubscription() {
     subscriptionEnd: null,
   });
   const { user } = useUser();
+  const { isAdmin } = useAdmin();
 
   const checkSubscription = async () => {
     if (!user?.email) return;
     
     try {
       setState(prev => ({ ...prev, isLoading: true }));
+      
+      if (isAdmin) {
+        setState({
+          isLoading: false,
+          subscribed: true,
+          tier: 'premium',
+          isTrial: false,
+          trialEnd: null,
+          subscriptionEnd: null,
+        });
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('verify-subscription');
       
       if (error) throw error;
@@ -92,10 +106,10 @@ export function useSubscription() {
   };
 
   useEffect(() => {
-    if (user?.email) {
+    if (user?.email || isAdmin) {
       checkSubscription();
     }
-  }, [user?.email]);
+  }, [user?.email, isAdmin]);
 
   return {
     ...state,

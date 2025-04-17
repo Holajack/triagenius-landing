@@ -5,12 +5,20 @@ import { Card } from "@/components/ui/card";
 import { Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useAdmin } from "@/hooks/use-admin";
 
 const Subscription = () => {
   const { startCheckout, tier, isLoading } = useSubscription();
+  const { isAdmin } = useAdmin();
   const navigate = useNavigate();
 
   const handleSubscribe = async () => {
+    // If user is admin, show a message that they already have premium access
+    if (isAdmin) {
+      toast.info("As an admin, you already have premium access");
+      return;
+    }
+
     try {
       const result = await startCheckout();
       if (result.url) {
