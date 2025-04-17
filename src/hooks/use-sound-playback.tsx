@@ -14,19 +14,10 @@ export interface SoundPlaybackOptions {
 export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
   const { autoPlay = true, volume: initialVolume = 0.5, enabled = true } = options;
   const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(() => {
-    // Try to load saved volume from localStorage
-    try {
-      const savedVolume = localStorage.getItem('soundVolume');
-      return savedVolume ? parseFloat(savedVolume) : initialVolume;
-    } catch (e) {
-      return initialVolume;
-    }
-  });
+  const [volume, setVolume] = useState(initialVolume);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [currentTrack, setCurrentTrack] = useState<{title: string, artist?: string} | null>(null);
-  const [loadRetries, setLoadRetries] = useState(0);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const tracksRef = useRef<Array<{file_path: string, title: string, description?: string}>>([]);
@@ -65,31 +56,8 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
     
     const handleError = (e: Event) => {
       console.error('Audio playback error:', e);
-      
-      // Implement retry logic for loading failures
-      if (loadRetries < 3) {
-        setLoadRetries(prev => prev + 1);
-        toast.error('Error playing audio track. Retrying...');
-        
-        setTimeout(() => {
-          if (audioRef.current && tracksRef.current.length > 0) {
-            const track = tracksRef.current[currentTrackIndex];
-            if (track) {
-              const url = getSoundFileUrl(track.file_path);
-              audioRef.current.src = url;
-              audioRef.current.load();
-              audioRef.current.play()
-                .catch(err => {
-                  console.error('Retry error:', err);
-                });
-            }
-          }
-        }, 1000);
-      } else {
-        toast.error('Error playing audio track. Trying next track.');
-        playNextTrack();
-        setLoadRetries(0);
-      }
+      toast.error('Error playing audio track. Trying next track.');
+      playNextTrack();
     };
     
     const audio = audioRef.current;
@@ -113,16 +81,10 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
     };
   }, []);
   
-  // Handle volume changes and save to localStorage
+  // Handle volume changes
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = volume;
-    }
-    
-    try {
-      localStorage.setItem('soundVolume', volume.toString());
-    } catch (e) {
-      console.error('Error saving volume to localStorage', e);
     }
   }, [volume]);
   
@@ -132,11 +94,9 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
       if (!enabled) return;
       
       const preference = state.soundPreference || 'lo-fi';
-      console.log(`Loading sound tracks for preference: ${preference}`);
       
       // Skip if preference is silence
       if (preference === 'silence') {
-        console.log('Sound preference is silence, not loading tracks');
         tracksRef.current = [];
         return;
       }
@@ -144,9 +104,7 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
       setIsLoading(true);
       
       try {
-        console.log(`Fetching sound files for preference: ${preference}`);
         const tracks = await fetchSoundFilesByPreference(preference);
-        console.log(`Loaded ${tracks.length} tracks for preference ${preference}:`, tracks);
         tracksRef.current = tracks;
         
         if (tracks.length > 0 && autoPlay && isMountedRef.current) {
@@ -159,7 +117,6 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
           });
           
           const url = getSoundFileUrl(track.file_path);
-          console.log(`Setting up first track: ${track.title} with URL: ${url}`);
           
           if (audioRef.current) {
             audioRef.current.src = url;
@@ -168,12 +125,10 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
               // Small delay for first play to avoid UI blocking
               setTimeout(() => {
                 if (audioRef.current && isMountedRef.current) {
-                  console.log('Attempting first play...');
                   audioRef.current.play()
                     .then(() => {
                       setIsPlaying(true);
                       isFirstPlayRef.current = false;
-                      console.log('First play successful');
                     })
                     .catch(err => {
                       console.error('Error playing first track:', err);
@@ -183,12 +138,8 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
                 }
               }, 1000);
             } else {
-              console.log('Attempting to play track...');
               audioRef.current.play()
-                .then(() => {
-                  setIsPlaying(true);
-                  console.log('Playback started successfully');
-                })
+                .then(() => setIsPlaying(true))
                 .catch(err => {
                   console.error('Error playing track:', err);
                   toast.error('Couldn\'t play audio automatically. Please interact with the page first.');
@@ -198,7 +149,6 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
         }
       } catch (error) {
         console.error('Error loading sound tracks:', error);
-        toast.error('Failed to load sound tracks. Please try again later.');
       } finally {
         setIsLoading(false);
       }
@@ -229,15 +179,9 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
     });
     
     if (audioRef.current) {
-      const url = getSoundFileUrl(track.file_path);
-      console.log(`Playing next track: ${track.title} with URL: ${url}`);
-      
-      audioRef.current.src = url;
+      audioRef.current.src = getSoundFileUrl(track.file_path);
       audioRef.current.play()
-        .then(() => {
-          setIsPlaying(true);
-          console.log('Next track playing successfully');
-        })
+        .then(() => setIsPlaying(true))
         .catch(err => {
           console.error('Error playing next track:', err);
           // Try the next track if this one fails
@@ -263,15 +207,9 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
     });
     
     if (audioRef.current) {
-      const url = getSoundFileUrl(track.file_path);
-      console.log(`Playing previous track: ${track.title} with URL: ${url}`);
-      
-      audioRef.current.src = url;
+      audioRef.current.src = getSoundFileUrl(track.file_path);
       audioRef.current.play()
-        .then(() => {
-          setIsPlaying(true);
-          console.log('Previous track playing successfully');
-        })
+        .then(() => setIsPlaying(true))
         .catch(err => {
           console.error('Error playing previous track:', err);
         });
@@ -283,21 +221,13 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
     if (!isMountedRef.current || !enabled || !audioRef.current) return;
     
     if (isPlaying) {
-      console.log('Pausing playback');
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      if (tracksRef.current.length === 0) {
-        console.log('No tracks available to play');
-        return;
-      }
+      if (tracksRef.current.length === 0) return;
       
-      console.log('Resuming playback');
       audioRef.current.play()
-        .then(() => {
-          setIsPlaying(true);
-          console.log('Playback resumed successfully');
-        })
+        .then(() => setIsPlaying(true))
         .catch(err => {
           console.error('Error playing track:', err);
           toast.error('Couldn\'t play audio. Please interact with the page first.');
@@ -308,7 +238,6 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
   // Stop playback and cleanup
   const stopPlayback = () => {
     if (audioRef.current) {
-      console.log('Stopping playback');
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
       setIsPlaying(false);

@@ -1,265 +1,477 @@
 
-import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef } from "react";
-import { Circle } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
-interface FocusTimerProps {
+type FocusTimerProps = {
   initialTime: number;
-  isPaused: boolean;
-  onComplete: () => void;
-  onMilestoneReached: (milestone: number) => void;
-  onProgressUpdate: (progress: number) => void;
+  onComplete?: () => void;
+  onMilestoneReached?: (milestone: number) => void;
+  onProgressUpdate?: (progress: number) => void;
+  isPaused?: boolean;
   lowPowerMode?: boolean;
   className?: string;
-}
+  timerId?: string;
+};
 
-interface FocusTimerRef {
-  stopTimer: () => void;
-  setRemainingTime: (time: number) => void;
-  getRemainingTime: () => number;
-}
-
-const FocusTimer = forwardRef<FocusTimerRef, FocusTimerProps>(
-  ({ 
-    initialTime, 
-    isPaused, 
-    onComplete, 
-    onMilestoneReached,
-    onProgressUpdate,
-    lowPowerMode = false,
-    className 
-  }, ref) => {
-    const [timeLeft, setTimeLeft] = useState(initialTime);
-    const [progress, setProgress] = useState(100);
-    const [milestone, setMilestone] = useState(0);
-    const [segment, setSegment] = useState(0);
-    const [segmentProgress, setSegmentProgress] = useState(0);
-    
-    const timerRef = useRef<number>();
-    const lastTickRef = useRef<number>(Date.now());
-    const pausedTimeRef = useRef<number | null>(null);
-    
-    // Calculate derived values
-    const radius = 120;
-    const circumference = 2 * Math.PI * radius;
-    const dashOffset = circumference - (progress / 100) * circumference;
-    
-    // Format time as MM:SS
-    const formatTime = (seconds: number) => {
-      const mins = Math.floor(seconds / 60);
-      const secs = Math.floor(seconds % 60);
-      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    };
-    
-    // Calculate milestone and segment
-    useEffect(() => {
-      const segmentSize = initialTime / 3;
-      const currentSegment = 3 - Math.floor(timeLeft / segmentSize);
-      const validSegment = Math.max(0, Math.min(3, currentSegment));
+const FocusTimer = forwardRef<
+  { stopTimer: () => void; setRemainingTime: (time: number) => void; getRemainingTime: () => number },
+  FocusTimerProps
+>(({ 
+  initialTime,
+  onComplete,
+  onMilestoneReached,
+  onProgressUpdate,
+  isPaused = false,
+  lowPowerMode = false,
+  className,
+  timerId = 'focus-session-timer'
+}, ref) => {
+  const [remainingTime, setRemainingTime] = useState(initialTime);
+  const [animationKey, setAnimationKey] = useState(0);
+  const intervalRef = useRef<number | null>(null);
+  const { theme } = useTheme();
+  const startTimeRef = useRef<number>(Date.now());
+  const lastTickTimeRef = useRef<number>(Date.now());
+  const lastMilestoneRef = useRef<number>(-1);
+  const hasCompletedRef = useRef<boolean>(false);
+  const notificationSentRef = useRef<boolean>(false);
+  const isMobile = useIsMobile();
+  const backgroundModeRef = useRef<boolean>(false);
+  const serviceWorkerAvailable = useRef<boolean>('serviceWorker' in navigator && navigator.serviceWorker.controller !== null);
+  const visibilityChangeTimeRef = useRef<number | null>(null);
+  
+  // Calculate milestones based on initialTime (typically 3 milestones)
+  const milestoneTimePoints = [
+    Math.floor(initialTime * 0.33),
+    Math.floor(initialTime * 0.66),
+    0 // Final milestone at completion
+  ];
+  
+  // Set up background timer message listener
+  useEffect(() => {
+    const handleBackgroundTimerMessage = (event: MessageEvent) => {
+      if (!event.data) return;
       
-      if (validSegment !== segment) {
-        setSegment(validSegment);
-      }
-      
-      if (validSegment > 0 && validSegment !== milestone) {
-        setMilestone(validSegment);
-        onMilestoneReached(validSegment);
-      }
-      
-      // Calculate progress within the current segment (0-100)
-      const remainingInSegment = timeLeft - (initialTime - validSegment * segmentSize);
-      const segmentProgressValue = 100 - (remainingInSegment / segmentSize) * 100;
-      const clampedSegmentProgress = Math.max(0, Math.min(100, segmentProgressValue));
-      
-      setSegmentProgress(clampedSegmentProgress);
-      onProgressUpdate(clampedSegmentProgress);
-    }, [timeLeft, initialTime, segment, milestone, onMilestoneReached, onProgressUpdate]);
-    
-    // Timer logic
-    useEffect(() => {
-      if (isPaused) {
-        if (timerRef.current) {
-          window.clearInterval(timerRef.current);
-          pausedTimeRef.current = Date.now();
-        }
-        return;
-      } else if (pausedTimeRef.current) {
-        // Adjust the lastTickRef when resuming
-        const pauseDuration = Date.now() - pausedTimeRef.current;
-        lastTickRef.current += pauseDuration;
-        pausedTimeRef.current = null;
-      }
-      
-      // Clear any existing timer
-      if (timerRef.current) {
-        window.clearInterval(timerRef.current);
-      }
-      
-      // Start a new timer
-      timerRef.current = window.setInterval(() => {
-        const now = Date.now();
-        const delta = (now - lastTickRef.current) / 1000;
-        lastTickRef.current = now;
+      // Handle completed timer message
+      if (event.data.type === 'BACKGROUND_TIMER_COMPLETE' && event.data.timerId === timerId) {
+        console.log('Background timer completed via service worker message');
+        setRemainingTime(0);
         
-        setTimeLeft((prevTimeLeft) => {
-          const newTimeLeft = Math.max(0, prevTimeLeft - delta);
-          setProgress((newTimeLeft / initialTime) * 100);
+        if (onComplete && !hasCompletedRef.current) {
+          hasCompletedRef.current = true;
+          notificationSentRef.current = true;
+          onComplete();
+        }
+      }
+      
+      // Handle timer update message
+      if (event.data.type === 'BACKGROUND_TIMER_UPDATE' && event.data.timerId === timerId) {
+        console.log('Background timer update:', event.data.remainingTime);
+        
+        if (backgroundModeRef.current) {
+          const newRemainingTime = event.data.remainingTime;
+          setRemainingTime(newRemainingTime);
           
-          if (newTimeLeft <= 0) {
-            if (timerRef.current) {
-              window.clearInterval(timerRef.current);
-            }
-            onComplete();
+          if (onProgressUpdate) {
+            const progress = 1 - (newRemainingTime / initialTime);
+            onProgressUpdate(progress);
           }
           
-          return newTimeLeft;
-        });
-      }, 100);
+          // Check if any milestones were reached while in background
+          const timePassed = initialTime - newRemainingTime;
+          milestoneTimePoints.forEach((milestoneTime, index) => {
+            if (timePassed >= initialTime - milestoneTime && index > lastMilestoneRef.current) {
+              if (onMilestoneReached) onMilestoneReached(index);
+              lastMilestoneRef.current = index;
+            }
+          });
+        }
+      }
+    };
+    
+    if (serviceWorkerAvailable.current) {
+      navigator.serviceWorker.addEventListener('message', handleBackgroundTimerMessage);
+    }
+    
+    return () => {
+      if (serviceWorkerAvailable.current) {
+        navigator.serviceWorker.removeEventListener('message', handleBackgroundTimerMessage);
+      }
+    };
+  }, [initialTime, onComplete, onMilestoneReached, onProgressUpdate, timerId]);
+  
+  // Handle visibility change events
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const now = Date.now();
       
-      return () => {
-        if (timerRef.current) {
-          window.clearInterval(timerRef.current);
-        }
-      };
-    }, [isPaused, initialTime, onComplete]);
-    
-    // Expose methods via ref
-    useImperativeHandle(ref, () => ({
-      stopTimer: () => {
-        if (timerRef.current) {
-          window.clearInterval(timerRef.current);
-        }
-      },
-      setRemainingTime: (time: number) => {
-        setTimeLeft(time);
-        setProgress((time / initialTime) * 100);
-      },
-      getRemainingTime: () => timeLeft
-    }));
-    
-    return (
-      <div className={cn("relative flex items-center justify-center", className)}>
-        <svg
-          className={cn(
-            "w-full h-full origin-center -rotate-90 transform",
-            lowPowerMode ? "animate-none" : ""
-          )}
-          viewBox="0 0 300 300"
-        >
-          {/* Background Circle */}
-          <circle
-            cx="150"
-            cy="150"
-            r={radius}
-            className="stroke-muted-foreground/20"
-            strokeWidth="12"
-            fill="none"
-          />
-          
-          {/* Progress Circle */}
-          <motion.circle
-            cx="150"
-            cy="150"
-            r={radius}
-            className="stroke-primary"
-            strokeWidth="14"
-            fill="none"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={dashOffset}
-            initial={{ strokeDashoffset: circumference }}
-            animate={{ strokeDashoffset: dashOffset }}
-            transition={{
-              type: "spring",
-              stiffness: lowPowerMode ? 100 : 40,
-              damping: lowPowerMode ? 20 : 8
-            }}
-          />
-          
-          {/* Milestone Markers */}
-          {[1, 2, 3].map((ms) => {
-            const angle = (ms / 3) * 360 - 90;
-            const x = 150 + radius * Math.cos((angle * Math.PI) / 180);
-            const y = 150 + radius * Math.sin((angle * Math.PI) / 180);
-            
-            return (
-              <motion.circle
-                key={ms}
-                cx={x}
-                cy={y}
-                r={ms <= milestone ? 8 : 6}
-                className={cn(
-                  ms <= milestone
-                    ? "fill-green-500 stroke-white"
-                    : "fill-muted stroke-muted-foreground/30",
-                  lowPowerMode ? "animate-none" : ""
-                )}
-                strokeWidth={ms <= milestone ? 3 : 2}
-                initial={{ scale: 0.8, opacity: 0.5 }}
-                animate={{
-                  scale: ms <= milestone ? 1.1 : 0.9,
-                  opacity: ms <= milestone ? 1 : 0.7,
-                }}
-                transition={{
-                  type: "spring",
-                  stiffness: lowPowerMode ? 100 : 400,
-                  damping: lowPowerMode ? 15 : 10,
-                }}
-              />
-            );
-          })}
-          
-          {/* Small Markers */}
-          {[...Array(12)].map((_, i) => {
-            // Skip positions where milestone circles are
-            if (i % 4 === 0) return null;
-            
-            const angle = (i / 12) * 360 - 90;
-            const x = 150 + radius * Math.cos((angle * Math.PI) / 180);
-            const y = 150 + radius * Math.sin((angle * Math.PI) / 180);
-            
-            const segmentIndex = Math.floor(i / 4);
-            const isCompleted = segmentIndex < milestone;
-            const isActive = segmentIndex === milestone - 1 || (milestone === 0 && segmentIndex === 0);
-            
-            return (
-              <motion.circle
-                key={i}
-                cx={x}
-                cy={y}
-                r={3}
-                className={cn(
-                  isCompleted
-                    ? "fill-green-500"
-                    : isActive
-                    ? "fill-primary"
-                    : "fill-muted-foreground/30"
-                )}
-                initial={{ scale: 0.8 }}
-                animate={{ scale: isActive ? 1.2 : 1 }}
-                transition={{ duration: 0.5, repeat: isActive ? Infinity : 0, repeatType: "reverse" }}
-              />
-            );
-          })}
-        </svg>
+      if (document.visibilityState === 'hidden') {
+        // App going to background or tab switching
+        visibilityChangeTimeRef.current = now;
+        enterBackgroundMode();
+      } else {
+        // App coming to foreground or tab becomes active
+        exitBackgroundMode(now);
         
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="timer-display text-4xl sm:text-5xl font-mono tabular-nums">
-            {formatTime(timeLeft)}
-          </div>
-          <div className="text-xs sm:text-sm text-muted-foreground mt-2">
-            {segment === 0 && "Starting Focus Session"}
-            {segment === 1 && "First Milestone Reached"}
-            {segment === 2 && "Second Milestone Reached"}
-            {segment === 3 && "Final Stretch!"}
-          </div>
-        </div>
-      </div>
-    );
-  }
-);
+        // Clear any existing notifications for this timer
+        if (serviceWorkerAvailable.current && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'CLEAR_TIMER_NOTIFICATIONS',
+            id: timerId
+          });
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isPaused, timerId]);
+  
+  // Start or resume a background timer
+  const startBackgroundTimer = () => {
+    if (!serviceWorkerAvailable.current || isPaused) return;
+    
+    backgroundModeRef.current = true;
+    
+    if (navigator.serviceWorker.controller) {
+      const messageChannel = new MessageChannel();
+      
+      messageChannel.port1.onmessage = (event) => {
+        console.log('Background timer started response:', event.data);
+      };
+      
+      navigator.serviceWorker.controller.postMessage({
+        type: 'START_BACKGROUND_TIMER',
+        id: timerId,
+        duration: initialTime,
+        startTime: startTimeRef.current,
+        currentRemaining: remainingTime,
+        options: {
+          notificationTitle: 'Focus Session Complete',
+          notificationBody: 'Your focus session has finished.',
+          notificationUrl: '/focus-session'
+        }
+      }, [messageChannel.port2]);
+    }
+  };
+  
+  // Stop a background timer
+  const stopBackgroundTimer = () => {
+    if (!serviceWorkerAvailable.current) return;
+    
+    backgroundModeRef.current = false;
+    
+    if (navigator.serviceWorker.controller) {
+      const messageChannel = new MessageChannel();
+      
+      messageChannel.port1.onmessage = (event) => {
+        console.log('Background timer stopped response:', event.data);
+      };
+      
+      navigator.serviceWorker.controller.postMessage({
+        type: 'STOP_BACKGROUND_TIMER',
+        id: timerId
+      }, [messageChannel.port2]);
+      
+      // Clear any existing notifications for this timer
+      navigator.serviceWorker.controller.postMessage({
+        type: 'CLEAR_TIMER_NOTIFICATIONS',
+        id: timerId
+      });
+    }
+  };
+  
+  // Pause a background timer
+  const pauseBackgroundTimer = () => {
+    if (!serviceWorkerAvailable.current) return;
+    
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'PAUSE_BACKGROUND_TIMER',
+        id: timerId
+      });
+    }
+  };
+  
+  // Resume a background timer
+  const resumeBackgroundTimer = () => {
+    if (!serviceWorkerAvailable.current) return;
+    
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'RESUME_BACKGROUND_TIMER',
+        id: timerId,
+        currentRemaining: remainingTime
+      });
+    }
+  };
+  
+  // When app goes to background
+  const enterBackgroundMode = () => {
+    if (intervalRef.current !== null) {
+      window.clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
+    // Save the current time so we know how long the tab was inactive
+    localStorage.setItem(`${timerId}_hidden_time`, Date.now().toString());
+    
+    // Save the current remaining time
+    localStorage.setItem(`${timerId}_remaining`, remainingTime.toString());
+    
+    if (!isPaused && remainingTime > 0) {
+      console.log('App entering background, starting background timer');
+      startBackgroundTimer();
+    } else if (isPaused) {
+      console.log('App entering background while timer is paused');
+    }
+  };
+  
+  // When app comes back to foreground
+  const exitBackgroundMode = (now: number) => {
+    const hiddenTimeStamp = localStorage.getItem(`${timerId}_hidden_time`);
+    const savedRemainingTime = localStorage.getItem(`${timerId}_remaining`);
+    
+    if (hiddenTimeStamp && savedRemainingTime && !isPaused) {
+      const hiddenTime = parseInt(hiddenTimeStamp, 10);
+      const elapsedSeconds = (now - hiddenTime) / 1000;
+      const previousRemaining = parseFloat(savedRemainingTime);
+      
+      // Calculate the new remaining time
+      let newRemainingTime = Math.max(0, previousRemaining - elapsedSeconds);
+      
+      // Update the timer
+      setRemainingTime(newRemainingTime);
+      
+      // Reset the start time reference based on the new remaining time
+      startTimeRef.current = now - (initialTime - newRemainingTime) * 1000;
+      
+      console.log(`Tab was hidden for ${elapsedSeconds}s, adjusted remaining time to ${newRemainingTime}s`);
+      
+      // Check if timer should have completed while away
+      if (newRemainingTime <= 0 && !hasCompletedRef.current) {
+        console.log('Timer completed while tab was hidden');
+        hasCompletedRef.current = true;
+        
+        if (onComplete && !notificationSentRef.current) {
+          notificationSentRef.current = true;
+          onComplete();
+        }
+      }
+      
+      // Check if any milestones were reached
+      const timePassed = initialTime - newRemainingTime;
+      milestoneTimePoints.forEach((milestoneTime, index) => {
+        if (timePassed >= initialTime - milestoneTime && index > lastMilestoneRef.current) {
+          console.log(`Milestone ${index} reached while tab was hidden`);
+          if (onMilestoneReached) onMilestoneReached(index);
+          lastMilestoneRef.current = index;
+        }
+      });
+      
+      if (onProgressUpdate) {
+        const progress = 1 - (newRemainingTime / initialTime);
+        onProgressUpdate(progress);
+      }
+    }
+    
+    if (backgroundModeRef.current) {
+      console.log('App coming to foreground, checking background timer status');
+      backgroundModeRef.current = false;
+      
+      if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'GET_BACKGROUND_TIMER',
+          id: timerId
+        });
+      }
+    }
+    
+    // Clean up the stored timestamp
+    localStorage.removeItem(`${timerId}_hidden_time`);
+    localStorage.removeItem(`${timerId}_remaining`);
+    
+    // If not paused, restart the normal interval timer
+    if (!isPaused && remainingTime > 0) {
+      // Start the interval timer
+      startIntervalTimer();
+    }
+  };
+  
+  // Start the interval timer for active tab
+  const startIntervalTimer = () => {
+    // Clear any existing interval
+    if (intervalRef.current !== null) {
+      window.clearInterval(intervalRef.current);
+    }
+    
+    lastTickTimeRef.current = Date.now();
+    
+    intervalRef.current = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') {
+        // Skip ticks while hidden - background timer will handle it
+        return;
+      }
+      
+      const now = Date.now();
+      const elapsed = (now - startTimeRef.current) / 1000;
+      let newRemainingTime = initialTime - elapsed;
+      
+      if (newRemainingTime <= 0) {
+        newRemainingTime = 0;
+        window.clearInterval(intervalRef.current);
+        intervalRef.current = null;
+        stopBackgroundTimer();
+        
+        // Only trigger onComplete once and ensure we're not sending duplicate notifications
+        if (!hasCompletedRef.current && onComplete && !notificationSentRef.current) {
+          hasCompletedRef.current = true;
+          notificationSentRef.current = true;
+          onComplete();
+        }
+      }
+      
+      setRemainingTime(newRemainingTime);
+      
+      const timePassed = initialTime - newRemainingTime;
+      milestoneTimePoints.forEach((milestoneTime, index) => {
+        if (timePassed >= initialTime - milestoneTime && index > lastMilestoneRef.current) {
+          if (onMilestoneReached) onMilestoneReached(index);
+          lastMilestoneRef.current = index;
+        }
+      });
+      
+      if (onProgressUpdate) {
+        const progress = 1 - (newRemainingTime / initialTime);
+        onProgressUpdate(progress);
+      }
+      
+      lastTickTimeRef.current = now;
+    }, lowPowerMode ? 1000 : 100);
+  };
+  
+  // Expose methods to parent components
+  useImperativeHandle(ref, () => ({
+    stopTimer: () => {
+      if (intervalRef.current !== null) {
+        window.clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      stopBackgroundTimer();
+    },
+    setRemainingTime: (time: number) => {
+      setRemainingTime(time);
+      startTimeRef.current = Date.now() - (initialTime - time) * 1000;
+      setAnimationKey(prev => prev + 1);
+    },
+    getRemainingTime: () => {
+      return remainingTime;
+    }
+  }));
+  
+  useEffect(() => {
+    if (!isPaused && remainingTime > 0) {
+      startTimeRef.current = Date.now() - (initialTime - remainingTime) * 1000;
+      
+      // Start the interval timer
+      startIntervalTimer();
+      
+      // When resuming, sync with background timer if needed
+      if (backgroundModeRef.current && serviceWorkerAvailable.current) {
+        resumeBackgroundTimer();
+        backgroundModeRef.current = false; // Reset since we're in foreground now
+      }
+    } else if (isPaused && intervalRef.current !== null) {
+      window.clearInterval(intervalRef.current);
+      intervalRef.current = null;
+      
+      // When pausing, also pause background timer if active
+      if (backgroundModeRef.current && serviceWorkerAvailable.current) {
+        pauseBackgroundTimer();
+      }
+    }
+    
+    return () => {
+      if (intervalRef.current !== null) {
+        window.clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [isPaused, lowPowerMode]);
+  
+  // Reset the completed state when the component is reused
+  useEffect(() => {
+    hasCompletedRef.current = false;
+    notificationSentRef.current = false;
+  }, [initialTime]);
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopBackgroundTimer();
+      if (intervalRef.current !== null) {
+        window.clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, []);
+  
+  const formatTime = (timeInSeconds: number): string => {
+    const minutes = Math.floor(timeInSeconds / 60);
+    const seconds = Math.floor(timeInSeconds % 60);
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
 
-FocusTimer.displayName = "FocusTimer";
+  // Calculate color based on remaining time
+  const getTimerColor = () => {
+    const progress = 1 - (remainingTime / initialTime);
+    
+    if (progress < 0.33) {
+      return theme === 'dark' ? 'border-green-500' : 'border-green-600'; // Starting color - green
+    } else if (progress < 0.66) {
+      return theme === 'dark' ? 'border-yellow-500' : 'border-yellow-600'; // Mid way - yellow
+    } else {
+      return theme === 'dark' ? 'border-red-500' : 'border-red-600'; // Almost complete - red
+    }
+  };
+
+  // Calculate font size based on device
+  const getTimerFontSize = () => {
+    if (isMobile) {
+      return 'text-4xl sm:text-5xl md:text-6xl';
+    }
+    return 'text-6xl';
+  };
+
+  return (
+    <div className={cn("relative w-full max-w-md mx-auto", className)}>
+      {/* Fixed circle that changes color based on remaining time */}
+      <div
+        className={cn(
+          "absolute inset-0 rounded-full border-6 sm:border-8 transition-colors duration-300",
+          getTimerColor(),
+          theme === 'dark' ? 'border-opacity-75' : 'border-opacity-90'
+        )}
+      />
+      
+      <div className="relative flex items-center justify-center w-full h-full aspect-square">
+        <span className={cn(
+          getTimerFontSize(),
+          "font-bold timer-display transition-all",
+          remainingTime < initialTime * 0.25 && !isPaused ? "text-red-600" : ""
+        )}>
+          {formatTime(remainingTime)}
+        </span>
+      </div>
+    </div>
+  );
+});
+
+FocusTimer.displayName = 'FocusTimer';
 
 export default FocusTimer;
