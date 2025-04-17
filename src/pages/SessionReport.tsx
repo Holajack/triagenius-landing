@@ -1,3 +1,4 @@
+
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -5,7 +6,6 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Clock, Target, Trophy, Calendar, Mountain, Edit3, BookText, CheckCheck, RotateCcw, Music, Volume2, VolumeX, Play, Pause } from 'lucide-react';
 import { useOnboarding } from '@/contexts/OnboardingContext';
-import { Confetti } from '@/components/ui/confetti';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +13,8 @@ import { useUser } from '@/hooks/use-user';
 import { useSoundPlayback } from '@/hooks/use-sound-playback';
 import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import PageHeader from '@/components/common/PageHeader';
 
 interface SessionData {
   milestone: number;
@@ -44,6 +46,10 @@ const SessionReport = () => {
   const [sessionData, setSessionData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSoundControls, setShowSoundControls] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [sessionNotes, setSessionNotes] = useState('');
+  const [reflectionData, setReflectionData] = useState<ReflectionData | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
   
   // Initialize sound playback
   const { 
@@ -65,8 +71,8 @@ const SessionReport = () => {
       setLoadError(null);
       
       try {
-        if (params.id) {
-          const reportKey = `sessionReport_${params.id}`;
+        if (sessionId) {
+          const reportKey = `sessionReport_${sessionId}`;
           const localReportData = localStorage.getItem(reportKey);
           
           if (localReportData) {
@@ -74,19 +80,18 @@ const SessionReport = () => {
               const data = JSON.parse(localReportData);
               setSessionData(data);
               setSessionNotes(data.notes || '');
-              setSessionId(params.id);
             } catch (e) {
               console.error('Error parsing local session report data', e);
               setLoadError('Could not load session data. It may be corrupted.');
             }
           } else if (user?.id) {
-            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.id);
+            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId);
             
             if (isUuid) {
               const { data: dbSession, error } = await supabase
                 .from('focus_sessions')
                 .select('*')
-                .eq('id', params.id)
+                .eq('id', sessionId)
                 .single();
                 
               if (error) {
@@ -94,7 +99,7 @@ const SessionReport = () => {
               } else if (dbSession) {
                 let sessionNotes = '';
                 try {
-                  const notesKey = `sessionNotes_${params.id}`;
+                  const notesKey = `sessionNotes_${sessionId}`;
                   const storedNotes = localStorage.getItem(notesKey);
                   if (storedNotes) {
                     sessionNotes = storedNotes;
@@ -112,13 +117,12 @@ const SessionReport = () => {
                   completed: dbSession.completed
                 });
                 setSessionNotes(sessionNotes);
-                setSessionId(params.id);
               } else {
                 throw new Error("Session not found");
               }
             } else {
               const matchingKey = Object.keys(localStorage).find(key => 
-                key.startsWith('sessionReport_') && key.includes(params.id)
+                key.startsWith('sessionReport_') && key.includes(sessionId)
               );
               
               if (matchingKey) {
@@ -126,7 +130,6 @@ const SessionReport = () => {
                   const matchingData = JSON.parse(localStorage.getItem(matchingKey) || '');
                   setSessionData(matchingData);
                   setSessionNotes(matchingData.notes || '');
-                  setSessionId(params.id);
                 } catch (err) {
                   throw new Error("Invalid session data format");
                 }
@@ -137,8 +140,8 @@ const SessionReport = () => {
           } else {
             const fuzzyMatchKey = Object.keys(localStorage).find(key => 
               key.startsWith('sessionReport_') && (
-                key.includes(params.id.substring(0, 8)) || 
-                params.id.includes(key.split('_')[1]?.substring(0, 8) || '')
+                key.includes(sessionId.substring(0, 8)) || 
+                sessionId.includes(key.split('_')[1]?.substring(0, 8) || '')
               )
             );
             
@@ -147,7 +150,6 @@ const SessionReport = () => {
                 const fuzzyData = JSON.parse(localStorage.getItem(fuzzyMatchKey) || '');
                 setSessionData(fuzzyData);
                 setSessionNotes(fuzzyData.notes || '');
-                setSessionId(params.id);
               } catch (e) {
                 toast.error("Session report not found");
                 setTimeout(() => navigate('/dashboard', { replace: true }), 1000);
@@ -170,7 +172,6 @@ const SessionReport = () => {
               } else {
                 id = `session-${Date.now()}`;
               }
-              setSessionId(id);
             } catch (e) {
               console.error('Error parsing session data', e);
               setLoadError('Could not load session data');
@@ -198,7 +199,7 @@ const SessionReport = () => {
     };
     
     loadSessionData();
-  }, [params.id, navigate, user]);
+  }, [sessionId, navigate, user]);
 
   const getFocusScore = () => {
     if (!sessionData) return null;
@@ -227,9 +228,9 @@ const SessionReport = () => {
   
   const handleSaveNotes = async () => {
     if (sessionData) {
-      if (params.id) {
-        const reportKey = `sessionReport_${params.id}`;
-        const notesKey = `sessionNotes_${params.id}`;
+      if (sessionId) {
+        const reportKey = `sessionReport_${sessionId}`;
+        const notesKey = `sessionNotes_${sessionId}`;
         
         localStorage.setItem(notesKey, sessionNotes);
         
@@ -290,7 +291,7 @@ const SessionReport = () => {
   };
 
   const handleBackToDashboard = () => {
-    if (params.id) {
+    if (sessionId) {
       navigate('/reports', { replace: true });
     } else {
       navigate('/dashboard', { replace: true });
@@ -319,7 +320,7 @@ const SessionReport = () => {
         `theme-${state.environment || 'default'} ${theme}`
       )}>
         <div className="w-full max-w-3xl">
-          <PageHeader title="Error Loading Report" />
+          <PageHeader title="Error Loading Report" subtitle="" />
           <Card className="p-6 text-center">
             <div className="text-red-500 mb-4">{loadError}</div>
             <Button onClick={() => navigate('/dashboard')}>Return to Dashboard</Button>
@@ -344,9 +345,9 @@ const SessionReport = () => {
               variant="outline"
               size="icon"
               className="mr-2 h-9 w-9"
-              asChild
+              onClick={() => navigate('/dashboard')}
             >
-              <ArrowLeft className="h-4 w-4" onClick={() => navigate('/dashboard')} />
+              <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="text-xl sm:text-2xl font-semibold">Session Review</h1>
           </div>
@@ -455,7 +456,7 @@ const SessionReport = () => {
                   <Edit3 className="h-4 w-4 mr-2" />
                   <h4 className="font-medium">Session Notes</h4>
                 </div>
-                {params.id && !isEditing && (
+                {sessionId && !isEditing && (
                   <Button 
                     variant="ghost" 
                     size="sm"
@@ -465,7 +466,7 @@ const SessionReport = () => {
                   </Button>
                 )}
               </div>
-              {isEditing || !params.id ? (
+              {isEditing || !sessionId ? (
                 <Textarea 
                   placeholder="Record your thoughts about this focus session..."
                   className="min-h-[100px]"
@@ -571,13 +572,13 @@ const SessionReport = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-3 justify-center mt-4">
-            {isEditing || !params.id ? (
+            {isEditing || !sessionId ? (
               <Button 
                 onClick={handleSaveNotes}
                 className="w-full sm:w-auto"
                 variant="default"
               >
-                {params.id ? "Save Changes" : "Save Notes & Finish"}
+                {sessionId ? "Save Changes" : "Save Notes & Finish"}
               </Button>
             ) : null}
             

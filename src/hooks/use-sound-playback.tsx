@@ -20,7 +20,7 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
   const [currentTrack, setCurrentTrack] = useState<{title: string, artist?: string} | null>(null);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const tracksRef = useRef<Array<{file_path: string, title: string}>>([]);
+  const tracksRef = useRef<Array<{file_path: string, title: string, description?: string}>>([]);
   const bufferTimerRef = useRef<number | null>(null);
   const isFirstPlayRef = useRef(true);
   const isMountedRef = useRef(true);
