@@ -24,6 +24,7 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
   const bufferTimerRef = useRef<number | null>(null);
   const isFirstPlayRef = useRef(true);
   const isMountedRef = useRef(true);
+  const isStoppingRef = useRef(false);
   
   const { state } = useOnboarding();
   const { 
@@ -39,6 +40,7 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
     console.log('Initializing audio element');
     audioRef.current = new Audio();
     audioRef.current.volume = volume;
+    audioRef.current.loop = true; // Loop single tracks for better continuous playback
     
     const handleEnded = () => {
       if (!isMountedRef.current) return;
@@ -124,7 +126,6 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
           
           if (audioRef.current) {
             audioRef.current.src = url;
-            audioRef.current.loop = false; // Don't loop single tracks, we'll handle transitioning to the next one
             
             if (isFirstPlayRef.current) {
               // Small delay for first play to avoid UI blocking
@@ -144,7 +145,7 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
                     });
                 }
               }, 1000);
-            } else {
+            } else if (autoPlay) {
               console.log('Attempting to play audio');
               audioRef.current.play()
                 .then(() => {
@@ -166,14 +167,6 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
     };
     
     loadTracks();
-    
-    return () => {
-      // Stop any playing audio when preference changes
-      if (audioRef.current) {
-        audioRef.current.pause();
-        setIsPlaying(false);
-      }
-    };
   }, [state.soundPreference, enabled, autoPlay, fetchSoundFilesByPreference, getSoundFileUrl]);
   
   // Play the next track in the playlist
@@ -284,8 +277,16 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
   
   // Stop playback and cleanup
   const stopPlayback = () => {
+    // Prevent multiple stop calls
+    if (isStoppingRef.current) {
+      console.log('Already stopping playback, ignoring duplicate call');
+      return;
+    }
+    
+    isStoppingRef.current = true;
+    console.log('Stopping playback');
+    
     if (audioRef.current) {
-      console.log('Stopping playback');
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
       setIsPlaying(false);
@@ -295,6 +296,11 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
       window.clearTimeout(bufferTimerRef.current);
       bufferTimerRef.current = null;
     }
+    
+    // Reset stopping flag after a short delay
+    setTimeout(() => {
+      isStoppingRef.current = false;
+    }, 100);
   };
 
   return {

@@ -30,6 +30,11 @@ const FocusSessionHeader = ({
   const [showMenu, setShowMenu] = useState(false);
   const isMobile = useIsMobile();
   
+  const handleTogglePlay = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent event bubbling
+    onTogglePlay();
+  };
+  
   return (
     <div className="flex justify-between items-center mb-4">
       <div className="flex items-center">
@@ -55,7 +60,7 @@ const FocusSessionHeader = ({
             <Button
               variant="ghost"
               size="icon"
-              onClick={onTogglePlay}
+              onClick={handleTogglePlay}
               aria-label={isPlaying ? "Pause music" : "Play music"}
               className="relative"
             >

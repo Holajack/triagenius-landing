@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, MutableRefObject } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -29,7 +28,6 @@ const FocusSession = () => {
   const [priorityMode, setPriorityMode] = useState<string | null>(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   
-  // Initialize sound playback with user preferences
   const { 
     isPlaying,
     currentTrack,
@@ -190,8 +188,10 @@ const FocusSession = () => {
       isMountedRef.current = false;
       document.body.style.overflow = 'auto';
       
-      // Ensure sound stops when component unmounts
-      stopPlayback();
+      if (isPlaying) {
+        console.log("Component unmounting, stopping playback");
+        stopPlayback();
+      }
       
       if (operationTimeoutRef.current) {
         window.clearTimeout(operationTimeoutRef.current);
@@ -205,7 +205,7 @@ const FocusSession = () => {
         }
       }
     };
-  }, [stopPlayback]);
+  }, [stopPlayback, isPlaying]);
   
   const {
     isPaused,
@@ -314,6 +314,11 @@ const FocusSession = () => {
     }, 10);
   };
 
+  const handleSoundToggle = () => {
+    console.log("Manual toggle play button clicked");
+    togglePlay();
+  };
+
   const currentTask = getCurrentTask();
 
   const typedTimerRef = timerRef as MutableRefObject<{
@@ -322,7 +327,6 @@ const FocusSession = () => {
     getRemainingTime: () => number;
   } | null>;
 
-  // Add a debug log to check the audio element status
   useEffect(() => {
     console.log('Audio element reference:', audioRef.current);
     console.log('Is playing state:', isPlaying);
@@ -343,7 +347,7 @@ const FocusSession = () => {
           currentTask={currentTask}
           currentTrack={currentTrack}
           isPlaying={isPlaying}
-          onTogglePlay={togglePlay}
+          onTogglePlay={handleSoundToggle}
         />
         
         <FocusSessionContent 
