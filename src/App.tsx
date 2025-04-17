@@ -5,6 +5,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { UserProvider } from './hooks/use-user'; 
 import { OnboardingProvider } from './contexts/OnboardingContext';
+import { TaskProvider } from './contexts/TaskContext';
 import Dashboard from './pages/Dashboard';
 import FocusSession from './pages/FocusSession';
 import Bonuses from './pages/Bonuses';
@@ -23,19 +24,21 @@ function App() {
           <OnboardingProvider>
             {/* UserProvider placed after OnboardingProvider as it might depend on onboarding state */}
             <UserProvider>
-              <Routes>
-                <Route path="/" element={<Auth />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route element={<ProtectedRoute />}>
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/focus-session" element={<FocusSession />} />
-                  <Route path="/bonuses" element={<Bonuses />} />
-                  <Route path="/reports" element={<Reports />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="/subscription" element={<Subscription />} />
-                </Route>
-              </Routes>
+              <TaskProvider>
+                <Routes>
+                  <Route path="/" element={<Auth />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route element={<ProtectedRoute />}>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/focus-session" element={<FocusSession />} />
+                    <Route path="/bonuses" element={<Bonuses />} />
+                    <Route path="/reports" element={<Reports />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/subscription" element={<Subscription />} />
+                  </Route>
+                </Routes>
+              </TaskProvider>
             </UserProvider>
           </OnboardingProvider>
         </ThemeProvider>
