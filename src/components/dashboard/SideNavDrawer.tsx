@@ -1,4 +1,4 @@
-import { LogOut, Menu, Book, Brain, BadgePercent, LayoutDashboard, Users, Bot, BarChart3, UserCircle2, Trophy, Settings } from "lucide-react";
+import { LogOut, Menu, Book, Brain, BadgePercent, LayoutDashboard, Users, Bot, BarChart3, UserCircle2, Trophy, Settings, CreditCard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
@@ -26,7 +26,6 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
   const { signOut } = useAuthState();
   const [logoutLoading, setLogoutLoading] = useState(false);
 
-  // Get accent color based on environment - more vibrant
   const getAccentColor = () => {
     switch (state.environment) {
       case 'office': return "text-blue-600 hover:bg-blue-50";
@@ -38,7 +37,6 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
     }
   };
 
-  // Get background style for the drawer based on environment
   const getDrawerStyle = () => {
     switch (state.environment) {
       case 'office': return "bg-gradient-to-br from-blue-50/30 to-transparent border-l-2 border-blue-100";
@@ -104,9 +102,13 @@ const SideNavDrawer: React.FC<SideNavDrawerProps> = ({ children }) => {
       icon: <Settings className="h-5 w-5" />,
       onClick: () => navigate("/settings"),
     },
+    {
+      label: "Subscription",
+      icon: <CreditCard className="h-5 w-5" />,
+      onClick: () => navigate("/subscription"),
+    },
   ];
 
-  // Get environment-specific class for the header title
   const getHeaderTitleClass = () => {
     switch (state.environment) {
       case 'office': return "text-blue-700";

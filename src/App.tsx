@@ -90,6 +90,7 @@ function App() {
                         <Route path="/nora" element={<Nora />} />
                         <Route path="/learning-quiz" element={<LearningQuiz />} />
                         <Route path="/learning-toolkit" element={<LearningToolkit />} />
+                        <Route path="/subscription" element={<Subscription />} />
                       </Route>
                       <Route path="*" element={<NotFound />} />
                     </Routes>
