@@ -1,4 +1,3 @@
-
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -51,7 +50,6 @@ const SessionReport = () => {
   const [reflectionData, setReflectionData] = useState<ReflectionData | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   
-  // Initialize sound playback
   const { 
     isPlaying,
     currentTrack, 
@@ -200,7 +198,13 @@ const SessionReport = () => {
     
     loadSessionData();
   }, [sessionId, navigate, user]);
-
+  
+  useEffect(() => {
+    return () => {
+      stopPlayback();
+    };
+  }, [stopPlayback]);
+  
   const getFocusScore = () => {
     if (!sessionData) return null;
     

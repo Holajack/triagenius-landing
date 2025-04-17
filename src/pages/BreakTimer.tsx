@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -38,7 +37,7 @@ const BreakTimer = () => {
   
   const timerRef = useRef<number>();
   
-  // Initialize sound playback
+  // Initialize sound playback with user preferences
   const { 
     isPlaying,
     currentTrack, 

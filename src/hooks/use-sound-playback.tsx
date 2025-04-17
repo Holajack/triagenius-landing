@@ -120,6 +120,7 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
           
           if (audioRef.current) {
             audioRef.current.src = url;
+            audioRef.current.loop = false; // Don't loop single tracks, we'll handle transitioning to the next one
             
             if (isFirstPlayRef.current) {
               // Small delay for first play to avoid UI blocking

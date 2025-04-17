@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, MutableRefObject } from "react";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -28,6 +29,7 @@ const FocusSession = () => {
   const [priorityMode, setPriorityMode] = useState<string | null>(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   
+  // Initialize sound playback with user preferences
   const { 
     isPlaying,
     currentTrack,
@@ -187,6 +189,7 @@ const FocusSession = () => {
       isMountedRef.current = false;
       document.body.style.overflow = 'auto';
       
+      // Ensure sound stops when component unmounts
       stopPlayback();
       
       if (operationTimeoutRef.current) {
@@ -311,7 +314,6 @@ const FocusSession = () => {
   };
 
   const currentTask = getCurrentTask();
-  console.log("Current task (final):", currentTask, "Priority mode:", priorityMode);
 
   const typedTimerRef = timerRef as MutableRefObject<{
     stopTimer: () => void;

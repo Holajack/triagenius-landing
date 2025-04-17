@@ -1,15 +1,17 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, BookText, CheckCheck, RotateCcw, MessageCircle } from "lucide-react";
+import { ArrowLeft, BookText, CheckCheck, RotateCcw, MessageCircle, Music, Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
 import PageHeader from "@/components/common/PageHeader";
 import { toast } from "sonner";
+import { useSoundPlayback } from "@/hooks/use-sound-playback";
+import { Slider } from "@/components/ui/slider";
 
 const SessionReflection = () => {
   const { state } = useOnboarding();
@@ -19,6 +21,28 @@ const SessionReflection = () => {
   const [accomplished, setAccomplished] = useState("");
   const [learned, setLearned] = useState("");
   const [revisit, setRevisit] = useState("");
+  const [showSoundControls, setShowSoundControls] = useState(false);
+  
+  // Initialize sound playback with user preferences
+  const { 
+    isPlaying,
+    currentTrack, 
+    volume,
+    setVolume,
+    togglePlay,
+    stopPlayback
+  } = useSoundPlayback({
+    autoPlay: true,
+    volume: 0.3,
+    enabled: state.soundPreference !== 'silence'
+  });
+  
+  // Clean up sound when unmounting
+  useEffect(() => {
+    return () => {
+      stopPlayback();
+    };
+  }, [stopPlayback]);
   
   const handleSubmit = () => {
     // Save reflection data to localStorage for potential future use
@@ -42,7 +66,65 @@ const SessionReflection = () => {
       `theme-${state.environment || 'default'} ${theme}`
     )}>
       <div className="w-full max-w-3xl space-y-6">
-        <PageHeader title="Session Reflection" subtitle="Take a moment to reflect on your focus session" />
+        <div className="flex justify-between items-center">
+          <PageHeader title="Session Reflection" subtitle="Take a moment to reflect on your focus session" />
+          
+          {state.soundPreference !== 'silence' && (
+            <div className="flex items-center">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setShowSoundControls(!showSoundControls)}
+              >
+                <Music className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+        
+        {showSoundControls && (
+          <Card className="mb-4">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={togglePlay}
+                  >
+                    {isPlaying ? 
+                      <Pause className="h-4 w-4" /> : 
+                      <Play className="h-4 w-4" />
+                    }
+                  </Button>
+                  
+                  <div className="ml-2">
+                    <p className="text-sm font-medium line-clamp-1">
+                      {currentTrack?.title || 'No track playing'}
+                    </p>
+                    {currentTrack?.artist && (
+                      <p className="text-xs text-muted-foreground">
+                        {currentTrack.artist}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  {volume > 0 ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                  <Slider
+                    className="w-24"
+                    value={[volume * 100]}
+                    min={0}
+                    max={100}
+                    step={1}
+                    onValueChange={(value) => setVolume(value[0] / 100)}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         
         <Button 
           variant="ghost" 
