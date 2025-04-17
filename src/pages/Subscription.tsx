@@ -12,8 +12,13 @@ const Subscription = () => {
 
   const handleSubscribe = async () => {
     try {
-      const { url } = await startCheckout();
-      if (url) window.location.href = url;
+      const result = await startCheckout();
+      // Check if result exists and has a url property before trying to use it
+      if (result && result.url) {
+        window.location.href = result.url;
+      } else {
+        toast.error('Checkout session URL not returned');
+      }
     } catch (error) {
       console.error('Error starting checkout:', error);
       toast.error('Failed to start checkout process');

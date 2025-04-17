@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
@@ -35,6 +34,7 @@ import PWADetector from "./components/pwa/PWADetector";
 import InstallPrompt from "./components/pwa/InstallPrompt";
 import FirstVisitPrompt from "./components/pwa/FirstVisitPrompt";
 import { register } from "./components/ServiceWorker";
+import Subscription from "./pages/Subscription";
 
 // Initialize default theme if it doesn't exist yet
 if (!localStorage.getItem('theme')) {
