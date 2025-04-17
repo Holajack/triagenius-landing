@@ -1,112 +1,79 @@
 
-import { useTheme } from "@/contexts/ThemeContext";
+import { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Moon, Sun, Laptop, PowerOff, ArrowLeft, Music, Play, Pause } from "lucide-react";
-import { Link } from "react-router-dom";
-import { Task } from "@/types/tasks";
 import { cn } from "@/lib/utils";
+import { Battery, BatteryLow, Menu, Music, Play, Pause } from "lucide-react";
+import { Task } from "@/types/tasks";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface FocusSessionHeaderProps {
   lowPowerMode: boolean;
   toggleLowPowerMode: () => void;
   operationInProgress: boolean;
   currentTask?: Task | null;
-  currentTrack?: {title: string; artist?: string} | null;
-  isPlaying?: boolean;
-  onTogglePlay?: () => void;
+  currentTrack: {title: string, artist?: string} | null;
+  isPlaying: boolean;
+  onTogglePlay: () => void;
 }
 
-const FocusSessionHeader = ({ 
-  lowPowerMode, 
-  toggleLowPowerMode, 
+const FocusSessionHeader = ({
+  lowPowerMode,
+  toggleLowPowerMode,
   operationInProgress,
   currentTask,
   currentTrack,
   isPlaying,
   onTogglePlay
 }: FocusSessionHeaderProps) => {
-  const { theme, setTheme } = useTheme();
+  const [showMenu, setShowMenu] = useState(false);
+  const isMobile = useIsMobile();
   
-  const getThemeIcon = () => {
-    switch (theme) {
-      case 'light': return <Sun className="h-[1.1rem] w-[1.1rem]" />;
-      case 'dark': return <Moon className="h-[1.1rem] w-[1.1rem]" />;
-      default: return <Laptop className="h-[1.1rem] w-[1.1rem]" />;
-    }
-  };
-  
-  const cycleTheme = () => {
-    switch (theme) {
-      case 'light':
-        setTheme('dark');
-        break;
-      case 'dark':
-        setTheme('system');
-        break;
-      default:
-        setTheme('light');
-        break;
-    }
-  };
-
   return (
-    <div className="flex justify-between items-center w-full mb-4 sm:mb-6">
+    <div className="flex justify-between items-center mb-4">
       <div className="flex items-center">
-        <Link to="/dashboard" className="mr-2">
-          <Button variant="outline" size="icon" className="h-8 w-8 rounded-full">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <h1 className="text-lg font-bold mr-2">Focus Session</h1>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleLowPowerMode}
+          disabled={operationInProgress}
+          className="mr-1 sm:mr-2"
+          aria-label={lowPowerMode ? "Switch to enhanced mode" : "Switch to low power mode"}
+        >
+          {lowPowerMode ? (
+            <BatteryLow className="h-5 w-5" />
+          ) : (
+            <Battery className="h-5 w-5" />
+          )}
+        </Button>
       </div>
       
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center gap-1 sm:gap-2">
         {currentTrack && (
-          <div className={cn(
-            "hidden sm:flex items-center bg-background/70 backdrop-blur-sm px-3 py-1 rounded-full text-xs mr-2 transition-opacity",
-            isPlaying ? "opacity-100" : "opacity-70"
-          )}>
-            <Music className="h-3 w-3 mr-2 flex-shrink-0" />
-            <span className="truncate max-w-[150px]">
-              {currentTrack.title}
-            </span>
-            {onTogglePlay && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-6 w-6 ml-1"
-                onClick={onTogglePlay}
-              >
-                {isPlaying ? 
-                  <Pause className="h-3 w-3" /> : 
-                  <Play className="h-3 w-3" />
-                }
-              </Button>
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onTogglePlay}
+              aria-label={isPlaying ? "Pause music" : "Play music"}
+              className="relative"
+            >
+              {isPlaying ? (
+                <Pause className="h-5 w-5" />
+              ) : (
+                <Play className="h-5 w-5" />
+              )}
+              <Music className="h-3 w-3 absolute bottom-1 right-1" />
+            </Button>
+            
+            {!isMobile && (
+              <span className="text-xs truncate max-w-[100px]">
+                {currentTrack.title}
+              </span>
             )}
           </div>
         )}
-        
-        <Button 
-          variant="outline"
-          size="icon"
-          className="h-8 w-8 rounded-full"
-          disabled={operationInProgress}
-          onClick={toggleLowPowerMode}
-        >
-          <PowerOff className={cn(
-            "h-4 w-4",
-            lowPowerMode ? "text-green-500" : "text-gray-400"
-          )} />
-        </Button>
-        
-        <Button 
-          variant="outline" 
-          size="icon" 
-          className="h-8 w-8 rounded-full"
-          onClick={cycleTheme}
-        >
-          {getThemeIcon()}
-        </Button>
       </div>
     </div>
   );

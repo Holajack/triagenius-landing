@@ -34,7 +34,8 @@ const FocusSession = () => {
     isPlaying,
     currentTrack,
     togglePlay,
-    stopPlayback
+    stopPlayback,
+    audioRef
   } = useSoundPlayback({
     autoPlay: true,
     volume: 0.3,
@@ -321,6 +322,14 @@ const FocusSession = () => {
     getRemainingTime: () => number;
   } | null>;
 
+  // Add a debug log to check the audio element status
+  useEffect(() => {
+    console.log('Audio element reference:', audioRef.current);
+    console.log('Is playing state:', isPlaying);
+    console.log('Current track:', currentTrack);
+    console.log('Sound preference:', state.soundPreference);
+  }, [audioRef, isPlaying, currentTrack, state.soundPreference]);
+
   return (
     <div className={cn(
       "min-h-screen bg-background text-foreground flex flex-col items-center p-4 overflow-hidden",
@@ -329,7 +338,7 @@ const FocusSession = () => {
       <div className="w-full max-w-4xl">
         <FocusSessionHeader 
           lowPowerMode={lowPowerMode}
-          toggleLowPowerMode={toggleLowPowerMode}
+          toggleLowPowerMode={handleLowPowerModeToggle}
           operationInProgress={operationInProgressRef.current}
           currentTask={currentTask}
           currentTrack={currentTrack}
