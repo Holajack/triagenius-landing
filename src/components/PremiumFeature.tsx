@@ -32,10 +32,10 @@ export const PremiumFeature = ({ children, fallback }: PremiumFeatureProps) => {
       </div>
       <h3 className="text-lg font-semibold">Premium Feature</h3>
       <p className="text-sm text-gray-600">
-        Upgrade to Premium to unlock this feature and many more!
+        Upgrade to Premium for just $9.99/month and get a 14-day free trial!
       </p>
       <Button onClick={startCheckout} variant="default">
-        Upgrade to Premium
+        Start Free Trial
       </Button>
     </Card>
   );

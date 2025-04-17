@@ -11,13 +11,15 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
 });
 
+const PREMIUM_PRICE_ID = 'prod_S9BjhnTlFy4z1K';
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { email, priceId } = await req.json();
+    const { email } = await req.json();
     
     // Check if customer exists
     const customers = await stripe.customers.list({ email, limit: 1 });
@@ -35,7 +37,14 @@ serve(async (req) => {
       payment_method_types: ['card'],
       line_items: [
         {
-          price: priceId,
+          price_data: {
+            currency: 'usd',
+            product: PREMIUM_PRICE_ID,
+            recurring: {
+              interval: 'month'
+            },
+            unit_amount: 999, // $9.99 per month
+          },
           quantity: 1,
         },
       ],
@@ -44,7 +53,7 @@ serve(async (req) => {
         trial_period_days: 14,
       },
       success_url: `${req.headers.get('origin')}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.get('origin')}/pricing`,
+      cancel_url: `${req.headers.get('origin')}/dashboard`,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
