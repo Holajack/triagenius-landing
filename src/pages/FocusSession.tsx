@@ -32,13 +32,11 @@ const FocusSession = () => {
     isPlaying,
     currentTrack,
     togglePlay,
-    stopPlayback,
-    startPlayback
+    stopPlayback
   } = useSoundPlayback({
-    autoPlay: false,
+    autoPlay: true,
     volume: 0.3,
-    enabled: state.soundPreference !== 'silence',
-    startWithTimer: true
+    enabled: state.soundPreference !== 'silence'
   });
   
   useEffect(() => {
@@ -312,11 +310,6 @@ const FocusSession = () => {
     }, 10);
   };
 
-  const handleTimerStart = () => {
-    console.log("Timer started, initiating sound playback");
-    startPlayback();
-  };
-
   const currentTask = getCurrentTask();
   console.log("Current task (final):", currentTask, "Priority mode:", priorityMode);
 
@@ -349,7 +342,6 @@ const FocusSession = () => {
           onComplete={handleTimerComplete}
           onMilestoneReached={handleMilestoneCompletionWithTask}
           onProgressUpdate={handleProgressUpdate}
-          onTimerStart={handleTimerStart}
           isPaused={isPaused}
           onEndSessionClick={handleEndSessionClick}
           lowPowerMode={lowPowerMode}

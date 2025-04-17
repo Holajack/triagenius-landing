@@ -9,17 +9,15 @@ export interface SoundPlaybackOptions {
   autoPlay?: boolean;
   volume?: number;
   enabled?: boolean;
-  startWithTimer?: boolean;
 }
 
 export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
-  const { autoPlay = true, volume: initialVolume = 0.5, enabled = true, startWithTimer = false } = options;
+  const { autoPlay = true, volume: initialVolume = 0.5, enabled = true } = options;
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(initialVolume);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [currentTrack, setCurrentTrack] = useState<{title: string, artist?: string} | null>(null);
-  const [timerStarted, setTimerStarted] = useState(!startWithTimer);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const tracksRef = useRef<Array<{file_path: string, title: string, description?: string}>>([]);
@@ -109,7 +107,7 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
         const tracks = await fetchSoundFilesByPreference(preference);
         tracksRef.current = tracks;
         
-        if (tracks.length > 0 && autoPlay && isMountedRef.current && (!startWithTimer || timerStarted)) {
+        if (tracks.length > 0 && autoPlay && isMountedRef.current) {
           setCurrentTrackIndex(0);
           
           const track = tracks[0];
@@ -126,7 +124,7 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
             if (isFirstPlayRef.current) {
               // Small delay for first play to avoid UI blocking
               setTimeout(() => {
-                if (audioRef.current && isMountedRef.current && (!startWithTimer || timerStarted)) {
+                if (audioRef.current && isMountedRef.current) {
                   audioRef.current.play()
                     .then(() => {
                       setIsPlaying(true);
@@ -139,7 +137,7 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
                     });
                 }
               }, 1000);
-            } else if (!startWithTimer || timerStarted) {
+            } else {
               audioRef.current.play()
                 .then(() => setIsPlaying(true))
                 .catch(err => {
@@ -165,11 +163,11 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
         setIsPlaying(false);
       }
     };
-  }, [state.soundPreference, enabled, autoPlay, fetchSoundFilesByPreference, getSoundFileUrl, timerStarted, startWithTimer]);
+  }, [state.soundPreference, enabled, autoPlay, fetchSoundFilesByPreference, getSoundFileUrl]);
   
   // Play the next track in the playlist
   const playNextTrack = () => {
-    if (!isMountedRef.current || !enabled || tracksRef.current.length === 0 || (startWithTimer && !timerStarted)) return;
+    if (!isMountedRef.current || !enabled || tracksRef.current.length === 0) return;
     
     const nextIndex = (currentTrackIndex + 1) % tracksRef.current.length;
     setCurrentTrackIndex(nextIndex);
@@ -194,7 +192,7 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
   
   // Play the previous track in the playlist
   const playPrevTrack = () => {
-    if (!isMountedRef.current || !enabled || tracksRef.current.length === 0 || (startWithTimer && !timerStarted)) return;
+    if (!isMountedRef.current || !enabled || tracksRef.current.length === 0) return;
     
     const prevIndex = currentTrackIndex === 0 
       ? tracksRef.current.length - 1 
@@ -237,30 +235,6 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
     }
   };
   
-  // Start playback when timer starts
-  const startPlayback = () => {
-    setTimerStarted(true);
-    
-    if (!isPlaying && tracksRef.current.length > 0 && audioRef.current) {
-      // If we have tracks loaded but not playing, start playing now
-      if (!audioRef.current.src && tracksRef.current.length > 0) {
-        const track = tracksRef.current[0];
-        setCurrentTrack({
-          title: track.title,
-          artist: track.description ? track.description.split(' - ')[0] : undefined
-        });
-        
-        audioRef.current.src = getSoundFileUrl(track.file_path);
-      }
-      
-      audioRef.current.play()
-        .then(() => setIsPlaying(true))
-        .catch(err => {
-          console.error('Error playing track when timer started:', err);
-        });
-    }
-  };
-  
   // Stop playback and cleanup
   const stopPlayback = () => {
     if (audioRef.current) {
@@ -272,10 +246,6 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
     if (bufferTimerRef.current) {
       window.clearTimeout(bufferTimerRef.current);
       bufferTimerRef.current = null;
-    }
-    
-    if (startWithTimer) {
-      setTimerStarted(false);
     }
   };
 
@@ -289,7 +259,6 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
     playNextTrack,
     playPrevTrack,
     stopPlayback,
-    startPlayback,
     audioRef
   };
 };

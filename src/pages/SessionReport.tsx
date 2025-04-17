@@ -1,3 +1,4 @@
+
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -57,8 +58,7 @@ const SessionReport = () => {
     volume,
     setVolume,
     togglePlay,
-    stopPlayback,
-    startPlayback
+    stopPlayback
   } = useSoundPlayback({
     autoPlay: true,
     volume: 0.3,
@@ -200,18 +200,7 @@ const SessionReport = () => {
     
     loadSessionData();
   }, [sessionId, navigate, user]);
-  
-  useEffect(() => {
-    // Start playback automatically
-    if (state.soundPreference !== 'silence') {
-      startPlayback();
-    }
-    
-    return () => {
-      stopPlayback();
-    };
-  }, [state.soundPreference, startPlayback, stopPlayback]);
-  
+
   const getFocusScore = () => {
     if (!sessionData) return null;
     
