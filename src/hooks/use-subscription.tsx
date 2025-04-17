@@ -1,0 +1,104 @@
+
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useUser } from './use-user';
+import { toast } from 'sonner';
+
+export type SubscriptionTier = 'free' | 'premium';
+
+interface SubscriptionState {
+  isLoading: boolean;
+  subscribed: boolean;
+  tier: SubscriptionTier;
+  isTrial: boolean;
+  trialEnd: Date | null;
+  subscriptionEnd: Date | null;
+}
+
+export function useSubscription() {
+  const [state, setState] = useState<SubscriptionState>({
+    isLoading: true,
+    subscribed: false,
+    tier: 'free',
+    isTrial: false,
+    trialEnd: null,
+    subscriptionEnd: null,
+  });
+  const { user } = useUser();
+
+  const checkSubscription = async () => {
+    if (!user?.email) return;
+    
+    try {
+      setState(prev => ({ ...prev, isLoading: true }));
+      const { data, error } = await supabase.functions.invoke('verify-subscription');
+      
+      if (error) throw error;
+      
+      setState({
+        isLoading: false,
+        subscribed: data.subscribed,
+        tier: data.subscription_tier,
+        isTrial: data.is_trial,
+        trialEnd: data.trial_end ? new Date(data.trial_end) : null,
+        subscriptionEnd: data.subscription_end ? new Date(data.subscription_end) : null,
+      });
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+      toast.error('Failed to verify subscription status');
+      setState(prev => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  const startCheckout = async () => {
+    if (!user?.email) {
+      toast.error('Please log in to subscribe');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { email: user.email, priceId: 'your_stripe_price_id' },
+      });
+
+      if (error) throw error;
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error('Error starting checkout:', error);
+      toast.error('Failed to start checkout process');
+    }
+  };
+
+  const openCustomerPortal = async () => {
+    if (!user?.email) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal', {
+        body: { email: user.email },
+      });
+
+      if (error) throw error;
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error('Error opening customer portal:', error);
+      toast.error('Failed to open subscription management');
+    }
+  };
+
+  useEffect(() => {
+    if (user?.email) {
+      checkSubscription();
+    }
+  }, [user?.email]);
+
+  return {
+    ...state,
+    startCheckout,
+    openCustomerPortal,
+    checkSubscription,
+  };
+}
