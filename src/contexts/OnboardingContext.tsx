@@ -35,6 +35,8 @@ function onboardingReducer(state: OnboardingState, action: OnboardingAction): On
     case 'SET_ENVIRONMENT':
       return { ...state, environment: action.payload };
     case 'SET_SOUND_PREFERENCE':
+      // When setting sound preference, also update localStorage
+      localStorage.setItem('soundPreference', action.payload);
       return { ...state, soundPreference: action.payload };
     case 'SET_WEEKLY_FOCUS_GOAL':
       return { ...state, weeklyFocusGoal: action.payload };
@@ -220,10 +222,15 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
         weeklyFocusGoal: state.weeklyFocusGoal,
       }));
       
-      // Also update the environment in localStorage directly for immediate application
+      // Also update the environment and sound preference in localStorage directly for immediate application
       if (state.environment) {
         localStorage.setItem('environment', state.environment);
         if (DEBUG_ENV) console.log('[OnboardingContext] Updated localStorage environment:', state.environment);
+      }
+      
+      if (state.soundPreference) {
+        localStorage.setItem('soundPreference', state.soundPreference);
+        if (DEBUG_ENV) console.log('[OnboardingContext] Updated localStorage soundPreference:', state.soundPreference);
       }
       
       setHasUnsavedChanges(false);
@@ -285,6 +292,13 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
           if (DEBUG_ENV) console.log('[OnboardingContext] Loaded preferences from localStorage:', localPrefs);
         }
         
+        // Also check if we have a standalone sound preference in localStorage
+        const savedSoundPref = localStorage.getItem('soundPreference') as SoundPreference;
+        if (savedSoundPref && (!savedPrefs || !JSON.parse(savedPrefs).soundPreference)) {
+          dispatch({ type: 'SET_SOUND_PREFERENCE', payload: savedSoundPref });
+          if (DEBUG_ENV) console.log('[OnboardingContext] Loaded sound preference from localStorage:', savedSoundPref);
+        }
+        
         // Then fetch from Supabase for accurate data
         const { data: { user } } = await supabase.auth.getUser();
         
@@ -341,6 +355,11 @@ export const OnboardingProvider: React.FC<{ children: ReactNode }> = ({ children
               soundPreference: data.sound_preference,
               weeklyFocusGoal: data.weekly_focus_goal || 10,
             }));
+            
+            // Also save sound preference to standalone localStorage item for faster access
+            if (data.sound_preference) {
+              localStorage.setItem('soundPreference', data.sound_preference);
+            }
             
             // Update the onboarding_preferences table if there's a mismatch between profiles and onboarding_preferences
             if (selectedEnvironment && data.learning_environment !== selectedEnvironment) {

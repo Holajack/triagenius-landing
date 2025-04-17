@@ -25,6 +25,7 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
   const isFirstPlayRef = useRef(true);
   const isMountedRef = useRef(true);
   const isStoppingRef = useRef(false);
+  const lastPreferenceRef = useRef<string | null>(null);
   
   const { state } = useOnboarding();
   const { 
@@ -96,7 +97,8 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
     const loadTracks = async () => {
       if (!enabled) return;
       
-      const preference = state.soundPreference || 'lo-fi';
+      // Get sound preference - first from state, then from localStorage as fallback
+      const preference = state.soundPreference || localStorage.getItem('soundPreference') as SoundPreference || 'lo-fi';
       
       // Skip if preference is silence
       if (preference === 'silence') {
@@ -104,6 +106,13 @@ export const useSoundPlayback = (options: SoundPlaybackOptions = {}) => {
         return;
       }
       
+      // Skip reloading if we're already using this preference
+      if (lastPreferenceRef.current === preference && tracksRef.current.length > 0) {
+        console.log(`Already using sound preference: ${preference}, skipping reload`);
+        return;
+      }
+      
+      lastPreferenceRef.current = preference;
       setIsLoading(true);
       
       try {

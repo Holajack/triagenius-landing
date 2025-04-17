@@ -64,6 +64,18 @@ export const SoundStep = () => {
       }
     };
   }, []);
+  
+  // Check for saved sound preference on load
+  useEffect(() => {
+    if (!state.soundPreference) {
+      // Check localStorage for a saved preference
+      const savedPreference = localStorage.getItem('soundPreference') as SoundPreference;
+      if (savedPreference) {
+        console.log('Found saved sound preference:', savedPreference);
+        dispatch({ type: 'SET_SOUND_PREFERENCE', payload: savedPreference });
+      }
+    }
+  }, []);
 
   // Play/pause sound preview
   useEffect(() => {
@@ -103,6 +115,9 @@ export const SoundStep = () => {
     
     // Set the sound preference
     dispatch({ type: 'SET_SOUND_PREFERENCE', payload: soundId });
+    
+    // Save to localStorage for persistence
+    localStorage.setItem('soundPreference', soundId);
     
     // If not silence, try to play a preview
     if (soundId !== 'silence') {
