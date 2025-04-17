@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -38,22 +37,23 @@ const BreakTimer = () => {
   
   const timerRef = useRef<number>();
   
-  // Initialize sound playback
+  // Initialize sound playback - start immediately for break timer
   const { 
     isPlaying,
     currentTrack, 
     volume,
     setVolume,
     togglePlay,
-    stopPlayback
+    stopPlayback,
+    startPlayback
   } = useSoundPlayback({
-    autoPlay: true,
+    autoPlay: true, // Set to true for break timer
     volume: 0.3,
     enabled: state.soundPreference !== 'silence'
   });
   
   useEffect(() => {
-    // Start the break timer
+    // Start the break timer and sound playback
     timerRef.current = window.setInterval(() => {
       setTimeLeft((prevTime) => {
         if (prevTime <= 1) {
@@ -66,12 +66,15 @@ const BreakTimer = () => {
       });
     }, 1000);
     
+    // Start playback immediately for break timer
+    startPlayback();
+    
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       // Stop audio playback when unmounting
       stopPlayback();
     };
-  }, [stopPlayback]);
+  }, [stopPlayback, startPlayback]);
   
   useEffect(() => {
     // Update progress bar

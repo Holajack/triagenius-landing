@@ -34,6 +34,7 @@ interface FocusSessionContentProps {
   currentTaskCompleted?: boolean;
   onNextTask?: () => void;
   priorityMode?: string | null;
+  onTimerStart?: () => void;
 }
 
 const FocusSessionContent = ({
@@ -55,11 +56,13 @@ const FocusSessionContent = ({
   currentTaskIndex = 0,
   currentTaskCompleted = false,
   onNextTask,
-  priorityMode
+  priorityMode,
+  onTimerStart
 }: FocusSessionContentProps) => {
   const isMobile = useIsMobile();
   const contentRef = useRef<HTMLDivElement>(null);
   const [showTaskPlaceholder, setShowTaskPlaceholder] = useState(false);
+  const [timerStarted, setTimerStarted] = useState(false);
   
   useEffect(() => {
     let timer: number;
@@ -133,6 +136,15 @@ const FocusSessionContent = ({
     }
   };
 
+  const handleStartTimer = () => {
+    if (!timerStarted) {
+      setTimerStarted(true);
+      if (onTimerStart) {
+        onTimerStart();
+      }
+    }
+  };
+
   return (
     <Card className={cn(
       "w-full transition-all duration-300",
@@ -168,6 +180,7 @@ const FocusSessionContent = ({
               onComplete={onComplete}
               onMilestoneReached={onMilestoneReached}
               onProgressUpdate={onProgressUpdate}
+              onTimerStart={handleStartTimer}
               lowPowerMode={lowPowerMode}
               className={cn(
                 "transition-all duration-300",
