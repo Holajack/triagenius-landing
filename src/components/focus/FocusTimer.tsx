@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { PlayIcon, PauseIcon } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface FocusTimerProps {
   initialTime: number;
@@ -8,7 +9,7 @@ interface FocusTimerProps {
   onComplete: () => void;
   onMilestoneReached: (milestone: number) => void;
   onProgressUpdate: (progress: number) => void;
-  onTimerStart?: () => void; // Add this prop
+  onTimerStart?: () => void;
   lowPowerMode?: boolean;
   className?: string;
 }
@@ -31,8 +32,6 @@ const FocusTimer = forwardRef<
   const startTimeRef = useRef<number | null>(null);
   const endTimeRef = useRef<number | null>(null);
   const progressRef = useRef(0);
-
-  // Add a ref to track if timer has been started
   const timerStartedRef = useRef(false);
 
   const setRemainingTime = useCallback((time: number) => {
@@ -62,7 +61,6 @@ const FocusTimer = forwardRef<
     getRemainingTime
   }), [stopTimer, setRemainingTime, getRemainingTime]);
 
-  // Milestone logic
   useEffect(() => {
     if (initialTime) {
       const milestone1 = initialTime * 0.25;
@@ -82,7 +80,6 @@ const FocusTimer = forwardRef<
     }
   }, [remainingTime, initialTime, milestone, onMilestoneReached]);
 
-  // Reset timer when initialTime changes
   useEffect(() => {
     stopTimer();
     setRemainingTimeState(initialTime);
@@ -90,7 +87,6 @@ const FocusTimer = forwardRef<
     timerStartedRef.current = false;
   }, [initialTime, stopTimer, setRemainingTimeState]);
 
-  // Timer logic 
   useEffect(() => {
     if (!isPaused && remainingTime > 0 && !intervalRef.current) {
       if (!timerStartedRef.current && onTimerStart) {
