@@ -19,62 +19,15 @@ function App() {
         <Routes>
           <Route path="/" element={<Auth />} />
           <Route path="/auth" element={<Auth />} />
-          <Route 
-            path="/dashboard" 
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/focus-session" 
-            element={
-              <ProtectedRoute>
-                <FocusSession />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/bonuses" 
-            element={
-              <ProtectedRoute>
-                <Bonuses />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/reports" 
-            element={
-              <ProtectedRoute>
-                <Reports />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/profile" 
-            element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/settings" 
-            element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/subscription" 
-            element={
-              <ProtectedRoute>
-                <Subscription />
-              </ProtectedRoute>
-            } 
-          />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/focus-session" element={<FocusSession />} />
+            <Route path="/bonuses" element={<Bonuses />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/subscription" element={<Subscription />} />
+          </Route>
         </Routes>
       </ThemeProvider>
     </BrowserRouter>
