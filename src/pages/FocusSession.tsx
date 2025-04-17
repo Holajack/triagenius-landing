@@ -5,6 +5,7 @@ import { useOnboarding } from "@/contexts/OnboardingContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useFocusSession } from "@/hooks/use-focus-session";
 import { useTasks } from "@/contexts/TaskContext";
+import { useSoundPlayback } from "@/hooks/use-sound-playback";
 import { MotivationalDialog } from "@/components/focus/MotivationalDialog";
 import { ConfirmEndDialog } from "@/components/focus/ConfirmEndDialog";
 import FocusSessionHeader from "@/components/focus/FocusSessionHeader";
@@ -26,6 +27,17 @@ const FocusSession = () => {
   const [currentTaskCompleted, setCurrentTaskCompleted] = useState(false);
   const [priorityMode, setPriorityMode] = useState<string | null>(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  
+  const { 
+    isPlaying,
+    currentTrack,
+    togglePlay,
+    stopPlayback
+  } = useSoundPlayback({
+    autoPlay: true,
+    volume: 0.3,
+    enabled: state.soundPreference !== 'silence'
+  });
   
   useEffect(() => {
     console.log("Tasks in state:", taskState.tasks);
@@ -175,6 +187,8 @@ const FocusSession = () => {
       isMountedRef.current = false;
       document.body.style.overflow = 'auto';
       
+      stopPlayback();
+      
       if (operationTimeoutRef.current) {
         window.clearTimeout(operationTimeoutRef.current);
       }
@@ -187,7 +201,7 @@ const FocusSession = () => {
         }
       }
     };
-  }, []);
+  }, [stopPlayback]);
   
   const {
     isPaused,
@@ -316,6 +330,9 @@ const FocusSession = () => {
           toggleLowPowerMode={toggleLowPowerMode}
           operationInProgress={operationInProgressRef.current}
           currentTask={currentTask}
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+          onTogglePlay={togglePlay}
         />
         
         <FocusSessionContent 

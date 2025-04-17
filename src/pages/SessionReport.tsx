@@ -3,16 +3,15 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowLeft, Clock, Target, Trophy, Calendar, Mountain, Edit3, BookText, CheckCheck, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Clock, Target, Trophy, Calendar, Mountain, Edit3, BookText, CheckCheck, RotateCcw, Music, Volume2, VolumeX, Play, Pause } from 'lucide-react';
 import { useOnboarding } from '@/contexts/OnboardingContext';
+import { Confetti } from '@/components/ui/confetti';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
-import PageHeader from '@/components/common/PageHeader';
-import { format } from 'date-fns';
-import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@/hooks/use-user';
+import { useSoundPlayback } from '@/hooks/use-sound-playback';
+import { Slider } from '@/components/ui/slider';
 import { toast } from 'sonner';
 
 interface SessionData {
@@ -34,20 +33,32 @@ interface ReflectionData {
 }
 
 const SessionReport = () => {
-  const { state } = useOnboarding();
-  const { theme } = useTheme();
+  const { id: sessionId } = useParams<{ id: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
-  const params = useParams();
+  const { theme } = useTheme();
+  const { state } = useOnboarding();
   const { user } = useUser();
-  const [sessionNotes, setSessionNotes] = useState('');
-  const [sessionData, setSessionData] = useState<SessionData | null>(null);
-  const [reflectionData, setReflectionData] = useState<ReflectionData | null>(null);
-  const [sessionId, setSessionId] = useState<string>('');
-  const [isEditing, setIsEditing] = useState(false);
+  const [notes, setNotes] = useState('');
+  const [savedNotes, setSavedNotes] = useState(false);
+  const [sessionData, setSessionData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const isPwaRef = useRef(localStorage.getItem('isPWA') === 'true' || window.matchMedia('(display-mode: standalone)').matches);
-
+  const [showSoundControls, setShowSoundControls] = useState(false);
+  
+  // Initialize sound playback
+  const { 
+    isPlaying,
+    currentTrack, 
+    volume,
+    setVolume,
+    togglePlay,
+    stopPlayback
+  } = useSoundPlayback({
+    autoPlay: true,
+    volume: 0.3,
+    enabled: state.soundPreference !== 'silence'
+  });
+  
   useEffect(() => {
     const loadSessionData = async () => {
       setIsLoading(true);
@@ -322,55 +333,82 @@ const SessionReport = () => {
 
   return (
     <div className={cn(
-      "min-h-screen bg-background text-foreground flex flex-col items-center p-4",
+      "min-h-screen bg-background text-foreground py-4 px-4 sm:px-6",
       `theme-${state.environment || 'default'} ${theme}`
     )}>
-      <div className="w-full max-w-3xl space-y-6">
-        <PageHeader title={params.id ? "Session Report" : "Session Complete!"} />
+      <div className="max-w-4xl mx-auto">
         
-        <Button 
-          variant="ghost" 
-          onClick={handleBackToDashboard}
-          className="mb-4"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          {params.id ? "Back to Reports" : "Back to Dashboard"}
-        </Button>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="p-6 flex flex-col items-center">
-            <Clock className="h-8 w-8 mb-2 text-primary" />
-            <h3 className="text-lg font-semibold">Session Duration</h3>
-            <p className="text-3xl font-mono">{getSessionTime()}</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              {sessionData?.milestone === 3 
-                ? "Full session completed!" 
-                : `Completed ${sessionData?.milestone || 0} of 3 milestones`}
-            </p>
-          </Card>
-
-          <Card className="p-6 flex flex-col items-center">
-            <Target className="h-8 w-8 mb-2 text-primary" />
-            <h3 className="text-lg font-semibold">Focus Score</h3>
-            {focusScore !== null ? (
-              <>
-                <p className="text-3xl font-mono">{focusScore}%</p>
-                <div className="w-full mt-2">
-                  <Progress value={focusScore} className="h-2" />
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="text-3xl font-mono text-muted-foreground">No Score Given</p>
-                <div className="w-full mt-2">
-                  <Progress value={0} className="h-2" />
-                </div>
-              </>
-            )}
-          </Card>
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center">
+            <Button
+              variant="outline"
+              size="icon"
+              className="mr-2 h-9 w-9"
+              asChild
+            >
+              <ArrowLeft className="h-4 w-4" onClick={() => navigate('/dashboard')} />
+            </Button>
+            <h1 className="text-xl sm:text-2xl font-semibold">Session Review</h1>
+          </div>
+          
+          {state.soundPreference !== 'silence' && (
+            <div className="flex items-center">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setShowSoundControls(!showSoundControls)}
+              >
+                <Music className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
-
-        <Card>
+        
+        {showSoundControls && (
+          <Card className="mb-4">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={togglePlay}
+                  >
+                    {isPlaying ? 
+                      <Pause className="h-4 w-4" /> : 
+                      <Play className="h-4 w-4" />
+                    }
+                  </Button>
+                  
+                  <div className="ml-2">
+                    <p className="text-sm font-medium line-clamp-1">
+                      {currentTrack?.title || 'No track playing'}
+                    </p>
+                    {currentTrack?.artist && (
+                      <p className="text-xs text-muted-foreground">
+                        {currentTrack.artist}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  {volume > 0 ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                  <Slider
+                    className="w-24"
+                    value={[volume * 100]}
+                    min={0}
+                    max={100}
+                    step={1}
+                    onValueChange={(value) => setVolume(value[0] / 100)}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center">
               <Calendar className="h-5 w-5 mr-2" />
@@ -558,4 +596,3 @@ const SessionReport = () => {
 };
 
 export default SessionReport;
-

@@ -2,13 +2,15 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Timer, AlertCircle, Coffee, Brain } from "lucide-react";
+import { Timer, AlertCircle, Coffee, Brain, Music, Volume2, VolumeX, Play, Pause } from "lucide-react";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
 import PageHeader from "@/components/common/PageHeader";
+import { useSoundPlayback } from "@/hooks/use-sound-playback";
+import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { 
   AlertDialog,
@@ -32,8 +34,23 @@ const BreakTimer = () => {
   const [isBreakComplete, setIsBreakComplete] = useState(false);
   const [showFirstConfirmDialog, setShowFirstConfirmDialog] = useState(false);
   const [showSecondConfirmDialog, setShowSecondConfirmDialog] = useState(false);
+  const [showSoundControls, setShowSoundControls] = useState(false);
   
   const timerRef = useRef<number>();
+  
+  // Initialize sound playback
+  const { 
+    isPlaying,
+    currentTrack, 
+    volume,
+    setVolume,
+    togglePlay,
+    stopPlayback
+  } = useSoundPlayback({
+    autoPlay: true,
+    volume: 0.3,
+    enabled: state.soundPreference !== 'silence'
+  });
   
   useEffect(() => {
     // Start the break timer
@@ -51,8 +68,10 @@ const BreakTimer = () => {
     
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      // Stop audio playback when unmounting
+      stopPlayback();
     };
-  }, []);
+  }, [stopPlayback]);
   
   useEffect(() => {
     // Update progress bar
@@ -96,7 +115,65 @@ const BreakTimer = () => {
       `theme-${state.environment || 'default'} ${theme}`
     )}>
       <div className="w-full max-w-3xl space-y-6">
-        <PageHeader title="Break Time" subtitle="Rest and recharge your mind" />
+        <div className="flex justify-between items-center">
+          <PageHeader title="Break Time" subtitle="Rest and recharge your mind" />
+          
+          {state.soundPreference !== 'silence' && (
+            <div className="flex items-center">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setShowSoundControls(!showSoundControls)}
+              >
+                <Music className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+        
+        {showSoundControls && (
+          <Card className="mb-4">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={togglePlay}
+                  >
+                    {isPlaying ? 
+                      <Pause className="h-4 w-4" /> : 
+                      <Play className="h-4 w-4" />
+                    }
+                  </Button>
+                  
+                  <div className="ml-2">
+                    <p className="text-sm font-medium line-clamp-1">
+                      {currentTrack?.title || 'No track playing'}
+                    </p>
+                    {currentTrack?.artist && (
+                      <p className="text-xs text-muted-foreground">
+                        {currentTrack.artist}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  {volume > 0 ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                  <Slider
+                    className="w-24"
+                    value={[volume * 100]}
+                    min={0}
+                    max={100}
+                    step={1}
+                    onValueChange={(value) => setVolume(value[0] / 100)}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         
         <Card className="mb-6">
           <CardHeader>
