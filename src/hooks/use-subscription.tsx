@@ -15,6 +15,10 @@ interface SubscriptionState {
   subscriptionEnd: Date | null;
 }
 
+interface CheckoutResult {
+  url: string | null;
+}
+
 export function useSubscription() {
   const [state, setState] = useState<SubscriptionState>({
     isLoading: true,
@@ -50,10 +54,10 @@ export function useSubscription() {
     }
   };
 
-  const startCheckout = async () => {
+  const startCheckout = async (): Promise<CheckoutResult> => {
     if (!user?.email) {
       toast.error('Please log in to subscribe');
-      return;
+      return { url: null };
     }
 
     try {
@@ -62,17 +66,16 @@ export function useSubscription() {
       });
 
       if (error) throw error;
-      if (data.url) {
-        window.location.href = data.url;
-      }
+      return { url: data?.url || null };
     } catch (error) {
       console.error('Error starting checkout:', error);
       toast.error('Failed to start checkout process');
+      return { url: null };
     }
   };
 
-  const openCustomerPortal = async () => {
-    if (!user?.email) return;
+  const openCustomerPortal = async (): Promise<CheckoutResult> => {
+    if (!user?.email) return { url: null };
 
     try {
       const { data, error } = await supabase.functions.invoke('customer-portal', {
@@ -80,12 +83,11 @@ export function useSubscription() {
       });
 
       if (error) throw error;
-      if (data.url) {
-        window.location.href = data.url;
-      }
+      return { url: data?.url || null };
     } catch (error) {
       console.error('Error opening customer portal:', error);
       toast.error('Failed to open subscription management');
+      return { url: null };
     }
   };
 
