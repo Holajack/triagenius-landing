@@ -158,11 +158,9 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
           navigate("/dashboard");
         }
       } else {
-        // For signup, try both providers with better error handling
         try {
           if (DEBUG_AUTH) console.log('[AuthForm] Attempting signup with email:', email);
           
-          // Try Supabase signup first
           const { data: supabaseData, error: supabaseError } = await supabase.auth.signUp({
             email,
             password,
@@ -170,67 +168,24 @@ const AuthForm = ({ mode: initialMode, source }: AuthFormProps) => {
               data: {
                 name,
                 username,
-              },
-              emailRedirectTo: `${window.location.origin}/auth#type=signup`,
-            },
+              }
+            }
           });
           
           if (supabaseError) {
-            if (supabaseError.message.includes("confirmation email")) {
-              setEmailConfirmError(true);
-              // Continue to Firebase signup even though there was an email error
-            } else {
-              throw supabaseError;
-            }
-          } else {
-            // Handle email confirmation case
-            if (supabaseData?.user?.identities?.length === 1 && !supabaseData.user.email_confirmed_at) {
-              setEmailConfirmSent(true);
-              toast.success("Account created! Please check your email to confirm your address.", {
-                description: "You'll need to verify your email before you can log in.",
-                duration: 8000,
-              });
-              
-              // Try to create profile anyway to avoid issues later
-              if (supabaseData?.user?.id) {
-                await createProfile(supabaseData.user.id);
-              }
-              
-              return;
-            } else {
-              // Create profile for the new user
-              if (supabaseData?.user?.id) {
-                await createProfile(supabaseData.user.id);
-              }
-              
-              toast.success("Account created successfully!");
-              navigate("/onboarding");
-              return;
-            }
+            throw supabaseError;
           }
-        } catch (supabaseError: any) {
-          // If Supabase signup fails with an email confirmation error, try Firebase
-          console.log("Trying Firebase after Supabase error:", supabaseError.message);
-        }
-        
-        // Try Firebase signup regardless of Supabase result due to email issues
-        try {
-          if (DEBUG_AUTH) console.log('[AuthForm] Trying Firebase signup');
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          
-          // Try to create a profile in our database for this Firebase user
-          if (userCredential?.user?.uid) {
-            await createProfile(userCredential.user.uid);
+
+          // No need to navigate here as the Auth component will handle it
+          if (supabaseData?.user?.id) {
+            await createProfile(supabaseData.user.id);
           }
           
-          toast.success("Account created with Firebase successfully!");
-          navigate("/onboarding");
           return;
-        } catch (firebaseError: any) {
-          // Only throw if we didn't already succeed with Supabase
-          if (emailConfirmError) {
-            throw firebaseError;
-          }
+        } catch (error: any) {
+          console.error("Signup error:", error);
+          setError(error.message || "Signup failed");
+          toast.error(error.message || "Signup failed");
         }
       }
     } catch (error: any) {

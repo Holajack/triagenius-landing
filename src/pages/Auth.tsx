@@ -1,14 +1,13 @@
-
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AuthForm from "@/components/auth/AuthForm";
+import { PostSignupPlans } from "@/components/auth/PostSignupPlans";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-// Enable for debugging
 const DEBUG_AUTH = true;
 
 const Auth = () => {
@@ -19,9 +18,9 @@ const Auth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [savedSessionFound, setSavedSessionFound] = useState(false);
+  const [showPlans, setShowPlans] = useState(false);
 
   useEffect(() => {
-    // Check if user is already authenticated
     const checkAuth = async () => {
       setIsCheckingAuth(true);
       try {
@@ -37,11 +36,9 @@ const Auth = () => {
         if (DEBUG_AUTH) console.log('[Auth] User authenticated:', isLoggedIn);
         setIsAuthenticated(isLoggedIn);
         
-        // Check for email confirmation from URL hash
         const hash = location.hash;
         const isEmailConfirmation = hash && hash.includes("type=signup");
         
-        // Check for saved session data in localStorage
         try {
           const keys = Object.keys(localStorage);
           const sessionKeys = keys.filter(key => key.startsWith('sessionData_'));
@@ -53,7 +50,6 @@ const Auth = () => {
           console.error("Error checking for saved sessions:", error);
         }
         
-        // If already authenticated, redirect to appropriate page
         if (isLoggedIn) {
           if (isEmailConfirmation) {
             navigate("/onboarding");
@@ -72,7 +68,6 @@ const Auth = () => {
     
     checkAuth();
     
-    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (DEBUG_AUTH) console.log('[Auth] Auth state change:', event, session?.user?.id);
       const isLoggedIn = !!session;
@@ -81,10 +76,8 @@ const Auth = () => {
       if (event === 'SIGNED_IN') {
         toast.success("Signed in successfully!");
         
-        // Create profile if it doesn't exist
         const ensureProfile = async () => {
           try {
-            // Check if profile exists
             const { data: profile, error: profileError } = await supabase
               .from('profiles')
               .select('id')
@@ -94,7 +87,6 @@ const Auth = () => {
             if (profileError || !profile) {
               console.log('[Auth] Creating profile for new user:', session.user.id);
               
-              // Create profile
               const { error: createError } = await supabase
                 .from('profiles')
                 .insert({
@@ -110,7 +102,6 @@ const Auth = () => {
                 console.log('[Auth] Profile created successfully');
               }
               
-              // Create onboarding preferences
               const { error: prefError } = await supabase
                 .from('onboarding_preferences')
                 .insert({
@@ -128,14 +119,11 @@ const Auth = () => {
         };
         
         ensureProfile().then(() => {
-          // Add a small delay before redirecting to ensure profile is loaded
-          setTimeout(() => {
-            if (isFromStartFocusing) {
-              navigate("/onboarding");
-            } else {
-              navigate("/dashboard");
-            }
-          }, 1000);
+          if (event !== 'SIGNED_UP') {
+            navigate("/dashboard");
+          } else {
+            setShowPlans(true);
+          }
         });
       }
     });
@@ -159,6 +147,10 @@ const Auth = () => {
         <div className="text-triage-purple">Redirecting to dashboard...</div>
       </div>
     );
+  }
+  
+  if (showPlans) {
+    return <PostSignupPlans />;
   }
   
   return (
