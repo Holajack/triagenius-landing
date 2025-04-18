@@ -37,6 +37,7 @@ export const PostSignupPlans = () => {
       </p>
 
       <div className="grid md:grid-cols-2 gap-8">
+        {/* Free Plan */}
         <Card className="p-6 border-2">
           <div className="text-center">
             <h3 className="text-2xl font-semibold mb-2">Free</h3>
@@ -65,6 +66,7 @@ export const PostSignupPlans = () => {
           </Button>
         </Card>
 
+        {/* Premium Plan */}
         <Card className="p-6 border-2 border-purple-200 bg-purple-50/50">
           <div className="text-center">
             <div className="bg-purple-100 text-purple-800 text-sm font-semibold px-3 py-1 rounded-full inline-block mb-4">RECOMMENDED</div>
