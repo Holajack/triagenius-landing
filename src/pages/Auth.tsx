@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -19,6 +20,7 @@ const Auth = () => {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [savedSessionFound, setSavedSessionFound] = useState(false);
   const [showPlans, setShowPlans] = useState(false);
+  const [isNewSignup, setIsNewSignup] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -74,6 +76,11 @@ const Auth = () => {
       setIsAuthenticated(isLoggedIn);
       
       if (event === 'SIGNED_IN') {
+        // Determine if this is a new user by checking for metadata or other indicators
+        const isNewUser = session?.user?.app_metadata?.provider === 'email' && 
+                         !session?.user?.app_metadata?.last_sign_in_at;
+                         
+        setIsNewSignup(isNewUser);
         toast.success("Signed in successfully!");
         
         const ensureProfile = async () => {
@@ -112,6 +119,9 @@ const Auth = () => {
               if (prefError && prefError.code !== '23505') {
                 console.error('[Auth] Failed to create onboarding preferences:', prefError);
               }
+              
+              // If we're creating a profile, it's definitely a new user
+              setIsNewSignup(true);
             }
           } catch (err) {
             console.error('[Auth] Error ensuring profile exists:', err);
@@ -119,10 +129,10 @@ const Auth = () => {
         };
         
         ensureProfile().then(() => {
-          if (event !== 'SIGNED_UP') {
-            navigate("/dashboard");
-          } else {
+          if (isNewUser || isNewSignup) {
             setShowPlans(true);
+          } else {
+            navigate("/dashboard");
           }
         });
       }
@@ -141,7 +151,7 @@ const Auth = () => {
     );
   }
   
-  if (isAuthenticated) {
+  if (isAuthenticated && !showPlans) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-triage-purple">Redirecting to dashboard...</div>
