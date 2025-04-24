@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from './use-user';
@@ -57,12 +56,29 @@ export function useSubscription() {
       
       if (error) {
         console.error('Error from verify-subscription function:', error);
-        throw error;
+        setState({
+          isLoading: false,
+          subscribed: false,
+          tier: 'free',
+          isTrial: false,
+          trialEnd: null,
+          subscriptionEnd: null,
+        });
+        toast.error('Failed to verify subscription status. Defaulting to free tier.');
+        return;
       }
       
       if (!data) {
         console.error('No data returned from verify-subscription function');
-        throw new Error('No subscription data returned');
+        setState({
+          isLoading: false,
+          subscribed: false,
+          tier: 'free',
+          isTrial: false,
+          trialEnd: null,
+          subscriptionEnd: null,
+        });
+        return;
       }
       
       console.log('Subscription check result:', data);
@@ -70,15 +86,22 @@ export function useSubscription() {
       setState({
         isLoading: false,
         subscribed: data.subscribed,
-        tier: data.subscription_tier,
-        isTrial: data.is_trial,
+        tier: data.subscription_tier || 'free',
+        isTrial: data.is_trial || false,
         trialEnd: data.trial_end ? new Date(data.trial_end) : null,
         subscriptionEnd: data.subscription_end ? new Date(data.subscription_end) : null,
       });
     } catch (error) {
       console.error('Error checking subscription:', error);
-      toast.error('Failed to verify subscription status');
-      setState(prev => ({ ...prev, isLoading: false }));
+      setState({
+        isLoading: false,
+        subscribed: false,
+        tier: 'free',
+        isTrial: false,
+        trialEnd: null,
+        subscriptionEnd: null,
+      });
+      toast.error('Failed to verify subscription status. Defaulting to free tier.');
     }
   };
 
@@ -151,7 +174,17 @@ export function useSubscription() {
 
   useEffect(() => {
     if (user?.email || isAdmin) {
-      checkSubscription();
+      checkSubscription().catch(err => {
+        console.error('Subscription check failed in effect:', err);
+        setState({
+          isLoading: false,
+          subscribed: false,
+          tier: 'free',
+          isTrial: false,
+          trialEnd: null,
+          subscriptionEnd: null,
+        });
+      });
     } else {
       setState(prev => ({ 
         ...prev, 
