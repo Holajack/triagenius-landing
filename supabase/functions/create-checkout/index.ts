@@ -11,7 +11,8 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
 });
 
-const PREMIUM_PRICE_ID = 'prod_S9BjhnTlFy4z1K';
+// Use your Premium plan price ID
+const PREMIUM_PRICE_ID = 'price_1REtLZRxJNzEBztC5wnZatww';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -37,14 +38,7 @@ serve(async (req) => {
       payment_method_types: ['card'],
       line_items: [
         {
-          price_data: {
-            currency: 'usd',
-            product: PREMIUM_PRICE_ID,
-            recurring: {
-              interval: 'month'
-            },
-            unit_amount: 999, // $9.99 per month
-          },
+          price: PREMIUM_PRICE_ID, // Using your Premium price ID
           quantity: 1,
         },
       ],
