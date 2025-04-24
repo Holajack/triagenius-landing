@@ -5,10 +5,12 @@ import { Card } from "@/components/ui/card";
 import { Check } from "lucide-react";
 import { useSubscription } from "@/hooks/use-subscription";
 import { toast } from "sonner";
+import { useState } from "react";
 
 export const PostSignupPlans = () => {
   const navigate = useNavigate();
   const { startCheckout } = useSubscription();
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleStartFree = () => {
     toast.success("Welcome to your free account!");
@@ -17,15 +19,27 @@ export const PostSignupPlans = () => {
 
   const handleUpgrade = async () => {
     try {
+      setIsLoading(true);
       const result = await startCheckout();
+      
+      if (result.error) {
+        console.error("Checkout error:", result.error);
+        toast.error(`Checkout failed: ${result.error}`);
+        return;
+      }
+      
       if (result.url) {
+        console.log("Redirecting to checkout:", result.url);
         window.location.href = result.url;
       } else {
+        console.error("No checkout URL returned");
         toast.error("Could not start checkout process");
       }
     } catch (error) {
       console.error("Error starting checkout:", error);
       toast.error("Failed to start checkout process");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -61,6 +75,7 @@ export const PostSignupPlans = () => {
             className="w-full" 
             variant="outline"
             onClick={handleStartFree}
+            disabled={isLoading}
           >
             Start Free
           </Button>
@@ -94,8 +109,9 @@ export const PostSignupPlans = () => {
           <Button 
             className="w-full bg-purple-600 hover:bg-purple-700"
             onClick={handleUpgrade}
+            disabled={isLoading}
           >
-            Start Free Trial
+            {isLoading ? "Processing..." : "Start Free Trial"}
           </Button>
           <p className="text-sm text-center mt-4 text-gray-600">14-day free trial, cancel anytime</p>
         </Card>

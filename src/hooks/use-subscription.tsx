@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from './use-user';
@@ -17,6 +18,7 @@ interface SubscriptionState {
 
 interface CheckoutResult {
   url: string | null;
+  error?: string;
 }
 
 export function useSubscription() {
@@ -71,25 +73,37 @@ export function useSubscription() {
   const startCheckout = async (): Promise<CheckoutResult> => {
     if (!user?.email) {
       toast.error('Please log in to subscribe');
-      return { url: null };
+      return { url: null, error: 'User not logged in' };
     }
 
     try {
+      console.log('Starting checkout process for email:', user.email);
+      
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { email: user.email, priceId: 'your_stripe_price_id' },
+        body: { email: user.email },
       });
 
-      if (error) throw error;
-      return { url: data?.url || null };
+      if (error) {
+        console.error('Error from create-checkout function:', error);
+        throw error;
+      }
+      
+      if (!data || !data.url) {
+        console.error('No checkout URL returned:', data);
+        throw new Error('Checkout session URL not returned');
+      }
+      
+      console.log('Received checkout URL:', data.url);
+      return { url: data.url };
     } catch (error) {
       console.error('Error starting checkout:', error);
-      toast.error('Failed to start checkout process');
-      return { url: null };
+      toast.error('Failed to start checkout process: ' + (error.message || 'Unknown error'));
+      return { url: null, error: error.message || 'Failed to create checkout session' };
     }
   };
 
   const openCustomerPortal = async (): Promise<CheckoutResult> => {
-    if (!user?.email) return { url: null };
+    if (!user?.email) return { url: null, error: 'User not logged in' };
 
     try {
       const { data, error } = await supabase.functions.invoke('customer-portal', {
@@ -101,7 +115,7 @@ export function useSubscription() {
     } catch (error) {
       console.error('Error opening customer portal:', error);
       toast.error('Failed to open subscription management');
-      return { url: null };
+      return { url: null, error: error.message };
     }
   };
 

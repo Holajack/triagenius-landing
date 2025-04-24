@@ -6,11 +6,13 @@ import { Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAdmin } from "@/hooks/use-admin";
+import { useState } from "react";
 
 const Subscription = () => {
-  const { startCheckout, tier, isLoading } = useSubscription();
+  const { startCheckout, tier, isLoading: subscriptionLoading } = useSubscription();
   const { isAdmin } = useAdmin();
   const navigate = useNavigate();
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   const handleSubscribe = async () => {
     // If user is admin, show a message that they already have premium access
@@ -20,17 +22,31 @@ const Subscription = () => {
     }
 
     try {
+      setIsCheckingOut(true);
       const result = await startCheckout();
+      
+      if (result.error) {
+        console.error("Checkout error:", result.error);
+        toast.error(`Checkout failed: ${result.error}`);
+        return;
+      }
+      
       if (result.url) {
+        console.log("Redirecting to checkout:", result.url);
         window.location.href = result.url;
       } else {
+        console.error("No checkout URL returned");
         toast.error('Checkout session URL not returned');
       }
     } catch (error) {
       console.error('Error starting checkout:', error);
       toast.error('Failed to start checkout process');
+    } finally {
+      setIsCheckingOut(false);
     }
   };
+
+  const isLoading = subscriptionLoading || isCheckingOut;
 
   return (
     <div className="container mx-auto px-4 py-16">
@@ -64,6 +80,7 @@ const Subscription = () => {
             className="w-full" 
             variant="outline" 
             onClick={() => navigate('/dashboard')}
+            disabled={isLoading}
           >
             Current Plan
           </Button>
@@ -99,7 +116,7 @@ const Subscription = () => {
             onClick={handleSubscribe}
             disabled={isLoading}
           >
-            {isLoading ? "Loading..." : "Start Free Trial"}
+            {isLoading ? "Processing..." : "Start Free Trial"}
           </Button>
           <p className="text-sm text-center mt-4 text-gray-600">14-day free trial, cancel anytime</p>
         </Card>
