@@ -37,9 +37,11 @@ export function useSubscription() {
     if (!user?.email) return;
     
     try {
+      console.log('Checking subscription for user:', user.email);
       setState(prev => ({ ...prev, isLoading: true }));
       
       if (isAdmin) {
+        console.log('User is admin, setting premium subscription');
         setState({
           isLoading: false,
           subscribed: true,
@@ -53,7 +55,17 @@ export function useSubscription() {
 
       const { data, error } = await supabase.functions.invoke('verify-subscription');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error from verify-subscription function:', error);
+        throw error;
+      }
+      
+      if (!data) {
+        console.error('No data returned from verify-subscription function');
+        throw new Error('No subscription data returned');
+      }
+      
+      console.log('Subscription check result:', data);
       
       setState({
         isLoading: false,
@@ -78,6 +90,7 @@ export function useSubscription() {
 
     try {
       console.log('Starting checkout process for email:', user.email);
+      setState(prev => ({ ...prev, isLoading: true }));
       
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { email: user.email },
@@ -97,31 +110,55 @@ export function useSubscription() {
       return { url: data.url };
     } catch (error) {
       console.error('Error starting checkout:', error);
-      toast.error('Failed to start checkout process: ' + (error.message || 'Unknown error'));
+      setState(prev => ({ ...prev, isLoading: false }));
       return { url: null, error: error.message || 'Failed to create checkout session' };
     }
   };
 
   const openCustomerPortal = async (): Promise<CheckoutResult> => {
-    if (!user?.email) return { url: null, error: 'User not logged in' };
+    if (!user?.email) {
+      toast.error('Please log in to manage your subscription');
+      return { url: null, error: 'User not logged in' };
+    }
 
     try {
+      console.log('Opening customer portal for user:', user.email);
+      setState(prev => ({ ...prev, isLoading: true }));
+      
       const { data, error } = await supabase.functions.invoke('customer-portal', {
         body: { email: user.email },
       });
 
-      if (error) throw error;
-      return { url: data?.url || null };
+      if (error) {
+        console.error('Error from customer-portal function:', error);
+        throw error;
+      }
+      
+      if (!data?.url) {
+        console.error('No portal URL returned:', data);
+        throw new Error('Customer portal URL not returned');
+      }
+      
+      return { url: data.url };
     } catch (error) {
       console.error('Error opening customer portal:', error);
-      toast.error('Failed to open subscription management');
+      setState(prev => ({ ...prev, isLoading: false }));
       return { url: null, error: error.message };
+    } finally {
+      setState(prev => ({ ...prev, isLoading: false }));
     }
   };
 
   useEffect(() => {
     if (user?.email || isAdmin) {
       checkSubscription();
+    } else {
+      setState(prev => ({ 
+        ...prev, 
+        isLoading: false,
+        subscribed: false,
+        tier: 'free'
+      }));
     }
   }, [user?.email, isAdmin]);
 
