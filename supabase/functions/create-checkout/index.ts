@@ -7,18 +7,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
-  apiVersion: '2023-10-16',
-});
-
-// Use your Premium plan price ID
-const PREMIUM_PRICE_ID = 'price_1REtLZRxJNzEBztC5wnZatww';
-
 // Helper function for logging with timestamps
 const log = (message: string, data?: any) => {
   const timestamp = new Date().toISOString();
   console.log(`[${timestamp}] ${message}`, data ? JSON.stringify(data) : '');
 };
+
+// Premium plan price ID
+const PREMIUM_PRICE_ID = 'price_1REtLZRxJNzEBztC5wnZatww';
 
 serve(async (req) => {
   log('Received checkout request');
@@ -38,6 +34,21 @@ serve(async (req) => {
         status: 400
       });
     }
+    
+    // Get Stripe secret key from environment variables
+    const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY');
+    if (!stripeSecretKey) {
+      log('Error: STRIPE_SECRET_KEY environment variable not set');
+      return new Response(JSON.stringify({ error: 'Server configuration error: Stripe key not available' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500
+      });
+    }
+    
+    // Initialize Stripe with the secret key
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: '2023-10-16',
+    });
     
     log('Looking for existing customer', { email });
     // Check if customer exists
