@@ -1,6 +1,6 @@
 
 import { useState, useRef, useEffect } from "react";
-import { Bot, Brain, MessageCircle, Network, Sparkles, Target, Users, Send, Loader2 } from "lucide-react";
+import { Bot, Brain, MessageCircle, Network, Sparkles, Target, Users, Send, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Message {
   role: "user" | "assistant";
@@ -29,6 +30,7 @@ const Nora = () => {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [connectionError, setConnectionError] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([
     "How can I improve my focus?",
     "What are some good study techniques?",
@@ -78,25 +80,38 @@ const Nora = () => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = async () => {
-    if (!input.trim()) return;
+  const retryConnection = () => {
+    setConnectionError(false);
+    // If there's a user message as the last message, retry with that
+    const lastUserMessage = [...messages].reverse().find(m => m.role === "user");
+    if (lastUserMessage) {
+      handleSendMessage(lastUserMessage.content);
+    }
+  };
+
+  const handleSendMessage = async (messageToSend?: string) => {
+    const messageText = messageToSend || input;
+    if (!messageText.trim()) return;
     
-    const newMessage = { role: "user" as const, content: input };
+    const newMessage = { role: "user" as const, content: messageText };
     setMessages(prev => [...prev, newMessage]);
     setInput("");
     setIsLoading(true);
+    setConnectionError(false);
 
     try {
+      console.log("Sending message to Nora:", { messageLength: messageText.length, userId: user?.id });
       const { data, error } = await supabase.functions.invoke('nora-assistant', {
         body: {
-          message: input,
+          message: messageText,
           userId: user?.id
         }
       });
 
       if (error) {
         console.error('Error calling Nora assistant:', error);
-        toast.error('Failed to get response from Nora');
+        setConnectionError(true);
+        toast.error('Unable to connect to Nora');
         setMessages(prev => [...prev, { 
           role: "assistant", 
           content: "I'm having trouble connecting right now. Please try again later."
@@ -110,6 +125,10 @@ const Nora = () => {
           role: "assistant", 
           content: data.response || "I encountered an issue processing your request."
         }]);
+        
+        if (data.suggestions) {
+          setSuggestions(data.suggestions);
+        }
       } else {
         setMessages(prev => [...prev, { 
           role: "assistant", 
@@ -122,6 +141,7 @@ const Nora = () => {
       }
     } catch (error) {
       console.error('Error in Nora chat:', error);
+      setConnectionError(true);
       toast.error('Failed to communicate with Nora');
       setMessages(prev => [...prev, { 
         role: "assistant", 
@@ -155,6 +175,22 @@ const Nora = () => {
             </div>
           </div>
         ))}
+        {connectionError && (
+          <Alert variant="destructive" className="mx-auto max-w-md">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Connection to Nora is currently unavailable.
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="ml-2" 
+                onClick={retryConnection}
+              >
+                <RefreshCw className="h-3 w-3 mr-1" /> Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
         <div ref={messagesEndRef} />
       </div>
       
@@ -179,12 +215,12 @@ const Nora = () => {
           placeholder="Ask Nora something..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+          onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
           disabled={isLoading}
           className="flex-1"
         />
         <Button 
-          onClick={handleSendMessage}
+          onClick={() => handleSendMessage()}
           disabled={!input.trim() || isLoading}
         >
           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -242,6 +278,7 @@ const Nora = () => {
           {renderChat()}
         </motion.div>
         
+        {/* Features section */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           {features.map((feature, index) => (
             <motion.div
@@ -263,6 +300,7 @@ const Nora = () => {
           ))}
         </div>
         
+        {/* Navigation buttons */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
