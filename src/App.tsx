@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
@@ -59,13 +60,13 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <BrowserRouter>
+      <ThemeProvider>
         <AuthProvider>
-          <ThemeProvider>
-            <UserProvider>
-              <OnboardingProvider>
-                <WalkthroughProvider>
-                  <TaskProvider>
+          <UserProvider>
+            <OnboardingProvider>
+              <WalkthroughProvider>
+                <TaskProvider>
+                  <BrowserRouter>
                     <Routes>
                       <Route path="/" element={<Index />} />
                       <Route path="/auth" element={<Auth />} />
@@ -102,13 +103,13 @@ function App() {
                     <InstallPrompt />
                     <FirstVisitPrompt />
                     <UpdateNotification />
-                  </TaskProvider>
-                </WalkthroughProvider>
-              </OnboardingProvider>
-            </UserProvider>
-          </ThemeProvider>
+                  </BrowserRouter>
+                </TaskProvider>
+              </WalkthroughProvider>
+            </OnboardingProvider>
+          </UserProvider>
         </AuthProvider>
-      </BrowserRouter>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }
