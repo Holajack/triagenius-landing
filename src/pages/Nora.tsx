@@ -108,9 +108,8 @@ const Nora = () => {
           message: messageText,
           userId: user?.id
         },
-        options: {
-          timeoutMs: 30000 // 30 seconds timeout
-        }
+        abortSignal: new AbortController().signal,
+        timeoutMs: 30000 // 30 seconds timeout
       });
 
       if (error) {
