@@ -9,6 +9,9 @@ const log = (message: string, data?: any) => {
   console.log(`[${timestamp}] ${message}`, data ? JSON.stringify(data) : '');
 };
 
+// The documented Nora API endpoint
+const NORA_API_URL = "https://api.nora-assistant.com/v1/chat";
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -40,13 +43,15 @@ serve(async (req) => {
     try {
       // Call the Nora API with proper error handling and timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
       
-      const response = await fetch('https://api.nora-assistant.com/v1/chat', {
+      log('Sending request to Nora API', { endpoint: NORA_API_URL });
+      const response = await fetch(NORA_API_URL, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${noraApiKey}`,
           'Content-Type': 'application/json',
+          'User-Agent': 'FocusApp-Supabase/1.0',
         },
         body: JSON.stringify({
           user_id: userId || 'anonymous',
@@ -72,8 +77,8 @@ serve(async (req) => {
         // Return a fallback response with error details
         return new Response(
           JSON.stringify({
-            response: "I'm having trouble connecting to my knowledge base right now. Please try again in a few moments.",
-            suggestions: ["Try again later", "Ask a different question", "Contact support if the issue persists"],
+            response: "I'm having trouble accessing my knowledge base. This could be a temporary issue. Let's try again in a moment.",
+            suggestions: ["Try again later", "Ask a different question", "Check if there's a service status update"],
             error: `API returned status ${response.status}`
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -92,13 +97,25 @@ serve(async (req) => {
       );
     } catch (apiError) {
       // Handle network or timeout errors specifically
-      log('Nora API connection error', { message: apiError.message, name: apiError.name });
+      log('Nora API connection error', { 
+        message: apiError.message, 
+        name: apiError.name,
+        stack: apiError.stack
+      });
+      
+      const isAbortError = apiError.name === 'AbortError';
       
       // Return a graceful fallback response
       return new Response(
         JSON.stringify({ 
-          response: "I'm having trouble connecting right now. This could be due to network issues or my service might be temporarily unavailable. Please try again shortly.",
-          suggestions: ["Try again in a few moments", "Check your internet connection", "Refresh the page"],
+          response: isAbortError 
+            ? "My response timed out. This could be due to high traffic or connectivity issues. Please try again shortly."
+            : "I'm having trouble connecting right now. My service might be temporarily unavailable. Please try again in a few minutes.",
+          suggestions: [
+            "Try again shortly", 
+            "Ask a simpler question", 
+            "Check your internet connection"
+          ],
           error: apiError.message
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -110,7 +127,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: error.message,
-        response: "Sorry, I'm having trouble understanding right now. Please try again later."
+        response: "I encountered an unexpected issue. Please try refreshing the page and asking again."
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

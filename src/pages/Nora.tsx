@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Bot, Brain, MessageCircle, Network, Sparkles, Target, Users, Send, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
@@ -31,6 +30,7 @@ const Nora = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [connectionError, setConnectionError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [suggestions, setSuggestions] = useState<string[]>([
     "How can I improve my focus?",
     "What are some good study techniques?",
@@ -38,6 +38,7 @@ const Nora = () => {
   ]);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const maxRetries = 3;
 
   const features = [
     {
@@ -82,6 +83,7 @@ const Nora = () => {
 
   const retryConnection = () => {
     setConnectionError(false);
+    setRetryCount(0);
     // If there's a user message as the last message, retry with that
     const lastUserMessage = [...messages].reverse().find(m => m.role === "user");
     if (lastUserMessage) {
@@ -105,12 +107,16 @@ const Nora = () => {
         body: {
           message: messageText,
           userId: user?.id
+        },
+        options: {
+          timeoutMs: 30000 // 30 seconds timeout
         }
       });
 
       if (error) {
         console.error('Error calling Nora assistant:', error);
         setConnectionError(true);
+        setRetryCount(prev => prev + 1);
         toast.error('Unable to connect to Nora');
         setMessages(prev => [...prev, { 
           role: "assistant", 
@@ -130,6 +136,8 @@ const Nora = () => {
           setSuggestions(data.suggestions);
         }
       } else {
+        // Reset retry count on successful response
+        setRetryCount(0);
         setMessages(prev => [...prev, { 
           role: "assistant", 
           content: data.response 
@@ -142,6 +150,7 @@ const Nora = () => {
     } catch (error) {
       console.error('Error in Nora chat:', error);
       setConnectionError(true);
+      setRetryCount(prev => prev + 1);
       toast.error('Failed to communicate with Nora');
       setMessages(prev => [...prev, { 
         role: "assistant", 
@@ -178,15 +187,17 @@ const Nora = () => {
         {connectionError && (
           <Alert variant="destructive" className="mx-auto max-w-md">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
+            <AlertDescription className="flex items-center">
               Connection to Nora is currently unavailable.
               <Button 
                 variant="outline" 
                 size="sm" 
                 className="ml-2" 
                 onClick={retryConnection}
+                disabled={retryCount >= maxRetries}
               >
-                <RefreshCw className="h-3 w-3 mr-1" /> Retry
+                <RefreshCw className="h-3 w-3 mr-1" /> 
+                {retryCount >= maxRetries ? "Try again later" : "Retry"}
               </Button>
             </AlertDescription>
           </Alert>
@@ -216,12 +227,12 @@ const Nora = () => {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
-          disabled={isLoading}
+          disabled={isLoading || (connectionError && retryCount >= maxRetries)}
           className="flex-1"
         />
         <Button 
           onClick={() => handleSendMessage()}
-          disabled={!input.trim() || isLoading}
+          disabled={!input.trim() || isLoading || (connectionError && retryCount >= maxRetries)}
         >
           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
