@@ -81,6 +81,18 @@ serve(async (req) => {
     });
     
     try {
+      // Special handling for connection test messages
+      if (message === "test connection") {
+        log('Connection test requested');
+        return new Response(
+          JSON.stringify({ 
+            response: "Connection test successful", 
+            suggestions: ["Ask me about focus techniques", "How can I improve my productivity?"]
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       // Setup timeout logger
       const timeoutId = setTimeout(() => {
         log('Request might time out soon');

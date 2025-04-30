@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Bot, Brain, MessageCircle, Network, Sparkles, Target, Users, Send, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
@@ -33,6 +34,7 @@ const Nora = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [connectionError, setConnectionError] = useState(false);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [suggestions, setSuggestions] = useState<string[]>([
     "How can I improve my focus?",
@@ -84,8 +86,38 @@ const Nora = () => {
     scrollToBottom();
   }, [messages]);
 
+  // Test the connection on component mount
+  useEffect(() => {
+    const testConnection = async () => {
+      try {
+        const testResponse = await supabase.functions.invoke('nora-assistant', {
+          body: {
+            message: "test connection",
+            userId: user?.id,
+            assistantName: ASSISTANT_NAME
+          }
+        });
+        
+        console.log("Nora connection test result:", testResponse);
+        
+        if (testResponse.error) {
+          console.error("Nora connection test error:", testResponse.error);
+          setErrorDetails(testResponse.error);
+          setConnectionError(true);
+        }
+      } catch (error) {
+        console.error("Error testing Nora connection:", error);
+      }
+    };
+    
+    if (user?.id) {
+      testConnection();
+    }
+  }, [user?.id]);
+
   const retryConnection = () => {
     setConnectionError(false);
+    setErrorDetails(null);
     setRetryCount(0);
     // If there's a user message as the last message, retry with that
     const lastUserMessage = [...messages].reverse().find(m => m.role === "user");
@@ -103,6 +135,7 @@ const Nora = () => {
     setInput("");
     setIsLoading(true);
     setConnectionError(false);
+    setErrorDetails(null);
 
     try {
       console.log("Sending message to Nora:", { messageLength: messageText.length, userId: user?.id });
@@ -116,8 +149,9 @@ const Nora = () => {
       });
 
       if (error) {
-        console.error('Error calling Nora assistant:', error);
+        console.error('Error calling Nora assistant (network):', error);
         setConnectionError(true);
+        setErrorDetails(`Network error: ${error.message}`);
         setRetryCount(prev => prev + 1);
         toast.error('Unable to connect to Nora');
         setMessages(prev => [...prev, { 
@@ -129,6 +163,8 @@ const Nora = () => {
 
       if (data.error) {
         console.error('Error from Nora assistant:', data.error);
+        setConnectionError(true);
+        setErrorDetails(`API error: ${data.error}`);
         setMessages(prev => [...prev, { 
           role: "assistant", 
           content: data.response || "I encountered an issue processing your request."
@@ -152,6 +188,7 @@ const Nora = () => {
     } catch (error) {
       console.error('Error in Nora chat:', error);
       setConnectionError(true);
+      setErrorDetails(`Exception: ${error instanceof Error ? error.message : String(error)}`);
       setRetryCount(prev => prev + 1);
       toast.error('Failed to communicate with Nora');
       setMessages(prev => [...prev, { 
@@ -189,17 +226,20 @@ const Nora = () => {
         {connectionError && (
           <Alert variant="destructive" className="mx-auto max-w-md">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="flex items-center">
-              Connection to Nora is currently unavailable.
+            <AlertDescription className="flex flex-col">
+              <div className="mb-2">Connection to Nora is currently unavailable.</div>
+              {errorDetails && (
+                <div className="text-xs opacity-75 mb-2">Error: {errorDetails}</div>
+              )}
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="ml-2" 
+                className="self-start" 
                 onClick={retryConnection}
                 disabled={retryCount >= maxRetries}
               >
                 <RefreshCw className="h-3 w-3 mr-1" /> 
-                {retryCount >= maxRetries ? "Try again later" : "Retry"}
+                {retryCount >= maxRetries ? "Try again later" : "Retry Connection"}
               </Button>
             </AlertDescription>
           </Alert>
