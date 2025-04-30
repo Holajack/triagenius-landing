@@ -12,6 +12,9 @@ const log = (message: string, data?: any) => {
 // The documented Nora API endpoint
 const NORA_API_URL = "https://api.nora-assistant.com/v1/chat";
 
+// The name of the OpenAI assistant
+const ASSISTANT_NAME = "Nora";
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -29,7 +32,8 @@ serve(async (req) => {
       );
     }
 
-    const { message, userId } = await req.json();
+    const { message, userId, assistantName } = await req.json();
+    const effectiveAssistantName = assistantName || ASSISTANT_NAME;
     
     if (!message) {
       return new Response(
@@ -38,12 +42,13 @@ serve(async (req) => {
       );
     }
 
-    log('Received message for Nora', { userId, messageLength: message.length });
+    log('Received message for Nora', { userId, messageLength: message.length, assistantName: effectiveAssistantName });
     
     try {
       // Call the Nora API with proper error handling and timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
+      const timeoutId = setTimeout(() => {
+        log('Request timed out');
+      }, 20000); // 20 second timeout for logging
       
       log('Sending request to Nora API', { endpoint: NORA_API_URL });
       const response = await fetch(NORA_API_URL, {
@@ -58,10 +63,10 @@ serve(async (req) => {
           message: message,
           options: {
             context: "focus-app",
-            tone: "supportive"
+            tone: "supportive",
+            assistant_name: effectiveAssistantName
           }
         }),
-        signal: controller.signal
       });
       
       clearTimeout(timeoutId);

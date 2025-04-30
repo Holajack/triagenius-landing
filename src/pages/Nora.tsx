@@ -18,6 +18,9 @@ interface Message {
 }
 
 const Nora = () => {
+  // Assistant configuration
+  const ASSISTANT_NAME = "Nora";
+  
   const navigate = useNavigate();
   const { user } = useUser();
   const { tier } = useSubscription();
@@ -104,13 +107,12 @@ const Nora = () => {
     try {
       console.log("Sending message to Nora:", { messageLength: messageText.length, userId: user?.id });
       
-      // Remove AbortController as it's not supported
       const { data, error } = await supabase.functions.invoke('nora-assistant', {
         body: {
           message: messageText,
-          userId: user?.id
+          userId: user?.id,
+          assistantName: ASSISTANT_NAME
         }
-        // Removed unsupported options: signal and timeoutMs
       });
 
       if (error) {
