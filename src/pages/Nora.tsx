@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Bot, Brain, MessageCircle, Network, Sparkles, Target, Users, Send, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
@@ -105,16 +104,13 @@ const Nora = () => {
     try {
       console.log("Sending message to Nora:", { messageLength: messageText.length, userId: user?.id });
       
-      // Create a new AbortController for this request
-      const controller = new AbortController();
-      
+      // Remove AbortController as it's not supported
       const { data, error } = await supabase.functions.invoke('nora-assistant', {
         body: {
           message: messageText,
           userId: user?.id
-        },
-        signal: controller.signal, // Use 'signal' instead of 'abortSignal'
-        timeoutMs: 30000 // 30 seconds timeout
+        }
+        // Removed unsupported options: signal and timeoutMs
       });
 
       if (error) {
