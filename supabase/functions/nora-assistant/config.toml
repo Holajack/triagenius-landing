@@ -1,0 +1,4 @@
+
+project_id = "ucculvnodabrfwbkzsnx"
+[config]
+entrypoint = "index.ts"
