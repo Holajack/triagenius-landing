@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -9,11 +8,11 @@ const log = (message: string, data?: any) => {
   console.log(`[${timestamp}] ${message}`, data ? JSON.stringify(data) : '');
 };
 
-// The documented Nora API endpoint
-const NORA_API_URL = "https://api.nora-assistant.com/v1/chat";
-
 // The name of the OpenAI assistant
 const ASSISTANT_NAME = "Nora";
+
+// OpenAI API URL
+const OPENAI_API_URL = "https://api.openai.com/v1";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -22,12 +21,21 @@ serve(async (req) => {
   }
 
   try {
-    const noraApiKey = Deno.env.get('NORA_API_KEY');
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    const assistantId = Deno.env.get('OPENAI_ASSISTANT_ID');
     
-    if (!noraApiKey) {
-      log('Error: NORA_API_KEY environment variable not set');
+    if (!openaiApiKey) {
+      log('Error: OPENAI_API_KEY environment variable not set');
       return new Response(
-        JSON.stringify({ error: 'Nora API key not configured' }),
+        JSON.stringify({ error: 'OpenAI API key not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!assistantId) {
+      log('Error: OPENAI_ASSISTANT_ID environment variable not set');
+      return new Response(
+        JSON.stringify({ error: 'OpenAI Assistant ID not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -42,67 +50,192 @@ serve(async (req) => {
       );
     }
 
-    log('Received message for Nora', { userId, messageLength: message.length, assistantName: effectiveAssistantName });
+    log('Received message for assistant', { 
+      userId, 
+      messageLength: message.length, 
+      assistantName: effectiveAssistantName,
+      assistantId 
+    });
     
     try {
-      // Call the Nora API with proper error handling and timeout
+      // Setup timeout logger
       const timeoutId = setTimeout(() => {
-        log('Request timed out');
+        log('Request might time out soon');
       }, 20000); // 20 second timeout for logging
       
-      log('Sending request to Nora API', { endpoint: NORA_API_URL });
-      const response = await fetch(NORA_API_URL, {
+      // Create a Thread
+      log('Creating new thread with OpenAI');
+      const threadResponse = await fetch(`${OPENAI_API_URL}/threads`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${noraApiKey}`,
+          'Authorization': `Bearer ${openaiApiKey}`,
           'Content-Type': 'application/json',
-          'User-Agent': 'FocusApp-Supabase/1.0',
+          'OpenAI-Beta': 'assistants=v1'
+        },
+        body: JSON.stringify({})
+      });
+      
+      if (!threadResponse.ok) {
+        const errorText = await threadResponse.text();
+        log('OpenAI thread creation error', {
+          status: threadResponse.status,
+          body: errorText
+        });
+        throw new Error(`Failed to create thread: ${errorText}`);
+      }
+      
+      const threadData = await threadResponse.json();
+      const threadId = threadData.id;
+      log('Thread created', { threadId });
+      
+      // Add a Message to the Thread
+      log('Adding message to thread');
+      const messageResponse = await fetch(`${OPENAI_API_URL}/threads/${threadId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json',
+          'OpenAI-Beta': 'assistants=v1'
         },
         body: JSON.stringify({
-          user_id: userId || 'anonymous',
-          message: message,
-          options: {
-            context: "focus-app",
-            tone: "supportive",
-            assistant_name: effectiveAssistantName
-          }
-        }),
+          role: "user",
+          content: message
+        })
       });
+      
+      if (!messageResponse.ok) {
+        const errorText = await messageResponse.text();
+        log('OpenAI message creation error', {
+          status: messageResponse.status,
+          body: errorText
+        });
+        throw new Error(`Failed to add message: ${errorText}`);
+      }
+      
+      log('Message added to thread');
+      
+      // Run the Assistant
+      log('Running assistant on thread', { assistantId });
+      const runResponse = await fetch(`${OPENAI_API_URL}/threads/${threadId}/runs`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json',
+          'OpenAI-Beta': 'assistants=v1'
+        },
+        body: JSON.stringify({
+          assistant_id: assistantId,
+          instructions: `You are ${effectiveAssistantName}, a helpful assistant focused on helping users improve focus and productivity.`
+        })
+      });
+      
+      if (!runResponse.ok) {
+        const errorText = await runResponse.text();
+        log('OpenAI run creation error', {
+          status: runResponse.status,
+          body: errorText
+        });
+        throw new Error(`Failed to run assistant: ${errorText}`);
+      }
+      
+      const runData = await runResponse.json();
+      const runId = runData.id;
+      log('Assistant run started', { runId });
+      
+      // Poll for the run completion
+      let runStatus = runData.status;
+      let assistantResponse = "";
+      let attempts = 0;
+      const maxAttempts = 30; // Maximum number of polling attempts
+      
+      while (runStatus !== 'completed' && runStatus !== 'failed' && attempts < maxAttempts) {
+        // Wait for a short time before polling again
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        attempts++;
+        
+        const runCheckResponse = await fetch(`${OPENAI_API_URL}/threads/${threadId}/runs/${runId}`, {
+          headers: {
+            'Authorization': `Bearer ${openaiApiKey}`,
+            'OpenAI-Beta': 'assistants=v1'
+          }
+        });
+        
+        if (!runCheckResponse.ok) {
+          const errorText = await runCheckResponse.text();
+          log('OpenAI run check error', {
+            status: runCheckResponse.status,
+            body: errorText,
+            attempt: attempts
+          });
+          // Continue polling despite errors
+          continue;
+        }
+        
+        const runCheckData = await runCheckResponse.json();
+        runStatus = runCheckData.status;
+        log('Run status check', { status: runStatus, attempt: attempts });
+      }
       
       clearTimeout(timeoutId);
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        log('Nora API error response', { 
-          status: response.status, 
-          statusText: response.statusText,
-          body: errorText 
-        });
-        
-        // Return a fallback response with error details
-        return new Response(
-          JSON.stringify({
-            response: "I'm having trouble accessing my knowledge base. This could be a temporary issue. Let's try again in a moment.",
-            suggestions: ["Try again later", "Ask a different question", "Check if there's a service status update"],
-            error: `API returned status ${response.status}`
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      if (runStatus !== 'completed') {
+        log('Assistant run did not complete in time', { finalStatus: runStatus });
+        throw new Error(`Assistant run ${runStatus === 'failed' ? 'failed' : 'timed out'}`);
       }
-
-      const data = await response.json();
-      log('Nora response received', { responseLength: data?.response?.length || 0 });
-
+      
+      // Get the messages from the Thread
+      log('Retrieving messages from thread');
+      const messagesResponse = await fetch(`${OPENAI_API_URL}/threads/${threadId}/messages`, {
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'OpenAI-Beta': 'assistants=v1'
+        }
+      });
+      
+      if (!messagesResponse.ok) {
+        const errorText = await messagesResponse.text();
+        log('OpenAI messages retrieval error', {
+          status: messagesResponse.status,
+          body: errorText
+        });
+        throw new Error(`Failed to retrieve messages: ${errorText}`);
+      }
+      
+      const messagesData = await messagesResponse.json();
+      
+      // Get the assistant's last message
+      const assistantMessages = messagesData.data.filter((msg: any) => msg.role === 'assistant');
+      
+      if (assistantMessages.length === 0) {
+        log('No assistant messages found');
+        throw new Error('No response received from assistant');
+      }
+      
+      // Get the most recent message (should be first in the list)
+      const latestMessage = assistantMessages[0];
+      
+      // Extract the text content from the message
+      assistantResponse = latestMessage.content
+        .filter((content: any) => content.type === 'text')
+        .map((content: any) => content.text.value)
+        .join('\n');
+      
+      log('Assistant response received', { responseLength: assistantResponse.length });
+      
+      // Generate some simple suggestions based on the message context
+      // This is a simple implementation - you may want to enhance this
+      const suggestions = generateSuggestions(message, assistantResponse);
+      
       return new Response(
         JSON.stringify({ 
-          response: data.response,
-          suggestions: data.suggestions || [],
+          response: assistantResponse,
+          suggestions: suggestions || [],
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } catch (apiError) {
       // Handle network or timeout errors specifically
-      log('Nora API connection error', { 
+      log('OpenAI API connection error', { 
         message: apiError.message, 
         name: apiError.name,
         stack: apiError.stack
@@ -138,3 +271,28 @@ serve(async (req) => {
     );
   }
 });
+
+// Function to generate context-aware suggestions
+function generateSuggestions(userMessage: string, assistantResponse: string): string[] {
+  const lowercaseMessage = userMessage.toLowerCase();
+  const suggestions: string[] = [];
+  
+  // Add suggestion based on question context
+  if (lowercaseMessage.includes('focus') || lowercaseMessage.includes('concentrate')) {
+    suggestions.push("What are the best techniques for deep focus?");
+  }
+  
+  if (lowercaseMessage.includes('study') || lowercaseMessage.includes('learn')) {
+    suggestions.push("How can I improve my study habits?");
+  }
+  
+  if (lowercaseMessage.includes('distract') || lowercaseMessage.includes('procrastinate')) {
+    suggestions.push("How do I avoid distractions while working?");
+  }
+  
+  // Add general follow-up suggestions
+  suggestions.push("Can you explain that in more detail?");
+  
+  // Keep suggestions list to max 3 items
+  return suggestions.slice(0, 3);
+}
