@@ -60,13 +60,13 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <ThemeProvider>
-        <AuthProvider>
-          <UserProvider>
-            <OnboardingProvider>
-              <WalkthroughProvider>
-                <TaskProvider>
-                  <BrowserRouter>
+      <BrowserRouter>
+        <ThemeProvider>
+          <AuthProvider>
+            <UserProvider>
+              <OnboardingProvider>
+                <WalkthroughProvider>
+                  <TaskProvider>
                     <Routes>
                       <Route path="/" element={<Index />} />
                       <Route path="/auth" element={<Auth />} />
@@ -103,13 +103,13 @@ function App() {
                     <InstallPrompt />
                     <FirstVisitPrompt />
                     <UpdateNotification />
-                  </BrowserRouter>
-                </TaskProvider>
-              </WalkthroughProvider>
-            </OnboardingProvider>
-          </UserProvider>
-        </AuthProvider>
-      </ThemeProvider>
+                  </TaskProvider>
+                </WalkthroughProvider>
+              </OnboardingProvider>
+            </UserProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </BrowserRouter>
     </ErrorBoundary>
   );
 }
