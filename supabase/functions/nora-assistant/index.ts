@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -24,19 +25,41 @@ serve(async (req) => {
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     const assistantId = Deno.env.get('OPENAI_ASSISTANT_ID');
     
+    // Verify API key exists and has a valid format
     if (!openaiApiKey) {
       log('Error: OPENAI_API_KEY environment variable not set');
       return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          error: 'OpenAI API key not configured',
+          response: "I'm having trouble connecting to my AI brain. Please ask an administrator to set up my API key correctly.",
+          suggestions: ["Check API configuration", "Try again later"]
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     if (!assistantId) {
       log('Error: OPENAI_ASSISTANT_ID environment variable not set');
       return new Response(
-        JSON.stringify({ error: 'OpenAI Assistant ID not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          error: 'OpenAI Assistant ID not configured',
+          response: "My AI assistant ID is missing. Please ask an administrator to set up my configuration correctly.",
+          suggestions: ["Check assistant configuration", "Try again later"] 
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate key format (simple check, not foolproof)
+    if (!openaiApiKey.startsWith('sk-') || openaiApiKey.length < 20) {
+      log('Error: OPENAI_API_KEY appears to be invalid');
+      return new Response(
+        JSON.stringify({ 
+          error: 'OpenAI API key appears to be invalid',
+          response: "There seems to be an issue with my API key format. Please ask an administrator to check the OpenAI API key.",
+          suggestions: ["Verify API key format", "Check OpenAI account", "Try again later"]
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -81,6 +104,16 @@ serve(async (req) => {
           status: threadResponse.status,
           body: errorText
         });
+        if (threadResponse.status === 401) {
+          return new Response(
+            JSON.stringify({ 
+              error: 'Invalid OpenAI API key',
+              response: "I can't connect to my AI brain because my API key is invalid. Please ask an administrator to update my API key.",
+              suggestions: ["Check OpenAI account", "Update API key", "Try again later"]
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
         throw new Error(`Failed to create thread: ${errorText}`);
       }
       
@@ -135,6 +168,16 @@ serve(async (req) => {
           status: runResponse.status,
           body: errorText
         });
+        if (runResponse.status === 404) {
+          return new Response(
+            JSON.stringify({ 
+              error: 'Invalid Assistant ID',
+              response: "My Assistant ID doesn't seem to exist. Please ask an administrator to check the OpenAI Assistant ID.",
+              suggestions: ["Verify Assistant ID", "Check OpenAI account", "Try again later"]
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
         throw new Error(`Failed to run assistant: ${errorText}`);
       }
       
