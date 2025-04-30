@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Bot, Brain, MessageCircle, Network, Sparkles, Target, Users, Send, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
@@ -90,6 +89,9 @@ const Nora = () => {
   useEffect(() => {
     const testConnection = async () => {
       try {
+        setIsLoading(true);
+        console.log("Testing connection to Nora assistant...");
+        
         const testResponse = await supabase.functions.invoke('nora-assistant', {
           body: {
             message: "test connection",
@@ -104,9 +106,26 @@ const Nora = () => {
           console.error("Nora connection test error:", testResponse.error);
           setErrorDetails(testResponse.error);
           setConnectionError(true);
+          toast.error("Failed to connect to Nora assistant");
+        } else if (testResponse.data?.error) {
+          console.error("Nora assistant error:", testResponse.data.error);
+          setErrorDetails(testResponse.data.error);
+          setConnectionError(true);
+          
+          // Show more user-friendly message
+          toast.error(`Nora assistant issue: ${testResponse.data.error}`);
+        } else {
+          setConnectionError(false);
+          setErrorDetails(null);
+          console.log("Nora assistant connection successful");
         }
       } catch (error) {
         console.error("Error testing Nora connection:", error);
+        setConnectionError(true);
+        setErrorDetails(error instanceof Error ? error.message : String(error));
+        toast.error("Failed to connect to Nora assistant");
+      } finally {
+        setIsLoading(false);
       }
     };
     

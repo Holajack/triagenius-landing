@@ -22,8 +22,15 @@ serve(async (req) => {
   }
 
   try {
+    // Get the API key and assistant ID from environment variables
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     const assistantId = Deno.env.get('OPENAI_ASSISTANT_ID');
+    
+    log('Checking OpenAI credentials', { 
+      hasApiKey: !!openaiApiKey, 
+      hasAssistantId: !!assistantId,
+      assistantIdValue: assistantId || 'Not set'
+    });
     
     // Verify API key exists and has a valid format
     if (!openaiApiKey) {
