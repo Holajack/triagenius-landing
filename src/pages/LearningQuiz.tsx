@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
@@ -49,13 +48,13 @@ const styleConfigs: Record<LearningStyle, StyleConfig> = {
   Physical: {
     title: "Physical Learning",
     description: "Learn by doing and interacting with physical objects",
-    icon: Hand,
+    icon: Headphones,
     color: "bg-amber-100"
   },
   Vocal: {
     title: "Vocal Learning",
     description: "Learn by speaking and explaining concepts",
-    icon: PencilLine,
+    icon: Headphones,
     color: "bg-rose-100"
   },
   Auditory: {
@@ -67,13 +66,13 @@ const styleConfigs: Record<LearningStyle, StyleConfig> = {
   Visual: {
     title: "Visual Learning",
     description: "Learn through images and spatial relationships",
-    icon: Eye,
+    icon: Headphones,
     color: "bg-green-100"
   },
   Logical: {
     title: "Logical Learning",
     description: "Learn through reasoning and systems",
-    icon: Lightbulb,
+    icon: Headphones,
     color: "bg-purple-100"
   }
 };
@@ -131,6 +130,9 @@ const allQuestions: LearningQuestion[] = [
   { id: 40, text: "I use lists and schedules to organize my tasks effectively.", category: "Logical" }
 ];
 
+// Shuffle questions to mix them up across categories
+const shuffledQuestions = [...allQuestions].sort(() => Math.random() - 0.5);
+
 const likertOptions = [
   { value: "1", label: "Strongly Disagree" },
   { value: "2", label: "Disagree" },
@@ -144,42 +146,28 @@ const STORAGE_KEY = "learning_quiz_progress";
 const LearningQuiz = () => {
   const { user } = useUser();
   const navigate = useNavigate();
-  const [currentSection, setCurrentSection] = useState<LearningStyle>("Physical");
   const [userAnswers, setUserAnswers] = useState<UserAnswers>({});
   const [isResultsDialogOpen, setIsResultsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [resultsCalculated, setResultsCalculated] = useState<Record<LearningStyle, number> | null>(null);
-  const [currentTab, setCurrentTab] = useState("questions");
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
   const [isMissingAnswers, setIsMissingAnswers] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
   
-  // Get questions for current section
-  const currentSectionQuestions = allQuestions.filter(q => q.category === currentSection);
+  // Questions per page (pagination)
+  const QUESTIONS_PER_PAGE = 8;
+  const totalPages = Math.ceil(shuffledQuestions.length / QUESTIONS_PER_PAGE);
+  
+  // Get questions for current page
+  const getCurrentPageQuestions = () => {
+    const startIndex = currentPage * QUESTIONS_PER_PAGE;
+    return shuffledQuestions.slice(startIndex, startIndex + QUESTIONS_PER_PAGE);
+  };
   
   // Calculate completion percentage
   const totalQuestions = allQuestions.length;
   const answeredQuestions = Object.keys(userAnswers).length;
   const completionPercentage = (answeredQuestions / totalQuestions) * 100;
-  
-  // Progress by section
-  const sectionProgress: Record<LearningStyle, number> = {
-    Physical: 0,
-    Vocal: 0,
-    Auditory: 0,
-    Visual: 0,
-    Logical: 0
-  };
-  
-  // Calculate progress for each section
-  Object.keys(styleConfigs).forEach(style => {
-    const styleQuestions = allQuestions.filter(q => q.category === style);
-    const answeredStyleQuestions = styleQuestions.filter(q => userAnswers[q.id] !== undefined);
-    sectionProgress[style as LearningStyle] = (answeredStyleQuestions.length / styleQuestions.length) * 100;
-  });
-  
-  // Get section index for navigation
-  const sectionOrder: LearningStyle[] = ["Physical", "Vocal", "Auditory", "Visual", "Logical"];
-  const currentSectionIndex = sectionOrder.indexOf(currentSection);
   
   // Load saved progress from localStorage
   useEffect(() => {
@@ -194,8 +182,8 @@ const LearningQuiz = () => {
       try {
         const parsed = JSON.parse(savedProgress);
         setUserAnswers(parsed.answers || {});
-        if (parsed.section) {
-          setCurrentSection(parsed.section);
+        if (parsed.page) {
+          setCurrentPage(parsed.page);
         }
       } catch (error) {
         console.error("Error loading saved progress:", error);
@@ -208,11 +196,11 @@ const LearningQuiz = () => {
     if (user) {
       localStorage.setItem(`${STORAGE_KEY}_${user.id}`, JSON.stringify({
         answers: userAnswers,
-        section: currentSection,
+        page: currentPage,
         timestamp: new Date().toISOString()
       }));
     }
-  }, [userAnswers, currentSection, user]);
+  }, [userAnswers, currentPage, user]);
   
   const handleAnswer = (questionId: number, value: string) => {
     setUserAnswers(prev => ({
@@ -221,34 +209,31 @@ const LearningQuiz = () => {
     }));
   };
   
-  const navigateToSection = (section: LearningStyle) => {
-    setCurrentSection(section);
-    setCurrentTab("questions");
-  };
-  
-  const handleNextSection = () => {
-    // Check if all questions in current section are answered
-    const unansweredQuestions = currentSectionQuestions.filter(q => userAnswers[q.id] === undefined);
+  const handleNextPage = () => {
+    // Check if all questions on current page are answered
+    const currentQuestions = getCurrentPageQuestions();
+    const unansweredQuestions = currentQuestions.filter(q => userAnswers[q.id] === undefined);
     
     if (unansweredQuestions.length > 0) {
       setIsMissingAnswers(true);
-      toast.warning(`Please answer all questions in this section before proceeding.`);
+      toast.warning("Please answer all questions on this page before proceeding.");
       return;
     }
     
-    const nextSectionIndex = currentSectionIndex + 1;
-    if (nextSectionIndex < sectionOrder.length) {
-      navigateToSection(sectionOrder[nextSectionIndex]);
+    if (currentPage < totalPages - 1) {
+      setCurrentPage(currentPage + 1);
+      window.scrollTo(0, 0); // Scroll to top for new page
+      setIsMissingAnswers(false);
     } else {
-      // All sections completed
+      // All pages completed
       calculateResults();
     }
   };
   
-  const handlePreviousSection = () => {
-    const prevSectionIndex = currentSectionIndex - 1;
-    if (prevSectionIndex >= 0) {
-      navigateToSection(sectionOrder[prevSectionIndex]);
+  const handlePreviousPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+      window.scrollTo(0, 0); // Scroll to top for new page
     }
   };
   
@@ -466,11 +451,6 @@ Generated on: ${new Date().toLocaleDateString()}
     toast.success("Your results have been downloaded!");
   };
   
-  const sectionQuestionsComplete = (section: LearningStyle) => {
-    const questions = allQuestions.filter(q => q.category === section);
-    return questions.every(q => userAnswers[q.id] !== undefined);
-  };
-  
   return (
     <div className="container max-w-4xl px-4 pb-24">
       <PageHeader 
@@ -482,12 +462,9 @@ Generated on: ${new Date().toLocaleDateString()}
         <div className="space-y-2 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              {(() => {
-                const SectionIcon = styleConfigs[currentSection].icon;
-                return <SectionIcon className="h-5 w-5" />;
-              })()}
+              <Headphones className="h-5 w-5" />
               <h2 className="text-lg font-medium">
-                {styleConfigs[currentSection].title}
+                Learning Style Assessment
               </h2>
             </div>
             <Button variant="outline" size="sm" onClick={handleExitQuiz}>
@@ -496,135 +473,68 @@ Generated on: ${new Date().toLocaleDateString()}
           </div>
           <Progress value={completionPercentage} className="h-2" />
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Section {currentSectionIndex + 1} of 5</span>
+            <span>Page {currentPage + 1} of {totalPages}</span>
             <span>{Math.round(completionPercentage)}% Complete</span>
           </div>
         </div>
         
-        <Tabs value={currentTab} onValueChange={setCurrentTab} className="mb-6">
-          <TabsList className="w-full mb-4">
-            <TabsTrigger value="questions" className="flex-1">Questions</TabsTrigger>
-            <TabsTrigger value="progress" className="flex-1">Progress</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="questions">
-            <Card className={`${styleConfigs[currentSection].color} border-0 overflow-hidden`}>
-              <CardContent className="p-6">
-                <div className="space-y-8">
-                  {currentSectionQuestions.map((question) => (
-                    <div key={question.id} className="space-y-4">
-                      <div className="flex">
-                        <span className="font-medium mr-2">{question.id}.</span>
-                        <h4 className="font-medium">{question.text}</h4>
-                      </div>
-                      
-                      <RadioGroup 
-                        value={userAnswers[question.id]?.toString() || ""}
-                        onValueChange={(value) => handleAnswer(question.id, value)}
-                        className="grid grid-cols-1 md:grid-cols-5 gap-2"
-                      >
-                        {likertOptions.map((option) => (
-                          <div key={option.value} className="flex items-center space-x-2 bg-white/80 hover:bg-white transition-colors p-3 rounded-md">
-                            <RadioGroupItem value={option.value} id={`q${question.id}-opt${option.value}`} />
-                            <Label 
-                              htmlFor={`q${question.id}-opt${option.value}`}
-                              className="flex-1 cursor-pointer text-sm"
-                            >
-                              {option.label}
-                            </Label>
-                          </div>
-                        ))}
-                      </RadioGroup>
-                      
-                      {isMissingAnswers && userAnswers[question.id] === undefined && (
-                        <div className="text-red-500 text-sm flex items-center">
-                          <AlertTriangle className="h-4 w-4 mr-1" />
-                          Please answer this question
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  
-                  <div className="flex justify-between mt-6">
-                    <Button
-                      variant="outline"
-                      onClick={handlePreviousSection}
-                      disabled={currentSectionIndex === 0}
-                    >
-                      <ArrowLeft className="mr-2 h-4 w-4" />
-                      Previous Section
-                    </Button>
-                    
-                    <Button onClick={handleNextSection}>
-                      {currentSectionIndex < sectionOrder.length - 1 ? (
-                        <>
-                          Next Section
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </>
-                      ) : (
-                        <>
-                          {isLoading ? (
-                            <>
-                              <span className="animate-pulse">Processing...</span>
-                            </>
-                          ) : (
-                            <>
-                              Complete Quiz
-                              <ArrowRight className="ml-2 h-4 w-4" />
-                            </>
-                          )}
-                        </>
-                      )}
-                    </Button>
+        <Card className="bg-gray-50 dark:bg-gray-800 border-0 overflow-hidden">
+          <CardContent className="p-6">
+            <div className="space-y-8">
+              {getCurrentPageQuestions().map((question) => (
+                <div key={question.id} className="space-y-4">
+                  <div className="flex">
+                    <span className="font-medium mr-2">{question.id}.</span>
+                    <h4 className="font-medium">{question.text}</h4>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="progress">
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="text-lg font-medium mb-4">Your Progress</h3>
-                
-                <div className="space-y-4">
-                  {Object.entries(styleConfigs).map(([style, config]) => {
-                    const StyleIcon = config.icon;
-                    const isComplete = sectionQuestionsComplete(style as LearningStyle);
-                    
-                    return (
-                      <div key={style} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <StyleIcon className="h-4 w-4" />
-                            <span>{config.title}</span>
-                          </div>
-                          <span className="text-sm text-muted-foreground">
-                            {isComplete ? 'Complete' : `${sectionProgress[style as LearningStyle]}%`}
-                          </span>
-                        </div>
-                        <Progress 
-                          value={sectionProgress[style as LearningStyle]} 
-                          className="h-2"
-                          indicatorClassName={isComplete ? "bg-green-500" : undefined} 
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-                
-                <div className="mt-6">
-                  <Button 
-                    onClick={() => navigateToSection(currentSection)}
-                    className="w-full"
+                  
+                  <RadioGroup 
+                    value={userAnswers[question.id]?.toString() || ""}
+                    onValueChange={(value) => handleAnswer(question.id, value)}
+                    className="grid grid-cols-1 md:grid-cols-5 gap-2"
                   >
-                    Return to Questions
-                  </Button>
+                    {likertOptions.map((option) => (
+                      <div key={option.value} className="flex items-center space-x-2 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors p-3 rounded-md">
+                        <RadioGroupItem value={option.value} id={`q${question.id}-opt${option.value}`} />
+                        <Label 
+                          htmlFor={`q${question.id}-opt${option.value}`}
+                          className="flex-1 cursor-pointer text-sm"
+                        >
+                          {option.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                  
+                  {isMissingAnswers && userAnswers[question.id] === undefined && (
+                    <div className="text-red-500 text-sm flex items-center">
+                      <AlertTriangle className="h-4 w-4 mr-1" />
+                      Please answer this question
+                    </div>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              ))}
+              
+              <div className="flex justify-between mt-6">
+                <Button
+                  variant="outline"
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 0}
+                >
+                  Previous Page
+                </Button>
+                
+                <Button onClick={handleNextPage}>
+                  {currentPage < totalPages - 1 ? (
+                    "Next Page"
+                  ) : (
+                    isLoading ? "Processing..." : "Complete Quiz"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
       
       {/* Exit Confirmation Dialog */}
