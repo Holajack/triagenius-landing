@@ -133,10 +133,10 @@ const allQuestions: LearningQuestion[] = [
 // Shuffle questions to mix them up across categories
 const shuffledQuestions = [...allQuestions].sort(() => Math.random() - 0.5);
 
+// Updated likert options with Neutral removed
 const likertOptions = [
   { value: "1", label: "Strongly Disagree" },
   { value: "2", label: "Disagree" },
-  { value: "3", label: "Neutral" },
   { value: "4", label: "Agree" },
   { value: "5", label: "Strongly Agree" }
 ];
@@ -481,39 +481,44 @@ Generated on: ${new Date().toLocaleDateString()}
         <Card className="bg-gray-50 dark:bg-gray-800 border-0 overflow-hidden">
           <CardContent className="p-6">
             <div className="space-y-8">
-              {getCurrentPageQuestions().map((question) => (
-                <div key={question.id} className="space-y-4">
-                  <div className="flex">
-                    <span className="font-medium mr-2">{question.id}.</span>
-                    <h4 className="font-medium">{question.text}</h4>
-                  </div>
-                  
-                  <RadioGroup 
-                    value={userAnswers[question.id]?.toString() || ""}
-                    onValueChange={(value) => handleAnswer(question.id, value)}
-                    className="grid grid-cols-1 md:grid-cols-5 gap-2"
-                  >
-                    {likertOptions.map((option) => (
-                      <div key={option.value} className="flex items-center space-x-2 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors p-3 rounded-md">
-                        <RadioGroupItem value={option.value} id={`q${question.id}-opt${option.value}`} />
-                        <Label 
-                          htmlFor={`q${question.id}-opt${option.value}`}
-                          className="flex-1 cursor-pointer text-sm"
-                        >
-                          {option.label}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                  
-                  {isMissingAnswers && userAnswers[question.id] === undefined && (
-                    <div className="text-red-500 text-sm flex items-center">
-                      <AlertTriangle className="h-4 w-4 mr-1" />
-                      Please answer this question
+              {getCurrentPageQuestions().map((question, index) => {
+                // Calculate the sequential question number for this page
+                const questionNumber = currentPage * QUESTIONS_PER_PAGE + index + 1;
+                
+                return (
+                  <div key={question.id} className="space-y-4">
+                    <div className="flex">
+                      <span className="font-medium mr-2">{questionNumber}.</span>
+                      <h4 className="font-medium">{question.text}</h4>
                     </div>
-                  )}
-                </div>
-              ))}
+                    
+                    <RadioGroup 
+                      value={userAnswers[question.id]?.toString() || ""}
+                      onValueChange={(value) => handleAnswer(question.id, value)}
+                      className="grid grid-cols-1 md:grid-cols-4 gap-2"
+                    >
+                      {likertOptions.map((option) => (
+                        <div key={option.value} className="flex items-center space-x-2 bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors p-3 rounded-md">
+                          <RadioGroupItem value={option.value} id={`q${question.id}-opt${option.value}`} />
+                          <Label 
+                            htmlFor={`q${question.id}-opt${option.value}`}
+                            className="flex-1 cursor-pointer text-sm"
+                          >
+                            {option.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                    
+                    {isMissingAnswers && userAnswers[question.id] === undefined && (
+                      <div className="text-red-500 text-sm flex items-center">
+                        <AlertTriangle className="h-4 w-4 mr-1" />
+                        Please answer this question
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               
               <div className="flex justify-between mt-6">
                 <Button
@@ -521,12 +526,16 @@ Generated on: ${new Date().toLocaleDateString()}
                   onClick={handlePreviousPage}
                   disabled={currentPage === 0}
                 >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
                   Previous Page
                 </Button>
                 
                 <Button onClick={handleNextPage}>
                   {currentPage < totalPages - 1 ? (
-                    "Next Page"
+                    <>
+                      Next Page
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </>
                   ) : (
                     isLoading ? "Processing..." : "Complete Quiz"
                   )}

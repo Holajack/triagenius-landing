@@ -56,7 +56,7 @@ const LearningStyleQuiz = () => {
           <h3 className="text-xl font-medium mb-2">Discover Your Unique Learning Style</h3>
           <p className="text-muted-foreground mb-4">
             This comprehensive assessment analyzes your responses to questions about how you learn
-            best. The quiz uses a blind testing approach, where questions are mixed to prevent bias.
+            best. The quiz presents 40 numbered questions with a 4-point scale from Strongly Disagree to Strongly Agree.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 mb-4">
