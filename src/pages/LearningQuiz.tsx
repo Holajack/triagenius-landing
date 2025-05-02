@@ -300,21 +300,55 @@ const LearningQuiz = () => {
       
       console.log("Focus distribution data:", focusDistributionData);
       
-      // Enhanced error handling with the supabase operation
-      const { data, error } = await supabase
+      // First, check if a record already exists for this user
+      const { data: existingRecord, error: checkError } = await supabase
         .from('learning_metrics')
-        .upsert({
-          user_id: user.id,
-          cognitive_analytical: normalizedResults.Logical,
-          cognitive_memory: normalizedResults.Visual,
-          cognitive_problem_solving: normalizedResults.Physical,
-          cognitive_creativity: normalizedResults.Vocal,
-          focus_distribution: focusDistributionData,
-          time_of_day_data: [{ time: new Date().toISOString(), primary_style: primaryStyle }]
-        });
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (checkError) {
+        console.error("Error checking existing records:", checkError);
+        toast.error(`Database query failed: ${checkError.message}`);
+        setIsLoading(false);
+        return;
+      }
+      
+      let dbOperation;
+      
+      // If a record exists, update it; otherwise insert a new one
+      if (existingRecord) {
+        console.log("Updating existing record for user:", user.id);
+        dbOperation = supabase
+          .from('learning_metrics')
+          .update({
+            cognitive_analytical: normalizedResults.Logical,
+            cognitive_memory: normalizedResults.Visual,
+            cognitive_problem_solving: normalizedResults.Physical,
+            cognitive_creativity: normalizedResults.Vocal,
+            focus_distribution: focusDistributionData,
+            time_of_day_data: [{ time: new Date().toISOString(), primary_style: primaryStyle }]
+          })
+          .eq('user_id', user.id);
+      } else {
+        console.log("Creating new record for user:", user.id);
+        dbOperation = supabase
+          .from('learning_metrics')
+          .insert({
+            user_id: user.id,
+            cognitive_analytical: normalizedResults.Logical,
+            cognitive_memory: normalizedResults.Visual,
+            cognitive_problem_solving: normalizedResults.Physical,
+            cognitive_creativity: normalizedResults.Vocal,
+            focus_distribution: focusDistributionData,
+            time_of_day_data: [{ time: new Date().toISOString(), primary_style: primaryStyle }]
+          });
+      }
+      
+      const { data, error } = await dbOperation;
       
       if (error) {
-        console.error("Error saving learning styles:", error);
+        console.error("Error saving learning metrics:", error);
         console.error("Error details:", error.message, error.details, error.hint);
         toast.error(`Failed to save your results: ${error.message}`);
         setIsLoading(false);
