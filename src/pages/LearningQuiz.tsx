@@ -270,7 +270,11 @@ const LearningQuiz = () => {
   };
   
   const saveResultsToDatabase = async (results: Record<LearningStyle, number>) => {
-    if (!user) return;
+    if (!user) {
+      toast.error("Please log in to save your results");
+      setIsLoading(false);
+      return;
+    }
     
     try {
       // Calculate percentages for visualization
@@ -283,7 +287,21 @@ const LearningQuiz = () => {
       const primaryStyle = Object.entries(normalizedResults)
         .sort((a, b) => b[1] - a[1])[0][0];
       
-      const { error } = await supabase
+      console.log("Saving learning metrics to database for user:", user.id);
+      console.log("Normalized results:", normalizedResults);
+      
+      const focusDistributionData = [
+        { name: "Physical", value: normalizedResults.Physical },
+        { name: "Vocal", value: normalizedResults.Vocal },
+        { name: "Auditory", value: normalizedResults.Auditory },
+        { name: "Visual", value: normalizedResults.Visual },
+        { name: "Logical", value: normalizedResults.Logical }
+      ];
+      
+      console.log("Focus distribution data:", focusDistributionData);
+      
+      // Enhanced error handling with the supabase operation
+      const { data, error } = await supabase
         .from('learning_metrics')
         .upsert({
           user_id: user.id,
@@ -291,21 +309,36 @@ const LearningQuiz = () => {
           cognitive_memory: normalizedResults.Visual,
           cognitive_problem_solving: normalizedResults.Physical,
           cognitive_creativity: normalizedResults.Vocal,
-          focus_distribution: [
-            { name: "Physical", value: normalizedResults.Physical },
-            { name: "Vocal", value: normalizedResults.Vocal },
-            { name: "Auditory", value: normalizedResults.Auditory },
-            { name: "Visual", value: normalizedResults.Visual },
-            { name: "Logical", value: normalizedResults.Logical }
-          ],
+          focus_distribution: focusDistributionData,
           time_of_day_data: [{ time: new Date().toISOString(), primary_style: primaryStyle }]
         });
       
       if (error) {
         console.error("Error saving learning styles:", error);
-        toast.error("Failed to save your results. Please try again.");
+        console.error("Error details:", error.message, error.details, error.hint);
+        toast.error(`Failed to save your results: ${error.message}`);
         setIsLoading(false);
         return;
+      }
+      
+      console.log("Learning metrics saved successfully:", data);
+      
+      // Also save to the learning_styles table for direct access
+      const { error: stylesError } = await supabase
+        .from('learning_styles')
+        .upsert({
+          user_id: user.id,
+          physical: normalizedResults.Physical,
+          vocal: normalizedResults.Vocal,
+          auditory: normalizedResults.Auditory,
+          visual: normalizedResults.Visual,
+          logical: normalizedResults.Logical,
+          primary_style: primaryStyle
+        });
+        
+      if (stylesError) {
+        console.error("Error saving to learning_styles:", stylesError);
+        // This is not critical, so just log it without showing an error toast
       }
       
       setIsLoading(false);
