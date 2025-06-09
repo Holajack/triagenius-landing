@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -427,7 +426,7 @@ const PrivacyPolicy = () => {
                   </p>
                   
                   <div className="bg-muted p-4 rounded-lg">
-                    <p><strong>Email:</strong> privacy@triagenius.com</p>
+                    <p><strong>Email:</strong> admin@thetriagesystem.com</p>
                     <p><strong>Subject Line:</strong> Privacy Policy Inquiry</p>
                   </div>
 
