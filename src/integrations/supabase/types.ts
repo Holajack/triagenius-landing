@@ -166,7 +166,11 @@ export type Database = {
           environment: string | null
           id: string
           milestone_count: number | null
+          room_id: string | null
+          session_type: string
           start_time: string
+          status: string
+          subject: string | null
           updated_at: string
           user_id: string
         }
@@ -178,7 +182,11 @@ export type Database = {
           environment?: string | null
           id?: string
           milestone_count?: number | null
+          room_id?: string | null
+          session_type?: string
           start_time?: string
+          status?: string
+          subject?: string | null
           updated_at?: string
           user_id: string
         }
@@ -190,11 +198,22 @@ export type Database = {
           environment?: string | null
           id?: string
           milestone_count?: number | null
+          room_id?: string | null
+          session_type?: string
           start_time?: string
+          status?: string
+          subject?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "focus_sessions_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "study_rooms"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "focus_sessions_user_id_fkey"
             columns: ["user_id"]
@@ -235,17 +254,50 @@ export type Database = {
         Row: {
           created_at: string | null
           friend_id: string
+          status: string | null
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           created_at?: string | null
           friend_id: string
+          status?: string | null
+          updated_at?: string | null
           user_id: string
         }
         Update: {
           created_at?: string | null
           friend_id?: string
+          status?: string | null
+          updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      insights: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          insight_type: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          insight_type: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          insight_type?: string
+          updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -447,11 +499,23 @@ export type Database = {
       onboarding_preferences: {
         Row: {
           created_at: string
+          data_collection_consent: boolean | null
+          education_level: string | null
+          focus_method: string | null
           id: string
           is_onboarding_complete: boolean | null
           learning_environment: string | null
+          location: string | null
+          major: string | null
+          marketing_communications: boolean | null
+          personalized_recommendations: boolean | null
+          profile_visibility: string | null
           sound_preference: string | null
+          study_data_sharing: boolean | null
+          timezone: string | null
+          university: string | null
           updated_at: string
+          usage_analytics: boolean | null
           user_goal: string | null
           user_id: string
           weekly_focus_goal: number | null
@@ -459,11 +523,23 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          data_collection_consent?: boolean | null
+          education_level?: string | null
+          focus_method?: string | null
           id?: string
           is_onboarding_complete?: boolean | null
           learning_environment?: string | null
+          location?: string | null
+          major?: string | null
+          marketing_communications?: boolean | null
+          personalized_recommendations?: boolean | null
+          profile_visibility?: string | null
           sound_preference?: string | null
+          study_data_sharing?: boolean | null
+          timezone?: string | null
+          university?: string | null
           updated_at?: string
+          usage_analytics?: boolean | null
           user_goal?: string | null
           user_id: string
           weekly_focus_goal?: number | null
@@ -471,11 +547,23 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          data_collection_consent?: boolean | null
+          education_level?: string | null
+          focus_method?: string | null
           id?: string
           is_onboarding_complete?: boolean | null
           learning_environment?: string | null
+          location?: string | null
+          major?: string | null
+          marketing_communications?: boolean | null
+          personalized_recommendations?: boolean | null
+          profile_visibility?: string | null
           sound_preference?: string | null
+          study_data_sharing?: boolean | null
+          timezone?: string | null
+          university?: string | null
           updated_at?: string
+          usage_analytics?: boolean | null
           user_goal?: string | null
           user_id?: string
           weekly_focus_goal?: number | null
@@ -491,17 +579,53 @@ export type Database = {
           },
         ]
       }
+      patrick_chat: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          sender: string
+          timestamp: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          sender: string
+          timestamp?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          sender?: string
+          timestamp?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
+          breakduration: number | null
           business: string | null
           classes: string[] | null
+          classesvisibility: string | null
           created_at: string
           display_name_preference: string | null
           email: string | null
+          environment: string | null
+          focusduration: number | null
           full_name: string | null
+          fullnamevisibility: string | null
           id: string
+          last_seen: string | null
           last_selected_environment: string | null
+          location: string | null
+          locationvisibility: string | null
+          maingoal: string | null
           major: string | null
           password_hash: string | null
           preferences: Json | null
@@ -511,21 +635,37 @@ export type Database = {
           show_classes: boolean | null
           show_state: boolean | null
           show_university: boolean | null
+          soundpreference: string | null
           state: string | null
+          status: string | null
+          theme_environment: string | null
+          timezone: string | null
           university: string | null
+          universityvisibility: string | null
           updated_at: string
           username: string | null
+          weeklyfocusgoal: number | null
+          workstyle: string | null
         }
         Insert: {
           avatar_url?: string | null
+          breakduration?: number | null
           business?: string | null
           classes?: string[] | null
+          classesvisibility?: string | null
           created_at?: string
           display_name_preference?: string | null
           email?: string | null
+          environment?: string | null
+          focusduration?: number | null
           full_name?: string | null
+          fullnamevisibility?: string | null
           id: string
+          last_seen?: string | null
           last_selected_environment?: string | null
+          location?: string | null
+          locationvisibility?: string | null
+          maingoal?: string | null
           major?: string | null
           password_hash?: string | null
           preferences?: Json | null
@@ -535,21 +675,37 @@ export type Database = {
           show_classes?: boolean | null
           show_state?: boolean | null
           show_university?: boolean | null
+          soundpreference?: string | null
           state?: string | null
+          status?: string | null
+          theme_environment?: string | null
+          timezone?: string | null
           university?: string | null
+          universityvisibility?: string | null
           updated_at?: string
           username?: string | null
+          weeklyfocusgoal?: number | null
+          workstyle?: string | null
         }
         Update: {
           avatar_url?: string | null
+          breakduration?: number | null
           business?: string | null
           classes?: string[] | null
+          classesvisibility?: string | null
           created_at?: string
           display_name_preference?: string | null
           email?: string | null
+          environment?: string | null
+          focusduration?: number | null
           full_name?: string | null
+          fullnamevisibility?: string | null
           id?: string
+          last_seen?: string | null
           last_selected_environment?: string | null
+          location?: string | null
+          locationvisibility?: string | null
+          maingoal?: string | null
           major?: string | null
           password_hash?: string | null
           preferences?: Json | null
@@ -559,10 +715,17 @@ export type Database = {
           show_classes?: boolean | null
           show_state?: boolean | null
           show_university?: boolean | null
+          soundpreference?: string | null
           state?: string | null
+          status?: string | null
+          theme_environment?: string | null
+          timezone?: string | null
           university?: string | null
+          universityvisibility?: string | null
           updated_at?: string
           username?: string | null
+          weeklyfocusgoal?: number | null
+          workstyle?: string | null
         }
         Relationships: []
       }
@@ -721,6 +884,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_study_room_participants_profiles"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_study_room_participants_rooms"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "study_rooms"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "study_room_participants_room_id_fkey"
             columns: ["room_id"]
             isOneToOne: false
@@ -742,11 +919,14 @@ export type Database = {
           creator_id: string
           current_participants: number | null
           description: string | null
+          duration: string | null
           id: string
           is_private: boolean | null
           max_participants: number | null
           name: string
           room_code: string | null
+          schedule: string | null
+          topic: string | null
           updated_at: string
         }
         Insert: {
@@ -754,11 +934,14 @@ export type Database = {
           creator_id: string
           current_participants?: number | null
           description?: string | null
+          duration?: string | null
           id?: string
           is_private?: boolean | null
           max_participants?: number | null
           name: string
           room_code?: string | null
+          schedule?: string | null
+          topic?: string | null
           updated_at?: string
         }
         Update: {
@@ -766,11 +949,14 @@ export type Database = {
           creator_id?: string
           current_participants?: number | null
           description?: string | null
+          duration?: string | null
           id?: string
           is_private?: boolean | null
           max_participants?: number | null
           name?: string
           room_code?: string | null
+          schedule?: string | null
+          topic?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -858,6 +1044,51 @@ export type Database = {
         }
         Relationships: []
       }
+      subtasks: {
+        Row: {
+          completed: boolean
+          created_at: string
+          id: string
+          order: number
+          task_id: string
+          text: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean
+          created_at?: string
+          id?: string
+          order: number
+          task_id: string
+          text: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean
+          created_at?: string
+          id?: string
+          order?: number
+          task_id?: string
+          text?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subtasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subtasks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           created_at: string
@@ -865,6 +1096,7 @@ export type Database = {
           due_date: string | null
           focus_session_id: string | null
           id: string
+          order: number
           priority: string | null
           status: string | null
           title: string
@@ -877,6 +1109,7 @@ export type Database = {
           due_date?: string | null
           focus_session_id?: string | null
           id?: string
+          order?: number
           priority?: string | null
           status?: string | null
           title: string
@@ -889,6 +1122,7 @@ export type Database = {
           due_date?: string | null
           focus_session_id?: string | null
           id?: string
+          order?: number
           priority?: string | null
           status?: string | null
           title?: string
@@ -912,6 +1146,33 @@ export type Database = {
           },
         ]
       }
+      user_friends: {
+        Row: {
+          created_at: string | null
+          friend_id: string
+          id: string
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          friend_id: string
+          id?: string
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          friend_id?: string
+          id?: string
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -930,6 +1191,66 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          auto_start_breaks: boolean | null
+          auto_start_focus: boolean | null
+          break_reminders: boolean | null
+          created_at: string | null
+          daily_goal_minutes: number | null
+          id: string
+          language: string | null
+          notifications_enabled: boolean | null
+          preferred_break_length: number | null
+          preferred_session_length: number | null
+          sound_enabled: boolean | null
+          study_reminders: boolean | null
+          theme: string | null
+          timezone: string | null
+          updated_at: string | null
+          user_id: string
+          vibration_enabled: boolean | null
+        }
+        Insert: {
+          auto_start_breaks?: boolean | null
+          auto_start_focus?: boolean | null
+          break_reminders?: boolean | null
+          created_at?: string | null
+          daily_goal_minutes?: number | null
+          id?: string
+          language?: string | null
+          notifications_enabled?: boolean | null
+          preferred_break_length?: number | null
+          preferred_session_length?: number | null
+          sound_enabled?: boolean | null
+          study_reminders?: boolean | null
+          theme?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          user_id: string
+          vibration_enabled?: boolean | null
+        }
+        Update: {
+          auto_start_breaks?: boolean | null
+          auto_start_focus?: boolean | null
+          break_reminders?: boolean | null
+          created_at?: string | null
+          daily_goal_minutes?: number | null
+          id?: string
+          language?: string | null
+          notifications_enabled?: boolean | null
+          preferred_break_length?: number | null
+          preferred_session_length?: number | null
+          sound_enabled?: boolean | null
+          study_reminders?: boolean | null
+          theme?: string | null
+          timezone?: string | null
+          updated_at?: string | null
+          user_id?: string
+          vibration_enabled?: boolean | null
         }
         Relationships: []
       }

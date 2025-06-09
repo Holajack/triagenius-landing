@@ -31,6 +31,7 @@ import LearningQuiz from "./pages/LearningQuiz";
 import LearningToolkit from "./pages/LearningToolkit";
 import NotFound from "./pages/NotFound";
 import Nora from "./pages/Nora";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import PWADetector from "./components/pwa/PWADetector";
 import InstallPrompt from "./components/pwa/InstallPrompt";
 import FirstVisitPrompt from "./components/pwa/FirstVisitPrompt";
@@ -71,6 +72,7 @@ function App() {
                       <Route path="/" element={<Index />} />
                       <Route path="/auth" element={<Auth />} />
                       <Route path="/onboarding" element={<Onboarding />} />
+                      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                       
                       {/* Protected routes */}
                       <Route element={<ProtectedRoute />}>
