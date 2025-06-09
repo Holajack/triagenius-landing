@@ -34,7 +34,10 @@ export const StudyRoomMember = ({ roomId }: StudyRoomMemberProps) => {
         setLoading(true);
         const { data, error } = await supabase
           .from('study_room_participants')
-          .select('*, user:profiles(id, display_name:username, avatar_url)')
+          .select(`
+            *,
+            user:user_id(id, username, avatar_url)
+          `)
           .eq('room_id', roomId);
 
         if (error) {
@@ -46,7 +49,11 @@ export const StudyRoomMember = ({ roomId }: StudyRoomMemberProps) => {
           user_id: member.user_id,
           room_id: member.room_id,
           joined_at: member.joined_at,
-          user: member.user
+          user: member.user ? {
+            id: member.user.id,
+            display_name: member.user.username,
+            avatar_url: member.user.avatar_url
+          } : undefined
         }));
 
         setMembers(formattedMembers);

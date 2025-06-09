@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from './use-user';
@@ -145,11 +144,15 @@ export function useStudyRooms() {
           return {
             ...room,
             topic: room.description || 'General Study',
-            is_active: true, // Virtual field
-            subjects: [], // Virtual field
+            is_active: true,
+            subjects: [],
             participant_count: room.participants?.length || 0,
-            schedule: null, // Virtual field
-            duration: null // Virtual field
+            schedule: null,
+            duration: null,
+            participants: room.participants?.map(p => ({
+              ...p,
+              user: p.user || { id: p.user_id, username: 'Unknown', avatar_url: null }
+            })) || []
           } as StudyRoom;
         }) || [];
 
